@@ -2,29 +2,38 @@ use std::ops::Add;
 use std::fmt::{Display, Formatter, Result};
 use crate::direction::Direction;
 use crate::constants::{FILE_NAMES, RANK_NAMES};
+use crate::bitboard::Bitboard;
 
 //left to right:
 //2 unused bits
 //3 bits: rank, going from 0 to 7
 //3 bits: file, going from A to H
 #[derive(Debug, Copy, Clone)]
-pub struct Square(u8);
+pub struct Square(pub u8);
 
 impl Square {
+
+    pub fn new(rank: usize, file: usize) -> Square {
+        Square((((rank & 7) << 3) | (file & 7)) as u8)
+    }
+
     //return the integer representing the rank (0 -> 1, ...) of this square
-    fn rank(self) -> usize {
+    pub fn rank(self) -> usize {
         return ((self.0 >> 3u8) & 7u8) as usize;
     }
 
     //return the integer representing the file (0 -> A, ...) of this square
-    fn file(self) -> usize {
+    pub fn file(self) -> usize {
         return (self.0 & 7u8) as usize;
+    }
+
+    pub fn value(self) -> u8 {
+        self.0
     }
 }
 
 impl Add<Direction> for Square {
     type Output = Square;
-
     fn add(self, rhs: Direction) -> Self::Output {
         let new_square: i8 = (self.0 as i8) + rhs.value();
         return Square(new_square as u8);
@@ -41,6 +50,16 @@ impl Eq for Square {}
 impl Display for Square {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{}{}", FILE_NAMES[self.file()], RANK_NAMES[self.rank()])
+    }
+}
+
+impl From<Bitboard> for Square {
+    fn from(bb: Bitboard) -> Square {
+        //Comment this out if you think you're strong enough
+        if bb.0.count_ones() != 1 {
+            return BAD_SQUARE;
+        }
+        return Square(bb.0.trailing_zeros() as u8);
     }
 }
 
@@ -172,6 +191,8 @@ pub const F8: Square = Square(61);
 pub const G8: Square = Square(62);
 #[allow(dead_code)]
 pub const H8: Square = Square(63);
+#[allow(dead_code)]
+pub const BAD_SQUARE: Square = Square(64);
 
 #[cfg(test)]
 mod tests {
