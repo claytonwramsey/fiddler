@@ -1,14 +1,8 @@
-use std::ops::{Neg, Add};
+use std::ops::{Neg, Add, Sub};
 use crate::square::Square;
 
 #[derive(Copy, Clone, Debug)]
-pub struct Direction(i8);
-
-impl Direction {
-    pub fn value(self) -> i8 {
-        self.0
-    }
-}
+pub struct Direction(pub i8);
 
 impl Neg for Direction {
     type Output = Self;
@@ -31,6 +25,13 @@ impl Add<Direction> for Direction {
     }
 }
 
+impl Sub<Direction> for Direction {
+    type Output = Self;
+    fn sub(self, rhs: Direction) -> Self::Output {
+        Direction(self.0 - rhs.0)
+    }
+}
+
 impl PartialEq for Direction {
     fn eq(&self, rhs: &Direction) -> bool {
         return self.0 == rhs.0;
@@ -49,6 +50,12 @@ pub const EAST: Direction = Direction(1);
 pub const SOUTH: Direction = Direction(-8);
 pub const WEST: Direction = Direction(-1);
 
+//composite directions
+pub const NORTHWEST: Direction = Direction(NORTH.0 + WEST.0);
+pub const NORTHEAST: Direction = Direction(NORTH.0 + EAST.0);
+pub const SOUTHEAST: Direction = Direction(SOUTH.0 + EAST.0);
+pub const SOUTHWEST: Direction = Direction(SOUTH.0 + WEST.0);
+
 #[cfg(test)]
 mod tests {
 
@@ -65,6 +72,12 @@ mod tests {
     fn test_opposite_directions() {
         assert_eq!(-EAST, WEST);
         assert_eq!(-NORTH, SOUTH);
+    }
+
+    #[test]
+    fn test_subtraction() {
+        assert_eq!(NORTHEAST - EAST, NORTH);
+        assert_eq!(EAST - EAST, NODIR);
     }
 
 }

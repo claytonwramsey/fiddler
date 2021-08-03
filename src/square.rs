@@ -35,7 +35,7 @@ impl Square {
 impl Add<Direction> for Square {
     type Output = Square;
     fn add(self, rhs: Direction) -> Self::Output {
-        let new_square: i8 = (self.0 as i8) + rhs.value();
+        let new_square: i8 = (self.0 as i8) + rhs.0;
         return Square(new_square as u8);
     }
 }
