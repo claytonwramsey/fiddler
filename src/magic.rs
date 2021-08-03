@@ -18,24 +18,29 @@ pub struct Magic<'a> {
     pub shift: u8
 }
 
-pub fn makeMagic<'a>(table: MagicTable) {
+//remove bits on the outside ring of the board
+const RING_MASK: Bitboard = Bitboard(0x007E7E7E7E7E7E00);
+
+pub fn make_magic<'a>(table: MagicTable) {
 
 }
 
-pub fn makeRookMagic<'a>(rookTable :&'a mut [Magic; 64]) {
+pub fn make_rook_magic<'a>(rookTable :&'a mut [Magic; 64]) {
     for i in 0..64 {
         //sequence of 1s down the same row as the piece to move
         let row_mask = Bitboard(0xFF << (8 * (i / 8)));
         //sequence of 1s down the same col as the piece to move
         let col_mask = Bitboard(0x0101010101010101 << (i % 8));
         //in the col mask or row mask, but not the piece to move
-        let mask = (row_mask | col_mask) & Bitboard(!(1 << i));
+        let mask = (row_mask | col_mask) & Bitboard(!(1 << i)) & RING_MASK;
         rookTable[i].mask = mask;
     }
 }
 
-pub fn makeBishopMagic<'a>(bishopTable: &'a mut [Magic; 64]) {
-    makeRookMagic(bishopTable)
+pub fn make_bishop_magic<'a>(bishopTable: &'a mut [Magic; 64]) {
+    for i in 0..64 {
+        //sequence of 1s down the 
+    }
 }
 
 
@@ -53,7 +58,7 @@ mod tests {
             shift: 0,
         };
         let mut outArray = [m_placeholder; 64];
-        makeRookMagic(&mut outArray);
+        make_rook_magic(&mut outArray);
         //println!("{:064b}", outArray[0].mask.0);
         assert_eq!(outArray[0].mask, Bitboard(0x01010101010101FE));
         assert_eq!(outArray[4].mask, Bitboard(0x10101010101010EF));

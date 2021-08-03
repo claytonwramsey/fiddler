@@ -21,3 +21,9 @@ pub const RANK_NAMES: [&str; 8] = [
     "7",
     "8"
 ];
+
+
+pub type Color = usize;
+//should match indices in board::bb_indices
+pub const WHITE: Color = 0;
+pub const BLACK: Color = 1;

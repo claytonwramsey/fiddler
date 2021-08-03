@@ -1,17 +1,7 @@
 use crate::constants::NUM_PIECE_TYPES;
-use crate::piece::{PieceType, Color};
+use crate::piece::{PieceType};
+use crate::constants::{Color, WHITE, BLACK};
 use crate::bitboard::Bitboard;
-
-mod bb_indices {
-    pub const WHITE: usize = 0;
-    pub const BLACK: usize = 1;
-    pub const PAWN: usize = 0;
-    pub const KNIGHT: usize = 1;
-    pub const BISHOP: usize = 2;
-    pub const ROOK: usize = 3;
-    pub const QUEEN: usize = 4;
-    pub const KING: usize = 5;
-}
 
 #[derive(Copy, Clone)]
 pub struct Board {
@@ -21,20 +11,20 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn getOccupancy(self) -> Bitboard {
-        self.sides[bb_indices::WHITE] & self.sides[bb_indices::BLACK]
+    pub fn get_occupancy(self) -> Bitboard {
+        self.sides[WHITE] & self.sides[BLACK]
     }
 
-    pub fn getColorOccupancy(self, color: Color) -> Bitboard {
+    pub fn get_color_occupancy(self, color: Color) -> Bitboard {
         self.sides[color as usize]
     }
 
-    pub fn getPiecesOfType(self, pt: PieceType) -> Bitboard {
+    pub fn get_pieces_of_type(self, pt: PieceType) -> Bitboard {
         self.pieces[pt.0 as usize]
     }
 
-    pub fn getPiecesOfTypeAndColor(self, pt: PieceType, color: Color) -> Bitboard {
-        self.getPiecesOfType(pt) & self.getColorOccupancy(color)
+    pub fn get_pieces_of_type_ang_color(self, pt: PieceType, color: Color) -> Bitboard {
+        self.get_pieces_of_type(pt) & self.get_color_occupancy(color)
     }
 }
 
