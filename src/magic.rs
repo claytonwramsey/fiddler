@@ -2,9 +2,10 @@ use crate::bitboard::Bitboard;
 use crate::square::Square;
 use std::vec::Vec;
 
+#[allow(dead_code)]
 pub struct MagicTable<'a> {
-    pub rookMagic: [Magic<'a>; 64],
-    pub bishopMagic: [Magic<'a>; 64]
+    pub rook_magic: [Magic<'a>; 64],
+    pub bishop_magic: [Magic<'a>; 64]
 }
 
 //All the information needed to compute magic attacks coming from one square.
@@ -19,10 +20,13 @@ pub struct Magic<'a> {
     pub shift: u8
 }
 
-pub fn make_magic<'a>(table: MagicTable) {
-
+#[allow(dead_code)]
+pub fn make_magic<'a>(table: &mut MagicTable) {
+    make_rook_magic(&mut table.rook_magic);
+    make_bishop_magic(&mut table.bishop_magic)
 }
 
+#[allow(dead_code)]
 fn make_rook_magic<'a>(rtable: &'a mut [Magic; 64]) {
     for i in 0..64 {
         //sequence of 1s down the same row as the piece to move, except on the
@@ -46,6 +50,7 @@ const MAIN_DIAG: Bitboard = Bitboard(0x8040201008040201);
 //diagonal going from A8 to H1
 const ANTI_DIAG: Bitboard = Bitboard(0x0102040810204080);
 
+#[allow(dead_code)]
 fn make_bishop_magic<'a>(btable: &'a mut [Magic; 64]) {
     for i in 0..64 {
 

@@ -39,21 +39,30 @@ impl PartialEq for Direction {
 }
 impl Eq for Direction {}
 
+#[allow(dead_code)]
 pub const NODIR: Direction = Direction(0);
 //adding 8 to a square in conventional form brings up a row
+#[allow(dead_code)]
 pub const NORTH: Direction = Direction(8);
 //adding 1 moves you east in conventional
+#[allow(dead_code)]
 pub const EAST: Direction = Direction(1);
 
 //sadly, the nature of rust consts means this doesn't work
 //pub const SOUTH: Direction = -NORTH;
+#[allow(dead_code)]
 pub const SOUTH: Direction = Direction(-8);
+#[allow(dead_code)]
 pub const WEST: Direction = Direction(-1);
 
 //composite directions
+#[allow(dead_code)]
 pub const NORTHWEST: Direction = Direction(NORTH.0 + WEST.0);
+#[allow(dead_code)]
 pub const NORTHEAST: Direction = Direction(NORTH.0 + EAST.0);
+#[allow(dead_code)]
 pub const SOUTHEAST: Direction = Direction(SOUTH.0 + EAST.0);
+#[allow(dead_code)]
 pub const SOUTHWEST: Direction = Direction(SOUTH.0 + WEST.0);
 
 #[cfg(test)]

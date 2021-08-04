@@ -11,6 +11,7 @@ impl Move {
 
     // Make a Move for a piece which does have a promote type
     // assumes that the squares and promote types are all valid
+    #[allow(dead_code)]
     pub fn new(from_square: Square, to_square: Square, promote_type: PieceType) -> Move {
         let from_square_bits = from_square.0 as u16;
         let to_square_bits = (to_square.0 as u16) << 6;
@@ -19,14 +20,17 @@ impl Move {
         return Move(my_value);
     }
 
+    #[allow(dead_code)]
     pub fn to_square(self) -> Square {
         Square((self.0 & 63u16) as u8)
     }
 
+    #[allow(dead_code)]
     pub fn from_square(self) -> Square {
         Square(((self.0 >> 6) & 63u16) as u8)
     }
 
+    #[allow(dead_code)]
     pub fn promote_type(self) -> PieceType {
         PieceType(((self.0 >> 12) & 3u16) as u8)
     }
