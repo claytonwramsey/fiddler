@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Shl, Shr, Not};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Shl, Shr, Not, Mul};
 use std::fmt::{Display, Formatter, Result};
 use crate::square::Square;
 
@@ -7,6 +7,12 @@ use crate::square::Square;
  */
 #[derive(Copy, Clone, Debug)]
 pub struct Bitboard(pub u64);
+
+impl Bitboard {
+    pub fn is_square_occupied(self, square: Square) -> bool {
+        self.0 & (1 << square.0) != 0
+    }
+}
 
 impl BitAnd for Bitboard {
     type Output = Self;
@@ -86,6 +92,14 @@ impl Not for Bitboard {
     }
 }
 
+impl Mul for Bitboard {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Bitboard(self.0 * rhs.0)
+    }
+}
+
 impl PartialEq for Bitboard {
     fn eq(&self, rhs: &Bitboard) -> bool {
         return self.0 == rhs.0;
@@ -101,6 +115,6 @@ impl From<Square> for Bitboard {
 
 impl Display for Bitboard {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "0x{:16x}", self.0)
+        write!(f, "Bitboard({:#16x})", self.0)
     }
 }

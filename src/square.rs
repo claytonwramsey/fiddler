@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 use std::fmt::{Display, Formatter, Result};
 use crate::direction::Direction;
 use crate::constants::{FILE_NAMES, RANK_NAMES};
@@ -27,8 +27,8 @@ impl Square {
         return (self.0 & 7u8) as usize;
     }
 
-    pub fn value(self) -> u8 {
-        self.0
+    pub fn is_inbounds(self) -> bool {
+        self.0 < 64
     }
 }
 
@@ -37,6 +37,12 @@ impl Add<Direction> for Square {
     fn add(self, rhs: Direction) -> Self::Output {
         let new_square: i8 = (self.0 as i8) + rhs.0;
         return Square(new_square as u8);
+    }
+}
+
+impl AddAssign<Direction> for Square {
+    fn add_assign(&mut self, rhs: Direction) {
+        self.0 = ((self.0 as i8) + rhs.0) as u8;
     }
 }
 

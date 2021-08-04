@@ -1,5 +1,8 @@
 use crate::bitboard::Bitboard;
 use crate::square::Square;
+use crate::direction::{Direction, ROOK_DIRECTIONS, BISHOP_DIRECTIONS};
+use rand::thread_rng;
+use rand::Rng;
 use std::vec::Vec;
 
 pub struct MagicTable<'a> {
@@ -8,14 +11,13 @@ pub struct MagicTable<'a> {
 }
 
 //All the information needed to compute magic attacks coming from one square.
-#[derive(Clone, Copy)]
 pub struct Magic<'a> {
     //A mask which, when &ed with the occupancy bitboard, will give only the
     //bits that matter when computing moves.
     pub mask: Bitboard,
     //The magic number to multiply to hash the current board effectively
     pub magic: Bitboard,
-    pub attacks: &'a Vec<Bitboard>,
+    pub attacks: &'a mut Vec<Bitboard>,
     pub shift: u8
 }
 
@@ -28,18 +30,49 @@ const MAIN_DIAG: Bitboard = Bitboard(0x8040201008040201);
 //diagonal going from A8 to H1
 const ANTI_DIAG: Bitboard = Bitboard(0x0102040810204080);
 
+const ROOK_SHIFTS: [u8; 64] = [
+  12, 11, 11, 11, 11, 11, 11, 12,
+  11, 10, 10, 10, 10, 10, 10, 11,
+  11, 10, 10, 10, 10, 10, 10, 11,
+  11, 10, 10, 10, 10, 10, 10, 11,
+  11, 10, 10, 10, 10, 10, 10, 11,
+  11, 10, 10, 10, 10, 10, 10, 11,
+  11, 10, 10, 10, 10, 10, 10, 11,
+  12, 11, 11, 11, 11, 11, 11, 12
+];
+
+const BISHOP_SHIFTS: [u8; 64] = [
+  6, 5, 5, 5, 5, 5, 5, 6,
+  5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 7, 7, 7, 7, 5, 5,
+  5, 5, 7, 9, 9, 7, 5, 5,
+  5, 5, 7, 9, 9, 7, 5, 5,
+  5, 5, 7, 7, 7, 7, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5,
+  6, 5, 5, 5, 5, 5, 5, 6
+];
+
+
 #[allow(dead_code)]
 pub fn make_magic<'a>(table: &mut MagicTable) {
     make_magic_helper(&mut table.rook_magic, true);
     make_magic_helper(&mut table.bishop_magic, false);
 }
 
+fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
+    ((occupancy * magic).0 >> (64 - shift)) as usize
+}
+
 fn make_magic_helper<'a>(table: &'a mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
+        //square of the piece making attacks
+        let sq = Square(i as u8);
         if is_rook {
-            table[i].mask = get_rook_mask(Square(i as u8));
+            table[i].mask = get_rook_mask(sq);
+            table[i].shift = ROOK_SHIFTS[i];
         } else {
-            table[i].mask = get_bishop_mask(Square(i as u8));
+            table[i].mask = get_bishop_mask(sq);
+            table[i].shift = BISHOP_SHIFTS[i];
         }
         //number of squares where occupancy matters
         let num_points = table[i].mask.0.count_ones();
@@ -47,12 +80,50 @@ fn make_magic_helper<'a>(table: &'a mut [Magic; 64], is_rook: bool) {
         //we know that there are at most 12 pieces that will matter when it
         //comes to attack lookups
         let mut occupancies = [Bitboard(0); 1 << 12];
-        let mut attacks = [0; 1 << 12];
+        let mut attacks = [Bitboard(0); 1 << 12];
 
         //compute every possible occupancy arrangement for attacking 
         for j in 0..(1 << num_points) {
-            occupancies[j] = index_to_occupancy(j, num_points, table[i].mask);
-            //TODO compute attacks and then try generating magics for this attack
+            occupancies[j] = index_to_occupancy(j, table[i].mask);
+            //compute attacks
+            if is_rook {
+                attacks[j] = directional_attacks(sq, ROOK_DIRECTIONS, occupancies[j])
+            } else {
+                attacks[j] = directional_attacks(sq, BISHOP_DIRECTIONS, occupancies[j])
+            }
+        }
+        //try random magics until one works
+        let mut found_magic = false;
+        for _ in 0..NUM_MAGIC_TRIES {
+            let magic = random_sparse_bitboard();
+
+            //repopulate the usage table with zeros
+            let mut used = [Bitboard(0); 1 << 12];
+
+            found_magic = true;
+            for j in 0..(1 << num_points) {
+                let key = compute_magic_key(occupancies[j], magic, table[i].shift);
+                if used[key] == Bitboard(0) {
+                    used[key] = attacks[j];
+                }
+                else if used[key] != attacks[j]{
+                    found_magic = false;
+                    break;
+                }
+            }
+
+            //found a working magic, we're done here
+            if found_magic {
+                table[i].magic = magic;
+                break;
+            }
+        }
+        if !found_magic {
+            print!("FAILED to find magic on square {}. is rook? {}", sq, is_rook);
+        }
+        else {
+            // found a magic, populate the attack vector
+            table[i].attacks.resize(1 << table[i].shift, Bitboard(0));
         }
     }
 }
@@ -93,8 +164,15 @@ fn get_bishop_mask(sq: Square) -> Bitboard{
 }
 
 //Given some mask, create the occupancy bitboard according to this index
-fn index_to_occupancy(index: usize, num_points: u32, mask: Bitboard) -> Bitboard {
+fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     let mut result = Bitboard(0);
+    let num_points = mask.0.count_ones();
+
+    //comment this out if you think you're clever
+    /*if index >= (1 << num_points) + 1{
+        return result;
+    }*/
+
     let mut editable_mask = mask;
     //go from right to left in the bits of num_points,
     //and add an occupancy if something is there
@@ -108,9 +186,34 @@ fn index_to_occupancy(index: usize, num_points: u32, mask: Bitboard) -> Bitboard
             //the bit corresponding to the occupier is nonzero
             result |= occupier;
         }
-
     }
+    return result;
+}
 
+fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) -> Bitboard {
+    let mut result = Bitboard(0);
+    for dir in dirs {
+        let mut current_square = sq;
+        for _ in 0..7 {
+            current_square += dir;
+            if !current_square.is_inbounds() {
+                break;
+            }
+            //current square is occupied
+            result |= Bitboard::from(current_square);
+            if occupancy.is_square_occupied(current_square){
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+fn random_sparse_bitboard() -> Bitboard {
+    let mut result = Bitboard(0xFFFFFFFFFFFFFFFF);
+    for _ in 0..3 {   
+        result &= Bitboard(thread_rng().gen::<u64>());
+    }
     return result;
 }
 
@@ -124,7 +227,7 @@ mod tests {
         let m_placeholder = Magic{
             mask: Bitboard(0), 
             magic: Bitboard(0), 
-            attacks: &Vec::new(), 
+            attacks: &mut Vec::new(), 
             shift: 0,
         };
         let mut rtable = [m_placeholder; 64];
@@ -144,7 +247,7 @@ mod tests {
         let m_placeholder = Magic{
             mask: Bitboard(0), 
             magic: Bitboard(0), 
-            attacks: &Vec::new(), 
+            attacks: &mut Vec::new(), 
             shift: 0,
         };
         let mut btable = [m_placeholder; 64];
@@ -157,5 +260,14 @@ mod tests {
         
         //println!("{:064b}", btable[36].mask.0);
         assert_eq!(btable[36].mask, Bitboard(0x8244280028448201));
+    }
+
+    #[test]
+    fn test_index_to_occupancy() {
+        let mask = Bitboard(0b1111);
+        for i in 0..16 {
+            let occu = index_to_occupancy(i, mask);
+            assert_eq!(occu, Bitboard(i as u64));
+        }
     }
 }
