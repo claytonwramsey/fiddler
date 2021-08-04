@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitOr, BitXor, Shl, Shr};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Shl, Shr, Not};
 use std::fmt::{Display, Formatter, Result};
 use crate::square::Square;
 
@@ -16,11 +16,25 @@ impl BitAnd for Bitboard {
     }
 }
 
+impl BitAndAssign for Bitboard {
+
+    fn bitand_assign (&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
 impl BitOr for Bitboard {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         return Self(self.0 | rhs.0);
+    }
+}
+
+impl BitOrAssign for Bitboard {
+
+    fn bitor_assign (&mut self, rhs: Self) {
+        self.0 |= rhs.0;
     }
 }
 
@@ -61,6 +75,14 @@ impl Shr<i32> for Bitboard {
 
     fn shr(self, rhs: i32) -> Self::Output {
         Bitboard(self.0 >> rhs)
+    }
+}
+
+impl Not for Bitboard {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Bitboard(!self.0)
     }
 }
 
