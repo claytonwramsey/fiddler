@@ -22,7 +22,7 @@ impl Square {
         return ((self.0 >> 3u8) & 7u8) as usize;
     }
 
-    //return the integer representing the file (0 -> A, ...) of this square
+    //return the integer representing the file (0 -> H, ...) of this square
     pub fn file(self) -> usize {
         return (self.0 & 7u8) as usize;
     }

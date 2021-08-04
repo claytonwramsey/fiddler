@@ -1,25 +1,25 @@
 pub const NUM_PIECE_TYPES: usize = 6;
 
 pub const FILE_NAMES: [&str; 8] = [
-    "a",
-    "b",
-    "c",
-    "d",
-    "e",
-    "f",
+    "h",
     "g",
-    "h"
+    "f",
+    "e",
+    "d",
+    "c",
+    "b",
+    "a"
 ];
 
 pub const RANK_NAMES: [&str; 8] = [
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
+    "8",
     "7",
-    "8"
+    "6",
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
 ];
 
 

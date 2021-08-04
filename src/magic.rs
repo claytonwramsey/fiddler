@@ -5,24 +5,26 @@ use rand::thread_rng;
 use rand::Rng;
 use std::vec::Vec;
 
-pub struct MagicTable<'a> {
-    pub rook_magic: [Magic<'a>; 64],
-    pub bishop_magic: [Magic<'a>; 64]
+#[derive(Clone)]
+pub struct MagicTable {
+    pub rook_magic: [Magic; 64],
+    pub bishop_magic: [Magic; 64]
 }
 
 //All the information needed to compute magic attacks coming from one square.
-pub struct Magic<'a> {
+#[derive(Clone)]
+pub struct Magic {
     //A mask which, when &ed with the occupancy bitboard, will give only the
     //bits that matter when computing moves.
     pub mask: Bitboard,
     //The magic number to multiply to hash the current board effectively
     pub magic: Bitboard,
-    pub attacks: &'a mut Vec<Bitboard>,
+    pub attacks: Vec<Bitboard>,
     pub shift: u8
 }
 
 //number of times to trie generating magics
-const NUM_MAGIC_TRIES: u64 = 1_000_000;
+const NUM_MAGIC_TRIES: u64 = 10_000;
 
 //diagonal going from A1 to H8
 const MAIN_DIAG: Bitboard = Bitboard(0x8040201008040201);
@@ -59,6 +61,7 @@ pub fn make_magic<'a>(table: &mut MagicTable) {
     make_magic_helper(&mut table.bishop_magic, false);
 }
 
+#[inline]
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
     ((occupancy * magic).0 >> (64 - shift)) as usize
 }
@@ -94,12 +97,12 @@ fn make_magic_helper<'a>(table: &'a mut [Magic; 64], is_rook: bool) {
         }
         //try random magics until one works
         let mut found_magic = false;
+        let mut used;
         for _ in 0..NUM_MAGIC_TRIES {
             let magic = random_sparse_bitboard();
 
             //repopulate the usage table with zeros
-            let mut used = [Bitboard(0); 1 << 12];
-
+            used = [Bitboard(0); 1<< 12];
             found_magic = true;
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], magic, table[i].shift);
@@ -114,16 +117,21 @@ fn make_magic_helper<'a>(table: &'a mut [Magic; 64], is_rook: bool) {
 
             //found a working magic, we're done here
             if found_magic {
+                println!("Found magic for square {}: {}", sq, magic);
                 table[i].magic = magic;
                 break;
             }
         }
         if !found_magic {
-            print!("FAILED to find magic on square {}. is rook? {}", sq, is_rook);
+            println!("FAILED to find magic on square {}. is rook? {}", sq, is_rook);
         }
         else {
             // found a magic, populate the attack vector
             table[i].attacks.resize(1 << table[i].shift, Bitboard(0));
+            for j in 0..(1 << num_points) {
+                let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
+                table[i].attacks[key] = attacks[j];
+            }
         }
     }
 }
@@ -209,9 +217,10 @@ fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) ->
     return result;
 }
 
+#[inline]
 fn random_sparse_bitboard() -> Bitboard {
-    let mut result = Bitboard(0xFFFFFFFFFFFFFFFF);
-    for _ in 0..3 {   
+    let mut result = Bitboard(thread_rng().gen::<u64>());
+    for _ in 0..2 {   
         result &= Bitboard(thread_rng().gen::<u64>());
     }
     return result;
@@ -222,44 +231,51 @@ mod tests {
     #[allow(dead_code)]
     use super::*;
 
+    #[allow(dead_code)]
+    use crate::square::*;
+    
+    use std::mem::{MaybeUninit, transmute};
+
     #[test]
     fn test_rook_mask() {
-        let m_placeholder = Magic{
-            mask: Bitboard(0), 
-            magic: Bitboard(0), 
-            attacks: &mut Vec::new(), 
-            shift: 0,
+        let mut rtable = {
+            let mut data: [MaybeUninit<Magic>; 64] = unsafe {
+                MaybeUninit::uninit().assume_init()
+            };
+            for elem in &mut data[..] {
+                *elem = MaybeUninit::new(Magic{
+                    mask: Bitboard(0), 
+                    magic: Bitboard(0), 
+                    attacks: Vec::new(), 
+                    shift: 0,
+                });
+            }
+            unsafe { transmute::<_, [Magic; 64]>(data)  }
         };
-        let mut rtable = [m_placeholder; 64];
         make_magic_helper(&mut rtable, true);
-        //println!("{:064b}", rtable[0].mask.0);
+        println!("{:064b}", rtable[0].mask.0);
         assert_eq!(rtable[00].mask, Bitboard(0x000101010101017E));
         
-        //println!("{:064b}", rtable[4].mask.0);
+        println!("{:064b}", rtable[4].mask.0);
         assert_eq!(rtable[04].mask, Bitboard(0x001010101010106E));
         
-        //println!("{:064b}", rtable[36].mask.0);
+        println!("{:064b}", rtable[36].mask.0);
         assert_eq!(rtable[36].mask, Bitboard(0x0010106E10101000));
     }
 
     #[test]
     fn test_bishop_mask() {
-        let m_placeholder = Magic{
-            mask: Bitboard(0), 
-            magic: Bitboard(0), 
-            attacks: &mut Vec::new(), 
-            shift: 0,
-        };
-        let mut btable = [m_placeholder; 64];
-        make_magic_helper(&mut btable, false);
         //println!("{:064b}", btable[0].mask.0);
-        assert_eq!(btable[00].mask, Bitboard(0x8040201008040200));
-        
+        assert_eq!(get_bishop_mask(A1), Bitboard(0x8040201008040200));
+    
         //println!("{:064b}", btable[4].mask.0);
-        assert_eq!(btable[04].mask, Bitboard(0x0000000182442800));
+        assert_eq!(get_bishop_mask(E1), Bitboard(0x0000000182442800));
         
         //println!("{:064b}", btable[36].mask.0);
-        assert_eq!(btable[36].mask, Bitboard(0x8244280028448201));
+        assert_eq!(get_bishop_mask(E5), Bitboard(0x8244280028448201));
+
+        println!("{:064b}", get_bishop_mask(F4).0);
+
     }
 
     #[test]
@@ -269,5 +285,43 @@ mod tests {
             let occu = index_to_occupancy(i, mask);
             assert_eq!(occu, Bitboard(i as u64));
         }
+    }
+
+    #[test]
+    fn test_successful_magic_creation() {
+        let rtable = {
+            let mut data: [MaybeUninit<Magic>; 64] = unsafe {
+                MaybeUninit::uninit().assume_init()
+            };
+            for elem in &mut data[..] {
+                *elem = MaybeUninit::new(Magic{
+                    mask: Bitboard(0), 
+                    magic: Bitboard(0), 
+                    attacks: Vec::new(), 
+                    shift: 0,
+                });
+            }
+            unsafe { transmute::<_, [Magic; 64]>(data)  }
+        };
+        let btable = {
+            let mut data: [MaybeUninit<Magic>; 64] = unsafe {
+                MaybeUninit::uninit().assume_init()
+            };
+            for elem in &mut data[..] {
+                *elem = MaybeUninit::new(Magic{
+                    mask: Bitboard(0), 
+                    magic: Bitboard(0), 
+                    attacks: Vec::new(), 
+                    shift: 0,
+                });
+            }
+            unsafe { transmute::<_, [Magic; 64]>(data)  }
+        };
+        let mut mtable = MagicTable{
+            rook_magic: rtable,
+            bishop_magic: btable
+        };
+        make_magic(&mut mtable);
+
     }
 }

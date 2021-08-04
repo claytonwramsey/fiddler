@@ -62,7 +62,7 @@ impl Shl<i8> for Bitboard {
 
 impl Shr<i8> for Bitboard {
     type Output = Self;
-
+    #[inline]
     fn shr(self, rhs: i8) -> Self::Output {
         Bitboard(self.0 >> rhs)
     }
@@ -78,7 +78,7 @@ impl Shl<i32> for Bitboard {
 
 impl Shr<i32> for Bitboard {
     type Output = Self;
-
+    #[inline]
     fn shr(self, rhs: i32) -> Self::Output {
         Bitboard(self.0 >> rhs)
     }
@@ -92,11 +92,12 @@ impl Not for Bitboard {
     }
 }
 
+
 impl Mul for Bitboard {
     type Output = Self;
-
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 * rhs.0)
+        Bitboard(self.0.wrapping_mul(rhs.0))
     }
 }
 
