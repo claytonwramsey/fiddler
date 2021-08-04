@@ -116,6 +116,6 @@ impl From<Square> for Bitboard {
 
 impl Display for Bitboard {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Bitboard({:#16x})", self.0)
+        write!(f, "Bitboard({:#18x})", self.0)
     }
 }

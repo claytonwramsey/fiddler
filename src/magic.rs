@@ -24,13 +24,15 @@ pub struct Magic {
 }
 
 //number of times to trie generating magics
-const NUM_MAGIC_TRIES: u64 = 10_000;
+const NUM_MAGIC_TRIES: u64 = 1_000_000;
 
 //diagonal going from A1 to H8
 const MAIN_DIAG: Bitboard = Bitboard(0x8040201008040201);
 
 //diagonal going from A8 to H1
 const ANTI_DIAG: Bitboard = Bitboard(0x0102040810204080);
+
+const RING_MASK: Bitboard = Bitboard(0xFF818181818181FF);
 
 const ROOK_SHIFTS: [u8; 64] = [
   12, 11, 11, 11, 11, 11, 11, 12,
@@ -98,7 +100,7 @@ fn make_magic_helper<'a>(table: &'a mut [Magic; 64], is_rook: bool) {
         //try random magics until one works
         let mut found_magic = false;
         let mut used;
-        for _ in 0..NUM_MAGIC_TRIES {
+        for trial in 0..NUM_MAGIC_TRIES {
             let magic = random_sparse_bitboard();
 
             //repopulate the usage table with zeros
@@ -117,7 +119,7 @@ fn make_magic_helper<'a>(table: &'a mut [Magic; 64], is_rook: bool) {
 
             //found a working magic, we're done here
             if found_magic {
-                println!("Found magic for square {}: {}", sq, magic);
+                println!("Found magic for square {}: {} in {} tries", sq, magic, trial);
                 table[i].magic = magic;
                 break;
             }
@@ -151,7 +153,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 
     //in the col mask or row mask, but not the piece to move
     //xor operation will remove the square the piece is on
-    return row_mask ^ col_mask;
+    return (row_mask ^ col_mask) & !Bitboard::from(sq);
 }
 
 //Create the mask for the relevant bits in magic of a bishop
@@ -168,7 +170,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard{
     let anti_rshift = anti_diag & (-anti_diag >> 31);
     let anti_diag_mask = (ANTI_DIAG >> anti_rshift) << anti_lshift;
 
-    return main_diag_mask ^ anti_diag_mask;
+    return (main_diag_mask ^ anti_diag_mask) & !RING_MASK;
 }
 
 //Given some mask, create the occupancy bitboard according to this index
@@ -238,43 +240,26 @@ mod tests {
 
     #[test]
     fn test_rook_mask() {
-        let mut rtable = {
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe {
-                MaybeUninit::uninit().assume_init()
-            };
-            for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic{
-                    mask: Bitboard(0), 
-                    magic: Bitboard(0), 
-                    attacks: Vec::new(), 
-                    shift: 0,
-                });
-            }
-            unsafe { transmute::<_, [Magic; 64]>(data)  }
-        };
-        make_magic_helper(&mut rtable, true);
-        println!("{:064b}", rtable[0].mask.0);
-        assert_eq!(rtable[00].mask, Bitboard(0x000101010101017E));
+        println!("{:064b}", get_rook_mask(A1).0);
+        assert_eq!(get_rook_mask(A1), Bitboard(0x000101010101017E));
         
-        println!("{:064b}", rtable[4].mask.0);
-        assert_eq!(rtable[04].mask, Bitboard(0x001010101010106E));
+        println!("{:064b}", get_rook_mask(E1).0);
+        assert_eq!(get_rook_mask(E1), Bitboard(0x001010101010106E));
         
-        println!("{:064b}", rtable[36].mask.0);
-        assert_eq!(rtable[36].mask, Bitboard(0x0010106E10101000));
+        println!("{:064b}", get_rook_mask(E5).0);
+        assert_eq!(get_rook_mask(E5), Bitboard(0x0010106E10101000));
     }
 
     #[test]
     fn test_bishop_mask() {
-        //println!("{:064b}", btable[0].mask.0);
-        assert_eq!(get_bishop_mask(A1), Bitboard(0x8040201008040200));
+        //println!("{:064b}", get_bishop_mask(A1).0);
+        assert_eq!(get_bishop_mask(A1), Bitboard(0x0040201008040200));
     
-        //println!("{:064b}", btable[4].mask.0);
-        assert_eq!(get_bishop_mask(E1), Bitboard(0x0000000182442800));
+        //println!("{:064b}", get_bishop_mask(E1).0);
+        assert_eq!(get_bishop_mask(E1), Bitboard(0x0000000002442800));
         
-        //println!("{:064b}", btable[36].mask.0);
-        assert_eq!(get_bishop_mask(E5), Bitboard(0x8244280028448201));
-
-        println!("{:064b}", get_bishop_mask(F4).0);
+        //println!("{:064b}", get_bishop_mask(E5).0);
+        assert_eq!(get_bishop_mask(E5), Bitboard(0x0044280028440200));
 
     }
 
