@@ -1,5 +1,5 @@
-use std::ops::{Neg, Add, Sub};
 use crate::square::Square;
+use std::ops::{Add, Neg, Sub};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Direction(pub i8);
@@ -65,7 +65,6 @@ pub const SOUTHEAST: Direction = Direction(SOUTH.0 + EAST.0);
 #[allow(dead_code)]
 pub const SOUTHWEST: Direction = Direction(SOUTH.0 + WEST.0);
 
-
 pub const ROOK_DIRECTIONS: [Direction; 4] = [NORTH, SOUTH, EAST, WEST];
 pub const BISHOP_DIRECTIONS: [Direction; 4] = [NORTHWEST, NORTHEAST, SOUTHWEST, SOUTHEAST];
 
@@ -92,5 +91,4 @@ mod tests {
         assert_eq!(NORTHEAST - EAST, NORTH);
         assert_eq!(EAST - EAST, NODIR);
     }
-
 }

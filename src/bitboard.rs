@@ -1,6 +1,6 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Shl, Shr, Not, Mul};
-use std::fmt::{Display, Formatter, Result};
 use crate::square::Square;
+use std::fmt::{Display, Formatter, Result};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
 
 /* a bitboard to express positions
  * uses standard form, so H8G8F8 (...) C1B1A1.
@@ -17,14 +17,13 @@ impl Bitboard {
 impl BitAnd for Bitboard {
     type Output = Self;
 
-    fn bitand (self, rhs: Self) -> Self::Output {
+    fn bitand(self, rhs: Self) -> Self::Output {
         return Self(self.0 & rhs.0);
     }
 }
 
 impl BitAndAssign for Bitboard {
-
-    fn bitand_assign (&mut self, rhs: Self) {
+    fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
     }
 }
@@ -38,8 +37,7 @@ impl BitOr for Bitboard {
 }
 
 impl BitOrAssign for Bitboard {
-
-    fn bitor_assign (&mut self, rhs: Self) {
+    fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
 }
@@ -91,7 +89,6 @@ impl Not for Bitboard {
         Bitboard(!self.0)
     }
 }
-
 
 impl Mul for Bitboard {
     type Output = Self;

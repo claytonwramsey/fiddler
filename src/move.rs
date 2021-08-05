@@ -1,5 +1,5 @@
-use crate::square::Square;
 use crate::piece::PieceType;
+use crate::square::Square;
 //Left to right:
 //2 bits: unused
 //2 bits: promote type
@@ -8,7 +8,6 @@ use crate::piece::PieceType;
 pub struct Move(pub u16);
 
 impl Move {
-
     // Make a Move for a piece which does have a promote type
     // assumes that the squares and promote types are all valid
     #[allow(dead_code)]

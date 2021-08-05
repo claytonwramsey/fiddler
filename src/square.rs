@@ -1,8 +1,8 @@
-use std::ops::{Add, AddAssign};
-use std::fmt::{Display, Formatter, Result};
-use crate::direction::Direction;
-use crate::constants::{FILE_NAMES, RANK_NAMES};
 use crate::bitboard::Bitboard;
+use crate::constants::{FILE_NAMES, RANK_NAMES};
+use crate::direction::Direction;
+use std::fmt::{Display, Formatter, Result};
+use std::ops::{Add, AddAssign};
 
 //left to right:
 //2 unused bits
@@ -12,7 +12,6 @@ use crate::bitboard::Bitboard;
 pub struct Square(pub u8);
 
 impl Square {
-
     pub fn new(rank: usize, file: usize) -> Square {
         Square((((rank & 7) << 3) | (file & 7)) as u8)
     }
@@ -203,9 +202,9 @@ pub const BAD_SQUARE: Square = Square(64);
 #[cfg(test)]
 mod tests {
 
-    use crate::direction::EAST;
     #[allow(dead_code)]
     use super::*;
+    use crate::direction::EAST;
 
     #[test]
     fn test_add_square_and_direction() {
@@ -216,5 +215,4 @@ mod tests {
     fn test_add_direction_and_square() {
         assert_eq!(EAST + A1, B1);
     }
-
 }

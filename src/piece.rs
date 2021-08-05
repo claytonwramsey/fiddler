@@ -1,4 +1,3 @@
-
 // rightmost 3 bits are an integer representing the type of a piece
 #[derive(Copy, Clone)]
 pub struct PieceType(pub u8);
@@ -19,3 +18,5 @@ pub const ROOK: PieceType = PieceType(3);
 pub const QUEEN: PieceType = PieceType(4);
 #[allow(dead_code)]
 pub const KING: PieceType = PieceType(5);
+
+pub const PIECE_TYPES: [PieceType; 6] = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
