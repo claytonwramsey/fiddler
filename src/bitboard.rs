@@ -8,6 +8,8 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, 
 #[derive(Copy, Clone, Debug)]
 pub struct Bitboard(pub u64);
 
+pub const BB_EMPTY: Bitboard = Bitboard(0);
+
 impl Bitboard {
     pub fn is_square_occupied(self, square: Square) -> bool {
         self.0 & (1 << square.0) != 0

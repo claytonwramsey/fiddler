@@ -59,11 +59,14 @@ impl Display for Square {
 }
 
 impl From<Bitboard> for Square {
+    //Create the square closest to A1 (prioritizing rank) on the bitboard
+    #[inline]
     fn from(bb: Bitboard) -> Square {
         //Comment this out if you think you're strong enough
-        if bb.0.count_ones() != 1 {
+        //new behavior: returns the square closest to A1 that is occupied
+        /*if bb.0.count_ones() != 1 {
             return BAD_SQUARE;
-        }
+        }*/
         return Square(bb.0.trailing_zeros() as u8);
     }
 }

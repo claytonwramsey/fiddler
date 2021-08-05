@@ -4,5 +4,7 @@ mod constants;
 mod direction;
 mod magic;
 mod r#move;
+mod movegen;
 mod piece;
 mod square;
+mod util;

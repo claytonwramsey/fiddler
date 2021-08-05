@@ -20,3 +20,5 @@ pub const QUEEN: PieceType = PieceType(4);
 pub const KING: PieceType = PieceType(5);
 
 pub const PIECE_TYPES: [PieceType; 6] = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
+
+pub const PROMOTE_TYPES: [PieceType; 4] = [KNIGHT, BISHOP, ROOK, QUEEN];

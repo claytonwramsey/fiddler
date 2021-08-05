@@ -1,5 +1,5 @@
 use crate::square::Square;
-use std::ops::{Add, Neg, Sub};
+use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Direction(pub i8);
@@ -8,6 +8,13 @@ impl Neg for Direction {
     type Output = Self;
     fn neg(self) -> Self::Output {
         Direction(-self.0)
+    }
+}
+
+impl Mul<Direction> for i8 {
+    type Output = Direction;
+    fn mul(self, rhs: Direction) -> Direction {
+        Direction(self * rhs.0)
     }
 }
 
