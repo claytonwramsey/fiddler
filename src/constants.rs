@@ -8,3 +8,4 @@ pub type Color = usize;
 //should match indices in board::bb_indices
 pub const WHITE: Color = 0;
 pub const BLACK: Color = 1;
+pub const NO_COLOR: Color = 2;

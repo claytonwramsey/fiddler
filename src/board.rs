@@ -1,8 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, WHITE};
-use crate::piece::{PieceType, PIECE_TYPES};
-use crate::r#move::Move;
+use crate::piece::{PieceType};
 use crate::square::Square;
 
 #[derive(Copy, Clone)]

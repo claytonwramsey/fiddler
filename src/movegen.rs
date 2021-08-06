@@ -1,19 +1,29 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::board::Board;
-use crate::constants::{Color, BLACK, WHITE};
-use crate::direction::{Direction, EAST, NORTH, SOUTH, WEST};
+use crate::direction::{EAST, WEST};
 use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES, PROMOTE_TYPES};
 use crate::r#move::Move;
-use crate::square::Square;
-use crate::util::opposite_color;
+use crate::square::{Square, B2, C3};
+use crate::util::{opposite_color, pawn_direction, pawn_promote_rank, pawn_start_rank};
+
+
+//square where the king would be to have moveset KING_MOVE_MASK
+const KING_MOVE_SQ: Square = B2;
+//bitboard of places king could go from square KING_MOVE_SQ
+const KING_MOVE_MASK: Bitboard = Bitboard(0x70507);
+
+//square where the knight would be to have moveset KNIGHT_MOVE_MASK
+const KNIGHT_MOVE_SQ: Square = C3;
+//bitboard of places knight could go from square KNIGHT_MOVE_SQ
+const KNIGHT_MOVE_MASK: Bitboard = Bitboard(0xA1100110A);
 
 //Enumerate pseudo-legal moves in the current position
+#[allow(dead_code)]
 pub fn get_pseudolegal_moves(board: Board, mtable: &MagicTable) -> Vec<Move> {
     let mut moves = Vec::new();
-    let side_to_move = board.sides[board.player_to_move];
     for pt in PIECE_TYPES {
-        let mut pieces_to_move = side_to_move & board.pieces[pt.0 as usize];
+        let mut pieces_to_move = board.get_pieces_of_type_and_color(pt, board.player_to_move);
         while pieces_to_move != BB_EMPTY {
             //square of next piece to move
             let sq = Square::from(pieces_to_move);
@@ -27,6 +37,7 @@ pub fn get_pseudolegal_moves(board: Board, mtable: &MagicTable) -> Vec<Move> {
 
 //Enumerate all the pseudolegal moves made by a certain type at a certain
 //square in this position.
+#[inline]
 fn sq_pseudolegal_moves(board: Board, sq: Square, pt: PieceType, mtable: &MagicTable) -> Vec<Move> {
     match pt {
         PAWN => pawn_moves(board, sq),
@@ -38,6 +49,26 @@ fn sq_pseudolegal_moves(board: Board, sq: Square, pt: PieceType, mtable: &MagicT
         //bad type gets empty vector of moves
         _ => Vec::new(),
     }
+}
+
+#[inline]
+//bob seger
+fn knight_moves(board: Board, sq: Square) -> Vec<Move> {
+    step_moves(board, sq, KNIGHT_MOVE_MASK, KNIGHT_MOVE_SQ)
+}
+
+#[inline]
+fn king_moves(board: Board, sq: Square) -> Vec<Move> {
+    step_moves(board, sq, KING_MOVE_MASK, KING_MOVE_SQ)
+}
+
+fn step_moves(board: Board, sq: Square, mask: Bitboard, ref_sq: Square) -> Vec<Move> {
+    //difference in position between the reference mask square and the current
+    //square 
+    let shift = (ref_sq.0 as i8) - (sq.0 as i8) ;
+    //bitboard of places this step piece can move to
+    let move_bb = (mask >> shift) & !board.get_color_occupancy(board.player_to_move);
+    return bitboard_to_moves(sq, move_bb);
 }
 
 //Generate pseudo-legal pawn moves for a from-square in a given position
@@ -106,28 +137,4 @@ fn bitboard_to_promotions(from_sq: Square, bb: Bitboard, promote_type: PieceType
         targets &= !Bitboard::from(to_sq);
     }
     return moves;
-}
-
-#[inline]
-const fn pawn_direction(color: Color) -> Direction {
-    match color {
-        WHITE => NORTH,
-        BLACK => SOUTH,
-    }
-}
-
-#[inline]
-const fn pawn_promote_rank(color: Color) -> Bitboard {
-    match color {
-        WHITE => Bitboard(0xFF00000000000000),
-        BLACK => Bitboard(0x00000000000000FF),
-    }
-}
-
-#[inline]
-const fn pawn_start_rank(color: Color) -> Bitboard {
-    match color {
-        WHITE => Bitboard(0x000000000000FF00),
-        BLACK => Bitboard(0x00FF000000000000),
-    }
 }

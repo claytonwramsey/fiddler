@@ -12,20 +12,24 @@ use std::ops::{Add, AddAssign};
 pub struct Square(pub u8);
 
 impl Square {
+    #[inline]
     pub fn new(rank: usize, file: usize) -> Square {
         Square((((rank & 7) << 3) | (file & 7)) as u8)
     }
 
     //return the integer representing the rank (0 -> 1, ...) of this square
+    #[inline]
     pub fn rank(self) -> usize {
         return ((self.0 >> 3u8) & 7u8) as usize;
     }
 
     //return the integer representing the file (0 -> H, ...) of this square
+    #[inline]
     pub fn file(self) -> usize {
         return (self.0 & 7u8) as usize;
     }
 
+    #[inline]
     pub fn is_inbounds(self) -> bool {
         self.0 < 64
     }
@@ -33,6 +37,7 @@ impl Square {
 
 impl Add<Direction> for Square {
     type Output = Square;
+    #[inline]
     fn add(self, rhs: Direction) -> Self::Output {
         let new_square: i8 = (self.0 as i8) + rhs.0;
         return Square(new_square as u8);
@@ -40,12 +45,14 @@ impl Add<Direction> for Square {
 }
 
 impl AddAssign<Direction> for Square {
+    #[inline]
     fn add_assign(&mut self, rhs: Direction) {
         self.0 = ((self.0 as i8) + rhs.0) as u8;
     }
 }
 
 impl PartialEq for Square {
+    #[inline]
     fn eq(&self, rhs: &Square) -> bool {
         return self.0 == rhs.0;
     }
@@ -53,6 +60,7 @@ impl PartialEq for Square {
 impl Eq for Square {}
 
 impl Display for Square {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{}{}", FILE_NAMES[self.file()], RANK_NAMES[self.rank()])
     }
