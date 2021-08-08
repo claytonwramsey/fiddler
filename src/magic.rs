@@ -3,6 +3,7 @@ use crate::direction::{Direction, BISHOP_DIRECTIONS, ROOK_DIRECTIONS};
 use crate::square::Square;
 use rand::thread_rng;
 use rand::Rng;
+use std::mem::{transmute, MaybeUninit};
 use std::vec::Vec;
 
 #[derive(Clone)]
@@ -37,150 +38,193 @@ const RING_MASK: Bitboard = Bitboard(0xFF818181818181FF);
 
 //Magics which were computed using make_magic_helper
 const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
-    Bitboard(0xc80008020400010),
-    Bitboard(0x240084010002000),
-    Bitboard(0x100104100200089),
-    Bitboard(0x4080100008008006),
-    Bitboard(0x9200200200100904),
-    Bitboard(0x1000c0018a22100),
-    Bitboard(0x880088025001200),
-    Bitboard(0x300002900008242),
-    Bitboard(0xc2801280400060),
-    Bitboard(0x3002004022008100),
-    Bitboard(0x880801000a000),
-    Bitboard(0x8000800800801004),
-    Bitboard(0x1000508001100),
-    Bitboard(0xd802000a00100408),
-    Bitboard(0x2000104820008),
-    Bitboard(0x8024800060800100),
-    Bitboard(0x4e0800080c000),
-    Bitboard(0x8050004020004000),
-    Bitboard(0x6040c10010200102),
-    Bitboard(0x9028018010000880),
-    Bitboard(0x9800808014002801),
-    Bitboard(0x280806c000200),
-    Bitboard(0x10040010080182),
-    Bitboard(0x2a0010408401),
-    Bitboard(0x40014080112081),
-    Bitboard(0x10c0400180200080),
-    Bitboard(0x10a004200241080),
-    Bitboard(0x88100400400800c0),
-    Bitboard(0x20140080080080),
-    Bitboard(0x2802000200100408),
-    Bitboard(0x84100402080200),
-    Bitboard(0x1050004200048405),
-    Bitboard(0x440008002802040),
-    Bitboard(0x800402000401002),
-    Bitboard(0xe802000801008),
-    Bitboard(0x8032001222000840),
-    Bitboard(0x3000800c00800802),
-    Bitboard(0x8220080800400),
-    Bitboard(0x3400100324000248),
-    Bitboard(0x800041801100),
-    Bitboard(0xac03400481208000),
-    Bitboard(0x8c0042810002000),
-    Bitboard(0xc28200120020),
-    Bitboard(0x5003000b0020),
-    Bitboard(0x841011088010014),
-    Bitboard(0x400410080120),
-    Bitboard(0x104211040008),
-    Bitboard(0xa280110648aa0004),
-    Bitboard(0x40008001a180),
-    Bitboard(0x861001a008400a40),
-    Bitboard(0x800900220008880),
-    Bitboard(0x2000100180080080),
-    Bitboard(0x4080084008080),
-    Bitboard(0xc000201004040),
-    Bitboard(0x1080502100400),
-    Bitboard(0x10480010001e380),
-    Bitboard(0x4300c080081161),
-    Bitboard(0x4810040002291),
-    Bitboard(0x200041021019),
-    Bitboard(0x1a00241040201a),
-    Bitboard(0xc05000210080005),
-    Bitboard(0x101009804004201),
-    Bitboard(0x4048820508900814),
-    Bitboard(0x400250442840e),
+    Bitboard(0x4080002040001480), //a1
+    Bitboard(  0x40001001402000), //b1
+    Bitboard( 0x300200018104100), //c1
+    Bitboard(0x2100040901100120), //d1
+    Bitboard(0x8a00060004082070), //e1
+    Bitboard(  0x80014400020080), //f1
+    Bitboard(0x11002500208a0004), //g1
+    Bitboard( 0x900004222018100), //h1
+    Bitboard( 0x208800228c00081), //a2
+    Bitboard(0x2280401003402000), //b2
+    Bitboard(   0x8801000200184), //c2
+    Bitboard(   0x1002010000900), //d2
+    Bitboard( 0x182000600106008), //e2
+    Bitboard(0x2058800400800200), //f2
+    Bitboard(   0x4800200800900), //g2
+    Bitboard( 0x52d00120040a100), //h2
+    Bitboard( 0x5400880008024c1), //a3
+    Bitboard(0x2000848040022000), //b3
+    Bitboard( 0x400410011006000), //c3
+    Bitboard(  0x40a10030010108), //d3
+    Bitboard(0x1204808008000402), //e3
+    Bitboard( 0x802808004002201), //f3
+    Bitboard(0x1002808052000500), //g3
+    Bitboard(   0x40a0021124184), //h3
+    Bitboard( 0x640012880088040), //a4
+    Bitboard(0x841040008020008a), //b4
+    Bitboard( 0x400200880100080), //c4
+    Bitboard(0x2001012100091004), //d4
+    Bitboard(0x12000d0100080010), //e4
+    Bitboard(0x6004000401201008), //f4
+    Bitboard(0x7500aa0400084110), //g4
+    Bitboard( 0x100005200040981), //h4
+    Bitboard(  0x40804002800020), //a5
+    Bitboard( 0x470002006400240), //b5
+    Bitboard(   0x1200080801000), //c5
+    Bitboard(     0x81202002040), //d5
+    Bitboard(  0xc0804400800800), //e5
+    Bitboard(0x9000800a00800400), //f5
+    Bitboard(   0x1000401000600), //g5
+    Bitboard(  0x421088ca002401), //h5
+    Bitboard(    0xc000228d8000), //a6
+    Bitboard(0x6410042014404001), //b6
+    Bitboard(0x1002004082260014), //c6
+    Bitboard(0x206a008811c20021), //d6
+    Bitboard(   0x2001810220024), //e6
+    Bitboard(0x2001020004008080), //f6
+    Bitboard(0x10000801100c001a), //g6
+    Bitboard(  0x48008254020011), //h6
+    Bitboard( 0x400800940230100), //a7
+    Bitboard(   0x8401100208100), //b7
+    Bitboard(   0x1801004a00080), //c7
+    Bitboard( 0x25068401200e200), //d7
+    Bitboard(   0x2800401480080), //e7
+    Bitboard(0x8104800200040080), //f7
+    Bitboard( 0x108025085080400), //g7
+    Bitboard(0x8400085104028200), //h7
+    Bitboard(0x8085008000102941), //a8
+    Bitboard(  0x11020080104022), //b8
+    Bitboard(   0x1004020031811), //c8
+    Bitboard(0x1009002030009569), //d8
+    Bitboard( 0x40100900a441801), //e8
+    Bitboard( 0x822002408104502), //f8
+    Bitboard(0x80a1002200040085), //g8
+    Bitboard(0x2000040221448102), //h8
 ];
 
 const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
-    Bitboard(0x208420808430204),
-    Bitboard(0x84a1022410448080),
-    Bitboard(0x24080202400015),
-    Bitboard(0x2004040092000800),
-    Bitboard(0x501a021000000008),
-    Bitboard(0x2001042095000300),
-    Bitboard(0x804d051006200201),
-    Bitboard(0x3280804420844002),
-    Bitboard(0x444a98808208408),
-    Bitboard(0x402a11a00810102),
-    Bitboard(0x40800b1021130),
-    Bitboard(0x24020c0400920048),
-    Bitboard(0x9000540420000020),
-    Bitboard(0x8002609010484022),
-    Bitboard(0x80005a02104111),
-    Bitboard(0x208220211012800),
-    Bitboard(0x22020c4a4641800),
-    Bitboard(0xcc4006055220202),
-    Bitboard(0x48001001404008),
-    Bitboard(0x108002220234008),
-    Bitboard(0x244000081a02801),
-    Bitboard(0x120001004a0e00),
-    Bitboard(0x122000125016000),
-    Bitboard(0x40061000c2060100),
-    Bitboard(0x4b20a06208081120),
-    Bitboard(0x8002090150100a80),
-    Bitboard(0x4100881004080),
-    Bitboard(0x804200200a008200),
-    Bitboard(0x109001001004020),
-    Bitboard(0x445345000200aa00),
-    Bitboard(0x2801014801280820),
-    Bitboard(0x6028002004100),
-    Bitboard(0x8084024200600c01),
-    Bitboard(0x202402122138b000),
-    Bitboard(0x100100c800090800),
-    Bitboard(0x1208202021880080),
-    Bitboard(0x240010900020042),
-    Bitboard(0x810020080003000),
-    Bitboard(0x410808200831309),
-    Bitboard(0x1061012101820042),
-    Bitboard(0x2201011040005210),
-    Bitboard(0x200148080848c400),
-    Bitboard(0x1402a20030084200),
-    Bitboard(0x800044012005046),
-    Bitboard(0x4000032012000900),
-    Bitboard(0x4040080801400060),
-    Bitboard(0x18404040412a040),
-    Bitboard(0x4080281188a24),
-    Bitboard(0xa020220840000),
-    Bitboard(0x8180841402028000),
-    Bitboard(0x2196100980c0040),
-    Bitboard(0x4540081084808c1),
-    Bitboard(0x88200088a1010000),
-    Bitboard(0x1000092008022100),
-    Bitboard(0x1050842808314a00),
-    Bitboard(0x50c086810448208),
-    Bitboard(0x4ac40200822000),
-    Bitboard(0x2c02104101442),
-    Bitboard(0x804000a64222800),
-    Bitboard(0x1300110000840420),
-    Bitboard(0x1034009102408),
-    Bitboard(0x10402811a0490500),
-    Bitboard(0x48500590308200),
-    Bitboard(0x2200102009100),
+    Bitboard(0x8002043000860080), //a1
+    Bitboard( 0x220680c8082800a), //b1
+    Bitboard(0x2450248081000008), //c1
+    Bitboard( 0x128a08604210013), //d1
+    Bitboard(0xb23404a001010022), //e1
+    Bitboard(  0x51901028020030), //f1
+    Bitboard(  0x22060202400002), //g1
+    Bitboard( 0x802806108204486), //h1
+    Bitboard( 0x104108202140c00), //a2
+    Bitboard(0x1008080808006040), //b2
+    Bitboard(  0x28100080810422), //c2
+    Bitboard(0x5120840c20816210), //d2
+    Bitboard(  0x40040461004000), //e2
+    Bitboard( 0x202008220202000), //f2
+    Bitboard(    0x248808225204), //g2
+    Bitboard(0x8044208401829040), //h2
+    Bitboard( 0x2a0244008070110), //a3
+    Bitboard(0x300800041000c200), //b3
+    Bitboard(  0x90104904008830), //c3
+    Bitboard(0x1288000082004008), //d3
+    Bitboard(0x132c0212011c0002), //e3
+    Bitboard(0x8000802102600204), //f3
+    Bitboard(0x4013008201100200), //g3
+    Bitboard(0x8502004022020202), //h3
+    Bitboard(  0x22080020089006), //a4
+    Bitboard(0x1404120004480802), //b4
+    Bitboard( 0x429100006408200), //c4
+    Bitboard(0x2001080004014210), //d4
+    Bitboard(   0x1010040104008), //e4
+    Bitboard( 0x400810402004a01), //f4
+    Bitboard( 0x228030022050108), //g4
+    Bitboard(    0x882006020200), //h4
+    Bitboard(0x8090182020d40420), //a5
+    Bitboard(0x4209282004020440), //b5
+    Bitboard(0x2404020200130400), //c5
+    Bitboard( 0x900020082880080), //d5
+    Bitboard(0x1104080200912008), //e5
+    Bitboard( 0x90101020001004a), //f5
+    Bitboard(0x40090e2084860803), //g5
+    Bitboard(0x40020620c0002401), //h5
+    Bitboard(  0xe1108805006000), //a6
+    Bitboard(0x2000880808008200), //b6
+    Bitboard( 0x838420050000104), //c6
+    Bitboard(0x9400002018000908), //d6
+    Bitboard(  0x810801040110c2), //e6
+    Bitboard( 0x4102000a2200102), //f6
+    Bitboard(0x1234181244108041), //g6
+    Bitboard(0x2004080200300046), //h6
+    Bitboard(  0x81421210c20108), //a7
+    Bitboard( 0x29022211008040c), //b7
+    Bitboard(  0x10090409112080), //c7
+    Bitboard(0x8006000e42062000), //d7
+    Bitboard(  0x804240128208c0), //e7
+    Bitboard(0x4010401005124a03), //f7
+    Bitboard(0x30d0200501120800), //g7
+    Bitboard(  0x3805a400820004), //h7
+    Bitboard(    0x120310221014), //a8
+    Bitboard( 0x224003404040452), //b8
+    Bitboard(0xd008018200841140), //c8
+    Bitboard( 0x310400a06209801), //d8
+    Bitboard(    0x248060820480), //e8
+    Bitboard( 0x400040a20241420), //f8
+    Bitboard( 0x880410408420040), //g8
+    Bitboard(0x8140500201404080), //h8
 ];
 //target shift size for rook move enumeration. smaller is better
 const ROOK_SHIFTS: [u8; 64] = [
-    12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11,
-    11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11,
-    11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11, 12,
+    12, 11, 11, 11, 11, 11, 11, 12, //rank 1
+    11, 10, 10, 10, 10, 10, 10, 11, //2
+    11, 10, 10, 10, 10, 10, 10, 11, //3
+    11, 10, 10, 10, 10, 10, 10, 11, //4
+    11, 10, 10, 10, 10, 10, 10, 11, //5
+    11, 10, 10, 10, 10, 10, 10, 11, //6
+    11, 10, 10, 10, 10, 10, 10, 11, //7
+    12, 11, 11, 11, 11, 11, 11, 12, //8
 ];
 
 //target shift size for bishop move enumeration. smaller is better
 const BISHOP_SHIFTS: [u8; 64] = [
-    6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5,
-    5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 6,
+    6, 5, 5, 5, 5, 5, 5, 6, //rank 1
+    5, 5, 5, 5, 5, 5, 5, 5, //2
+    5, 5, 7, 7, 7, 7, 5, 5, //3
+    5, 5, 7, 9, 9, 7, 5, 5, //4
+    5, 5, 7, 9, 9, 7, 5, 5, //5
+    5, 5, 7, 7, 7, 7, 5, 5, //6
+    5, 5, 5, 5, 5, 5, 5, 5, //7
+    6, 5, 5, 5, 5, 5, 5, 6, //8
 ];
+
+#[allow(dead_code)]
+pub fn create_empty_magic() -> MagicTable {
+    let rtable = {
+        let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
+        for elem in &mut data[..] {
+            *elem = MaybeUninit::new(Magic {
+                mask: Bitboard(0),
+                magic: Bitboard(0),
+                attacks: Vec::new(),
+                shift: 0,
+            });
+        }
+        unsafe { transmute::<_, [Magic; 64]>(data) }
+    };
+    let btable = {
+        let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
+        for elem in &mut data[..] {
+            *elem = MaybeUninit::new(Magic {
+                mask: Bitboard(0),
+                magic: Bitboard(0),
+                attacks: Vec::new(),
+                shift: 0,
+            });
+        }
+        unsafe { transmute::<_, [Magic; 64]>(data) }
+    };
+    return MagicTable {
+        rook_magic: rtable,
+        bishop_magic: btable,
+    };
+}
 
 #[allow(dead_code)]
 pub fn make_magic(mtable: &mut MagicTable) {
@@ -252,10 +296,12 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         let sq = Square(i as u8);
         if is_rook {
             table[i].mask = get_rook_mask(sq);
+            table[i].shift = ROOK_SHIFTS[i];
         } else {
             table[i].mask = get_bishop_mask(sq);
+            table[i].shift = BISHOP_SHIFTS[i];
         }
-        table[i].shift = table[i].mask.0.count_ones() as u8;
+        //table[i].shift = table[i].mask.0.count_ones() as u8;
         //number of squares where occupancy matters
         let num_points = table[i].mask.0.count_ones();
 
@@ -277,7 +323,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         //try random magics until one works
         let mut found_magic = false;
         let mut used;
-        for trial in 0..NUM_MAGIC_TRIES {
+        for _trial in 0..NUM_MAGIC_TRIES {
             let magic = random_sparse_bitboard();
 
             //repopulate the usage table with zeros
@@ -295,13 +341,13 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 
             //found a working magic, we're done here
             if found_magic {
-                println!(
+                /*println!(
                     "Found magic for square {}: {} in {} tries",
-                    sq, magic, trial
-                );
+                    sq, magic, _trial
+                );*/
 
                 //use this print to generate a list of magics
-                //println!("\t{},", magic);
+                println!("\t{}, //{}", magic, sq);
                 table[i].magic = magic;
                 break;
             }
@@ -413,13 +459,11 @@ fn random_sparse_bitboard() -> Bitboard {
 
 #[cfg(test)]
 mod tests {
-    #[allow(dead_code)]
+    #[allow(unused_imports)]
     use super::*;
 
-    #[allow(dead_code)]
+    #[allow(unused_imports)]
     use crate::square::*;
-
-    use std::mem::{transmute, MaybeUninit};
 
     #[test]
     fn test_rook_mask() {
@@ -456,67 +500,13 @@ mod tests {
 
     #[test]
     fn test_magic_creation() {
-        let rtable = {
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic {
-                    mask: Bitboard(0),
-                    magic: Bitboard(0),
-                    attacks: Vec::new(),
-                    shift: 0,
-                });
-            }
-            unsafe { transmute::<_, [Magic; 64]>(data) }
-        };
-        let btable = {
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic {
-                    mask: Bitboard(0),
-                    magic: Bitboard(0),
-                    attacks: Vec::new(),
-                    shift: 0,
-                });
-            }
-            unsafe { transmute::<_, [Magic; 64]>(data) }
-        };
-        let mut mtable = MagicTable {
-            rook_magic: rtable,
-            bishop_magic: btable,
-        };
+        let mut mtable = create_empty_magic();
         make_magic(&mut mtable);
     }
 
     #[test]
     fn test_rook_attacks() {
-        let rtable = {
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic {
-                    mask: Bitboard(0),
-                    magic: Bitboard(0),
-                    attacks: Vec::new(),
-                    shift: 0,
-                });
-            }
-            unsafe { transmute::<_, [Magic; 64]>(data) }
-        };
-        let btable = {
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic {
-                    mask: Bitboard(0),
-                    magic: Bitboard(0),
-                    attacks: Vec::new(),
-                    shift: 0,
-                });
-            }
-            unsafe { transmute::<_, [Magic; 64]>(data) }
-        };
-        let mut mtable = MagicTable {
-            rook_magic: rtable,
-            bishop_magic: btable,
-        };
+        let mut mtable = create_empty_magic();
         load_magic(&mut mtable);
         //cases in order:
         //rook on A1 blocked by other pieces, so it only attacks its neighbors

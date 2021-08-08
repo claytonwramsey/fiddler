@@ -2,11 +2,12 @@ use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::board::Board;
 use crate::direction::{EAST, WEST};
 use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
-use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES, PROMOTE_TYPES};
+use crate::piece::{
+    PieceType, BISHOP, KING, KNIGHT, NO_TYPE, PAWN, PIECE_TYPES, PROMOTE_TYPES, QUEEN, ROOK,
+};
 use crate::r#move::Move;
 use crate::square::{Square, B2, C3};
 use crate::util::{opposite_color, pawn_direction, pawn_promote_rank, pawn_start_rank};
-
 
 //square where the king would be to have moveset KING_MOVE_MASK
 const KING_MOVE_SQ: Square = B2;
@@ -20,7 +21,7 @@ const KNIGHT_MOVE_MASK: Bitboard = Bitboard(0xA1100110A);
 
 //Enumerate pseudo-legal moves in the current position
 #[allow(dead_code)]
-pub fn get_pseudolegal_moves(board: Board, mtable: &MagicTable) -> Vec<Move> {
+pub fn get_pseudolegal_moves(board: &Board, mtable: &MagicTable) -> Vec<Move> {
     let mut moves = Vec::new();
     for pt in PIECE_TYPES {
         let mut pieces_to_move = board.get_pieces_of_type_and_color(pt, board.player_to_move);
@@ -38,7 +39,7 @@ pub fn get_pseudolegal_moves(board: Board, mtable: &MagicTable) -> Vec<Move> {
 //Enumerate all the pseudolegal moves made by a certain type at a certain
 //square in this position.
 #[inline]
-fn sq_pseudolegal_moves(board: Board, sq: Square, pt: PieceType, mtable: &MagicTable) -> Vec<Move> {
+fn sq_pseudolegal_moves(board: &Board, sq: Square, pt: PieceType, mtable: &MagicTable) -> Vec<Move> {
     match pt {
         PAWN => pawn_moves(board, sq),
         KNIGHT => knight_moves(board, sq),
@@ -53,26 +54,26 @@ fn sq_pseudolegal_moves(board: Board, sq: Square, pt: PieceType, mtable: &MagicT
 
 #[inline]
 //bob seger
-fn knight_moves(board: Board, sq: Square) -> Vec<Move> {
+fn knight_moves(board: &Board, sq: Square) -> Vec<Move> {
     step_moves(board, sq, KNIGHT_MOVE_MASK, KNIGHT_MOVE_SQ)
 }
 
 #[inline]
-fn king_moves(board: Board, sq: Square) -> Vec<Move> {
+fn king_moves(board: &Board, sq: Square) -> Vec<Move> {
     step_moves(board, sq, KING_MOVE_MASK, KING_MOVE_SQ)
 }
 
-fn step_moves(board: Board, sq: Square, mask: Bitboard, ref_sq: Square) -> Vec<Move> {
+fn step_moves(board: &Board, sq: Square, mask: Bitboard, ref_sq: Square) -> Vec<Move> {
     //difference in position between the reference mask square and the current
-    //square 
-    let shift = (ref_sq.0 as i8) - (sq.0 as i8) ;
+    //square
+    let shift = (ref_sq.0 as i8) - (sq.0 as i8);
     //bitboard of places this step piece can move to
     let move_bb = (mask >> shift) & !board.get_color_occupancy(board.player_to_move);
     return bitboard_to_moves(sq, move_bb);
 }
 
 //Generate pseudo-legal pawn moves for a from-square in a given position
-fn pawn_moves(board: Board, sq: Square) -> Vec<Move> {
+fn pawn_moves(board: &Board, sq: Square) -> Vec<Move> {
     let dir = pawn_direction(board.player_to_move);
     let start_rank = pawn_start_rank(board.player_to_move);
     let promote_rank = pawn_promote_rank(board.player_to_move);
@@ -92,32 +93,45 @@ fn pawn_moves(board: Board, sq: Square) -> Vec<Move> {
     //captures
     for capture_sq in capture_sqs {
         if capture_sq.is_inbounds() {
+            if capture_sq == board.en_passant_square {
+                target_squares |= Bitboard::from(capture_sq);
+            }
             let capture_bb = Bitboard::from(capture_sq);
-            target_squares |= capture_bb & (opponents | Bitboard::from(board.en_passant_square));
+            target_squares |= capture_bb & opponents;
         }
     }
     let promotion_bb = target_squares & promote_rank;
     let not_promotion_bb = target_squares & !promote_rank;
     let mut moves = bitboard_to_moves(sq, not_promotion_bb);
-    for promote_type in PROMOTE_TYPES {
-        moves.extend(bitboard_to_promotions(sq, promotion_bb, promote_type));
+    if promotion_bb != BB_EMPTY {
+        for promote_type in PROMOTE_TYPES {
+            moves.extend(bitboard_to_promotions(sq, promotion_bb, promote_type));
+        }
     }
     return moves;
 }
 
 //Generate pseudo-legal bishop moves for a from-square in a given position
 #[inline]
-fn bishop_moves(board: Board, sq: Square, mtable: &MagicTable) -> Vec<Move> {
-    bitboard_to_moves(sq, get_bishop_attacks(board.get_occupancy(), sq, mtable))
+fn bishop_moves(board: &Board, sq: Square, mtable: &MagicTable) -> Vec<Move> {
+    bitboard_to_moves(
+        sq,
+        get_bishop_attacks(board.get_occupancy(), sq, mtable)
+            & !board.get_color_occupancy(board.player_to_move),
+    )
 }
 
 #[inline]
-fn rook_moves(board: Board, sq: Square, mtable: &MagicTable) -> Vec<Move> {
-    bitboard_to_moves(sq, get_rook_attacks(board.get_occupancy(), sq, mtable))
+fn rook_moves(board: &Board, sq: Square, mtable: &MagicTable) -> Vec<Move> {
+    bitboard_to_moves(
+        sq,
+        get_rook_attacks(board.get_occupancy(), sq, mtable)
+            & !board.get_color_occupancy(board.player_to_move),
+    )
 }
 
 //Enumerating pseudolegal moves for each piece type
-fn queen_moves(board: Board, sq: Square, mtable: &MagicTable) -> Vec<Move> {
+fn queen_moves(board: &Board, sq: Square, mtable: &MagicTable) -> Vec<Move> {
     let mut moves = rook_moves(board, sq, mtable);
     moves.extend(bishop_moves(board, sq, mtable));
     return moves;
@@ -137,4 +151,42 @@ fn bitboard_to_promotions(from_sq: Square, bb: Bitboard, promote_type: PieceType
         targets &= !Bitboard::from(to_sq);
     }
     return moves;
+}
+
+#[cfg(test)]
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+    use crate::constants::WHITE;
+    use crate::magic::{create_empty_magic, load_magic};
+    use crate::square::BAD_SQUARE;
+
+    const STARTING_BOARD: &Board = &Board {
+        sides: [
+            Bitboard(0x000000000000FFFF), //white
+            Bitboard(0xFFFF000000000000), //black
+        ],
+        pieces: [
+            Bitboard(0x00FF00000000FF00), //pawn
+            Bitboard(0x4200000000000042), //knight
+            Bitboard(0x2400000000000024), //bishop
+            Bitboard(0x8100000000000081), //rook
+            Bitboard(0x0800000000000008), //queen
+            Bitboard(0x1000000000000010), //king
+        ],
+        en_passant_square: BAD_SQUARE,
+        player_to_move: WHITE,
+    };
+
+    #[test]
+    fn test_opening_moveset() {
+        let mut mtable = create_empty_magic();
+        load_magic(&mut mtable);
+        let moves = get_pseudolegal_moves(STARTING_BOARD, &mtable);
+        print!("{{");
+        for m in moves.iter() {
+            print!("{}, ", m);
+        }
+        print!("}}");
+    }
 }

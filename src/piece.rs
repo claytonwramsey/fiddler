@@ -1,6 +1,29 @@
+use std::fmt::{Display, Formatter, Result};
+
 // rightmost 3 bits are an integer representing the type of a piece
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct PieceType(pub u8);
+
+impl PieceType {
+    pub fn get_code(self) -> &'static str {
+        match self {
+            NO_TYPE => "_",
+            PAWN => "P",
+            KNIGHT => "N",
+            BISHOP => "B",
+            ROOK => "R",
+            QUEEN => "Q",
+            KING => "K",
+            _ => "?",
+        }
+    }
+}
+
+impl Display for PieceType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.get_code())
+    }
+}
 
 #[allow(dead_code)]
 pub const NO_TYPE: PieceType = PieceType(7);
