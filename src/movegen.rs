@@ -39,7 +39,12 @@ pub fn get_pseudolegal_moves(board: &Board, mtable: &MagicTable) -> Vec<Move> {
 //Enumerate all the pseudolegal moves made by a certain type at a certain
 //square in this position.
 #[inline]
-fn sq_pseudolegal_moves(board: &Board, sq: Square, pt: PieceType, mtable: &MagicTable) -> Vec<Move> {
+fn sq_pseudolegal_moves(
+    board: &Board,
+    sq: Square,
+    pt: PieceType,
+    mtable: &MagicTable,
+) -> Vec<Move> {
     match pt {
         PAWN => pawn_moves(board, sq),
         KNIGHT => knight_moves(board, sq),

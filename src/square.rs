@@ -213,13 +213,14 @@ pub const BAD_SQUARE: Square = Square(64);
 #[cfg(test)]
 mod tests {
 
-    #[allow(dead_code)]
+    #[allow(unused_imports)]
     use super::*;
-    use crate::direction::EAST;
+    use crate::direction::{EAST, NORTHEAST};
 
     #[test]
     fn test_add_square_and_direction() {
         assert_eq!(A1 + EAST, B1);
+        assert_eq!(A1 + NORTHEAST, B2);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::direction::{Direction, BISHOP_DIRECTIONS, ROOK_DIRECTIONS};
 use crate::square::Square;
 use rand::thread_rng;
@@ -39,136 +39,136 @@ const RING_MASK: Bitboard = Bitboard(0xFF818181818181FF);
 //Magics which were computed using make_magic_helper
 const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
     Bitboard(0x4080002040001480), //a1
-    Bitboard(  0x40001001402000), //b1
-    Bitboard( 0x300200018104100), //c1
+    Bitboard(0x40001001402000),   //b1
+    Bitboard(0x300200018104100),  //c1
     Bitboard(0x2100040901100120), //d1
     Bitboard(0x8a00060004082070), //e1
-    Bitboard(  0x80014400020080), //f1
+    Bitboard(0x80014400020080),   //f1
     Bitboard(0x11002500208a0004), //g1
-    Bitboard( 0x900004222018100), //h1
-    Bitboard( 0x208800228c00081), //a2
+    Bitboard(0x900004222018100),  //h1
+    Bitboard(0x208800228c00081),  //a2
     Bitboard(0x2280401003402000), //b2
-    Bitboard(   0x8801000200184), //c2
-    Bitboard(   0x1002010000900), //d2
-    Bitboard( 0x182000600106008), //e2
+    Bitboard(0x8801000200184),    //c2
+    Bitboard(0x1002010000900),    //d2
+    Bitboard(0x182000600106008),  //e2
     Bitboard(0x2058800400800200), //f2
-    Bitboard(   0x4800200800900), //g2
-    Bitboard( 0x52d00120040a100), //h2
-    Bitboard( 0x5400880008024c1), //a3
+    Bitboard(0x4800200800900),    //g2
+    Bitboard(0x52d00120040a100),  //h2
+    Bitboard(0x5400880008024c1),  //a3
     Bitboard(0x2000848040022000), //b3
-    Bitboard( 0x400410011006000), //c3
-    Bitboard(  0x40a10030010108), //d3
+    Bitboard(0x400410011006000),  //c3
+    Bitboard(0x40a10030010108),   //d3
     Bitboard(0x1204808008000402), //e3
-    Bitboard( 0x802808004002201), //f3
+    Bitboard(0x802808004002201),  //f3
     Bitboard(0x1002808052000500), //g3
-    Bitboard(   0x40a0021124184), //h3
-    Bitboard( 0x640012880088040), //a4
+    Bitboard(0x40a0021124184),    //h3
+    Bitboard(0x640012880088040),  //a4
     Bitboard(0x841040008020008a), //b4
-    Bitboard( 0x400200880100080), //c4
+    Bitboard(0x400200880100080),  //c4
     Bitboard(0x2001012100091004), //d4
     Bitboard(0x12000d0100080010), //e4
     Bitboard(0x6004000401201008), //f4
     Bitboard(0x7500aa0400084110), //g4
-    Bitboard( 0x100005200040981), //h4
-    Bitboard(  0x40804002800020), //a5
-    Bitboard( 0x470002006400240), //b5
-    Bitboard(   0x1200080801000), //c5
-    Bitboard(     0x81202002040), //d5
-    Bitboard(  0xc0804400800800), //e5
+    Bitboard(0x100005200040981),  //h4
+    Bitboard(0x40804002800020),   //a5
+    Bitboard(0x470002006400240),  //b5
+    Bitboard(0x1200080801000),    //c5
+    Bitboard(0x81202002040),      //d5
+    Bitboard(0xc0804400800800),   //e5
     Bitboard(0x9000800a00800400), //f5
-    Bitboard(   0x1000401000600), //g5
-    Bitboard(  0x421088ca002401), //h5
-    Bitboard(    0xc000228d8000), //a6
+    Bitboard(0x1000401000600),    //g5
+    Bitboard(0x421088ca002401),   //h5
+    Bitboard(0xc000228d8000),     //a6
     Bitboard(0x6410042014404001), //b6
     Bitboard(0x1002004082260014), //c6
     Bitboard(0x206a008811c20021), //d6
-    Bitboard(   0x2001810220024), //e6
+    Bitboard(0x2001810220024),    //e6
     Bitboard(0x2001020004008080), //f6
     Bitboard(0x10000801100c001a), //g6
-    Bitboard(  0x48008254020011), //h6
-    Bitboard( 0x400800940230100), //a7
-    Bitboard(   0x8401100208100), //b7
-    Bitboard(   0x1801004a00080), //c7
-    Bitboard( 0x25068401200e200), //d7
-    Bitboard(   0x2800401480080), //e7
+    Bitboard(0x48008254020011),   //h6
+    Bitboard(0x400800940230100),  //a7
+    Bitboard(0x8401100208100),    //b7
+    Bitboard(0x1801004a00080),    //c7
+    Bitboard(0x25068401200e200),  //d7
+    Bitboard(0x2800401480080),    //e7
     Bitboard(0x8104800200040080), //f7
-    Bitboard( 0x108025085080400), //g7
+    Bitboard(0x108025085080400),  //g7
     Bitboard(0x8400085104028200), //h7
     Bitboard(0x8085008000102941), //a8
-    Bitboard(  0x11020080104022), //b8
-    Bitboard(   0x1004020031811), //c8
+    Bitboard(0x11020080104022),   //b8
+    Bitboard(0x1004020031811),    //c8
     Bitboard(0x1009002030009569), //d8
-    Bitboard( 0x40100900a441801), //e8
-    Bitboard( 0x822002408104502), //f8
+    Bitboard(0x40100900a441801),  //e8
+    Bitboard(0x822002408104502),  //f8
     Bitboard(0x80a1002200040085), //g8
     Bitboard(0x2000040221448102), //h8
 ];
 
 const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
-    Bitboard(0x8002043000860080), //a1
-    Bitboard( 0x220680c8082800a), //b1
-    Bitboard(0x2450248081000008), //c1
-    Bitboard( 0x128a08604210013), //d1
-    Bitboard(0xb23404a001010022), //e1
-    Bitboard(  0x51901028020030), //f1
-    Bitboard(  0x22060202400002), //g1
-    Bitboard( 0x802806108204486), //h1
-    Bitboard( 0x104108202140c00), //a2
-    Bitboard(0x1008080808006040), //b2
-    Bitboard(  0x28100080810422), //c2
-    Bitboard(0x5120840c20816210), //d2
-    Bitboard(  0x40040461004000), //e2
-    Bitboard( 0x202008220202000), //f2
-    Bitboard(    0x248808225204), //g2
-    Bitboard(0x8044208401829040), //h2
-    Bitboard( 0x2a0244008070110), //a3
-    Bitboard(0x300800041000c200), //b3
-    Bitboard(  0x90104904008830), //c3
-    Bitboard(0x1288000082004008), //d3
-    Bitboard(0x132c0212011c0002), //e3
-    Bitboard(0x8000802102600204), //f3
-    Bitboard(0x4013008201100200), //g3
-    Bitboard(0x8502004022020202), //h3
-    Bitboard(  0x22080020089006), //a4
-    Bitboard(0x1404120004480802), //b4
-    Bitboard( 0x429100006408200), //c4
-    Bitboard(0x2001080004014210), //d4
-    Bitboard(   0x1010040104008), //e4
-    Bitboard( 0x400810402004a01), //f4
-    Bitboard( 0x228030022050108), //g4
-    Bitboard(    0x882006020200), //h4
-    Bitboard(0x8090182020d40420), //a5
-    Bitboard(0x4209282004020440), //b5
-    Bitboard(0x2404020200130400), //c5
-    Bitboard( 0x900020082880080), //d5
-    Bitboard(0x1104080200912008), //e5
-    Bitboard( 0x90101020001004a), //f5
-    Bitboard(0x40090e2084860803), //g5
-    Bitboard(0x40020620c0002401), //h5
-    Bitboard(  0xe1108805006000), //a6
-    Bitboard(0x2000880808008200), //b6
-    Bitboard( 0x838420050000104), //c6
-    Bitboard(0x9400002018000908), //d6
-    Bitboard(  0x810801040110c2), //e6
-    Bitboard( 0x4102000a2200102), //f6
-    Bitboard(0x1234181244108041), //g6
-    Bitboard(0x2004080200300046), //h6
-    Bitboard(  0x81421210c20108), //a7
-    Bitboard( 0x29022211008040c), //b7
-    Bitboard(  0x10090409112080), //c7
-    Bitboard(0x8006000e42062000), //d7
-    Bitboard(  0x804240128208c0), //e7
-    Bitboard(0x4010401005124a03), //f7
-    Bitboard(0x30d0200501120800), //g7
-    Bitboard(  0x3805a400820004), //h7
-    Bitboard(    0x120310221014), //a8
-    Bitboard( 0x224003404040452), //b8
-    Bitboard(0xd008018200841140), //c8
-    Bitboard( 0x310400a06209801), //d8
-    Bitboard(    0x248060820480), //e8
-    Bitboard( 0x400040a20241420), //f8
-    Bitboard( 0x880410408420040), //g8
-    Bitboard(0x8140500201404080), //h8
+    Bitboard(0xa0040308202081),   //a1
+    Bitboard(0x410300280808991),  //b1
+    Bitboard(0x122808c102a004),   //c1
+    Bitboard(0x2851240082400440), //d1
+    Bitboard(0x11104011000202),   //e1
+    Bitboard(0x8220820000010),    //f1
+    Bitboard(0x1001880190100000), //g1
+    Bitboard(0x804a812410240410), //h1
+    Bitboard(0x402010120a18020c), //a2
+    Bitboard(0x100048808005580),  //b2
+    Bitboard(0x988020420a000),    //c2
+    Bitboard(0x8000440400808200), //d2
+    Bitboard(0x208c8450c0013407), //e2
+    Bitboard(0x1980110520108030), //f2
+    Bitboard(0x6010408404024089), //g2
+    Bitboard(0x8802820084042260), //h2
+    Bitboard(0xc0004404080201),   //a3
+    Bitboard(0x1804000810429208), //b3
+    Bitboard(0x604000204a20202),  //c3
+    Bitboard(0x2820806024000),    //d3
+    Bitboard(0x8a002422010201),   //e3
+    Bitboard(0x2082004088010802), //f3
+    Bitboard(0x41824044042000),   //g3
+    Bitboard(0x9000224020200),    //h3
+    Bitboard(0x8100420d1041080),  //a4
+    Bitboard(0x904510002100100),  //b4
+    Bitboard(0x202280804064403),  //c4
+    Bitboard(0x4c00400c030082),   //d4
+    Bitboard(0x602001002005011),  //e4
+    Bitboard(0x72090200c1089000), //f4
+    Bitboard(0x4211410424008805), //g4
+    Bitboard(0x2848421260804),    //h4
+    Bitboard(0xc001041211212004), //a5
+    Bitboard(0x208018800044800),  //b5
+    Bitboard(0x80206410580800),   //c5
+    Bitboard(0x201100080084),     //d5
+    Bitboard(0x208003400094100),  //e5
+    Bitboard(0x2190410200004058), //f5
+    Bitboard(0x188821401808080),  //g5
+    Bitboard(0x20060a020000c4c0), //h5
+    Bitboard(0x28080208a0280600), //a6
+    Bitboard(0x204009814000800),  //b6
+    Bitboard(0x200a104110002040), //c6
+    Bitboard(0x800000c08310c00),  //d6
+    Bitboard(0x21804010a010400),  //e6
+    Bitboard(0x1092200400224100), //f6
+    Bitboard(0x460015101000629),  //g6
+    Bitboard(0x1800b400403084),   //h6
+    Bitboard(0x4a080305850000),   //a7
+    Bitboard(0x402108480c4800),   //b7
+    Bitboard(0x805220608c300001), //c7
+    Bitboard(0x2084105042020400), //d7
+    Bitboard(0xe018801022060220), //e7
+    Bitboard(0x1122049010200),    //f7
+    Bitboard(0x40850304c810408),  //g7
+    Bitboard(0x9204104400408000), //h7
+    Bitboard(0x40c205404414200a), //a8
+    Bitboard(0x204a408898051080), //b8
+    Bitboard(0x40a0040062133000), //c8
+    Bitboard(0x142028000840400),  //d8
+    Bitboard(0x9090010061200),    //e8
+    Bitboard(0x800844528100308),  //f8
+    Bitboard(0x501010090060),     //g8
+    Bitboard(0x8520803010a0201),  //h8
 ];
 //target shift size for rook move enumeration. smaller is better
 const ROOK_SHIFTS: [u8; 64] = [
@@ -200,8 +200,8 @@ pub fn create_empty_magic() -> MagicTable {
         let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
         for elem in &mut data[..] {
             *elem = MaybeUninit::new(Magic {
-                mask: Bitboard(0),
-                magic: Bitboard(0),
+                mask: BB_EMPTY,
+                magic: BB_EMPTY,
                 attacks: Vec::new(),
                 shift: 0,
             });
@@ -212,8 +212,8 @@ pub fn create_empty_magic() -> MagicTable {
         let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
         for elem in &mut data[..] {
             *elem = MaybeUninit::new(Magic {
-                mask: Bitboard(0),
-                magic: Bitboard(0),
+                mask: BB_EMPTY,
+                magic: BB_EMPTY,
                 attacks: Vec::new(),
                 shift: 0,
             });
@@ -235,7 +235,7 @@ pub fn make_magic(mtable: &mut MagicTable) {
 #[allow(dead_code)]
 pub fn load_magic(mtable: &mut MagicTable) {
     load_magic_helper(&mut mtable.rook_magic, true);
-    load_magic_helper(&mut mtable.bishop_magic, true);
+    load_magic_helper(&mut mtable.bishop_magic, false);
 }
 
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
@@ -251,7 +251,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             table[i].magic = SAVED_BISHOP_MAGICS[i];
             table[i].shift = BISHOP_SHIFTS[i];
         }
-        table[i].attacks.resize(1 << table[i].shift, Bitboard(0));
+        table[i].attacks.resize(1 << table[i].shift, BB_EMPTY);
         let num_points = table[i].mask.0.count_ones();
         for j in 0..(1 << num_points) {
             let occupancy = index_to_occupancy(j, table[i].mask);
@@ -260,7 +260,14 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
                 false => directional_attacks(sq, BISHOP_DIRECTIONS, occupancy),
             };
             let key = compute_magic_key(occupancy, table[i].magic, table[i].shift);
-            table[i].attacks[key] = attack;
+            if table[i].attacks[key] == BB_EMPTY {
+                table[i].attacks[key] = attack;
+            } else if table[i].attacks[key] != attack {
+                println!(
+                    "ERROR! Hashing collition on table index {} with occupancy {}",
+                    i, occupancy
+                );
+            }
         }
     }
 }
@@ -307,8 +314,8 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 
         //we know that there are at most 12 pieces that will matter when it
         //comes to attack lookups
-        let mut occupancies = [Bitboard(0); 1 << 12];
-        let mut attacks = [Bitboard(0); 1 << 12];
+        let mut occupancies = [BB_EMPTY; 1 << 12];
+        let mut attacks = [BB_EMPTY; 1 << 12];
 
         //compute every possible occupancy arrangement for attacking
         for j in 0..(1 << num_points) {
@@ -327,11 +334,11 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             let magic = random_sparse_bitboard();
 
             //repopulate the usage table with zeros
-            used = [Bitboard(0); 1 << 12];
+            used = [BB_EMPTY; 1 << 12];
             found_magic = true;
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], magic, table[i].shift);
-                if used[key] == Bitboard(0) {
+                if used[key] == BB_EMPTY {
                     used[key] = attacks[j];
                 } else if used[key] != attacks[j] {
                     found_magic = false;
@@ -359,7 +366,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             );
         } else {
             // found a magic, populate the attack vector
-            table[i].attacks.resize(1 << table[i].shift, Bitboard(0));
+            table[i].attacks.resize(1 << table[i].shift, BB_EMPTY);
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
                 table[i].attacks[key] = attacks[j];
@@ -404,7 +411,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 
 //Given some mask, create the occupancy bitboard according to this index
 fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
-    let mut result = Bitboard(0);
+    let mut result = BB_EMPTY;
     let num_points = mask.0.count_ones();
 
     //comment this out if you think you're clever
@@ -430,15 +437,14 @@ fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
 }
 
 fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) -> Bitboard {
-    let mut result = Bitboard(0);
+    let mut result = BB_EMPTY;
     for dir in dirs {
         let mut current_square = sq;
         for _ in 0..7 {
-            current_square += dir;
-            if !current_square.is_inbounds() {
+            if !is_valid_step(current_square, dir) {
                 break;
             }
-            //current square is occupied
+            current_square += dir;
             result |= Bitboard::from(current_square);
             if occupancy.is_square_occupied(current_square) {
                 break;
@@ -446,6 +452,20 @@ fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) ->
         }
     }
     return result;
+}
+
+//Return whether the following move is a single-step.
+fn is_valid_step(sq: Square, dir: Direction) -> bool {
+    if !(sq + dir).is_inbounds() {
+        return false;
+    }
+    let to = sq + dir;
+    if ((to.rank() as i16) - (sq.rank() as i16)).abs() > 1 {
+        return false;
+    } else if (to.file() as i16) - (sq.file() as i16).abs() > 1 {
+        return false;
+    }
+    return true;
 }
 
 #[inline]
@@ -505,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rook_attacks() {
+    fn test_magic_rook_attacks() {
         let mut mtable = create_empty_magic();
         load_magic(&mut mtable);
         //cases in order:
@@ -516,6 +536,37 @@ mod tests {
         let attacks = [Bitboard(0x102), Bitboard(0x102)];
         for i in 0..1 {
             let resulting_attack = get_rook_attacks(occupancies[i], squares[i], &mtable);
+            assert_eq!(attacks[i], resulting_attack);
+        }
+    }
+
+    #[test]
+    fn test_magic_bishop_attacks() {
+        let mut mtable = create_empty_magic();
+        load_magic(&mut mtable);
+        //cases in order:
+        //bishop on A1 is blocked by piece on B2, so it only has 1 attack
+        let occupancies = [Bitboard(0x201)];
+        let squares = [A1];
+        let attacks = [Bitboard(0x200)];
+        for i in 0..1 {
+            let resulting_attack =
+                directional_attacks(squares[i], BISHOP_DIRECTIONS, occupancies[i]);
+            assert_eq!(attacks[i], resulting_attack);
+        }
+    }
+
+    #[test]
+    fn test_bishop_attacks() {
+        let mut mtable = create_empty_magic();
+        load_magic(&mut mtable);
+        //cases in order:
+        //bishop on A1 is blocked by piece on B2, so it only has 1 attack
+        let occupancies = [Bitboard(0x201)];
+        let squares = [A1];
+        let attacks = [Bitboard(0x200)];
+        for i in 0..1 {
+            let resulting_attack = get_bishop_attacks(occupancies[i], squares[i], &mtable);
             assert_eq!(attacks[i], resulting_attack);
         }
     }

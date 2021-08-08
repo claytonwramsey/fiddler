@@ -1,6 +1,6 @@
 use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, AddAssign, Not, Shl, Shr};
+use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
 
 /* a bitboard to express positions
  * uses standard form, so H8G8F8 (...) C1B1A1.

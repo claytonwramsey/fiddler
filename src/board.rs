@@ -64,13 +64,13 @@ impl Board {
 }
 
 impl Display for Board {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         for r in 0..8 {
             for c in 0..8 {
                 let i = 64 - (r + 1) * 8 + c;
                 let current_square = Square(i);
                 let sq_bb = Bitboard::from(current_square);
-                
+
                 if (sq_bb & self.get_occupancy()) != BB_EMPTY {
                     let is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
                     //find the type of this piece
@@ -81,8 +81,7 @@ impl Display for Board {
                             break;
                         }
                     }
-                }
-                else {
+                } else {
                     write!(f, " ");
                 }
 

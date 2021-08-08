@@ -21,7 +21,6 @@ impl Move {
         return Move(my_value);
     }
 
-    
     #[allow(dead_code)]
     pub fn to_square(self) -> Square {
         Square(((self.0 >> 6) & 63u16) as u8)
@@ -31,7 +30,6 @@ impl Move {
     pub fn from_square(self) -> Square {
         Square((self.0 & 63u16) as u8)
     }
-
 
     #[allow(dead_code)]
     pub fn promote_type(self) -> PieceType {
