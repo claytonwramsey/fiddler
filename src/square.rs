@@ -1,8 +1,9 @@
 use crate::bitboard::Bitboard;
 use crate::constants::{FILE_NAMES, RANK_NAMES};
 use crate::direction::Direction;
+use std::cmp::max;
 use std::fmt::{Display, Formatter, Result};
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, AddAssign, Sub};
 
 //left to right:
 //2 unused bits
@@ -32,6 +33,13 @@ impl Square {
     #[inline]
     pub fn is_inbounds(self) -> bool {
         self.0 < 64
+    }
+
+    #[inline]
+    pub fn chebyshev_to(self, rhs: Square) -> u8 {
+        let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
+        let filediff = ((rhs.file() as i16) - (self.file() as i16)).abs();
+        return max(rankdiff, filediff) as u8;
     }
 }
 
@@ -63,6 +71,14 @@ impl Display for Square {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{}{}", FILE_NAMES[self.file()], RANK_NAMES[self.rank()])
+    }
+}
+
+impl Sub<Square> for Square {
+    type Output = Direction;
+    #[inline]
+    fn sub(self, rhs: Square) -> Self::Output {
+        Direction((self.0 as i8) - (rhs.0 as i8))
     }
 }
 

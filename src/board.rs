@@ -17,7 +17,7 @@ pub struct Board {
 impl Board {
     #[inline]
     pub fn get_occupancy(&self) -> Bitboard {
-        self.sides[WHITE] & self.sides[BLACK]
+        self.sides[WHITE] | self.sides[BLACK]
     }
 
     #[inline]
@@ -77,16 +77,22 @@ impl Display for Board {
                     for pt in PIECE_TYPES {
                         let pt_bb = self.get_pieces_of_type(pt);
                         if (pt_bb & sq_bb) != BB_EMPTY {
-                            write!(f, "{}", pt);
+                            if let Err(e) = write!(f, "{}", pt) {
+                                println!("Error {} while trying to write board!", e.to_string());
+                            }
                             break;
                         }
                     }
-                } else {
-                    write!(f, " ");
+                } else if let Err(e) = write!(f, " ") {
+                    {
+                        println!("Error {} while trying to write board!", e.to_string());
+                    }
                 }
 
                 if c == 7 {
-                    write!(f, "\n");
+                    if let Err(e) = write!(f, "\n") {
+                        println!("Error {} while trying to write board!", e.to_string());
+                    }
                 }
             }
         }

@@ -459,10 +459,7 @@ fn is_valid_step(sq: Square, dir: Direction) -> bool {
     if !(sq + dir).is_inbounds() {
         return false;
     }
-    let to = sq + dir;
-    if ((to.rank() as i16) - (sq.rank() as i16)).abs() > 1 {
-        return false;
-    } else if (to.file() as i16) - (sq.file() as i16).abs() > 1 {
+    if sq.chebyshev_to(sq + dir) > 1 {
         return false;
     }
     return true;
@@ -546,10 +543,28 @@ mod tests {
         load_magic(&mut mtable);
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack
-        let occupancies = [Bitboard(0x201)];
-        let squares = [A1];
-        let attacks = [Bitboard(0x200)];
-        for i in 0..1 {
+        //bishop on A8 is blocked by piece on B7, so it only has 1 attack
+        //bishop is in board start position on C1
+        //bishop in board start position on F1
+        let occupancies = [
+            Bitboard(0x0000000000000201), //
+            Bitboard(0x0102000000000000), //
+            Bitboard(0xFFFF00000000FFFF), //
+            Bitboard(0xFFFF00000000FFFF), //
+        ];
+        let squares = [
+            A1, //
+            A8, //
+            C1, //
+            F1, //
+        ];
+        let attacks = [
+            Bitboard(0x0000000000000200), //
+            Bitboard(0x0002000000000000), //
+            Bitboard(0x0000000000000A00), //
+            Bitboard(0x0000000000005000), //
+        ];
+        for i in 0..3 {
             let resulting_attack =
                 directional_attacks(squares[i], BISHOP_DIRECTIONS, occupancies[i]);
             assert_eq!(attacks[i], resulting_attack);
@@ -562,10 +577,28 @@ mod tests {
         load_magic(&mut mtable);
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack
-        let occupancies = [Bitboard(0x201)];
-        let squares = [A1];
-        let attacks = [Bitboard(0x200)];
-        for i in 0..1 {
+        //bishop on A8 is blocked by piece on B7, so it only has 1 attack
+        //bishop is in board start position on C1
+        //bishop in board start position on F1
+        let occupancies = [
+            Bitboard(0x0000000000000201), //
+            Bitboard(0x0102000000000000), //
+            Bitboard(0xFFFF00000000FFFF), //
+            Bitboard(0xFFFF00000000FFFF), //
+        ];
+        let squares = [
+            A1, //
+            A8, //
+            C1, //
+            F1, //
+        ];
+        let attacks = [
+            Bitboard(0x0000000000000200), //
+            Bitboard(0x0002000000000000), //
+            Bitboard(0x0000000000000A00), //
+            Bitboard(0x0000000000005000), //
+        ];
+        for i in 0..3 {
             let resulting_attack = get_bishop_attacks(occupancies[i], squares[i], &mtable);
             assert_eq!(attacks[i], resulting_attack);
         }

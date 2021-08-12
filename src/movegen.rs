@@ -1,7 +1,12 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::board::Board;
-use crate::direction::{EAST, WEST};
-use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
+use crate::direction::{
+    Direction, EAST, NEE, NNE, NNW, NORTH, NORTHEAST, NORTHWEST, NWW, SEE, SOUTH, SOUTHEAST,
+    SOUTHWEST, SSE, SSW, SWW, WEST,
+};
+use crate::magic::{
+    create_empty_magic, get_bishop_attacks, get_rook_attacks, load_magic, MagicTable,
+};
 use crate::piece::{
     PieceType, BISHOP, KING, KNIGHT, NO_TYPE, PAWN, PIECE_TYPES, PROMOTE_TYPES, QUEEN, ROOK,
 };
@@ -13,11 +18,37 @@ use crate::util::{opposite_color, pawn_direction, pawn_promote_rank, pawn_start_
 const KING_MOVE_SQ: Square = B2;
 //bitboard of places king could go from square KING_MOVE_SQ
 const KING_MOVE_MASK: Bitboard = Bitboard(0x70507);
+const KING_STEPS: &[Direction] = &[
+    NORTH, NORTHEAST, EAST, SOUTHEAST, SOUTH, SOUTHWEST, WEST, NORTHWEST,
+];
 
 //square where the knight would be to have moveset KNIGHT_MOVE_MASK
 const KNIGHT_MOVE_SQ: Square = C3;
 //bitboard of places knight could go from square KNIGHT_MOVE_SQ
 const KNIGHT_MOVE_MASK: Bitboard = Bitboard(0xA1100110A);
+const KNIGHT_STEPS: &[Direction] = &[NNW, NNE, NEE, SEE, SSE, SSW, SWW, NWW];
+
+//All the saved data necessary to generate moves
+pub struct MoveGenData {
+    magic: MagicTable,
+    pawn_attacks: [Bitboard; 64],
+    pawn_moves: [Bitboard; 64],
+    king_moves: [Bitboard; 64],
+    knight_moves: [Bitboard; 64],
+}
+
+/*
+pub fn create_move_gen_data() -> MoveGenData {
+    let mut mtable = create_empty_magic();
+    load_magic(&mtable);
+    MoveGenData{
+        magic: mtable,
+        pawn_attacks: create_pawn_attacks(),
+        pawn_moves: create_pawn_moves(),
+        king_moves: create_king_moves(),
+        knight_moves: create_knight_moves()
+    }
+}*/
 
 //Enumerate pseudo-legal moves in the current position
 #[allow(dead_code)]
