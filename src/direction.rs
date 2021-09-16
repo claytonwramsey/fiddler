@@ -6,14 +6,17 @@ pub struct Direction(pub i8);
 
 impl Direction {
     #[inline]
+    #[allow(dead_code)]
     fn new(rank_step: i8, file_step: i8) -> Direction {
         Direction(rank_step + (file_step * 8))
     }
     #[inline]
+    #[allow(dead_code)]
     fn file_step(self) -> i8 {
         self.0 % 8
     }
     #[inline]
+    #[allow(dead_code)]
     fn rank_step(self) -> i8 {
         self.0 / 8
     }

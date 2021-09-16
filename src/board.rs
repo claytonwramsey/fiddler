@@ -96,7 +96,8 @@ impl Display for Board {
                 let sq_bb = Bitboard::from(current_square);
 
                 if (sq_bb & self.get_occupancy()) != BB_EMPTY {
-                    let is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
+                    //TODO capitalize if white pieces
+                    let _is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
                     //find the type of this piece
                     for pt in PIECE_TYPES {
                         let pt_bb = self.get_pieces_of_type(pt);
