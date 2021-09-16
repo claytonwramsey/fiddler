@@ -1,7 +1,8 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, WHITE};
-use crate::piece::{PieceType, PIECE_TYPES};
+use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES};
+use crate::r#move::Move;
 use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
 
@@ -35,6 +36,16 @@ impl Board {
         self.get_pieces_of_type(pt) & self.get_color_occupancy(color)
     }
 
+    pub fn type_at_square(&self, sq: Square) -> PieceType {
+        let sq_bb = Bitboard::from(sq);
+        for i in 0..NUM_PIECE_TYPES {
+            if (self.pieces[i] & sq_bb) != BB_EMPTY {
+                return PieceType(i as u8);
+            }
+        }
+        return NO_TYPE;
+    }
+
     //Check through the state of this board and return false if this is an
     //invalid board state
     pub fn is_valid(&self) -> bool {
@@ -60,6 +71,19 @@ impl Board {
             return false;
         }
         return true;
+    }
+
+    pub fn make_move(&mut self, m: Move) {
+        //TODO handle castle rights
+        //TODO handle en passant
+        //TODO handle castling
+        //TODO handle promotion
+        //TODO handle turn timer
+        let from_sq = m.from_square();
+        let to_sq = m.to_square();
+        let mover_type = self.type_at_square(from_sq);
+        self.pieces[mover_type.0 as usize] &= !Bitboard::from(from_sq);
+        self.pieces[mover_type.0 as usize] |= Bitboard::from(to_sq);
     }
 }
 

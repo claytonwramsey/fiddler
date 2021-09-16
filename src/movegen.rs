@@ -30,9 +30,8 @@ const KNIGHT_STEPS: &[Direction] = &[NNW, NNE, NEE, SEE, SSE, SSW, SWW, NWW];
 
 //All the saved data necessary to generate moves
 pub struct MoveGenData {
-    magic: MagicTable,
+    mtable: MagicTable,
     pawn_attacks: [Bitboard; 64],
-    pawn_moves: [Bitboard; 64],
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
 }
@@ -40,15 +39,15 @@ pub struct MoveGenData {
 /*
 pub fn create_move_gen_data() -> MoveGenData {
     let mut mtable = create_empty_magic();
-    load_magic(&mtable);
+    load_magic(&mut mtable);
     MoveGenData{
-        magic: mtable,
+        mtable: mtable,
         pawn_attacks: create_pawn_attacks(),
-        pawn_moves: create_pawn_moves(),
         king_moves: create_king_moves(),
         knight_moves: create_knight_moves()
     }
-}*/
+}
+*/
 
 //Enumerate pseudo-legal moves in the current position
 #[allow(dead_code)]
@@ -66,6 +65,19 @@ pub fn get_pseudolegal_moves(board: &Board, mtable: &MagicTable) -> Vec<Move> {
     }
     return moves;
 }
+
+/*
+pub fn is_move_self_check(board: &Board, m: Move) -> bool {
+    let mut newboard = *board;
+    let player = board.player_to_move;
+    newboard.make_move(m);
+    let player_king_bb = newboard.get_pieces_of_type_and_color(KING, player);
+    let player_king_square = Square::from(player_king_bb);
+    return is_square_attacked_by(&newboard, player_king_square, opposite_color(player));
+}
+
+pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {}
+*/
 
 //Enumerate all the pseudolegal moves made by a certain type at a certain
 //square in this position.
@@ -142,6 +154,54 @@ fn pawn_moves(board: &Board, sq: Square) -> Vec<Move> {
     if promotion_bb != BB_EMPTY {
         for promote_type in PROMOTE_TYPES {
             moves.extend(bitboard_to_promotions(sq, promotion_bb, promote_type));
+        }
+    }
+    return moves;
+}
+
+//Create a table of pawn attacks which can be flipped for black and masked for captures.
+fn create_pawn_attacks() -> [Bitboard; 64] {
+    let mut attacks = [Bitboard(0); 64];
+    for i in 0..64usize {
+        let sq = Square(i as u8);
+        if sq.file() != 0 {
+            attacks[i] |= Bitboard::from(sq + NORTHWEST);
+        }
+        if sq.file() != 7 {
+            attacks[i] |= Bitboard::from(sq + NORTHEAST);
+        }
+    }
+    return attacks;
+}
+
+//Create a king's nominal (non-castling) moves for a lookup table.
+fn create_king_moves() -> [Bitboard; 64] {
+    let mut moves = [Bitboard(0); 64];
+    for i in 0..64usize {
+        let sq = Square(i as u8);
+        if sq.file() != 0 {
+            moves[i] |= Bitboard::from(sq + WEST);
+            if sq.rank() != 0 {
+                moves[i] |= Bitboard::from(sq + SOUTHWEST);
+            }
+            if sq.rank() != 7 {
+                moves[i] |= Bitboard::from(sq + NORTHWEST);
+            }
+        }
+        if sq.file() != 7 {
+            moves[i] |= Bitboard::from(sq + EAST);
+            if sq.rank() != 0 {
+                moves[i] |= Bitboard::from(sq + SOUTHEAST);
+            }
+            if sq.rank() != 7 {
+                moves[i] |= Bitboard::from(sq + NORTHEAST);
+            }
+        }
+        if sq.rank() != 0 {
+            moves[i] |= Bitboard::from(sq + SOUTH);
+        }
+        if sq.rank() != 7 {
+            moves[i] |= Bitboard::from(sq + NORTH);
         }
     }
     return moves;
