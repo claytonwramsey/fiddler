@@ -1,5 +1,6 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::board::Board;
+use crate::constants::Color;
 use crate::direction::{
     Direction, EAST, NEE, NNE, NNW, NORTH, NORTHEAST, NORTHWEST, NWW, SEE, SOUTH, SOUTHEAST,
     SOUTHWEST, SSE, SSW, SWW, WEST,
@@ -35,12 +36,34 @@ pub fn create_move_gen_data() -> MoveGenData {
     }
 }
 
-//Enumerate pseudo-legal moves in the current position
 #[allow(dead_code)]
+pub fn get_moves(board: &Board, mdata: &MoveGenData) -> Vec<Move> {
+    let moves = get_pseudolegal_moves(board, mdata);
+    let mut legal_moves = Vec::<Move>::new();
+    for m in moves {
+        if !is_move_self_check(board, m, mdata) {
+            legal_moves.push(m);
+        }
+    }
+    return legal_moves;
+}
+
+//Enumerate pseudo-legal moves in the current position
+#[inline]
 pub fn get_pseudolegal_moves(board: &Board, mdata: &MoveGenData) -> Vec<Move> {
+    get_pseudolegal_moves_of_color(board, mdata, board.player_to_move)
+}
+
+//This enumerates pseudolegal moves if the player of a given color were playing.
+pub fn get_pseudolegal_moves_of_color(
+    board: &Board,
+    mdata: &MoveGenData,
+    color: Color,
+) -> Vec<Move> {
     let mut moves = Vec::new();
+    //iterate through all the pieces of this color and enumerate their moves
     for pt in PIECE_TYPES {
-        let mut pieces_to_move = board.get_pieces_of_type_and_color(pt, board.player_to_move);
+        let mut pieces_to_move = board.get_pieces_of_type_and_color(pt, color);
         while pieces_to_move != BB_EMPTY {
             //square of next piece to move
             let sq = Square::from(pieces_to_move);
@@ -52,18 +75,24 @@ pub fn get_pseudolegal_moves(board: &Board, mdata: &MoveGenData) -> Vec<Move> {
     return moves;
 }
 
-/*
-pub fn is_move_self_check(board: &Board, m: Move) -> bool {
+pub fn is_move_self_check(board: &Board, m: Move, mdata: &MoveGenData) -> bool {
     let mut newboard = *board;
-    let player = board.player_to_move;
+    let player = board.color_of_occupant(m.from_square());
     newboard.make_move(m);
     let player_king_bb = newboard.get_pieces_of_type_and_color(KING, player);
     let player_king_square = Square::from(player_king_bb);
-    return is_square_attacked_by(&newboard, player_king_square, opposite_color(player));
+    is_square_attacked_by(&newboard, player_king_square, opposite_color(player), mdata)
 }
 
-pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {}
-*/
+pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color, mdata: &MoveGenData) -> bool {
+    let moves = get_pseudolegal_moves_of_color(board, mdata, color);
+    for m in moves {
+        if m.to_square() == sq {
+            return false;
+        }
+    }
+    return true;
+}
 
 //Enumerate all the pseudolegal moves made by a certain type at a certain
 //square in this position.
@@ -90,14 +119,14 @@ fn sq_pseudolegal_moves(
 //bob seger
 fn knight_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     let moves_bb =
-        mdata.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.player_to_move);
+        mdata.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_of_occupant(sq));
     return bitboard_to_moves(sq, moves_bb);
 }
 
 #[inline]
 fn king_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     let moves_bb =
-        mdata.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.player_to_move);
+        mdata.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_of_occupant(sq));
     #[allow(unused_mut)]
     let mut moves = bitboard_to_moves(sq, moves_bb);
     //TODO add castling moves
@@ -107,13 +136,14 @@ fn king_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
 
 //Generate pseudo-legal pawn moves for a from-square in a given position
 fn pawn_moves(board: &Board, sq: Square, _mdata: &MoveGenData) -> Vec<Move> {
-    let dir = pawn_direction(board.player_to_move);
-    let start_rank = pawn_start_rank(board.player_to_move);
-    let promote_rank = pawn_promote_rank(board.player_to_move);
+    let player_color = board.color_of_occupant(sq);
+    let dir = pawn_direction(player_color);
+    let start_rank = pawn_start_rank(player_color);
+    let promote_rank = pawn_promote_rank(player_color);
     let from_bb = Bitboard::from(sq);
     let occupancy = board.get_occupancy();
     let capture_sqs = [sq + dir + EAST, sq + dir + WEST];
-    let opponents = board.get_color_occupancy(opposite_color(board.player_to_move));
+    let opponents = board.get_color_occupancy(board.color_of_occupant(sq));
     let mut target_squares = BB_EMPTY;
     //this will never be out of bounds because pawns don't live on promotion rank
     if !occupancy.is_square_occupied(sq + dir) {
@@ -150,7 +180,7 @@ fn bishop_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     bitboard_to_moves(
         sq,
         get_bishop_attacks(board.get_occupancy(), sq, &mdata.mtable)
-            & !board.get_color_occupancy(board.player_to_move),
+            & !board.get_color_occupancy(board.color_of_occupant(sq)),
     )
 }
 
@@ -159,7 +189,7 @@ fn rook_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     bitboard_to_moves(
         sq,
         get_rook_attacks(board.get_occupancy(), sq, &mdata.mtable)
-            & !board.get_color_occupancy(board.player_to_move),
+            & !board.get_color_occupancy(board.color_of_occupant(sq)),
     )
 }
 

@@ -5,7 +5,7 @@ use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul,
 /* a bitboard to express positions
  * uses standard form, so H8G8F8 (...) C1B1A1.
  */
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
 pub const BB_EMPTY: Bitboard = Bitboard(0);
@@ -105,13 +105,6 @@ impl Mul for Bitboard {
         Bitboard(self.0.wrapping_mul(rhs.0))
     }
 }
-
-impl PartialEq for Bitboard {
-    fn eq(&self, rhs: &Bitboard) -> bool {
-        return self.0 == rhs.0;
-    }
-}
-impl Eq for Bitboard {}
 
 impl From<Square> for Bitboard {
     fn from(sq: Square) -> Bitboard {

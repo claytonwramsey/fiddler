@@ -46,6 +46,13 @@ impl Board {
         return NO_TYPE;
     }
 
+    pub fn color_of_occupant(&self, sq: Square) -> Color {
+        match Bitboard::from(sq) & self.sides[WHITE] {
+            BB_EMPTY => BLACK,
+            _ => WHITE,
+        }
+    }
+
     //Check through the state of this board and return false if this is an
     //invalid board state
     pub fn is_valid(&self) -> bool {

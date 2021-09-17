@@ -3,6 +3,7 @@ use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
 use crate::direction::{Direction, NODIR, NORTH, SOUTH};
 
 #[inline]
+#[allow(dead_code)]
 pub const fn opposite_color(color: Color) -> Color {
     match color {
         WHITE => BLACK,
