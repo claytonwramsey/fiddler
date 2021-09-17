@@ -109,9 +109,7 @@ impl Display for Board {
                         }
                     }
                 } else if let Err(e) = write!(f, " ") {
-                    {
-                        println!("Error {} while trying to write board!", e.to_string());
-                    }
+                    println!("Error {} while trying to write board!", e.to_string());
                 }
 
                 if c == 7 {
