@@ -46,7 +46,7 @@ impl Board {
         return NO_TYPE;
     }
 
-    pub fn color_of_occupant(&self, sq: Square) -> Color {
+    pub fn color_at_square(&self, sq: Square) -> Color {
         match Bitboard::from(sq) & self.sides[WHITE] {
             BB_EMPTY => BLACK,
             _ => WHITE,
@@ -89,8 +89,24 @@ impl Board {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
-        self.pieces[mover_type.0 as usize] &= !Bitboard::from(from_sq);
-        self.pieces[mover_type.0 as usize] |= Bitboard::from(to_sq);
+        self.remove_piece(from_sq);
+        self.add_piece(to_sq, mover_type, self.player_to_move);
+    }
+
+    //Remove the piece at sq from the board.
+    fn remove_piece(&mut self, sq: Square) {
+        let mask = !Bitboard::from(sq);
+        for i in 0..NUM_PIECE_TYPES {
+            self.pieces[i] &= mask;
+        }
+        self.sides[BLACK] &= mask;
+        self.sides[WHITE] &= mask;
+    }
+
+    fn add_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
+        let mask = Bitboard::from(sq);
+        self.pieces[pt.0 as usize] |= mask;
+        self.sides[color] |= mask;
     }
 }
 

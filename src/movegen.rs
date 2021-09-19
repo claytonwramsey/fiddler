@@ -75,23 +75,25 @@ pub fn get_pseudolegal_moves_of_color(
     return moves;
 }
 
+//In a given board state, is a move illegal because it would result in a self-check?
 pub fn is_move_self_check(board: &Board, m: Move, mdata: &MoveGenData) -> bool {
     let mut newboard = *board;
-    let player = board.color_of_occupant(m.from_square());
+    let player = board.color_at_square(m.from_square());
     newboard.make_move(m);
     let player_king_bb = newboard.get_pieces_of_type_and_color(KING, player);
     let player_king_square = Square::from(player_king_bb);
     is_square_attacked_by(&newboard, player_king_square, opposite_color(player), mdata)
 }
 
+//In a given board state, is a square attacked by the given color?
 pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color, mdata: &MoveGenData) -> bool {
     let moves = get_pseudolegal_moves_of_color(board, mdata, color);
     for m in moves {
         if m.to_square() == sq {
-            return false;
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 //Enumerate all the pseudolegal moves made by a certain type at a certain
@@ -119,14 +121,14 @@ fn sq_pseudolegal_moves(
 //bob seger
 fn knight_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     let moves_bb =
-        mdata.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_of_occupant(sq));
+        mdata.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq));
     return bitboard_to_moves(sq, moves_bb);
 }
 
 #[inline]
 fn king_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     let moves_bb =
-        mdata.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_of_occupant(sq));
+        mdata.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq));
     #[allow(unused_mut)]
     let mut moves = bitboard_to_moves(sq, moves_bb);
     //TODO add castling moves
@@ -136,14 +138,14 @@ fn king_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
 
 //Generate pseudo-legal pawn moves for a from-square in a given position
 fn pawn_moves(board: &Board, sq: Square, _mdata: &MoveGenData) -> Vec<Move> {
-    let player_color = board.color_of_occupant(sq);
+    let player_color = board.color_at_square(sq);
     let dir = pawn_direction(player_color);
     let start_rank = pawn_start_rank(player_color);
     let promote_rank = pawn_promote_rank(player_color);
     let from_bb = Bitboard::from(sq);
     let occupancy = board.get_occupancy();
     let capture_sqs = [sq + dir + EAST, sq + dir + WEST];
-    let opponents = board.get_color_occupancy(board.color_of_occupant(sq));
+    let opponents = board.get_color_occupancy(board.color_at_square(sq));
     let mut target_squares = BB_EMPTY;
     //this will never be out of bounds because pawns don't live on promotion rank
     if !occupancy.is_square_occupied(sq + dir) {
@@ -180,7 +182,7 @@ fn bishop_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     bitboard_to_moves(
         sq,
         get_bishop_attacks(board.get_occupancy(), sq, &mdata.mtable)
-            & !board.get_color_occupancy(board.color_of_occupant(sq)),
+            & !board.get_color_occupancy(board.color_at_square(sq)),
     )
 }
 
@@ -189,7 +191,7 @@ fn rook_moves(board: &Board, sq: Square, mdata: &MoveGenData) -> Vec<Move> {
     bitboard_to_moves(
         sq,
         get_rook_attacks(board.get_occupancy(), sq, &mdata.mtable)
-            & !board.get_color_occupancy(board.color_of_occupant(sq)),
+            & !board.get_color_occupancy(board.color_at_square(sq)),
     )
 }
 
@@ -268,7 +270,7 @@ mod tests {
     #[test]
     fn test_opening_moveset() {
         let mdata = create_move_gen_data();
-        let moves = get_pseudolegal_moves(STARTING_BOARD, &mdata);
+        let moves = get_moves(STARTING_BOARD, &mdata);
         print!("{{");
         for m in moves.iter() {
             print!("{}, ", m);
