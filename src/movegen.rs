@@ -5,8 +5,7 @@ use crate::direction::{
     Direction, EAST, NEE, NNE, NNW, NORTH, NORTHEAST, NORTHWEST, NWW, SEE, SOUTH, SOUTHEAST,
     SOUTHWEST, SSE, SSW, SWW, WEST,
 };
-use crate::magic::{
-    create_empty_magic, get_bishop_attacks, get_rook_attacks, load_magic, MagicTable,
+use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable,
 };
 use crate::piece::{
     PieceType, BISHOP, KING, KNIGHT, NO_TYPE, PAWN, PIECE_TYPES, PROMOTE_TYPES, QUEEN, ROOK,
@@ -24,15 +23,15 @@ pub struct MoveGenData {
     knight_moves: [Bitboard; 64],
 }
 
-#[allow(dead_code)]
-pub fn create_move_gen_data() -> MoveGenData {
-    let mut mtable = create_empty_magic();
-    load_magic(&mut mtable);
-    MoveGenData {
-        mtable: mtable,
-        pawn_attacks: create_step_attacks(&vec![NORTHEAST, NORTHWEST], 1),
-        king_moves: create_step_attacks(&get_king_steps(), 1),
-        knight_moves: create_step_attacks(&get_knight_steps(), 2),
+impl MoveGenData {
+    #[allow(dead_code)]
+    pub fn new() -> MoveGenData {
+        MoveGenData {
+            mtable: MagicTable::load(),
+            pawn_attacks: create_step_attacks(&vec![NORTHEAST, NORTHWEST], 1),
+            king_moves: create_step_attacks(&get_king_steps(), 1),
+            knight_moves: create_step_attacks(&get_knight_steps(), 2),
+        }
     }
 }
 
@@ -250,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_opening_moveset() {
-        let mdata = create_move_gen_data();
+        let mdata = MoveGenData::new();
         let moves = get_moves(&Board::new(), &mdata);
         print!("{{");
         for m in moves.iter() {

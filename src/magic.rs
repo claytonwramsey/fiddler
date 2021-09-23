@@ -6,23 +6,6 @@ use rand::Rng;
 use std::mem::{transmute, MaybeUninit};
 use std::vec::Vec;
 
-#[derive(Clone)]
-pub struct MagicTable {
-    pub rook_magic: [Magic; 64],
-    pub bishop_magic: [Magic; 64],
-}
-
-//All the information needed to compute magic attacks coming from one square.
-#[derive(Clone)]
-pub struct Magic {
-    //A mask which, when &ed with the occupancy bitboard, will give only the
-    //bits that matter when computing moves.
-    pub mask: Bitboard,
-    //The magic number to multiply to hash the current board effectively
-    pub magic: Bitboard,
-    pub attacks: Vec<Bitboard>,
-    pub shift: u8,
-}
 
 //number of times to try generating magics
 const NUM_MAGIC_TRIES: u64 = 1_000_000;
@@ -194,48 +177,82 @@ const BISHOP_SHIFTS: [u8; 64] = [
     6, 5, 5, 5, 5, 5, 5, 6, //8
 ];
 
-#[allow(dead_code)]
-pub fn create_empty_magic() -> MagicTable {
-    let rtable = {
-        let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
-        for elem in &mut data[..] {
-            *elem = MaybeUninit::new(Magic {
-                mask: BB_EMPTY,
-                magic: BB_EMPTY,
-                attacks: Vec::new(),
-                shift: 0,
-            });
-        }
-        unsafe { transmute::<_, [Magic; 64]>(data) }
-    };
-    let btable = {
-        let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
-        for elem in &mut data[..] {
-            *elem = MaybeUninit::new(Magic {
-                mask: BB_EMPTY,
-                magic: BB_EMPTY,
-                attacks: Vec::new(),
-                shift: 0,
-            });
-        }
-        unsafe { transmute::<_, [Magic; 64]>(data) }
-    };
-    return MagicTable {
-        rook_magic: rtable,
-        bishop_magic: btable,
-    };
+
+#[derive(Clone)]
+pub struct MagicTable {
+    pub rook_magic: [Magic; 64],
+    pub bishop_magic: [Magic; 64],
 }
 
-#[allow(dead_code)]
-pub fn make_magic(mtable: &mut MagicTable) {
-    make_magic_helper(&mut mtable.rook_magic, true);
-    make_magic_helper(&mut mtable.bishop_magic, false);
+
+impl MagicTable {
+
+    //Create an empty MagicTable
+    #[allow(dead_code)]
+    pub fn new() -> MagicTable {
+        let rtable = {
+            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
+            for elem in &mut data[..] {
+                *elem = MaybeUninit::new(Magic::new());
+            }
+            unsafe { transmute::<_, [Magic; 64]>(data) }
+        };
+        let btable = {
+            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
+            for elem in &mut data[..] {
+                *elem = MaybeUninit::new(Magic::new());
+            }
+            unsafe { transmute::<_, [Magic; 64]>(data) }
+        };
+        MagicTable {
+            
+            rook_magic: rtable,
+            bishop_magic: btable,
+        }
+    }
+
+    //Create a pre-loaded MagicTable
+    #[allow(dead_code)]
+    pub fn load() -> MagicTable {
+        let mut mtable = MagicTable::new();
+        load_magic_helper(&mut mtable.rook_magic, true);
+        load_magic_helper(&mut mtable.bishop_magic, false);
+
+        mtable
+    }
+
+    //Make a MagicTable from scratch, generating new magics
+    #[allow(dead_code)]
+    pub fn make() -> MagicTable {
+        let mut mtable = MagicTable::new();
+        make_magic_helper(&mut mtable.rook_magic, true);
+        make_magic_helper(&mut mtable.bishop_magic, false);
+
+        mtable
+    }
 }
 
-#[allow(dead_code)]
-pub fn load_magic(mtable: &mut MagicTable) {
-    load_magic_helper(&mut mtable.rook_magic, true);
-    load_magic_helper(&mut mtable.bishop_magic, false);
+//All the information needed to compute magic attacks coming from one square.
+#[derive(Clone)]
+pub struct Magic {
+    //A mask which, when &ed with the occupancy bitboard, will give only the
+    //bits that matter when computing moves.
+    pub mask: Bitboard,
+    //The magic number to multiply to hash the current board effectively
+    pub magic: Bitboard,
+    pub attacks: Vec<Bitboard>,
+    pub shift: u8,
+}
+
+impl Magic {
+    pub fn new() -> Magic {
+        Magic {
+            mask: BB_EMPTY,
+            magic: BB_EMPTY,
+            attacks: Vec::new(),
+            shift: 0,
+        }
+    }
 }
 
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
@@ -517,14 +534,12 @@ mod tests {
 
     #[test]
     fn test_magic_creation() {
-        let mut mtable = create_empty_magic();
-        make_magic(&mut mtable);
+        MagicTable::make();
     }
 
     #[test]
     fn test_magic_rook_attacks() {
-        let mut mtable = create_empty_magic();
-        load_magic(&mut mtable);
+        let mtable = MagicTable::load();
         //cases in order:
         //rook on A1 blocked by other pieces, so it only attacks its neighbors
         //likewise, but there are other pieces on the board to be masked out
@@ -539,8 +554,6 @@ mod tests {
 
     #[test]
     fn test_magic_bishop_attacks() {
-        let mut mtable = create_empty_magic();
-        load_magic(&mut mtable);
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack
         //bishop on A8 is blocked by piece on B7, so it only has 1 attack
@@ -573,8 +586,7 @@ mod tests {
 
     #[test]
     fn test_bishop_attacks() {
-        let mut mtable = create_empty_magic();
-        load_magic(&mut mtable);
+        let mtable = MagicTable::load();
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack
         //bishop on A8 is blocked by piece on B7, so it only has 1 attack
