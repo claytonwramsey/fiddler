@@ -247,30 +247,11 @@ fn get_knight_steps() -> Vec<Direction> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::constants::WHITE;
-    use crate::square::BAD_SQUARE;
-
-    const STARTING_BOARD: &Board = &Board {
-        sides: [
-            Bitboard(0x000000000000FFFF), //white
-            Bitboard(0xFFFF000000000000), //black
-        ],
-        pieces: [
-            Bitboard(0x00FF00000000FF00), //pawn
-            Bitboard(0x4200000000000042), //knight
-            Bitboard(0x2400000000000024), //bishop
-            Bitboard(0x8100000000000081), //rook
-            Bitboard(0x0800000000000008), //queen
-            Bitboard(0x1000000000000010), //king
-        ],
-        en_passant_square: BAD_SQUARE,
-        player_to_move: WHITE,
-    };
 
     #[test]
     fn test_opening_moveset() {
         let mdata = create_move_gen_data();
-        let moves = get_moves(STARTING_BOARD, &mdata);
+        let moves = get_moves(&Board::new(), &mdata);
         print!("{{");
         for m in moves.iter() {
             print!("{}, ", m);
