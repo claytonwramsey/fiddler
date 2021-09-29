@@ -6,7 +6,6 @@ use rand::Rng;
 use std::mem::{transmute, MaybeUninit};
 use std::vec::Vec;
 
-
 //number of times to try generating magics
 const NUM_MAGIC_TRIES: u64 = 1_000_000;
 
@@ -177,16 +176,13 @@ const BISHOP_SHIFTS: [u8; 64] = [
     6, 5, 5, 5, 5, 5, 5, 6, //8
 ];
 
-
 #[derive(Clone)]
 pub struct MagicTable {
     pub rook_magic: [Magic; 64],
     pub bishop_magic: [Magic; 64],
 }
 
-
 impl MagicTable {
-
     //Create an empty MagicTable
     #[allow(dead_code)]
     pub fn new() -> MagicTable {
@@ -205,7 +201,6 @@ impl MagicTable {
             unsafe { transmute::<_, [Magic; 64]>(data) }
         };
         MagicTable {
-            
             rook_magic: rtable,
             bishop_magic: btable,
         }
