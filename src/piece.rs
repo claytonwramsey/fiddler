@@ -17,6 +17,18 @@ impl PieceType {
             _ => "?",
         }
     }
+
+    pub fn from_code(c: char) -> PieceType {
+        match c {
+            'P' => PAWN,
+            'N' => KNIGHT,
+            'B' => BISHOP,
+            'R' => ROOK,
+            'Q' => QUEEN,
+            'K' => KING,
+            _ => NO_TYPE,
+        }
+    }
 }
 
 impl Display for PieceType {

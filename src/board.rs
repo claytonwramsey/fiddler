@@ -4,7 +4,10 @@ use crate::constants::{Color, BLACK, WHITE};
 use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES};
 use crate::r#move::Move;
 use crate::square::{Square, BAD_SQUARE};
-use std::fmt::{Display, Formatter, Result};
+
+use std::fmt::{Display, Formatter};
+use std::ops::{BitOr, BitOrAssign};
+use std::result::Result;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Board {
@@ -13,9 +16,11 @@ pub struct Board {
     pub pieces: [Bitboard; NUM_PIECE_TYPES],
     pub player_to_move: Color,
     pub en_passant_square: Square,
+    pub castle_rights: CastleRights,
 }
 
 impl Board {
+    //Make a newly populated board in the board start position.
     pub fn new() -> Board {
         Board {
             sides: [
@@ -32,7 +37,111 @@ impl Board {
             ],
             en_passant_square: BAD_SQUARE,
             player_to_move: WHITE,
+            castle_rights: CastleRights::ALL_RIGHTS,
         }
+    }
+
+    //Create a Board populated from some FEN and load it.
+    //Will return Err if the FEN is invalid.
+    pub fn from_fen(fen: &str) -> Result<Board, &'static str> {
+        let mut board = Board::new();
+        let mut fen_chrs = fen.chars();
+        let mut r = 0; //current row parsed
+        let mut c = 0; //current col parsed
+
+        while r < 8 {
+            if (r, c) == (7, 8) {
+                break;
+            }
+            let chr = fen_chrs.next().unwrap_or('!');
+            //illegal character, cannot parse
+            if chr == '!' {
+                return Err("illegal character found");
+            }
+            let is_white = chr.is_uppercase();
+            let pt = PieceType::from_code(chr.to_uppercase().next().unwrap_or('_'));
+            let color = match is_white {
+                true => WHITE,
+                false => BLACK,
+            };
+            if pt != NO_TYPE {
+                //character is a piece type
+                board.add_piece(Square::new(8 - r, c), pt, color);
+            } else if chr == '/' {
+                //row divider
+                r += 1;
+                c = 0;
+            } else {
+                //number stating number of blank spaces in this row
+                let num_blanks = chr.to_digit(10).unwrap_or(0);
+                if num_blanks == 0 {
+                    //we were unable to get the number of blanks
+                    return Err("could not parse FEN character");
+                } else {
+                    //advance the square under review by the number of blanks
+                    c += num_blanks as usize;
+                }
+            }
+        }
+
+        //now a space
+        if fen_chrs.next().unwrap_or('!') != ' ' {
+            return Err("expected space after board array section of FEN");
+        }
+
+        //now compute player to move
+        let player_to_move_chr = fen_chrs.next().unwrap_or('!');
+        board.player_to_move = match player_to_move_chr {
+            'w' => WHITE,
+            'b' => BLACK,
+            _ => return Err("unrecognized player to move"),
+        };
+
+        //now a space
+        if fen_chrs.next().unwrap_or('!') != ' ' {
+            return Err("expected space after player to move section of FEN");
+        }
+
+        //determine castle rights
+        let mut castle_chr = fen_chrs.next().unwrap_or('!');
+        while castle_chr != ' ' {
+            board.castle_rights |= match castle_chr {
+                'K' => CastleRights::king_castle(WHITE),
+                'Q' => CastleRights::queen_castle(WHITE),
+                'k' => CastleRights::king_castle(BLACK),
+                'q' => CastleRights::queen_castle(BLACK),
+                '-' => CastleRights::NO_RIGHTS,
+                _ => return Err("unrecognized castle rights character"),
+            };
+            castle_chr = fen_chrs.next().unwrap_or('!');
+        }
+
+        //castle rights searching ate the space, so no need to check for it
+        let ep_file_chr = fen_chrs.next().unwrap_or('!');
+        if ep_file_chr == '!' {
+            return Err("illegal character in en passant square");
+        }
+        if ep_file_chr != '-' {
+            if !"abcdefgh".contains(ep_file_chr) {
+                return Err("illegal file for en passant square");
+            }
+            //99 is just a dummy err value
+            let (ep_file, _) = "abcdefgh"
+                .match_indices(ep_file_chr)
+                .next()
+                .unwrap_or((99, "!"));
+            if ep_file != 99 {
+                let ep_rank = fen_chrs.next().unwrap_or('!').to_digit(10).unwrap_or(99) as usize;
+                if ep_rank == 99 {
+                    return Err("illegal rank for en passant square");
+                }
+                board.en_passant_square = Square::new(ep_rank, ep_file);
+            }
+        }
+
+        //for now let's just ignore move clocks
+
+        return Ok(board);
     }
 
     #[inline]
@@ -109,6 +218,7 @@ impl Board {
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
         self.remove_piece(from_sq);
+        self.remove_piece(to_sq);
         self.add_piece(to_sq, mover_type, self.player_to_move);
     }
 
@@ -130,7 +240,7 @@ impl Board {
 }
 
 impl Display for Board {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for r in 0..8 {
             for c in 0..8 {
                 let i = 64 - (r + 1) * 8 + c;
@@ -139,13 +249,20 @@ impl Display for Board {
 
                 if (sq_bb & self.get_occupancy()) != BB_EMPTY {
                     //TODO capitalize if white pieces
-                    let _is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
+                    let is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
                     //find the type of this piece
                     for pt in PIECE_TYPES {
                         let pt_bb = self.get_pieces_of_type(pt);
                         if (pt_bb & sq_bb) != BB_EMPTY {
-                            if let Err(e) = write!(f, "{}", pt) {
-                                println!("Error {} while trying to write board!", e.to_string());
+                            //there's probably a better way to do this
+                            if is_white {
+                                if let Err(e) = write!(f, "{}", pt) {
+                                    println!("Error {} while trying to write board!", e.to_string())
+                                }
+                            } else {
+                                if let Err(e) = write!(f, "{}", pt.get_code().to_lowercase()) {
+                                    println!("Error {} while trying to write board!", e.to_string())
+                                }
                             }
                             break;
                         }
@@ -162,5 +279,54 @@ impl Display for Board {
             }
         }
         write!(f, "")
+    }
+}
+
+//MSB to LSB:
+//4 unused
+//Black queenside
+//Black kingside
+//White queenside
+//White kingside
+#[derive(Clone, Copy, Debug)]
+pub struct CastleRights(u8);
+
+impl CastleRights {
+    pub const ALL_RIGHTS: CastleRights = CastleRights(15);
+    pub const NO_RIGHTS: CastleRights = CastleRights(0);
+
+    //Create a castling rights for kingside castling on one side.
+    #[inline]
+    pub fn king_castle(color: Color) -> CastleRights {
+        match color {
+            WHITE => CastleRights(1),
+            BLACK => CastleRights(4),
+            _ => CastleRights(0),
+        }
+    }
+
+    //Create a castling rights for queenside castling on one side.
+    #[inline]
+    pub fn queen_castle(color: Color) -> CastleRights {
+        match color {
+            WHITE => CastleRights(2),
+            BLACK => CastleRights(8),
+            _ => CastleRights(0),
+        }
+    }
+}
+
+impl BitOr<CastleRights> for CastleRights {
+    type Output = CastleRights;
+    #[inline]
+    fn bitor(self, other: CastleRights) -> CastleRights {
+        CastleRights(self.0 | other.0)
+    }
+}
+
+impl BitOrAssign<CastleRights> for CastleRights {
+    #[inline]
+    fn bitor_assign(&mut self, other: CastleRights) {
+        self.0 |= other.0;
     }
 }
