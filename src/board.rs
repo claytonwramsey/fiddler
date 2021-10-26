@@ -66,7 +66,7 @@ impl Board {
         let mut r = 7; //current row parsed
         let mut c = 0; //current col parsed
 
-        while r >= 0 {
+        loop {
             println!("currently at square {}", Square::new(r, c));
             if (r, c) == (0, 8) {
                 break;
