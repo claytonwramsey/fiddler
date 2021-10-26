@@ -9,7 +9,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::{BitOr, BitOrAssign};
 use std::result::Result;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Board {
     //a bitboard for both color occupancies and then for each piece type
     pub sides: [Bitboard; 2],
@@ -41,22 +41,40 @@ impl Board {
         }
     }
 
+    pub fn empty() -> Board {
+        Board {
+            sides: [Bitboard(0x0), Bitboard(0x0)],
+            pieces: [
+                Bitboard(0x0),
+                Bitboard(0x0),
+                Bitboard(0x0),
+                Bitboard(0x0),
+                Bitboard(0x0),
+                Bitboard(0x0),
+            ],
+            en_passant_square: BAD_SQUARE,
+            player_to_move: WHITE,
+            castle_rights: CastleRights::NO_RIGHTS,
+        }
+    }
+
     //Create a Board populated from some FEN and load it.
     //Will return Err if the FEN is invalid.
     pub fn from_fen(fen: &str) -> Result<Board, &'static str> {
-        let mut board = Board::new();
+        let mut board = Board::empty();
         let mut fen_chrs = fen.chars();
-        let mut r = 0; //current row parsed
+        let mut r = 7; //current row parsed
         let mut c = 0; //current col parsed
 
-        while r < 8 {
-            if (r, c) == (7, 8) {
+        while r >= 0 {
+            println!("currently at square {}", Square::new(r, c));
+            if (r, c) == (0, 8) {
                 break;
             }
             let chr = fen_chrs.next().unwrap_or('!');
-            //illegal character, cannot parse
+            //illegal character or reached end of fen string
             if chr == '!' {
-                return Err("illegal character found");
+                return Err("reached end of FEN string before completing the board");
             }
             let is_white = chr.is_uppercase();
             let pt = PieceType::from_code(chr.to_uppercase().next().unwrap_or('_'));
@@ -66,10 +84,11 @@ impl Board {
             };
             if pt != NO_TYPE {
                 //character is a piece type
-                board.add_piece(Square::new(8 - r, c), pt, color);
+                board.add_piece(Square::new(r, c), pt, color);
+                c += 1;
             } else if chr == '/' {
                 //row divider
-                r += 1;
+                r -= 1;
                 c = 0;
             } else {
                 //number stating number of blank spaces in this row
@@ -117,6 +136,8 @@ impl Board {
         }
 
         //castle rights searching ate the space, so no need to check for it
+
+        //en passant square
         let ep_file_chr = fen_chrs.next().unwrap_or('!');
         if ep_file_chr == '!' {
             return Err("illegal character in en passant square");
@@ -138,7 +159,9 @@ impl Board {
                 board.en_passant_square = Square::new(ep_rank, ep_file);
             }
         }
-
+        if !(board.is_valid()) {
+            return Err("board state after loading was illegal");
+        }
         //for now let's just ignore move clocks
 
         return Ok(board);
@@ -256,25 +279,18 @@ impl Display for Board {
                         if (pt_bb & sq_bb) != BB_EMPTY {
                             //there's probably a better way to do this
                             if is_white {
-                                if let Err(e) = write!(f, "{}", pt) {
-                                    println!("Error {} while trying to write board!", e.to_string())
-                                }
+                                write!(f, "{}", pt)?;
                             } else {
-                                if let Err(e) = write!(f, "{}", pt.get_code().to_lowercase()) {
-                                    println!("Error {} while trying to write board!", e.to_string())
-                                }
+                                write!(f, "{}", pt.get_code().to_lowercase())?;
                             }
                             break;
                         }
                     }
-                } else if let Err(e) = write!(f, " ") {
-                    println!("Error {} while trying to write board!", e.to_string());
                 }
+                write!(f, " ")?;
 
                 if c == 7 {
-                    if let Err(e) = write!(f, "\n") {
-                        println!("Error {} while trying to write board!", e.to_string());
-                    }
+                    write!(f, "\n")?;
                 }
             }
         }
@@ -288,7 +304,7 @@ impl Display for Board {
 //Black kingside
 //White queenside
 //White kingside
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CastleRights(u8);
 
 impl CastleRights {
@@ -328,5 +344,43 @@ impl BitOrAssign<CastleRights> for CastleRights {
     #[inline]
     fn bitor_assign(&mut self, other: CastleRights) {
         self.0 |= other.0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    static TWO_KINGS_BOARD: Board = Board {
+        sides: [
+            Bitboard(0x0000000000000001), //white
+            Bitboard(0x8000000000000000), //black
+        ],
+        pieces: [
+            Bitboard(0x0000000000000000), //pawn
+            Bitboard(0x0000000000000000), //knight
+            Bitboard(0x0000000000000000), //bishop
+            Bitboard(0x0000000000000000), //rook
+            Bitboard(0x0000000000000000), //queen
+            Bitboard(0x8000000000000001), //king
+        ],
+        en_passant_square: BAD_SQUARE,
+        player_to_move: WHITE,
+        castle_rights: CastleRights::NO_RIGHTS,
+    };
+
+    #[test]
+    fn test_load_two_kings_fen() {
+        let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
+        match result {
+            Ok(b) => {
+                assert_eq!(b, TWO_KINGS_BOARD);
+            }
+            Err(e) => {
+                println!("{}", e);
+                assert!(false);
+            }
+        };
     }
 }
