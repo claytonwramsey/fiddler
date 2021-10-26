@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter, Result};
 //3 bits: promote type
 //6 bits: from square
 //6 bits: to square
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move(pub u16);
 
 impl Move {
