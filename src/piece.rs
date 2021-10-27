@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
 
 // rightmost 3 bits are an integer representing the type of a piece
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct PieceType(pub u8);
 
 impl PieceType {

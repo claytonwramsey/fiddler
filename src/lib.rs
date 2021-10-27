@@ -8,3 +8,4 @@ mod movegen;
 mod piece;
 mod square;
 mod util;
+mod zobrist;

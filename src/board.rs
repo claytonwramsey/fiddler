@@ -1,6 +1,6 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::constants::NUM_PIECE_TYPES;
-use crate::constants::{Color, BLACK, WHITE};
+use crate::constants::{Color, BLACK, WHITE, NO_COLOR};
 use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES};
 use crate::r#move::Move;
 use crate::square::{Square, BAD_SQUARE};
@@ -11,8 +11,7 @@ use std::result::Result;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /**
- * A representation of a position. Does not handle the repetition timer, but 
- * will handle turn counts.
+ * A representation of a position. Does not handle the repetition or turn timer.
  */
 pub struct Board {
     //a bitboard for both color occupancies and then for each piece type
@@ -21,6 +20,7 @@ pub struct Board {
     pub player_to_move: Color,
     pub en_passant_square: Square,
     pub castle_rights: CastleRights,
+    hash: u64, //TODO handle Zobrist hashing
 }
 
 impl Board {
@@ -28,7 +28,7 @@ impl Board {
      * Make a newly populated board in the board start position.
      */
     pub fn new() -> Board {
-        Board {
+        let mut board = Board {
             sides: [
                 Bitboard(0x000000000000FFFF), //white
                 Bitboard(0xFFFF000000000000), //black
@@ -44,7 +44,10 @@ impl Board {
             en_passant_square: BAD_SQUARE,
             player_to_move: WHITE,
             castle_rights: CastleRights::ALL_RIGHTS,
-        }
+            hash: 0,
+        };
+        board.recompute_hash();
+        return board;
     }
 
     /**
@@ -167,7 +170,7 @@ impl Board {
         if !(board.is_valid()) {
             return Err("board state after loading was illegal");
         }
-        //for now let's just ignore move clocks
+        //Ignore move clocks
 
         return Ok(board);
     }
@@ -218,12 +221,15 @@ impl Board {
 
     /**
      * Get the color of a piece occupying a current square.
-     * Returns BLACK (TODO replace this with a bad color value?) if there are 
+     * Returns NO_COLOR if there are 
      * no pieces occupying the square.
      */
     pub fn color_at_square(&self, sq: Square) -> Color {
         match Bitboard::from(sq) & self.sides[WHITE] {
-            BB_EMPTY => BLACK,
+            BB_EMPTY => match Bitboard::from(sq) & self.sides[BLACK] {
+                BB_EMPTY => NO_COLOR,
+                _ => BLACK,
+            },
             _ => WHITE,
         }
     }
@@ -325,6 +331,22 @@ impl Board {
         self.remove_piece(sq);
         self.add_piece(sq, pt, color);
     }
+
+    #[inline]
+    /**
+     * Recompute the Zobrist hash of this board and set it to the saved hash 
+     * value.
+     */
+    pub fn recompute_hash(&mut self) {
+        self.hash = self.get_hash();
+    }
+
+    /**
+     * Compute the hash value of this board from scratch.
+     */
+    fn get_hash(&self) -> u64 {
+
+    }
 }
 
 impl Display for Board {
@@ -425,6 +447,8 @@ impl BitOrAssign<CastleRights> for CastleRights {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use crate::movegen::MoveGenerator;
+    use crate::square::*;
 
     /**
      * A board with the white king on A1 and the black king on H8.
@@ -480,5 +504,41 @@ mod tests {
                 assert!(false);
             }
         };
+    }
+
+    #[test]
+    fn test_play_e4() {
+        test_move_helper(Board::new(), Move::new(E2, E4, NO_TYPE));
+    }
+
+    /**
+     * A helper function which will attempt to make a legal move on a board, 
+     * and will fail assertions if the board's state was not changed correctly.
+     */
+    fn test_move_helper(board: Board, m: Move) {
+        let mgen = MoveGenerator::new();
+        let mover_color = board.color_at_square(m.from_square());
+        let mover_type = board.type_at_square(m.from_square());
+        let is_en_passant = mgen.is_move_en_passant(&board, m);
+
+        //newboard will be mutated to reflect the move
+        let mut newboard = board;
+
+        let result = newboard.try_move(&mgen, Move::new(E2, E4, NO_TYPE)
+        );
+
+        assert_eq!(result, Ok(()));
+        assert!(newboard.is_valid());
+
+        assert_eq!(newboard.type_at_square(m.to_square()), mover_type);
+        assert_eq!(newboard.color_at_square(m.to_square()), mover_color);
+
+        assert_eq!(newboard.type_at_square(m.from_square()), NO_TYPE);
+        assert_eq!(newboard.color_at_square(m.from_square()), NO_COLOR);
+
+        if is_en_passant {
+            assert_eq!(newboard.type_at_square(board.en_passant_square), NO_TYPE);
+            assert_eq!(newboard.color_at_square(board.en_passant_square), NO_COLOR);
+        }
     }
 }

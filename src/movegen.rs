@@ -83,6 +83,15 @@ impl MoveGenerator {
         return false;
     }
 
+    /**
+     * Is a given move en passant?
+     */
+    pub fn is_move_en_passant(&self, board: &Board, m: Move) -> bool {
+        m.to_square() == board.en_passant_square && 
+        m.from_square().file() != m.to_square().file() && 
+        board.type_at_square(m.from_square()) == PAWN
+    }
+
     //Enumerate all the pseudolegal moves made by a certain type at a certain
     //square in this position.
     #[inline]
