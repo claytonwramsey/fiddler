@@ -10,6 +10,10 @@ use std::ops::{BitOr, BitOrAssign};
 use std::result::Result;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/**
+ * A representation of a position. Does not handle the repetition timer, but 
+ * will handle turn counts.
+ */
 pub struct Board {
     //a bitboard for both color occupancies and then for each piece type
     pub sides: [Bitboard; 2],
@@ -20,7 +24,9 @@ pub struct Board {
 }
 
 impl Board {
-    //Make a newly populated board in the board start position.
+    /**
+     * Make a newly populated board in the board start position.
+     */
     pub fn new() -> Board {
         Board {
             sides: [
@@ -41,7 +47,9 @@ impl Board {
         }
     }
 
-    //Create an empty board with no pieces or castle rights.
+    /**
+     * Create an empty board with no pieces or castle rights.
+     */
     pub fn empty() -> Board {
         Board {
             sides: [BB_EMPTY, BB_EMPTY],
@@ -52,8 +60,11 @@ impl Board {
         }
     }
 
-    //Create a Board populated from some FEN and load it.
-    //Will return Err if the FEN is invalid.
+    /**
+     * Create a Board populated from some FEN and load it.
+     * Will return Err if the FEN is invalid with a string describing why it 
+     * failed.
+     */
     pub fn from_fen(fen: &str) -> Result<Board, &'static str> {
         let mut board = Board::empty();
         let mut fen_chrs = fen.chars();
@@ -162,7 +173,9 @@ impl Board {
     }
 
     #[inline]
-    //Get the squares occupied by pieces.
+    /**
+     * Get the squares occupied by pieces.
+     */
     pub fn get_occupancy(&self) -> Bitboard {
         self.sides[WHITE] | self.sides[BLACK]
     }
@@ -174,19 +187,25 @@ impl Board {
     }
 
     #[inline]
-    //Get the squares occupied by pieces of a given type.
+    /**
+     * Get the squares occupied by pieces of a given type.
+     */
     pub fn get_pieces_of_type(&self, pt: PieceType) -> Bitboard {
         self.pieces[pt.0 as usize]
     }
 
     #[inline]
-    //Get the squares occupied by pieces of a given type and color.
+    /**
+     * Get the squares occupied by pieces of a given type and color.
+     */
     pub fn get_pieces_of_type_and_color(&self, pt: PieceType, color: Color) -> Bitboard {
         self.get_pieces_of_type(pt) & self.get_color_occupancy(color)
     }
 
-    //Get the type of the piece occupying a given square.
-    //Returns NO_TYPE if there are no pieces occupying the square.
+    /**
+     * Get the type of the piece occupying a given square.
+     * Returns NO_TYPE if there are no pieces occupying the square.
+     */
     pub fn type_at_square(&self, sq: Square) -> PieceType {
         let sq_bb = Bitboard::from(sq);
         for i in 0..NUM_PIECE_TYPES {
@@ -197,9 +216,11 @@ impl Board {
         return NO_TYPE;
     }
 
-    //Get the color of a piece occupying a current square.
-    //Returns BLACK (TODO replace this with bad color value?) if there are no
-    //pieces occupying the square.
+    /**
+     * Get the color of a piece occupying a current square.
+     * Returns BLACK (TODO replace this with a bad color value?) if there are 
+     * no pieces occupying the square.
+     */
     pub fn color_at_square(&self, sq: Square) -> Color {
         match Bitboard::from(sq) & self.sides[WHITE] {
             BB_EMPTY => BLACK,
@@ -207,8 +228,10 @@ impl Board {
         }
     }
 
-    //Check through the state of this board and return false if this is an
-    //invalid board state
+    /**
+     * Check if the state of this board is valid,
+     * Returns false if the board is invalid.
+     */
     pub fn is_valid(&self) -> bool {
         let mut sides_checksum = BB_EMPTY;
         let mut sides_checkor = BB_EMPTY;
@@ -237,7 +260,7 @@ impl Board {
     }
 
     /**
-     * Apply the given move to the board. Will assume the move is legal (unlike 
+     * Apply the given move to the board. Will assume the move is legal (unlike
      * `try_move()`).
      */
     pub fn make_move(&mut self, m: Move) {
@@ -254,11 +277,15 @@ impl Board {
     }
 
     /**
-     * Apply the given move to the board. Will *not* assume the move is legal 
-     * (unlike `make_move()`). On illegal moves, will return an Err with a 
+     * Apply the given move to the board. Will *not* assume the move is legal
+     * (unlike `make_move()`). On illegal moves, will return an Err with a
      * string describing the issue.
      */
-    pub fn try_move(&mut self, mgen: &crate::movegen::MoveGenerator, m: Move) -> Result<(), &'static str>{
+    pub fn try_move(
+        &mut self,
+        mgen: &crate::movegen::MoveGenerator,
+        m: Move,
+    ) -> Result<(), &'static str> {
         let legal_moves = mgen.get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");
@@ -336,20 +363,27 @@ impl Display for Board {
     }
 }
 
-//MSB to LSB:
-//4 unused
-//Black queenside
-//Black kingside
-//White queenside
-//White kingside
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/**
+ * A simple struct to store a piece's castling rights.
+ * The internal bits are used to represent castling rights.
+ *
+ * From MSB to LSB:
+ * 4 unused bits
+ * Black queenside castling
+ * Black kingside castling
+ * White queenside castling
+ * White kingside castling
+ */
 pub struct CastleRights(u8);
 
 impl CastleRights {
     pub const ALL_RIGHTS: CastleRights = CastleRights(15);
     pub const NO_RIGHTS: CastleRights = CastleRights(0);
 
-    //Create a castling rights for kingside castling on one side.
+    /**
+     * Create a `CastleRights` for kingside castling on one side
+     */
     #[inline]
     pub fn king_castle(color: Color) -> CastleRights {
         match color {
@@ -359,7 +393,9 @@ impl CastleRights {
         }
     }
 
-    //Create a castling rights for queenside castling on one side.
+    /**
+     * Create a `CastleRights` for queenside castling on one side
+     */
     #[inline]
     pub fn queen_castle(color: Color) -> CastleRights {
         match color {
@@ -390,7 +426,9 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
 
-    //A board with the white king on A1 and the black king on H8.
+    /**
+     * A board with the white king on A1 and the black king on H8.
+     */
     const TWO_KINGS_BOARD: Board = Board {
         sides: [
             Bitboard(0x0000000000000001), //white
@@ -410,8 +448,9 @@ mod tests {
     };
 
     #[test]
-    //Test that the board can be loaded from a simple FEN with only two kings on
-    //the board.
+    /**
+     * Test that a chessboard with kinds on A1 and H8 can be loaded from a FEN.
+     */
     fn test_load_two_kings_fen() {
         let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
         match result {
@@ -426,8 +465,10 @@ mod tests {
     }
 
     #[test]
-    //Test that the start position of a normal chess game can be loaded from its
-    //FEN.
+    /**
+     * Test that the start position of a normal chess game can be loaded from
+     * its FEN.
+     */
     fn test_start_fen() {
         let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         match result {
