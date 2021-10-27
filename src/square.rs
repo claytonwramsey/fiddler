@@ -9,7 +9,7 @@ use std::ops::{Add, AddAssign, Sub};
 //2 unused bits
 //3 bits: rank, going from 0 to 7
 //3 bits: file, going from A to H
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Square(pub u8);
 
 impl Square {
@@ -58,14 +58,6 @@ impl AddAssign<Direction> for Square {
         self.0 = ((self.0 as i8) + rhs.0) as u8;
     }
 }
-
-impl PartialEq for Square {
-    #[inline]
-    fn eq(&self, rhs: &Square) -> bool {
-        return self.0 == rhs.0;
-    }
-}
-impl Eq for Square {}
 
 impl Display for Square {
     #[inline]

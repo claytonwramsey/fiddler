@@ -4,10 +4,12 @@ use crate::constants::{Color, BLACK, WHITE, NO_COLOR};
 use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES};
 use crate::r#move::Move;
 use crate::square::{Square, BAD_SQUARE};
+use crate::zobrist;
 
 use std::fmt::{Display, Formatter};
 use std::ops::{BitOr, BitOrAssign};
 use std::result::Result;
+use std::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /**
@@ -54,13 +56,16 @@ impl Board {
      * Create an empty board with no pieces or castle rights.
      */
     pub fn empty() -> Board {
-        Board {
+        let mut board = Board {
             sides: [BB_EMPTY, BB_EMPTY],
             pieces: [BB_EMPTY, BB_EMPTY, BB_EMPTY, BB_EMPTY, BB_EMPTY, BB_EMPTY],
             en_passant_square: BAD_SQUARE,
             player_to_move: WHITE,
             castle_rights: CastleRights::NO_RIGHTS,
-        }
+            hash: 0,
+        };
+        board.recompute_hash();
+        return board;
     }
 
     /**
@@ -260,6 +265,9 @@ impl Board {
         if sides_checksum != pieces_checksum {
             return false;
         }
+        if self.hash != self.get_fresh_hash() {
+            return false;
+        }
 
         //TODO check if castle rights are legal
         return true;
@@ -287,11 +295,8 @@ impl Board {
      * (unlike `make_move()`). On illegal moves, will return an Err with a
      * string describing the issue.
      */
-    pub fn try_move(
-        &mut self,
-        mgen: &crate::movegen::MoveGenerator,
-        m: Move,
-    ) -> Result<(), &'static str> {
+    pub fn try_move(&mut self, mgen: &crate::movegen::MoveGenerator, m: Move) 
+    -> Result<(), &'static str> {
         let legal_moves = mgen.get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");
@@ -304,7 +309,11 @@ impl Board {
      * Remove the piece at sq from this board.
      */
     fn remove_piece(&mut self, sq: Square) {
+        //Remove the hash from the piece that was there before 
+        //(no-op if it was empty)
+        self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         let mask = !Bitboard::from(sq);
+        
         for i in 0..NUM_PIECE_TYPES {
             self.pieces[i] &= mask;
         }
@@ -318,9 +327,14 @@ impl Board {
      * representation.
      */
     fn add_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
+        //Remove the hash from the piece that was there before (no-op if it was
+        //empty) 
+        self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         let mask = Bitboard::from(sq);
         self.pieces[pt.0 as usize] |= mask;
         self.sides[color] |= mask;
+        //Update the hash with the result of our addition
+        self.hash ^= zobrist::get_square_key(sq, pt, color);
     }
 
     #[inline]
@@ -338,14 +352,30 @@ impl Board {
      * value.
      */
     pub fn recompute_hash(&mut self) {
-        self.hash = self.get_hash();
+        self.hash = self.get_fresh_hash();
     }
 
     /**
      * Compute the hash value of this board from scratch.
      */
-    fn get_hash(&self) -> u64 {
-
+    fn get_fresh_hash(&self) -> u64 {
+        let mut hash = 0;
+        for i in 0..64 {
+            let sq = Square(i);
+            hash ^= zobrist::get_square_key(
+                sq,
+                self.type_at_square(sq),
+                self.color_at_square(sq)
+            );
+        }
+        for i in 0..4 {
+            if 1 << i & self.castle_rights.0 != 0 {
+                hash ^= zobrist::get_castle_key(i);
+            }
+        }
+        hash ^= zobrist::get_ep_key(self.en_passant_square);
+        hash ^= zobrist::get_player_to_move_key(self.player_to_move);
+        return hash;
     }
 }
 
@@ -382,6 +412,12 @@ impl Display for Board {
             }
         }
         write!(f, "")
+    }
+}
+ 
+impl Hash for Board {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.hash.hash(state);
     }
 }
 
@@ -469,6 +505,7 @@ mod tests {
         en_passant_square: BAD_SQUARE,
         player_to_move: WHITE,
         castle_rights: CastleRights::NO_RIGHTS,
+        hash: 0,
     };
 
     #[test]
