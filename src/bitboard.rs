@@ -9,9 +9,16 @@ use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul,
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
+/**
+ * An empty bitboard.
+ */
 pub const BB_EMPTY: Bitboard = Bitboard(0);
 
 impl Bitboard {
+    #[inline]
+    /**
+     * Determine whether a square of a bitboard is occupied.
+     */
     pub fn is_square_occupied(self, square: Square) -> bool {
         self.0 & (1 << square.0) != 0
     }

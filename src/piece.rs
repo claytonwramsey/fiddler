@@ -1,10 +1,15 @@
 use std::fmt::{Display, Formatter, Result};
 
-// rightmost 3 bits are an integer representing the type of a piece
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+/**
+ * A struct representing the type of a piece. Only the rightmost 3 bits are used.
+ */
 pub struct PieceType(pub u8);
 
 impl PieceType {
+    /**
+     * Get the FEN code of this piece as an uppercase string.
+     */
     pub fn get_code(self) -> &'static str {
         match self {
             NO_TYPE => "_",
@@ -18,6 +23,9 @@ impl PieceType {
         }
     }
 
+    /**
+     * Given a FEN character, convert it to a piece type. Must be uppercase.
+     */
     pub fn from_code(c: char) -> PieceType {
         match c {
             'P' => PAWN,

@@ -319,7 +319,7 @@ impl Board {
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
-        let is_promotion = mover_type == PAWN && (Bitboard::from(to_sq) & pawn_promote_rank(self.player_to_move) != BB_EMPTY);
+        let is_promotion = mover_type == PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
 
         /* Core move functionality */
         self.remove_piece(from_sq);

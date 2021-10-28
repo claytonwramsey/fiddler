@@ -6,19 +6,29 @@ use rand::Rng;
 use std::mem::{transmute, MaybeUninit};
 use std::vec::Vec;
 
-//number of times to try generating magics
+/**
+ * The number of times to try generating magics.
+ */
 const NUM_MAGIC_TRIES: u64 = 1_000_000;
 
-//diagonal going from A1 to H8
+/**
+ * The diagonal going from A1 to H8.
+ */
 const MAIN_DIAG: Bitboard = Bitboard(0x8040201008040201);
 
-//diagonal going from A8 to H1
+/**
+ * The diagonal going from A8 to H1.
+ */
 const ANTI_DIAG: Bitboard = Bitboard(0x0102040810204080);
 
-//1s on the outside ring of the board
+/**
+ * A Bitboard made of 1's around the ring of the board, and 0's in the middle
+ */
 const RING_MASK: Bitboard = Bitboard(0xFF818181818181FF);
 
-//Magics which were computed using make_magic_helper
+/**
+ * A saved list of magics for rooks computed using the magic generator.
+ */
 const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
     Bitboard(0x4080002040001480), //a1
     Bitboard(0x40001001402000),   //b1
@@ -86,6 +96,9 @@ const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
     Bitboard(0x2000040221448102), //h8
 ];
 
+/**
+ * A saved list of magics for bishops created using the generator.
+ */
 const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
     Bitboard(0xa0040308202081),   //a1
     Bitboard(0x410300280808991),  //b1
@@ -152,7 +165,10 @@ const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
     Bitboard(0x501010090060),     //g8
     Bitboard(0x8520803010a0201),  //h8
 ];
-//target shift size for rook move enumeration. smaller is better
+
+/**
+ * The target shift size for rook moves. Smaller is better.
+ */
 const ROOK_SHIFTS: [u8; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12, //rank 1
     11, 10, 10, 10, 10, 10, 10, 11, //2
@@ -164,7 +180,9 @@ const ROOK_SHIFTS: [u8; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12, //8
 ];
 
-//target shift size for bishop move enumeration. smaller is better
+/**
+ * The target shift size for bishop move enumeration. Smaller is better/
+ */
 const BISHOP_SHIFTS: [u8; 64] = [
     6, 5, 5, 5, 5, 5, 5, 6, //rank 1
     5, 5, 5, 5, 5, 5, 5, 5, //2
@@ -177,14 +195,19 @@ const BISHOP_SHIFTS: [u8; 64] = [
 ];
 
 #[derive(Clone)]
+/**
+ * A complete magic table which can generate moves for rooks and bishops.
+ */
 pub struct MagicTable {
     pub rook_magic: [Magic; 64],
     pub bishop_magic: [Magic; 64],
 }
 
 impl MagicTable {
-    //Create an empty MagicTable
     #[allow(dead_code)]
+    /**
+     * Create an empty MagicTable.
+     */
     pub fn new() -> MagicTable {
         let rtable = {
             let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
@@ -206,7 +229,9 @@ impl MagicTable {
         }
     }
 
-    //Create a pre-loaded MagicTable
+    /**
+     * Create a pre-loaded MagicTable.
+     */
     #[allow(dead_code)]
     pub fn load() -> MagicTable {
         let mut mtable = MagicTable::new();
@@ -216,7 +241,9 @@ impl MagicTable {
         mtable
     }
 
-    //Make a MagicTable from scratch, generating new magics
+    /**
+     * Create a MagicTable from scratch, generating new magics.
+     */
     #[allow(dead_code)]
     pub fn make() -> MagicTable {
         let mut mtable = MagicTable::new();
@@ -227,19 +254,35 @@ impl MagicTable {
     }
 }
 
-//All the information needed to compute magic attacks coming from one square.
+/**
+ * A structure containing all the information needed to generate moves for a 
+ * rook or bishop.
+ */
 #[derive(Clone)]
 pub struct Magic {
-    //A mask which, when &ed with the occupancy bitboard, will give only the
-    //bits that matter when computing moves.
+    /**
+     * A mask which, when &ed with the occupancy bitboard, will give only the 
+     * bits that matter when computing moves.
+     */
     pub mask: Bitboard,
-    //The magic number to multiply to hash the current board effectively
+    /**
+     * The magic number to multiply to hash the current board effectively.
+     */
     pub magic: Bitboard,
+    /**
+     * A lookup vector of squares attacked.
+     */
     pub attacks: Vec<Bitboard>,
+    /**
+     * The shift related to this square.
+     */
     pub shift: u8,
 }
 
 impl Magic {
+    /**
+     * Create an empty Magic.
+     */
     pub fn new() -> Magic {
         Magic {
             mask: BB_EMPTY,
@@ -250,6 +293,10 @@ impl Magic {
     }
 }
 
+/**
+ * A helper function to load data into a MagicTable. is_rook is True if you are 
+ * loading data for a rook.
+ */
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
         //square of the piece making attacks
@@ -275,8 +322,10 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             if table[i].attacks[key] == BB_EMPTY {
                 table[i].attacks[key] = attack;
             } else if table[i].attacks[key] != attack {
+                //This should never happen, since we should expect our loads to
+                //always succeed.
                 println!(
-                    "ERROR! Hashing collition on table index {} with occupancy {}",
+                    "ERROR! Hashing collision on table index {} with occupancy {}",
                     i, occupancy
                 );
             }
@@ -284,6 +333,10 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     }
 }
 
+/**
+ * Get the attacks a square has given a magic lookup table and the current 
+ * occupancy.
+ */
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
     let idx = sq.0 as usize;
     let masked_occupancy = occupancy & table[idx].mask;
@@ -302,13 +355,17 @@ pub fn get_bishop_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) 
 }
 
 #[inline]
+/**
+ * Use magic hashing to get the index to look up attacks in a bitboad.
+ */
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
     ((occupancy * magic).0 >> (64 - shift)) as usize
 }
 
-//Populate a magic table.
-//is_rook is whether the table should be populated with rook moves (as opposed
-//to bishop moves)
+/**
+ * Populate a magic table. If `is_rook` is true, it will make magics for rook 
+ * moves; otherwise it will make magics for bishops.
+ */
 fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
         //square of the piece making attacks
@@ -387,7 +444,10 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     }
 }
 
-//Create the mask for the relevant bits in magic of a rook
+/**
+ * Create the mask for the relevant bits in magic of a rook. `sq` is the square 
+ * that a rook would occupy to receiver this mask.
+ */
 fn get_rook_mask(sq: Square) -> Bitboard {
     let index = sq.0 as i8;
     //sequence of 1s down the same row as the piece to move, except on the
@@ -404,7 +464,10 @@ fn get_rook_mask(sq: Square) -> Bitboard {
     return (row_mask ^ col_mask) & !Bitboard::from(sq);
 }
 
-//Create the mask for the relevant bits in magic of a bishop
+/**
+ * Create the mask for the relevant bits in magic of a bishop. `sq` is the  
+ * square that a bishop would be on to receiver this mask.
+ */
 fn get_bishop_mask(sq: Square) -> Bitboard {
     //thank u chessprogramming wiki for this code
     let i = sq.0 as i32;
@@ -421,7 +484,9 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
     return (main_diag_mask ^ anti_diag_mask) & !RING_MASK;
 }
 
-//Given some mask, create the occupancy bitboard according to this index
+/**
+ * Given some mask, create the occupancy bitboard according to this index.
+ */
 fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     let mut result = BB_EMPTY;
     let num_points = mask.0.count_ones();
@@ -466,7 +531,9 @@ fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) ->
     return result;
 }
 
-//Return whether the following move is a single-step.
+/**
+ * Return whether the following move is a single-step.
+ */
 fn is_valid_step(sq: Square, dir: Direction) -> bool {
     if !(sq + dir).is_inbounds() {
         return false;
@@ -478,6 +545,9 @@ fn is_valid_step(sq: Square, dir: Direction) -> bool {
 }
 
 #[inline]
+/**
+ * Generate a random, mostly-empty bitboard.
+ */
 fn random_sparse_bitboard() -> Bitboard {
     let mut result = Bitboard(thread_rng().gen::<u64>());
     for _ in 0..2 {

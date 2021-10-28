@@ -2,21 +2,35 @@ use crate::square::Square;
 use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Copy, Clone, Debug)]
+/**
+ * A difference between two squares. Directions form a vector field, which 
+ * allows us to define subtraction between squares. Internally, they use the 
+ * same representation as a Square but with a signed integer.
+ */
 pub struct Direction(pub i8);
 
 impl Direction {
     #[inline]
     #[allow(dead_code)]
+    /**
+     * Create a new Direction based on how far it moves in rank and file.
+     */
     fn new(rank_step: i8, file_step: i8) -> Direction {
         Direction(rank_step + (file_step * 8))
     }
     #[inline]
     #[allow(dead_code)]
+    /**
+     * Get the difference moved by a Direction in a file.
+     */
     fn file_step(self) -> i8 {
         self.0 % 8
     }
     #[inline]
     #[allow(dead_code)]
+    /**
+     * Get the difference moved by a Direction in a rank.
+     */
     fn rank_step(self) -> i8 {
         self.0 / 8
     }
