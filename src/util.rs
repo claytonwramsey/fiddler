@@ -22,6 +22,9 @@ pub const fn pawn_direction(color: Color) -> Direction {
 }
 
 #[inline]
+/**
+ * Get the promotion rank of a given color.
+ */
 pub const fn pawn_promote_rank(color: Color) -> Bitboard {
     match color {
         WHITE => Bitboard(0xFF00000000000000),

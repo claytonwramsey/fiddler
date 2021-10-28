@@ -1,10 +1,11 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, WHITE, NO_COLOR};
-use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES};
+use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES, PAWN};
 use crate::r#move::Move;
 use crate::square::{Square, BAD_SQUARE};
 use crate::zobrist;
+use crate::util::{pawn_promote_rank, opposite_color};
 
 use std::fmt::{Display, Formatter};
 use std::ops::{BitOr, BitOrAssign};
@@ -16,13 +17,32 @@ use std::hash::{Hash, Hasher};
  * A representation of a position. Does not handle the repetition or turn timer.
  */
 pub struct Board {
-    //a bitboard for both color occupancies and then for each piece type
+    /**
+     * The squares ocupied by White and Black
+     */
     pub sides: [Bitboard; 2],
+    /**
+     * The squares occupied by (in order) pawns, knights, bishops, rooks, 
+     * queens, and kings.
+     */
     pub pieces: [Bitboard; NUM_PIECE_TYPES],
+    /**
+     * The color of the player to move. Should always be `BLACK` or `WHITE`.
+     */
     pub player_to_move: Color,
+    /**
+     * The square which can be moved to by a pawn in en passant. If en passant 
+     * is not legal, this will be a `BAD_SQUARE`.
+     */
     pub en_passant_square: Square,
+    /**
+     * The rights of this piece for castling.
+     */
     pub castle_rights: CastleRights,
-    hash: u64, //TODO handle Zobrist hashing
+    /**
+     * A saved internal hash. If the board is valid, the this value must ALWAYS be equal to the output of `Board.get_fresh_hash()`.
+     */
+    hash: u64, 
 }
 
 impl Board {
@@ -137,6 +157,8 @@ impl Board {
         let mut castle_chr = fen_chrs.next().unwrap_or('!');
         while castle_chr != ' ' {
             //this may accept some technically illegal FENS, but that's ok
+            //note: hash was not updated, so will need to be rewritten by the
+            //end of the function.
             board.castle_rights |= match castle_chr {
                 'K' => CastleRights::king_castle(WHITE),
                 'Q' => CastleRights::queen_castle(WHITE),
@@ -172,11 +194,11 @@ impl Board {
                 board.en_passant_square = Square::new(ep_rank, ep_file);
             }
         }
+        board.recompute_hash();
         if !(board.is_valid()) {
             return Err("board state after loading was illegal");
         }
         //Ignore move clocks
-
         return Ok(board);
     }
 
@@ -189,7 +211,9 @@ impl Board {
     }
 
     #[inline]
-    //Get the squares occupied by pieces of a given color.
+    /**
+     * Get the squares occupied by pieces of a given color.
+     */
     pub fn get_color_occupancy(&self, color: Color) -> Bitboard {
         self.sides[color as usize]
     }
@@ -224,6 +248,7 @@ impl Board {
         return NO_TYPE;
     }
 
+    #[inline]
     /**
      * Get the color of a piece occupying a current square.
      * Returns NO_COLOR if there are 
@@ -237,6 +262,15 @@ impl Board {
             },
             _ => WHITE,
         }
+    }
+
+    /**
+     * Is a given move en passant?
+     */
+    pub fn is_move_en_passant(&self, m: Move) -> bool {
+        m.to_square() == self.en_passant_square && 
+        m.from_square().file() != m.to_square().file() && 
+        self.type_at_square(m.from_square()) == PAWN
     }
 
     /**
@@ -279,15 +313,45 @@ impl Board {
      */
     pub fn make_move(&mut self, m: Move) {
         //TODO handle castle rights
-        //TODO handle en passant
         //TODO handle castling
         //TODO handle promotion
-        //TODO handle turn timer
         let from_sq = m.from_square();
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
+        let is_en_passant = self.is_move_en_passant(m);
+        let is_promotion = mover_type == PAWN && (Bitboard::from(to_sq) & pawn_promote_rank(self.player_to_move) != BB_EMPTY);
+
+        /* Core move functionality */
         self.remove_piece(from_sq);
-        self.set_piece(to_sq, mover_type, self.player_to_move);
+        
+        /* Promotion and normal piece movement */
+        if is_promotion {
+            self.set_piece(to_sq, m.promote_type(), self.player_to_move);
+        } else {
+            //using set_piece handles capturing internally
+            self.set_piece(to_sq, mover_type, self.player_to_move);
+        }
+
+        /* En passant handling */
+        //perform an en passant capture
+        if is_en_passant {
+            self.remove_piece(self.en_passant_square);
+        }
+        //remove previous EP square from hash
+        self.hash ^= zobrist::get_ep_key(self.en_passant_square);
+        //update EP square
+        self.en_passant_square = match mover_type == PAWN && from_sq.chebyshev_to(to_sq) == 2 {
+            true => Square::new(
+                (from_sq.rank() + to_sq.rank()) / 2, 
+                from_sq.file()),
+            false => BAD_SQUARE,
+        };
+        //insert new EP key into hash
+        self.hash ^= zobrist::get_ep_key(self.en_passant_square);
+        
+        //Update player to move
+        self.player_to_move = opposite_color(self.player_to_move);
+        self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
     }
 
     /**
@@ -556,7 +620,7 @@ mod tests {
         let mgen = MoveGenerator::new();
         let mover_color = board.color_at_square(m.from_square());
         let mover_type = board.type_at_square(m.from_square());
-        let is_en_passant = mgen.is_move_en_passant(&board, m);
+        let is_en_passant = board.is_move_en_passant(m);
 
         //newboard will be mutated to reflect the move
         let mut newboard = board;
