@@ -191,7 +191,7 @@ impl Board {
                 if ep_rank == 99 {
                     return Err("illegal rank for en passant square");
                 }
-                board.en_passant_square = Square::new(ep_rank, ep_file);
+                board.en_passant_square = Square::new(ep_rank - 1, ep_file);
             }
         }
         board.recompute_hash();
@@ -611,15 +611,21 @@ mod tests {
     }
 
     #[test]
+    /**
+     * Test that we can play e4 on the first move of the game.
+     */
     fn test_play_e4() {
         test_move_helper(Board::new(), Move::new(E2, E4, NO_TYPE));
     }
 
     #[test]
+    /**
+     * Test that we can capture en passant.
+     */
     fn test_en_passant() {
         let mgen = MoveGenerator::new();
         if let Ok(b) = Board::from_fen(fens::EN_PASSANT_READY_FEN) {
-            println!("{}", b);
+            println!("{:?}", b);
             let moves = mgen.get_moves(&b);
             for m in moves {
                 println!("{}", m);

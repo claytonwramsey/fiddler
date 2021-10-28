@@ -139,7 +139,7 @@ impl MoveGenerator {
         }
         //captures
         for capture_sq in capture_sqs {
-            if capture_sq.is_inbounds() {
+            if capture_sq.is_inbounds() && capture_sq.chebyshev_to(sq) < 2 {
                 if capture_sq == board.en_passant_square {
                     target_squares |= Bitboard::from(capture_sq);
                 }
