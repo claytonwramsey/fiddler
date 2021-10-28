@@ -468,14 +468,16 @@ impl Display for Board {
                         }
                     }
                 }
-                write!(f, " ")?;
+                else {
+                    write!(f, " ")?;
+                }
 
                 if c == 7 {
                     write!(f, "\n")?;
                 }
             }
         }
-        write!(f, "")
+        Ok(())
     }
 }
  
@@ -549,6 +551,7 @@ mod tests {
     use super::*;
     use crate::movegen::MoveGenerator;
     use crate::square::*;
+    use crate::fens;
 
     /**
      * A board with the white king on A1 and the black king on H8.
@@ -577,7 +580,7 @@ mod tests {
      * Test that a chessboard with kinds on A1 and H8 can be loaded from a FEN.
      */
     fn test_load_two_kings_fen() {
-        let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
+        let result = Board::from_fen(fens::TWO_KINGS_BOARD_FEN);
         match result {
             Ok(b) => {
                 assert_eq!(b, TWO_KINGS_BOARD);
@@ -595,7 +598,7 @@ mod tests {
      * its FEN.
      */
     fn test_start_fen() {
-        let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let result = Board::from_fen(fens::BOARD_START_FEN);
         match result {
             Ok(b) => {
                 assert_eq!(b, Board::new());
@@ -612,6 +615,27 @@ mod tests {
         test_move_helper(Board::new(), Move::new(E2, E4, NO_TYPE));
     }
 
+    #[test]
+    fn test_en_passant() {
+        let mgen = MoveGenerator::new();
+        if let Ok(b) = Board::from_fen(fens::EN_PASSANT_READY_FEN) {
+            println!("{}", b);
+            let moves = mgen.get_moves(&b);
+            for m in moves {
+                println!("{}", m);
+            }
+        }
+        test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, NO_TYPE));
+    }
+
+    fn test_fen_helper(fen: &str, m: Move) {
+        let result = Board::from_fen(fen);
+        match result {
+            Ok(board) => test_move_helper(board, m),
+            Err(_) => assert!(false),
+        };
+    }
+
     /**
      * A helper function which will attempt to make a legal move on a board, 
      * and will fail assertions if the board's state was not changed correctly.
@@ -625,8 +649,7 @@ mod tests {
         //newboard will be mutated to reflect the move
         let mut newboard = board;
 
-        let result = newboard.try_move(&mgen, Move::new(E2, E4, NO_TYPE)
-        );
+        let result = newboard.try_move(&mgen, m);
 
         assert_eq!(result, Ok(()));
         assert!(newboard.is_valid());
