@@ -7,8 +7,8 @@ use std::ops::{Add, AddAssign, Sub};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /**
- * A single integer containing all the data to identify one square on a board. 
- * 
+ * A single integer containing all the data to identify one square on a board.
+ *
  * From MSB to LSB, this is composed of:
  * 2 unused bits
  * 3 bits for the rank
@@ -19,7 +19,7 @@ pub struct Square(pub u8);
 impl Square {
     #[inline]
     /**
-     * Create a Square from the given rank and file. The ranks run from 0 to 7 
+     * Create a Square from the given rank and file. The ranks run from 0 to 7
      * (instead of 1 through 8), and the files run from A to H.
      */
     pub fn new(rank: usize, file: usize) -> Square {

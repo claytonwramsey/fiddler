@@ -255,13 +255,13 @@ impl MagicTable {
 }
 
 /**
- * A structure containing all the information needed to generate moves for a 
+ * A structure containing all the information needed to generate moves for a
  * rook or bishop.
  */
 #[derive(Clone)]
 pub struct Magic {
     /**
-     * A mask which, when &ed with the occupancy bitboard, will give only the 
+     * A mask which, when &ed with the occupancy bitboard, will give only the
      * bits that matter when computing moves.
      */
     pub mask: Bitboard,
@@ -294,7 +294,7 @@ impl Magic {
 }
 
 /**
- * A helper function to load data into a MagicTable. is_rook is True if you are 
+ * A helper function to load data into a MagicTable. is_rook is True if you are
  * loading data for a rook.
  */
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
@@ -334,7 +334,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 /**
- * Get the attacks a square has given a magic lookup table and the current 
+ * Get the attacks a square has given a magic lookup table and the current
  * occupancy.
  */
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
@@ -363,7 +363,7 @@ fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
 }
 
 /**
- * Populate a magic table. If `is_rook` is true, it will make magics for rook 
+ * Populate a magic table. If `is_rook` is true, it will make magics for rook
  * moves; otherwise it will make magics for bishops.
  */
 fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
@@ -445,7 +445,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 /**
- * Create the mask for the relevant bits in magic of a rook. `sq` is the square 
+ * Create the mask for the relevant bits in magic of a rook. `sq` is the square
  * that a rook would occupy to receiver this mask.
  */
 fn get_rook_mask(sq: Square) -> Bitboard {

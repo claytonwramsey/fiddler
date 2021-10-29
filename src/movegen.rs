@@ -23,17 +23,17 @@ pub struct MoveGenerator {
      */
     mtable: MagicTable,
     /**
-     * A bitboard of all the squares which a pawn on the given square can 
+     * A bitboard of all the squares which a pawn on the given square can
      * attack.
      */
     pawn_attacks: [Bitboard; 64], //for now unused, will be used later
     /**
-     * A bitboard of all the squares a king can move to if his position is the 
+     * A bitboard of all the squares a king can move to if his position is the
      * index in the list.
      */
     king_moves: [Bitboard; 64],
     /**
-     * A bitboard of all the squares a knight can move to if its position is 
+     * A bitboard of all the squares a knight can move to if its position is
      * the index of the list.
      */
     knight_moves: [Bitboard; 64],
@@ -69,7 +69,7 @@ impl MoveGenerator {
     }
 
     /**
-     * Enumerate the pseudolegal moves a player of the given color would be 
+     * Enumerate the pseudolegal moves a player of the given color would be
      * able to make if it were their turn to move.
      */
     pub fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
@@ -89,7 +89,7 @@ impl MoveGenerator {
     }
 
     /**
-     * In a given board state, is a move illegal because it would be a 
+     * In a given board state, is a move illegal because it would be a
      * self-check?
      */
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
@@ -116,7 +116,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Enumerate all the pseudolegal moves that can be made by a given piece 
+     * Enumerate all the pseudolegal moves that can be made by a given piece
      * type at the given position.
      */
     fn sq_pseudolegal_moves(&self, board: &Board, sq: Square, pt: PieceType) -> Vec<Move> {
@@ -134,7 +134,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Get the pseudolegal moves that a knight on the square `sq` could make in 
+     * Get the pseudolegal moves that a knight on the square `sq` could make in
      * this position. Also, haha bob seger.
      */
     fn knight_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
@@ -145,7 +145,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Get the pseudolegal moves that a king on square `sq` could make in this 
+     * Get the pseudolegal moves that a king on square `sq` could make in this
      * position.
      */
     fn king_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
@@ -159,7 +159,7 @@ impl MoveGenerator {
     }
 
     /**
-     * Get the pseudolegal moves that a pawn on square `sq` could make in this 
+     * Get the pseudolegal moves that a pawn on square `sq` could make in this
      * position.
      */
     fn pawn_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
@@ -203,7 +203,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Get the pseudolegal moves that a bishop on square `sq` could make in 
+     * Get the pseudolegal moves that a bishop on square `sq` could make in
      * this position.
      */
     fn bishop_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
@@ -216,7 +216,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Get the pseudolegal moves that a rook on square `sq` could make in this 
+     * Get the pseudolegal moves that a rook on square `sq` could make in this
      * position.
      */
     fn rook_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
@@ -228,7 +228,7 @@ impl MoveGenerator {
     }
 
     /**
-     * Get the pseudolegal moves that a queen on square `sq` could make in this 
+     * Get the pseudolegal moves that a queen on square `sq` could make in this
      * position.
      */
     fn queen_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
@@ -239,8 +239,8 @@ impl MoveGenerator {
 }
 
 /**
- * Get the step attacks that could be made by moving in `dirs` from each point 
- * in the square. Exclude the steps that travel more than `max_dist` (this 
+ * Get the step attacks that could be made by moving in `dirs` from each point
+ * in the square. Exclude the steps that travel more than `max_dist` (this
  * prevents overflow around the edges of the board).
  */
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
@@ -259,7 +259,7 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
 
 #[inline]
 /**
- * Given a bitboard of possible to-squares and a fixed from-square, convert 
+ * Given a bitboard of possible to-squares and a fixed from-square, convert
  * this to a list of `Move`s with promotion type `NO_TYPE`.
  */
 fn bitboard_to_moves(from_sq: Square, bb: Bitboard) -> Vec<Move> {
@@ -267,7 +267,7 @@ fn bitboard_to_moves(from_sq: Square, bb: Bitboard) -> Vec<Move> {
 }
 
 /**
- * Given a bitboard of possible to-squares and a fixed from-square, convert 
+ * Given a bitboard of possible to-squares and a fixed from-square, convert
  * this to a list of `Move`s with the given promotion type.
  */
 fn bitboard_to_promotions(from_sq: Square, bb: Bitboard, promote_type: PieceType) -> Vec<Move> {

@@ -1,16 +1,16 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::constants::NUM_PIECE_TYPES;
-use crate::constants::{Color, BLACK, WHITE, NO_COLOR};
-use crate::piece::{PieceType, NO_TYPE, PIECE_TYPES, PAWN};
+use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
+use crate::piece::{PieceType, NO_TYPE, PAWN, PIECE_TYPES};
 use crate::r#move::Move;
 use crate::square::{Square, BAD_SQUARE};
+use crate::util::{opposite_color, pawn_promote_rank};
 use crate::zobrist;
-use crate::util::{pawn_promote_rank, opposite_color};
 
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::ops::{BitOr, BitOrAssign};
 use std::result::Result;
-use std::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /**
@@ -22,7 +22,7 @@ pub struct Board {
      */
     pub sides: [Bitboard; 2],
     /**
-     * The squares occupied by (in order) pawns, knights, bishops, rooks, 
+     * The squares occupied by (in order) pawns, knights, bishops, rooks,
      * queens, and kings.
      */
     pub pieces: [Bitboard; NUM_PIECE_TYPES],
@@ -31,7 +31,7 @@ pub struct Board {
      */
     pub player_to_move: Color,
     /**
-     * The square which can be moved to by a pawn in en passant. If en passant 
+     * The square which can be moved to by a pawn in en passant. If en passant
      * is not legal, this will be a `BAD_SQUARE`.
      */
     pub en_passant_square: Square,
@@ -42,7 +42,7 @@ pub struct Board {
     /**
      * A saved internal hash. If the board is valid, the this value must ALWAYS be equal to the output of `Board.get_fresh_hash()`.
      */
-    hash: u64, 
+    hash: u64,
 }
 
 impl Board {
@@ -90,7 +90,7 @@ impl Board {
 
     /**
      * Create a Board populated from some FEN and load it.
-     * Will return Err if the FEN is invalid with a string describing why it 
+     * Will return `Err` if the FEN is invalid with a string describing why it
      * failed.
      */
     pub fn from_fen(fen: &str) -> Result<Board, &'static str> {
@@ -251,7 +251,7 @@ impl Board {
     #[inline]
     /**
      * Get the color of a piece occupying a current square.
-     * Returns NO_COLOR if there are 
+     * Returns NO_COLOR if there are
      * no pieces occupying the square.
      */
     pub fn color_at_square(&self, sq: Square) -> Color {
@@ -268,9 +268,9 @@ impl Board {
      * Is a given move en passant?
      */
     pub fn is_move_en_passant(&self, m: Move) -> bool {
-        m.to_square() == self.en_passant_square && 
-        m.from_square().file() != m.to_square().file() && 
-        self.type_at_square(m.from_square()) == PAWN
+        m.to_square() == self.en_passant_square
+            && m.from_square().file() != m.to_square().file()
+            && self.type_at_square(m.from_square()) == PAWN
     }
 
     /**
@@ -319,11 +319,12 @@ impl Board {
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
-        let is_promotion = mover_type == PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
+        let is_promotion =
+            mover_type == PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
 
         /* Core move functionality */
         self.remove_piece(from_sq);
-        
+
         /* Promotion and normal piece movement */
         if is_promotion {
             self.set_piece(to_sq, m.promote_type(), self.player_to_move);
@@ -341,14 +342,12 @@ impl Board {
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
         //update EP square
         self.en_passant_square = match mover_type == PAWN && from_sq.chebyshev_to(to_sq) == 2 {
-            true => Square::new(
-                (from_sq.rank() + to_sq.rank()) / 2, 
-                from_sq.file()),
+            true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
             false => BAD_SQUARE,
         };
         //insert new EP key into hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
-        
+
         //Update player to move
         self.player_to_move = opposite_color(self.player_to_move);
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
@@ -359,8 +358,11 @@ impl Board {
      * (unlike `make_move()`). On illegal moves, will return an Err with a
      * string describing the issue.
      */
-    pub fn try_move(&mut self, mgen: &crate::movegen::MoveGenerator, m: Move) 
-    -> Result<(), &'static str> {
+    pub fn try_move(
+        &mut self,
+        mgen: &crate::movegen::MoveGenerator,
+        m: Move,
+    ) -> Result<(), &'static str> {
         let legal_moves = mgen.get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");
@@ -373,11 +375,11 @@ impl Board {
      * Remove the piece at sq from this board.
      */
     fn remove_piece(&mut self, sq: Square) {
-        //Remove the hash from the piece that was there before 
+        //Remove the hash from the piece that was there before
         //(no-op if it was empty)
         self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         let mask = !Bitboard::from(sq);
-        
+
         for i in 0..NUM_PIECE_TYPES {
             self.pieces[i] &= mask;
         }
@@ -392,7 +394,7 @@ impl Board {
      */
     fn add_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
         //Remove the hash from the piece that was there before (no-op if it was
-        //empty) 
+        //empty)
         self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         let mask = Bitboard::from(sq);
         self.pieces[pt.0 as usize] |= mask;
@@ -403,7 +405,9 @@ impl Board {
 
     #[inline]
     /**
-     * Set the piece at a given position to be a certain piece. This is safe,  * and will not result in any issues regarding legality. If the given piece * type is NO_TYPE, the color given will be ignored.
+     * Set the piece at a given position to be a certain piece. This is safe,
+     * and will not result in any issues regarding hash legality. If the given
+     * piece type is `NO_TYPE`, the color given will be ignored.
      */
     pub fn set_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
         self.remove_piece(sq);
@@ -412,7 +416,7 @@ impl Board {
 
     #[inline]
     /**
-     * Recompute the Zobrist hash of this board and set it to the saved hash 
+     * Recompute the Zobrist hash of this board and set it to the saved hash
      * value.
      */
     pub fn recompute_hash(&mut self) {
@@ -426,11 +430,7 @@ impl Board {
         let mut hash = 0;
         for i in 0..64 {
             let sq = Square(i);
-            hash ^= zobrist::get_square_key(
-                sq,
-                self.type_at_square(sq),
-                self.color_at_square(sq)
-            );
+            hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         }
         for i in 0..4 {
             if 1 << i & self.castle_rights.0 != 0 {
@@ -467,8 +467,7 @@ impl Display for Board {
                             break;
                         }
                     }
-                }
-                else {
+                } else {
                     write!(f, " ")?;
                 }
 
@@ -480,7 +479,7 @@ impl Display for Board {
         Ok(())
     }
 }
- 
+
 impl Hash for Board {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.hash.hash(state);
@@ -549,9 +548,9 @@ impl BitOrAssign<CastleRights> for CastleRights {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use crate::fens;
     use crate::movegen::MoveGenerator;
     use crate::square::*;
-    use crate::fens;
 
     /**
      * A board with the white king on A1 and the black king on H8.
@@ -643,7 +642,7 @@ mod tests {
     }
 
     /**
-     * A helper function which will attempt to make a legal move on a board, 
+     * A helper function which will attempt to make a legal move on a board,
      * and will fail assertions if the board's state was not changed correctly.
      */
     fn test_move_helper(board: Board, m: Move) {

@@ -3,9 +3,9 @@ use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /**
- * The information of one move, containing its from- and to-squares, as well as 
+ * The information of one move, containing its from- and to-squares, as well as
  * its promote type, in one integer.
- * 
+ *
  * From MSB to LSB:
  * 1 bit: unused
  * 3 bits: promote type
