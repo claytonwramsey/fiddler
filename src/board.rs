@@ -1,15 +1,15 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::{PieceType, NO_TYPE, PAWN, PIECE_TYPES};
+use crate::piece::{PieceType, NO_TYPE, PAWN, PIECE_TYPES, KING, ROOK};
 use crate::r#move::Move;
-use crate::square::{Square, BAD_SQUARE};
+use crate::square::{Square, BAD_SQUARE, A1, H1, A8, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
 use crate::zobrist;
+use crate::castling::CastleRights;
 
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::ops::{BitOr, BitOrAssign};
 use std::result::Result;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -314,13 +314,15 @@ impl Board {
     pub fn make_move(&mut self, m: Move) {
         //TODO handle castle rights
         //TODO handle castling
-        //TODO handle promotion
         let from_sq = m.from_square();
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
         let is_promotion =
             mover_type == PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
+        //this length is used to determine whether it's not a move that a king
+        //or pawn could normally make
+        let is_long_move = mover_type == PAWN && from_sq.chebyshev_to(to_sq) > 1;
 
         /* Core move functionality */
         self.remove_piece(from_sq);
@@ -341,21 +343,60 @@ impl Board {
         //remove previous EP square from hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
         //update EP square
-        self.en_passant_square = match mover_type == PAWN && from_sq.chebyshev_to(to_sq) == 2 {
+        self.en_passant_square = match mover_type == PAWN && is_long_move {
             true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
             false => BAD_SQUARE,
         };
         //insert new EP key into hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
 
-        //Update player to move
+        /* Handling castling */
+        //in normal castling, we describe it with a `Move` as a king move which
+        //jumps two or three squares.
+        if mover_type == KING && is_long_move {
+            //a long move from a king means this must be a castle
+            //G file is file 6 (TODO move this to be a constant?)
+            let is_kingside_castle = to_sq.file() == 6;
+            let rook_from_file = match is_kingside_castle {
+                true => 7, //rook moves from H file for kingside castling
+                false => 0, //rook moves from A file for queenside
+            };
+            let rook_to_file = match is_kingside_castle {
+                true => 5, //rook moves to F file for kingside
+                false => 3, //rook moves to D file for queenside
+            };
+            let rook_from_sq = Square::new(from_sq.rank(), rook_from_file);
+            let rook_to_sq = Square::new(from_sq.rank(), rook_to_file);
+            self.remove_piece(rook_from_sq);
+            self.add_piece(rook_to_sq, ROOK, self.player_to_move);
+        }
+
+        /* Handling castling rights */
+        let rights_to_remove;
+        if mover_type == KING {
+            rights_to_remove = CastleRights::color_rights(self.player_to_move);
+        }
+        else {
+            //don't need to check if it's a rook because moving from this square
+            //would mean you didn't have the right anyway
+            rights_to_remove = match from_sq {
+                A1 => CastleRights::queen_castle(WHITE),
+                H1 => CastleRights::king_castle(WHITE),
+                A8 => CastleRights::queen_castle(BLACK),
+                H8 => CastleRights::king_castle(BLACK),
+                _ => CastleRights::NO_RIGHTS,
+            };
+        }
+        self.remove_castle_rights(rights_to_remove);
+
+        /* Updating player to move */
         self.player_to_move = opposite_color(self.player_to_move);
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
     }
 
     /**
      * Apply the given move to the board. Will *not* assume the move is legal
-     * (unlike `make_move()`). On illegal moves, will return an Err with a
+     * (unlike `make_move()`). On illegal moves, will return an `Err` with a
      * string describing the issue.
      */
     pub fn try_move(
@@ -412,6 +453,23 @@ impl Board {
     pub fn set_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
         self.remove_piece(sq);
         self.add_piece(sq, pt, color);
+    }
+
+    /**
+     * Remove the given `CastleRights` from this board's castling rights, and 
+     * update the internal hash of the board to match.
+     */
+    fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
+        let rights_actually_removed = rights_to_remove & self.castle_rights;
+
+        //TODO optimize this?
+        for i in 0..4 {
+            if 1 << i & rights_actually_removed.0 != 0 {
+                self.hash ^= zobrist::get_castle_key(i);
+            }
+        }
+
+        self.castle_rights &= !rights_actually_removed;
     }
 
     #[inline]
@@ -483,64 +541,6 @@ impl Display for Board {
 impl Hash for Board {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.hash.hash(state);
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/**
- * A simple struct to store a piece's castling rights.
- * The internal bits are used to represent castling rights.
- *
- * From MSB to LSB:
- * 4 unused bits
- * Black queenside castling
- * Black kingside castling
- * White queenside castling
- * White kingside castling
- */
-pub struct CastleRights(u8);
-
-impl CastleRights {
-    pub const ALL_RIGHTS: CastleRights = CastleRights(15);
-    pub const NO_RIGHTS: CastleRights = CastleRights(0);
-
-    /**
-     * Create a `CastleRights` for kingside castling on one side
-     */
-    #[inline]
-    pub fn king_castle(color: Color) -> CastleRights {
-        match color {
-            WHITE => CastleRights(1),
-            BLACK => CastleRights(4),
-            _ => CastleRights(0),
-        }
-    }
-
-    /**
-     * Create a `CastleRights` for queenside castling on one side
-     */
-    #[inline]
-    pub fn queen_castle(color: Color) -> CastleRights {
-        match color {
-            WHITE => CastleRights(2),
-            BLACK => CastleRights(8),
-            _ => CastleRights(0),
-        }
-    }
-}
-
-impl BitOr<CastleRights> for CastleRights {
-    type Output = CastleRights;
-    #[inline]
-    fn bitor(self, other: CastleRights) -> CastleRights {
-        CastleRights(self.0 | other.0)
-    }
-}
-
-impl BitOrAssign<CastleRights> for CastleRights {
-    #[inline]
-    fn bitor_assign(&mut self, other: CastleRights) {
-        self.0 |= other.0;
     }
 }
 

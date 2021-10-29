@@ -10,3 +10,4 @@ mod piece;
 mod square;
 mod util;
 mod zobrist;
+mod castling;
