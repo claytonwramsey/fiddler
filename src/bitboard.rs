@@ -1,6 +1,7 @@
 use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
 use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
+use std::iter::Iterator;
 
 /**
  * a bitboard to express positions
@@ -123,5 +124,19 @@ impl From<Square> for Bitboard {
 impl Display for Bitboard {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "Bitboard({:#18x})", self.0)
+    }
+}
+
+impl Iterator for Bitboard {
+    type Item = Square;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Bitboard(0) => None,
+            _ => {
+                let sq = Square::from(*self);
+                self.0 &= !Bitboard::from(sq).0;
+                Some(sq)
+            }
+        }
     }
 }

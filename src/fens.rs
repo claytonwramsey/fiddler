@@ -22,3 +22,9 @@ pub const TWO_KINGS_BOARD_FEN: &'static str = "7k/8/8/8/8/8/8/K7 w - - 0 1";
  */
 pub const EN_PASSANT_READY_FEN: &'static str =
     "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3";
+
+#[allow(dead_code)]
+/**
+ * A board where White is ready to castle on the kingside.
+ */
+pub const WHITE_KINGSIDE_CASTLE_READY_FEN: &'static str = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";

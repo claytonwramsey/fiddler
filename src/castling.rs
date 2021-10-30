@@ -53,6 +53,22 @@ impl CastleRights {
             _ => CastleRights::NO_RIGHTS,
         }
     }
+
+    #[inline]
+    /**
+     * Can the given color legally castle kingside?
+     */
+    pub fn is_kingside_castle_legal(&self, color: Color) -> bool {
+        *self & CastleRights::king_castle(color) != CastleRights::NO_RIGHTS
+    }
+
+    #[inline]
+    /**
+     * Can the given color legally castle kingside?
+     */
+    pub fn is_queenside_castle_legal(&self, color: Color) -> bool {
+        *self & CastleRights::queen_castle(color) != CastleRights::NO_RIGHTS
+    }
 }
 
 impl BitOr<CastleRights> for CastleRights {

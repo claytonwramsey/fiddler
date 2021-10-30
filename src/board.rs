@@ -637,6 +637,11 @@ mod tests {
         };
     }
 
+    #[test]
+    fn test_white_kingide_castle() {
+        test_fen_helper(fens::WHITE_KINGSIDE_CASTLE_READY_FEN, Move::new(E1, G1, NO_TYPE));
+    }
+
     /**
      * A helper function which will attempt to make a legal move on a board,
      * and will fail assertions if the board's state was not changed correctly.

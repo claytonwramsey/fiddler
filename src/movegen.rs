@@ -1,6 +1,6 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::board::Board;
-use crate::constants::Color;
+use crate::constants::{Color, BLACK};
 use crate::direction::{
     Direction, EAST, NEE, NNE, NNW, NORTH, NORTHEAST, NORTHWEST, NWW, SEE, SOUTH, SOUTHEAST,
     SOUTHWEST, SSE, SSW, SWW, WEST,
@@ -65,6 +65,7 @@ impl MoveGenerator {
                 legal_moves.push(m);
             }
         }
+
         return legal_moves;
     }
 
@@ -101,17 +102,20 @@ impl MoveGenerator {
         self.is_square_attacked_by(&newboard, player_king_square, opposite_color(player))
     }
 
+    #[inline]
     /**
      * In a given board state, is a square attacked by the given color?
      */
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
-        let moves = self.get_pseudolegal_moves(board, color);
-        for m in moves {
-            if m.to_square() == sq {
-                return true;
-            }
-        }
-        return false;
+        self.get_pseudolegal_moves(board, color).into_iter().filter(|m| m.to_square() == sq).next().is_some()
+    }
+
+    #[inline]
+    /**
+     * Given a set of squares 
+     */
+    pub fn are_squares_attacked_by(&self, board: &Board, squares: Bitboard, color: Color) -> bool {
+        squares.filter(|sq| !self.is_square_attacked_by(board, *sq, color)).next().is_some()
     }
 
     #[inline]
@@ -146,15 +150,45 @@ impl MoveGenerator {
     #[inline]
     /**
      * Get the pseudolegal moves that a king on square `sq` could make in this
-     * position.
+     * position. Does not check if castling can be done through or out of check.
      */
     fn king_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
         let moves_bb =
             self.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq));
-        #[allow(unused_mut)]
+            
         let mut moves = bitboard_to_moves(sq, moves_bb);
-        //TODO add castling moves
+        
+        //castling
+        let kingside_castle_passthrough_sqs = match board.player_to_move {
+            BLACK => Bitboard(0x6000000000000000),
+            _ => Bitboard(0x0000000000000060)
+        };
+        let queenside_castle_passthrough_sqs = match board.player_to_move {
+            BLACK => Bitboard(0x0700000000000000),
+            _ => Bitboard(0x0000000000000070),
+        };
 
+        let can_kingside_castle = 
+            board.castle_rights.is_kingside_castle_legal(board.player_to_move) && 
+            board.get_occupancy() & kingside_castle_passthrough_sqs == BB_EMPTY;
+        let can_queenside_castle = 
+            board.castle_rights.is_queenside_castle_legal(board.player_to_move) && 
+            board.get_occupancy() & queenside_castle_passthrough_sqs == BB_EMPTY;
+        
+        if can_kingside_castle {
+            moves.push(Move::new(
+                sq,
+                Square::new(sq.rank(), 6),
+                NO_TYPE
+            ));
+        }
+        if can_queenside_castle {
+            moves.push(Move::new(
+                sq,
+                Square::new(sq.rank(), 2),
+                NO_TYPE
+            ));
+        }
         return moves;
     }
 
