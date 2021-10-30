@@ -338,7 +338,10 @@ impl Board {
         /* En passant handling */
         //perform an en passant capture
         if is_en_passant {
-            self.remove_piece(self.en_passant_square);
+            let capturee_sq = Square::new(
+                from_sq.rank(),
+                self.en_passant_square.file());
+            self.remove_piece(capturee_sq);
         }
         //remove previous EP square from hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
@@ -430,7 +433,8 @@ impl Board {
 
     /**
      * Add a piece to the square at a given place on the board.
-     * This should only be called if you believe that the board as-is is empty * at the square below. Otherwise it will break the internal board
+     * This should only be called if you believe that the board as-is is empty
+     * at the square below. Otherwise it will break the internal board
      * representation.
      */
     fn add_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
@@ -622,14 +626,6 @@ mod tests {
      * Test that we can capture en passant.
      */
     fn test_en_passant() {
-        let mgen = MoveGenerator::new();
-        if let Ok(b) = Board::from_fen(fens::EN_PASSANT_READY_FEN) {
-            println!("{:?}", b);
-            let moves = mgen.get_moves(&b);
-            for m in moves {
-                println!("{}", m);
-            }
-        }
         test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, NO_TYPE));
     }
 
@@ -666,8 +662,8 @@ mod tests {
         assert_eq!(newboard.color_at_square(m.from_square()), NO_COLOR);
 
         if is_en_passant {
-            assert_eq!(newboard.type_at_square(board.en_passant_square), NO_TYPE);
-            assert_eq!(newboard.color_at_square(board.en_passant_square), NO_COLOR);
+            assert_eq!(newboard.type_at_square(board.en_passant_square), PAWN);
+            assert_eq!(newboard.color_at_square(board.en_passant_square), board.player_to_move);
         }
     }
 }
