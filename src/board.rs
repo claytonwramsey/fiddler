@@ -575,12 +575,12 @@ mod tests {
         en_passant_square: BAD_SQUARE,
         player_to_move: WHITE,
         castle_rights: CastleRights::NO_RIGHTS,
-        hash: 0,
+        hash: 3483926298739092744,
     };
 
     #[test]
     /**
-     * Test that a chessboard with kinds on A1 and H8 can be loaded from a FEN.
+     * Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
      */
     fn test_load_two_kings_fen() {
         let result = Board::from_fen(fens::TWO_KINGS_BOARD_FEN);

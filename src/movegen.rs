@@ -61,9 +61,14 @@ impl MoveGenerator {
         let moves = self.get_pseudolegal_moves(board, board.player_to_move);
         let mut legal_moves = Vec::<Move>::new();
         for m in moves {
-            if !self.is_move_self_check(board, m) {
+            let is_castle = board.type_at_square(m.from_square()) == KING && m.from_square().chebyshev_to(m.to_square()) > 2;
+            if !self.is_move_self_check(board, m) && !is_castle {
                 legal_moves.push(m);
             }
+            if is_castle {
+                
+            }
+            
         }
 
         return legal_moves;
