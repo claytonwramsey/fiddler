@@ -1,5 +1,6 @@
 mod bitboard;
 pub mod board;
+mod castling;
 mod constants;
 mod direction;
 mod fens;
@@ -10,4 +11,3 @@ mod piece;
 mod square;
 mod util;
 mod zobrist;
-mod castling;

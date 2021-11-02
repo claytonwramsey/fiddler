@@ -27,4 +27,5 @@ pub const EN_PASSANT_READY_FEN: &'static str =
 /**
  * A board where White is ready to castle on the kingside.
  */
-pub const WHITE_KINGSIDE_CASTLE_READY_FEN: &'static str = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+pub const WHITE_KINGSIDE_CASTLE_READY_FEN: &'static str =
+    "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";

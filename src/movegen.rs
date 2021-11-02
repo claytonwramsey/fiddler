@@ -61,14 +61,12 @@ impl MoveGenerator {
         let moves = self.get_pseudolegal_moves(board, board.player_to_move);
         let mut legal_moves = Vec::<Move>::new();
         for m in moves {
-            let is_castle = board.type_at_square(m.from_square()) == KING && m.from_square().chebyshev_to(m.to_square()) > 2;
+            let is_castle = board.type_at_square(m.from_square()) == KING
+                && m.from_square().chebyshev_to(m.to_square()) > 2;
             if !self.is_move_self_check(board, m) && !is_castle {
                 legal_moves.push(m);
             }
-            if is_castle {
-                
-            }
-            
+            if is_castle {}
         }
 
         return legal_moves;
@@ -112,15 +110,22 @@ impl MoveGenerator {
      * In a given board state, is a square attacked by the given color?
      */
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
-        self.get_pseudolegal_moves(board, color).into_iter().filter(|m| m.to_square() == sq).next().is_some()
+        self.get_pseudolegal_moves(board, color)
+            .into_iter()
+            .filter(|m| m.to_square() == sq)
+            .next()
+            .is_some()
     }
 
     #[inline]
     /**
-     * Given a set of squares 
+     * Given a set of squares
      */
     pub fn are_squares_attacked_by(&self, board: &Board, squares: Bitboard, color: Color) -> bool {
-        squares.filter(|sq| !self.is_square_attacked_by(board, *sq, color)).next().is_some()
+        squares
+            .filter(|sq| !self.is_square_attacked_by(board, *sq, color))
+            .next()
+            .is_some()
     }
 
     #[inline]
@@ -160,39 +165,33 @@ impl MoveGenerator {
     fn king_moves(&self, board: &Board, sq: Square) -> Vec<Move> {
         let moves_bb =
             self.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq));
-            
+
         let mut moves = bitboard_to_moves(sq, moves_bb);
-        
+
         //castling
         let kingside_castle_passthrough_sqs = match board.player_to_move {
             BLACK => Bitboard(0x6000000000000000),
-            _ => Bitboard(0x0000000000000060)
+            _ => Bitboard(0x0000000000000060),
         };
         let queenside_castle_passthrough_sqs = match board.player_to_move {
             BLACK => Bitboard(0x0700000000000000),
             _ => Bitboard(0x0000000000000070),
         };
 
-        let can_kingside_castle = 
-            board.castle_rights.is_kingside_castle_legal(board.player_to_move) && 
-            board.get_occupancy() & kingside_castle_passthrough_sqs == BB_EMPTY;
-        let can_queenside_castle = 
-            board.castle_rights.is_queenside_castle_legal(board.player_to_move) && 
-            board.get_occupancy() & queenside_castle_passthrough_sqs == BB_EMPTY;
-        
+        let can_kingside_castle = board
+            .castle_rights
+            .is_kingside_castle_legal(board.player_to_move)
+            && board.get_occupancy() & kingside_castle_passthrough_sqs == BB_EMPTY;
+        let can_queenside_castle = board
+            .castle_rights
+            .is_queenside_castle_legal(board.player_to_move)
+            && board.get_occupancy() & queenside_castle_passthrough_sqs == BB_EMPTY;
+
         if can_kingside_castle {
-            moves.push(Move::new(
-                sq,
-                Square::new(sq.rank(), 6),
-                NO_TYPE
-            ));
+            moves.push(Move::new(sq, Square::new(sq.rank(), 6), NO_TYPE));
         }
         if can_queenside_castle {
-            moves.push(Move::new(
-                sq,
-                Square::new(sq.rank(), 2),
-                NO_TYPE
-            ));
+            moves.push(Move::new(sq, Square::new(sq.rank(), 2), NO_TYPE));
         }
         return moves;
     }

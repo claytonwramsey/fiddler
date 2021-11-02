@@ -1,12 +1,12 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
+use crate::castling::CastleRights;
 use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::{PieceType, NO_TYPE, PAWN, PIECE_TYPES, KING, ROOK};
+use crate::piece::{PieceType, KING, NO_TYPE, PAWN, PIECE_TYPES, ROOK};
 use crate::r#move::Move;
-use crate::square::{Square, BAD_SQUARE, A1, H1, A8, H8};
+use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
 use crate::zobrist;
-use crate::castling::CastleRights;
 
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
@@ -312,8 +312,6 @@ impl Board {
      * `try_move()`).
      */
     pub fn make_move(&mut self, m: Move) {
-        //TODO handle castle rights
-        //TODO handle castling
         let from_sq = m.from_square();
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
@@ -338,9 +336,7 @@ impl Board {
         /* En passant handling */
         //perform an en passant capture
         if is_en_passant {
-            let capturee_sq = Square::new(
-                from_sq.rank(),
-                self.en_passant_square.file());
+            let capturee_sq = Square::new(from_sq.rank(), self.en_passant_square.file());
             self.remove_piece(capturee_sq);
         }
         //remove previous EP square from hash
@@ -361,11 +357,11 @@ impl Board {
             //G file is file 6 (TODO move this to be a constant?)
             let is_kingside_castle = to_sq.file() == 6;
             let rook_from_file = match is_kingside_castle {
-                true => 7, //rook moves from H file for kingside castling
+                true => 7,  //rook moves from H file for kingside castling
                 false => 0, //rook moves from A file for queenside
             };
             let rook_to_file = match is_kingside_castle {
-                true => 5, //rook moves to F file for kingside
+                true => 5,  //rook moves to F file for kingside
                 false => 3, //rook moves to D file for queenside
             };
             let rook_from_sq = Square::new(from_sq.rank(), rook_from_file);
@@ -378,8 +374,7 @@ impl Board {
         let rights_to_remove;
         if mover_type == KING {
             rights_to_remove = CastleRights::color_rights(self.player_to_move);
-        }
-        else {
+        } else {
             //don't need to check if it's a rook because moving from this square
             //would mean you didn't have the right anyway
             rights_to_remove = match from_sq {
@@ -460,7 +455,7 @@ impl Board {
     }
 
     /**
-     * Remove the given `CastleRights` from this board's castling rights, and 
+     * Remove the given `CastleRights` from this board's castling rights, and
      * update the internal hash of the board to match.
      */
     fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
@@ -506,6 +501,12 @@ impl Board {
 }
 
 impl Display for Board {
+    /**
+     * Display this board in a console-ready format. Expresses as a series of 8
+     * lines, where the topmost line is the 8th rank and the bottommost is the
+     * 1st. White pieces are represented with capital letters, while black
+     * pieces have lowercase.
+     */
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for r in 0..8 {
             for c in 0..8 {
@@ -514,7 +515,6 @@ impl Display for Board {
                 let sq_bb = Bitboard::from(current_square);
 
                 if (sq_bb & self.get_occupancy()) != BB_EMPTY {
-                    //TODO capitalize if white pieces
                     let is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
                     //find the type of this piece
                     for pt in PIECE_TYPES {
@@ -629,6 +629,10 @@ mod tests {
         test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, NO_TYPE));
     }
 
+    /**
+     * A helper function which will load a board from a FEN and then try
+     * running the given move on that board.
+     */
     fn test_fen_helper(fen: &str, m: Move) {
         let result = Board::from_fen(fen);
         match result {
@@ -639,7 +643,10 @@ mod tests {
 
     #[test]
     fn test_white_kingide_castle() {
-        test_fen_helper(fens::WHITE_KINGSIDE_CASTLE_READY_FEN, Move::new(E1, G1, NO_TYPE));
+        test_fen_helper(
+            fens::WHITE_KINGSIDE_CASTLE_READY_FEN,
+            Move::new(E1, G1, NO_TYPE),
+        );
     }
 
     /**
@@ -668,7 +675,10 @@ mod tests {
 
         if is_en_passant {
             assert_eq!(newboard.type_at_square(board.en_passant_square), PAWN);
-            assert_eq!(newboard.color_at_square(board.en_passant_square), board.player_to_move);
+            assert_eq!(
+                newboard.color_at_square(board.en_passant_square),
+                board.player_to_move
+            );
         }
     }
 }

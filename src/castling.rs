@@ -1,6 +1,6 @@
 use crate::constants::{Color, BLACK, WHITE};
 
-use std::ops::{BitOr, BitOrAssign, BitAnd, BitAndAssign, Not};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /**

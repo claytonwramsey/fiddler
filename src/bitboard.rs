@@ -1,7 +1,7 @@
 use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
-use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
 use std::iter::Iterator;
+use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
 
 /**
  * a bitboard to express positions
