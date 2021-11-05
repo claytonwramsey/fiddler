@@ -40,7 +40,8 @@ pub struct Board {
      */
     pub castle_rights: CastleRights,
     /**
-     * A saved internal hash. If the board is valid, the this value must ALWAYS be equal to the output of `Board.get_fresh_hash()`.
+     * A saved internal hash. If the board is valid, the this value must ALWAYS 
+     * be equal to the output of `Board.get_fresh_hash()`.
      */
     hash: u64,
 }
@@ -255,22 +256,34 @@ impl Board {
      * no pieces occupying the square.
      */
     pub fn color_at_square(&self, sq: Square) -> Color {
-        match Bitboard::from(sq) & self.sides[WHITE] {
-            BB_EMPTY => match Bitboard::from(sq) & self.sides[BLACK] {
-                BB_EMPTY => NO_COLOR,
-                _ => BLACK,
-            },
-            _ => WHITE,
+        let bb = Bitboard::from(sq);
+        if self.sides[BLACK] & bb != BB_EMPTY {
+            return BLACK;
         }
+        if self.sides[WHITE] & bb != BB_EMPTY {
+            return WHITE;
+        }
+        return NO_COLOR;
     }
 
+    #[inline]
     /**
-     * Is a given move en passant?
+     * Is a given move en passant? Assumes the move is pseudo-legal.
      */
     pub fn is_move_en_passant(&self, m: Move) -> bool {
         m.to_square() == self.en_passant_square
             && m.from_square().file() != m.to_square().file()
             && self.type_at_square(m.from_square()) == PAWN
+    }
+
+    #[inline]
+    /**
+     * In this state, is the given move a castle? Assumes the move is 
+     * pseudo-legal.
+     */
+    pub fn is_move_castle(&self, m: Move) -> bool {
+        self.get_pieces_of_type(KING).is_square_occupied(m.from_square()) && 
+            m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
     /**
@@ -320,7 +333,7 @@ impl Board {
             mover_type == PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
-        let is_long_move = mover_type == PAWN && from_sq.chebyshev_to(to_sq) > 1;
+        let is_long_move = from_sq.chebyshev_to(to_sq) > 1;
 
         /* Core move functionality */
         self.remove_piece(from_sq);
@@ -411,7 +424,7 @@ impl Board {
     }
 
     /**
-     * Remove the piece at sq from this board.
+     * Remove the piece at `sq` from this board.
      */
     fn remove_piece(&mut self, sq: Square) {
         //Remove the hash from the piece that was there before
@@ -435,7 +448,6 @@ impl Board {
     fn add_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
         //Remove the hash from the piece that was there before (no-op if it was
         //empty)
-        self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         let mask = Bitboard::from(sq);
         self.pieces[pt.0 as usize] |= mask;
         self.sides[color] |= mask;
@@ -451,7 +463,9 @@ impl Board {
      */
     pub fn set_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
         self.remove_piece(sq);
-        self.add_piece(sq, pt, color);
+        if pt != NO_TYPE {
+            self.add_piece(sq, pt, color);
+        }
     }
 
     /**
@@ -658,6 +672,7 @@ mod tests {
         let mover_color = board.color_at_square(m.from_square());
         let mover_type = board.type_at_square(m.from_square());
         let is_en_passant = board.is_move_en_passant(m);
+        let is_castle = board.is_move_castle(m);
 
         //newboard will be mutated to reflect the move
         let mut newboard = board;
@@ -673,6 +688,7 @@ mod tests {
         assert_eq!(newboard.type_at_square(m.from_square()), NO_TYPE);
         assert_eq!(newboard.color_at_square(m.from_square()), NO_COLOR);
 
+        //Check en passant worked correctly
         if is_en_passant {
             assert_eq!(newboard.type_at_square(board.en_passant_square), PAWN);
             assert_eq!(
@@ -680,5 +696,29 @@ mod tests {
                 board.player_to_move
             );
         }
+
+        //Check castling worked correctly
+        if is_castle {
+            let rook_start_file = match m.to_square().file() {
+                2 => 0,
+                6 => 7,
+                _ => 9,
+            };
+            let rook_end_file = match m.to_square().file() {
+                2 => 3,
+                6 => 5,
+                _ => 9,
+            };
+            let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file);
+            let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file);
+
+            assert_eq!(newboard.type_at_square(rook_start_sq), NO_TYPE);
+            assert_eq!(newboard.color_at_square(rook_start_sq), NO_COLOR);
+
+            assert_eq!(newboard.type_at_square(rook_end_sq), ROOK);
+            assert_eq!(newboard.color_at_square(rook_end_sq), board.player_to_move);
+        }
+
+        // TODO Check castling rights were removed correctly
     }
 }

@@ -61,12 +61,29 @@ impl MoveGenerator {
         let moves = self.get_pseudolegal_moves(board, board.player_to_move);
         let mut legal_moves = Vec::<Move>::new();
         for m in moves {
-            let is_castle = board.type_at_square(m.from_square()) == KING
-                && m.from_square().chebyshev_to(m.to_square()) > 2;
+            let is_castle = board.is_move_castle(m);
             if !self.is_move_self_check(board, m) && !is_castle {
                 legal_moves.push(m);
             }
-            if is_castle {}
+            if is_castle {
+                // TODO make castle illegal if in check or must move through
+                // check
+                let is_queen_castle = m.to_square().file() == 2;
+                let mut is_valid = true;
+                let mut king_passthru_min = 4;
+                let mut king_passthru_max = 6;
+                if is_queen_castle {
+                    king_passthru_min = 2;
+                    king_passthru_max = 4;
+                }
+                for file in king_passthru_min..king_passthru_max {
+                    let target_sq = Square::new(m.from_square().rank(), file);
+                    is_valid &= !self.is_square_attacked_by(board, target_sq, opposite_color(board.player_to_move));
+                }
+                if is_valid {
+                    legal_moves.push(m);
+                }
+            }
         }
 
         return legal_moves;
