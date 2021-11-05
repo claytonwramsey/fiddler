@@ -360,7 +360,7 @@ mod tests {
     #[test]
     fn test_opening_moveset() {
         let mg = MoveGenerator::new();
-        let moves = mg.get_moves(&Board::new());
+        let moves = mg.get_moves(&Board::default());
         print!("{{");
         for m in moves.iter() {
             print!("{}, ", m);

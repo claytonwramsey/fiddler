@@ -11,6 +11,7 @@ use crate::zobrist;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::result::Result;
+use std::default::Default;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /**
@@ -47,31 +48,6 @@ pub struct Board {
 }
 
 impl Board {
-    /**
-     * Make a newly populated board in the board start position.
-     */
-    pub fn new() -> Board {
-        let mut board = Board {
-            sides: [
-                Bitboard(0x000000000000FFFF), //white
-                Bitboard(0xFFFF000000000000), //black
-            ],
-            pieces: [
-                Bitboard(0x00FF00000000FF00), //pawn
-                Bitboard(0x4200000000000042), //knight
-                Bitboard(0x2400000000000024), //bishop
-                Bitboard(0x8100000000000081), //rook
-                Bitboard(0x0800000000000008), //queen
-                Bitboard(0x1000000000000010), //king
-            ],
-            en_passant_square: BAD_SQUARE,
-            player_to_move: WHITE,
-            castle_rights: CastleRights::ALL_RIGHTS,
-            hash: 0,
-        };
-        board.recompute_hash();
-        return board;
-    }
 
     /**
      * Create an empty board with no pieces or castle rights.
@@ -526,26 +502,13 @@ impl Display for Board {
             for c in 0..8 {
                 let i = 64 - (r + 1) * 8 + c;
                 let current_square = Square(i);
-                let sq_bb = Bitboard::from(current_square);
+                let pt = self.type_at_square(current_square);
 
-                if (sq_bb & self.get_occupancy()) != BB_EMPTY {
-                    let is_white = (sq_bb & self.get_color_occupancy(WHITE)) != BB_EMPTY;
-                    //find the type of this piece
-                    for pt in PIECE_TYPES {
-                        let pt_bb = self.get_pieces_of_type(pt);
-                        if (pt_bb & sq_bb) != BB_EMPTY {
-                            //there's probably a better way to do this
-                            if is_white {
-                                write!(f, "{}", pt)?;
-                            } else {
-                                write!(f, "{}", pt.get_code().to_lowercase())?;
-                            }
-                            break;
-                        }
-                    }
-                } else {
-                    write!(f, " ")?;
-                }
+                match self.color_at_square(current_square) {
+                    WHITE => write!(f, "{}", pt)?,
+                    BLACK => write!(f, "{}", pt.get_code().to_lowercase())?,
+                    _ => write!(f, " ")?,
+                };
 
                 if c == 7 {
                     write!(f, "\n")?;
@@ -559,6 +522,31 @@ impl Display for Board {
 impl Hash for Board {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.hash.hash(state);
+    }
+}
+
+impl Default for Board{
+    fn default() -> Board {
+        let mut board = Board {
+            sides: [
+                Bitboard(0x000000000000FFFF), //white
+                Bitboard(0xFFFF000000000000), //black
+            ],
+            pieces: [
+                Bitboard(0x00FF00000000FF00), //pawn
+                Bitboard(0x4200000000000042), //knight
+                Bitboard(0x2400000000000024), //bishop
+                Bitboard(0x8100000000000081), //rook
+                Bitboard(0x0800000000000008), //queen
+                Bitboard(0x1000000000000010), //king
+            ],
+            en_passant_square: BAD_SQUARE,
+            player_to_move: WHITE,
+            castle_rights: CastleRights::ALL_RIGHTS,
+            hash: 0,
+        };
+        board.recompute_hash();
+        return board;
     }
 }
 
@@ -618,7 +606,7 @@ mod tests {
         let result = Board::from_fen(fens::BOARD_START_FEN);
         match result {
             Ok(b) => {
-                assert_eq!(b, Board::new());
+                assert_eq!(b, Board::default());
             }
             Err(e) => {
                 println!("{}", e);
@@ -632,7 +620,7 @@ mod tests {
      * Test that we can play e4 on the first move of the game.
      */
     fn test_play_e4() {
-        test_move_helper(Board::new(), Move::new(E2, E4, NO_TYPE));
+        test_move_helper(Board::default(), Move::new(E2, E4, NO_TYPE));
     }
 
     #[test]
