@@ -262,6 +262,11 @@ impl Board {
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
+    pub fn is_move_promotion(&self, m: Move) -> bool {
+        self.get_pieces_of_type_and_color(PAWN, self.player_to_move).is_square_occupied(m.from_square()) && 
+        Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move) != BB_EMPTY
+    }
+
     /**
      * Check if the state of this board is valid,
      * Returns false if the board is invalid.
@@ -554,6 +559,7 @@ pub mod tests {
     use crate::fens;
     use crate::movegen::MoveGenerator;
     use crate::square::*;
+    use crate::piece::QUEEN;
 
     /**
      * A board with the white king on A1 and the black king on H8.
@@ -628,12 +634,23 @@ pub mod tests {
         test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, NO_TYPE));
     }
 
+    /**
+     * Test that White can castle kingside.
+     */
     #[test]
     fn test_white_kingide_castle() {
         test_fen_helper(
             fens::WHITE_KINGSIDE_CASTLE_READY_FEN,
             Move::new(E1, G1, NO_TYPE),
         );
+    }
+
+    #[test]
+    /**
+     * Test that White can promote their pawn to a queen
+     */
+    fn test_white_promote_queen() {
+        test_fen_helper(fens::WHITE_READY_TO_PROMOTE_FEN, Move::new(F7, F8, QUEEN));
     }
 
     /**
@@ -674,10 +691,15 @@ pub mod tests {
         let mover_type = old_board.type_at_square(m.from_square());
         let is_en_passant = old_board.is_move_en_passant(m);
         let is_castle = old_board.is_move_castle(m);
+        let is_promotion = old_board.is_move_promotion(m);
 
         assert!(new_board.is_valid());
 
-        assert_eq!(new_board.type_at_square(m.to_square()), mover_type);
+        if is_promotion {
+            assert_eq!(new_board.type_at_square(m.to_square()), m.promote_type());
+        } else {
+            assert_eq!(new_board.type_at_square(m.to_square()), mover_type);
+        }
         assert_eq!(new_board.color_at_square(m.to_square()), mover_color);
 
         assert_eq!(new_board.type_at_square(m.from_square()), NO_TYPE);

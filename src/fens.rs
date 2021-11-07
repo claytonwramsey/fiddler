@@ -29,3 +29,10 @@ pub const EN_PASSANT_READY_FEN: &'static str =
  */
 pub const WHITE_KINGSIDE_CASTLE_READY_FEN: &'static str =
     "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+
+#[allow(dead_code)]
+/**
+ * A board where White is ready to promote the f7-pawn. Also, the position is 
+ * mate in 7.
+ */
+pub const WHITE_READY_TO_PROMOTE_FEN: &'static str = "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1";
