@@ -2,7 +2,7 @@ use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::castling::CastleRights;
 use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::{PieceType, KING, NO_TYPE, PAWN, PIECE_TYPES, ROOK};
+use crate::piece::{PieceType, KING, NO_TYPE, PAWN, ROOK};
 use crate::r#move::Move;
 use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
@@ -509,11 +509,8 @@ impl Display for Board {
                     BLACK => write!(f, "{}", pt.get_code().to_lowercase())?,
                     _ => write!(f, " ")?,
                 };
-
-                if c == 7 {
-                    write!(f, "\n")?;
-                }
             }
+            write!(f, "\n")?;
         }
         Ok(())
     }
@@ -551,7 +548,7 @@ impl Default for Board{
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     #[allow(unused_imports)]
     use super::*;
     use crate::fens;
@@ -631,18 +628,6 @@ mod tests {
         test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, NO_TYPE));
     }
 
-    /**
-     * A helper function which will load a board from a FEN and then try
-     * running the given move on that board.
-     */
-    fn test_fen_helper(fen: &str, m: Move) {
-        let result = Board::from_fen(fen);
-        match result {
-            Ok(board) => test_move_helper(board, m),
-            Err(_) => assert!(false),
-        };
-    }
-
     #[test]
     fn test_white_kingide_castle() {
         test_fen_helper(
@@ -652,36 +637,58 @@ mod tests {
     }
 
     /**
+     * A helper function which will load a board from a FEN and then try
+     * running the given move on that board.
+     */
+    pub fn test_fen_helper(fen: &str, m: Move) {
+        let result = Board::from_fen(fen);
+        match result {
+            Ok(board) => test_move_helper(board, m),
+            Err(_) => assert!(false),
+        };
+    }
+
+    /**
      * A helper function which will attempt to make a legal move on a board,
      * and will fail assertions if the board's state was not changed correctly.
      */
-    fn test_move_helper(board: Board, m: Move) {
+    pub fn test_move_helper(board: Board, m: Move) {
         let mgen = MoveGenerator::new();
-        let mover_color = board.color_at_square(m.from_square());
-        let mover_type = board.type_at_square(m.from_square());
-        let is_en_passant = board.is_move_en_passant(m);
-        let is_castle = board.is_move_castle(m);
 
-        //newboard will be mutated to reflect the move
-        let mut newboard = board;
+        //new_board will be mutated to reflect the move
+        let mut new_board = board;
 
-        let result = newboard.try_move(&mgen, m);
+        let result = new_board.try_move(&mgen, m);
 
         assert_eq!(result, Ok(()));
-        assert!(newboard.is_valid());
 
-        assert_eq!(newboard.type_at_square(m.to_square()), mover_type);
-        assert_eq!(newboard.color_at_square(m.to_square()), mover_color);
+        test_move_result_helper(board, new_board, m);
+    }
 
-        assert_eq!(newboard.type_at_square(m.from_square()), NO_TYPE);
-        assert_eq!(newboard.color_at_square(m.from_square()), NO_COLOR);
+    /**
+     * Test that `new_board` was created by playing the move `m` on `
+     * old_board`. Fails assertion if this is not the case.
+     */
+    pub fn test_move_result_helper(old_board: Board, new_board: Board, m: Move) {
+        let mover_color = old_board.color_at_square(m.from_square());
+        let mover_type = old_board.type_at_square(m.from_square());
+        let is_en_passant = old_board.is_move_en_passant(m);
+        let is_castle = old_board.is_move_castle(m);
+        
+        assert!(new_board.is_valid());
+
+        assert_eq!(new_board.type_at_square(m.to_square()), mover_type);
+        assert_eq!(new_board.color_at_square(m.to_square()), mover_color);
+
+        assert_eq!(new_board.type_at_square(m.from_square()), NO_TYPE);
+        assert_eq!(new_board.color_at_square(m.from_square()), NO_COLOR);
 
         //Check en passant worked correctly
         if is_en_passant {
-            assert_eq!(newboard.type_at_square(board.en_passant_square), PAWN);
+            assert_eq!(new_board.type_at_square(old_board.en_passant_square), PAWN);
             assert_eq!(
-                newboard.color_at_square(board.en_passant_square),
-                board.player_to_move
+                new_board.color_at_square(old_board.en_passant_square),
+                old_board.player_to_move
             );
         }
 
@@ -700,11 +707,11 @@ mod tests {
             let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file);
             let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file);
 
-            assert_eq!(newboard.type_at_square(rook_start_sq), NO_TYPE);
-            assert_eq!(newboard.color_at_square(rook_start_sq), NO_COLOR);
+            assert_eq!(new_board.type_at_square(rook_start_sq), NO_TYPE);
+            assert_eq!(new_board.color_at_square(rook_start_sq), NO_COLOR);
 
-            assert_eq!(newboard.type_at_square(rook_end_sq), ROOK);
-            assert_eq!(newboard.color_at_square(rook_end_sq), board.player_to_move);
+            assert_eq!(new_board.type_at_square(rook_end_sq), ROOK);
+            assert_eq!(new_board.color_at_square(rook_end_sq), old_board.player_to_move);
         }
 
         // TODO Check castling rights were removed correctly
