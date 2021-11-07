@@ -1,3 +1,8 @@
+"""
+This script generates the static constants in src/zobrist.rs, and prints the
+resulting constants to the console.
+"""
+
 import random as rand
 
 rand.seed(12345)
