@@ -8,10 +8,10 @@ use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
 use crate::zobrist;
 
+use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::result::Result;
-use std::default::Default;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /**
@@ -41,14 +41,13 @@ pub struct Board {
      */
     pub castle_rights: CastleRights,
     /**
-     * A saved internal hash. If the board is valid, the this value must ALWAYS 
+     * A saved internal hash. If the board is valid, the this value must ALWAYS
      * be equal to the output of `Board.get_fresh_hash()`.
      */
     hash: u64,
 }
 
 impl Board {
-
     /**
      * Create an empty board with no pieces or castle rights.
      */
@@ -254,12 +253,13 @@ impl Board {
 
     #[inline]
     /**
-     * In this state, is the given move a castle? Assumes the move is 
+     * In this state, is the given move a castle? Assumes the move is
      * pseudo-legal.
      */
     pub fn is_move_castle(&self, m: Move) -> bool {
-        self.get_pieces_of_type(KING).is_square_occupied(m.from_square()) && 
-            m.from_square().chebyshev_to(m.to_square()) > 1
+        self.get_pieces_of_type(KING)
+            .is_square_occupied(m.from_square())
+            && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
     /**
@@ -522,7 +522,7 @@ impl Hash for Board {
     }
 }
 
-impl Default for Board{
+impl Default for Board {
     fn default() -> Board {
         let mut board = Board {
             sides: [
@@ -674,7 +674,7 @@ pub mod tests {
         let mover_type = old_board.type_at_square(m.from_square());
         let is_en_passant = old_board.is_move_en_passant(m);
         let is_castle = old_board.is_move_castle(m);
-        
+
         assert!(new_board.is_valid());
 
         assert_eq!(new_board.type_at_square(m.to_square()), mover_type);
@@ -711,7 +711,10 @@ pub mod tests {
             assert_eq!(new_board.color_at_square(rook_start_sq), NO_COLOR);
 
             assert_eq!(new_board.type_at_square(rook_end_sq), ROOK);
-            assert_eq!(new_board.color_at_square(rook_end_sq), old_board.player_to_move);
+            assert_eq!(
+                new_board.color_at_square(rook_end_sq),
+                old_board.player_to_move
+            );
         }
 
         // TODO Check castling rights were removed correctly

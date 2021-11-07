@@ -78,7 +78,11 @@ impl MoveGenerator {
                 }
                 for file in king_passthru_min..king_passthru_max {
                     let target_sq = Square::new(m.from_square().rank(), file);
-                    is_valid &= !self.is_square_attacked_by(board, target_sq, opposite_color(board.player_to_move));
+                    is_valid &= !self.is_square_attacked_by(
+                        board,
+                        target_sq,
+                        opposite_color(board.player_to_move),
+                    );
                 }
                 if is_valid {
                     legal_moves.push(m);
