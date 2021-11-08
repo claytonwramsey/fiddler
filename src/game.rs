@@ -5,6 +5,7 @@ use crate::r#move::Move;
 use std::collections::HashMap;
 use std::default::Default;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 /**
  * A struct containing game information, which unlike a `Board`, knows about
  * its history and can do things like repetition timing.
@@ -155,6 +156,10 @@ mod tests {
     use crate::square::*;
 
     #[test]
+    /**
+     * Test that we can play a simple move on a Game and have the board states 
+     * update accordingly.
+     */
     fn test_play_e4() {
         let mut g = Game::default();
         let m = Move::new(E2, E4, NO_TYPE);
@@ -165,11 +170,62 @@ mod tests {
     }
 
     #[test]
+    /**
+     * Test that a single move can be undone correctly.
+     */
     fn test_undo_move() {
         let mut g = Game::default();
         let m = Move::new(E2, E4, NO_TYPE);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g.get_board(), Board::default());
+    }
+
+    #[test]
+    /**
+     * Test that an undo will fail if there is no history to undo.
+     */
+    fn test_illegal_undo() {
+        let mut g = Game::default();
+        assert!(g.undo().is_err());
+        assert_eq!(g.get_board(), Board::default());
+    }
+
+    #[test]
+    /**
+     * Test that we can undo multiple moves in a row.
+     */
+    fn test_undo_multiple_moves() {
+        let mut g = Game::default();
+        let m0 = Move::new(E2, E4, NO_TYPE);
+        let m1 = Move::new(E7, E5, NO_TYPE);
+        g.make_move(m0);
+        g.make_move(m1);
+        assert_eq!(g.undo_n(2), Ok(()));
+        assert_eq!(g.get_board(), Board::default());
+    }
+
+    #[test]
+    /**
+     * Test that a `Game` becomes exactly the same as what it started as if a 
+     * move is undone.
+     */
+    fn test_undo_equality() {
+        let mut g = Game::default();
+        g.make_move(Move::new(E2, E4, NO_TYPE));
+        assert!(g.undo().is_ok());
+        assert_eq!(g, Game::default());
+    }
+
+    #[test]
+    /**
+     * Test that clearing a board has the same effect of replacing it with a 
+     * default board, if the initial state was the initial board state.
+     */
+    fn test_clear_board() {
+        let mut g = Game::default();
+        g.make_move(Move::new(E2, E4, NO_TYPE));
+        g.clear();
+        assert_eq!(g, Game::default());
     }
 }
