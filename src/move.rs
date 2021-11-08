@@ -1,7 +1,8 @@
 use crate::piece::{PieceType, NO_TYPE};
 use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /**
  * The information of one move, containing its from- and to-squares, as well as
  * its promote type, in one integer.
@@ -70,3 +71,6 @@ impl Display for Move {
         }
     }
 }
+
+#[allow(dead_code)]
+pub const BAD_MOVE: Move = Move(0xFFFF);

@@ -135,6 +135,31 @@ impl Game {
     pub fn get_board(&self) -> Board {
         return *self.history.last().unwrap_or(&Board::default());
     }
+
+    #[inline]
+    /**
+     * In the current state, is the game complete (i.e. is there no way the 
+     * game can continue)?
+     */
+    pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
+        let moves = mgen.get_moves(&self.get_board());
+        if moves.len() == 0 {
+            return true;
+        }
+        //TODO return true in case of draw by repetion or timeout
+        return false;
+    }
+
+    /**
+     * Get the legal moves in this position. Will be empty if the position is 
+     * drawn or the game is over.
+     */
+    pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
+        if !self.is_game_over(mgen) {
+            return Vec::new();
+        }
+        return mgen.get_moves(&self.get_board());
+    }
 }
 
 impl Default for Game {
