@@ -138,7 +138,7 @@ impl Game {
 
     #[inline]
     /**
-     * In the current state, is the game complete (i.e. is there no way the 
+     * In the current state, is the game complete (i.e. is there no way the
      * game can continue)?
      */
     pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
@@ -151,7 +151,7 @@ impl Game {
     }
 
     /**
-     * Get the legal moves in this position. Will be empty if the position is 
+     * Get the legal moves in this position. Will be empty if the position is
      * drawn or the game is over.
      */
     pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     /**
-     * Test that we can play a simple move on a Game and have the board states 
+     * Test that we can play a simple move on a Game and have the board states
      * update accordingly.
      */
     fn test_play_e4() {
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     /**
-     * Test that a `Game` becomes exactly the same as what it started as if a 
+     * Test that a `Game` becomes exactly the same as what it started as if a
      * move is undone.
      */
     fn test_undo_equality() {
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     /**
-     * Test that clearing a board has the same effect of replacing it with a 
+     * Test that clearing a board has the same effect of replacing it with a
      * default board, if the initial state was the initial board state.
      */
     fn test_clear_board() {

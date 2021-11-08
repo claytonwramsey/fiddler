@@ -32,7 +32,7 @@ pub const WHITE_KINGSIDE_CASTLE_READY_FEN: &'static str =
 
 #[allow(dead_code)]
 /**
- * A board where White is ready to promote the f7-pawn. Also, the position is 
+ * A board where White is ready to promote the f7-pawn. Also, the position is
  * mate in 7.
  */
 pub const WHITE_READY_TO_PROMOTE_FEN: &'static str = "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1";

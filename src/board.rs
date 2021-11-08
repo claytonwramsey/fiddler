@@ -263,8 +263,9 @@ impl Board {
     }
 
     pub fn is_move_promotion(&self, m: Move) -> bool {
-        self.get_pieces_of_type_and_color(PAWN, self.player_to_move).is_square_occupied(m.from_square()) && 
-        Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move) != BB_EMPTY
+        self.get_pieces_of_type_and_color(PAWN, self.player_to_move)
+            .is_square_occupied(m.from_square())
+            && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move) != BB_EMPTY
     }
 
     /**
@@ -558,8 +559,8 @@ pub mod tests {
     use super::*;
     use crate::fens;
     use crate::movegen::MoveGenerator;
-    use crate::square::*;
     use crate::piece::QUEEN;
+    use crate::square::*;
 
     /**
      * A board with the white king on A1 and the black king on H8.
