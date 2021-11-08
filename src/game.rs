@@ -27,7 +27,7 @@ pub struct Game {
      * Stores the number of times a position has been reached in the course of
      * this game. It is used for three-move-rule draws.
      */
-    repetitions: HashMap<Board, u8>,
+    repetitions: HashMap<Board, u64>,
     //TODO figure out how to implement fifty-move rule here.
 }
 
@@ -129,11 +129,12 @@ impl Game {
     #[inline]
     #[allow(dead_code)]
     /**
-     * Get the current state of the game as a board. Will return a default
-     * Board if the history is empty (but this should never happen).
+     * Get the current state of the game as a board. Will panic if there is no 
+     * history (but this should never happen if the game was initialized 
+     * correctly)
      */
-    pub fn get_board(&self) -> Board {
-        return *self.history.last().unwrap_or(&Board::default());
+    pub fn get_board(&self) -> &Board {
+        self.history.last().unwrap()
     }
 
     #[inline]
@@ -155,7 +156,7 @@ impl Game {
      * drawn or the game is over.
      */
     pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
-        if !self.is_game_over(mgen) {
+        if self.is_game_over(mgen) {
             return Vec::new();
         }
         return mgen.get_moves(&self.get_board());
@@ -188,10 +189,10 @@ mod tests {
     fn test_play_e4() {
         let mut g = Game::default();
         let m = Move::new(E2, E4, NO_TYPE);
-        let old_board = g.get_board();
+        let old_board = *g.get_board();
         g.make_move(Move::new(E2, E4, NO_TYPE));
         let new_board = g.get_board();
-        board::tests::test_move_result_helper(old_board, new_board, m);
+        board::tests::test_move_result_helper(old_board, *new_board, m);
     }
 
     #[test]
@@ -203,7 +204,7 @@ mod tests {
         let m = Move::new(E2, E4, NO_TYPE);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
-        assert_eq!(g.get_board(), Board::default());
+        assert_eq!(*g.get_board(), Board::default());
     }
 
     #[test]
@@ -213,7 +214,7 @@ mod tests {
     fn test_illegal_undo() {
         let mut g = Game::default();
         assert!(g.undo().is_err());
-        assert_eq!(g.get_board(), Board::default());
+        assert_eq!(*g.get_board(), Board::default());
     }
 
     #[test]
@@ -227,7 +228,7 @@ mod tests {
         g.make_move(m0);
         g.make_move(m1);
         assert_eq!(g.undo_n(2), Ok(()));
-        assert_eq!(g.get_board(), Board::default());
+        assert_eq!(*g.get_board(), Board::default());
     }
 
     #[test]

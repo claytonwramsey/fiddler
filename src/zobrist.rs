@@ -1,5 +1,5 @@
-use crate::constants::{Color, NUM_PIECE_TYPES, WHITE};
-use crate::piece::{PieceType, NO_TYPE};
+use crate::constants::{Color, WHITE};
+use crate::piece::{PieceType, NO_TYPE, NUM_PIECE_TYPES};
 use crate::square::{Square, BAD_SQUARE};
 
 #[inline]

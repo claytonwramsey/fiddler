@@ -1,9 +1,4 @@
 /**
- * Total number of piece types. TODO: should this be moved to piece.rs?
- */
-pub const NUM_PIECE_TYPES: usize = 6;
-
-/**
  * The names of the files on the board.
  */
 pub const FILE_NAMES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];

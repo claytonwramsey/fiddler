@@ -1,5 +1,10 @@
 use std::fmt::{Display, Formatter, Result};
 
+/**
+ * Total number of piece types. TODO: should this be moved to piece.rs?
+ */
+pub const NUM_PIECE_TYPES: usize = 6;
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 /**
  * A struct representing the type of a piece. Only the rightmost 3 bits are
@@ -63,6 +68,6 @@ pub const QUEEN: PieceType = PieceType(4);
 #[allow(dead_code)]
 pub const KING: PieceType = PieceType(5);
 
-pub const PIECE_TYPES: [PieceType; 6] = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
+pub const PIECE_TYPES: [PieceType; NUM_PIECE_TYPES] = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
 
 pub const PROMOTE_TYPES: [PieceType; 4] = [KNIGHT, BISHOP, ROOK, QUEEN];

@@ -1,8 +1,7 @@
 use crate::bitboard::{Bitboard, BB_EMPTY};
 use crate::castling::CastleRights;
-use crate::constants::NUM_PIECE_TYPES;
 use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::{PieceType, KING, NO_TYPE, PAWN, ROOK};
+use crate::piece::{PieceType, KING, NO_TYPE, PAWN, ROOK, NUM_PIECE_TYPES};
 use crate::r#move::Move;
 use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
