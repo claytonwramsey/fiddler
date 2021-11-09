@@ -45,6 +45,5 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         eval += piece_value(pt) * b.get_pieces_of_type_and_color(pt, WHITE).0.count_ones();
         eval -= piece_value(pt) * b.get_pieces_of_type_and_color(pt, BLACK).0.count_ones();
     }
-
     return eval;
 }

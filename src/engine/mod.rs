@@ -46,17 +46,14 @@ pub trait Engine {
      * moves, but `g` should be the same before and after its use.
      */
     fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
-        println!("called!");
         let moves = g.get_moves(mgen);
         let mut evals = HashMap::new();
         for m in moves {
-            println!("move move!");
             g.make_move(m);
             let ev = self.evaluate(g, mgen);
 
             //this should never fail since we just made a move, but who knows?
             if let Ok(_) = g.undo() {
-                println!("inserting!");
                 evals.insert(m, ev);
             } else {
                 println!("somehow, undoing failed on a game");
@@ -104,7 +101,7 @@ impl Display for Eval {
         if self.0 > MATE_CUTOFF {
             // white to mate
             write!(f, "+M{:2.0}", (MATE_0_VAL - self.0 + 1) / 2)?;
-        } else if self.0 < MATE_CUTOFF {
+        } else if self.0 < -MATE_CUTOFF {
             // black to mate
             write!(f, "-M{:2.0}", (MATE_0_VAL + self.0 + 1) / 2)?;
         } else if self.0 == 0 {

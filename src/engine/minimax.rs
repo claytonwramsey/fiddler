@@ -48,7 +48,7 @@ impl Minimax {
 impl Default for Minimax {
     fn default() -> Minimax {
         Minimax {
-            depth: 5,
+            depth: 13,
             evaluator: greedy_evaluate,
         }
     }
@@ -71,7 +71,6 @@ mod tests {
      * Test Minimax's evaluation of the start position of the game.
      */
     fn test_eval_start() {
-        println!("blah");
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         let mut e = Minimax::default();
