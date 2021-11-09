@@ -1,6 +1,6 @@
 use crate::Board;
 use crate::movegen::MoveGenerator;
-use crate::r#move::Move;
+use crate::moves::Move;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -187,7 +187,7 @@ mod tests {
     use super::*;
     use crate::board;
     use crate::piece::NO_TYPE;
-    use crate::r#move::Move;
+    use crate::moves::Move;
     use crate::square::*;
 
     #[test]

@@ -94,7 +94,7 @@ impl Engine for Minimax {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::r#move::Move;
+    use crate::moves::Move;
     #[allow(unused_imports)]
     use crate::fens::*;
     use std::collections::HashMap;

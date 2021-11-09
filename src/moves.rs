@@ -73,4 +73,7 @@ impl Display for Move {
 }
 
 #[allow(dead_code)]
+/**
+ * A sentinel value for a move which is illegal, or otherwise inexpressible.
+ */
 pub const BAD_MOVE: Move = Move(0xFFFF);

@@ -9,7 +9,7 @@ use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::piece::{
     PieceType, BISHOP, KING, KNIGHT, NO_TYPE, PAWN, PIECE_TYPES, PROMOTE_TYPES, QUEEN, ROOK,
 };
-use crate::r#move::Move;
+use crate::moves::Move;
 use crate::square::Square;
 use crate::util::{opposite_color, pawn_direction, pawn_promote_rank, pawn_start_rank};
 

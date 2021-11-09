@@ -1,6 +1,6 @@
 use crate::game::Game;
 use crate::movegen::MoveGenerator;
-use crate::r#move::{Move, BAD_MOVE};
+use crate::moves::{Move, BAD_MOVE};
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
