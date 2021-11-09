@@ -1,5 +1,5 @@
 use crate::engine::{Engine, Eval, EvaluationFn};
-use crate::engine::greedy::greedy_evaluate;
+use crate::engine::positional::positional_evaluate;
 use crate::constants::{WHITE, BLACK};
 use crate::game::Game;
 use crate::movegen::MoveGenerator;
@@ -71,7 +71,7 @@ impl Default for Minimax {
     fn default() -> Minimax {
         Minimax {
             depth: 5,
-            evaluator: greedy_evaluate,
+            evaluator: positional_evaluate,
             num_nodes_evaluated: 0,
         }
     }

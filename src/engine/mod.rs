@@ -113,14 +113,28 @@ impl Eval {
     }
 
     #[inline]
-    pub fn step_back(self) -> Eval {
+    /**
+     * Step this evaluation back in time one move. "normal" evaluations will 
+     * not be changed, but mates will be moved one closer to 0.
+     */
+    pub fn step_back(&self) -> Eval {
         if self.0 > MATE_CUTOFF {
             return Eval(self.0 - 1);
         } else if self.0 < -MATE_CUTOFF {
             return Eval(self.0 + 1);
         }
-        self
+        *self
     }
+
+    #[inline]
+    /**
+     * Is this evaluation a mate (i.e. a non-normal evaluation)?
+     */
+    pub fn is_mate(&self) -> bool {
+        self.0 > MATE_CUTOFF || self.0 < -MATE_CUTOFF
+    }
+
+
 }
 
 impl Display for Eval {

@@ -1,5 +1,7 @@
 mod bitboard;
-pub mod board;
+pub use crate::bitboard::Bitboard;
+mod board;
+pub use crate::board::Board;
 mod castling;
 mod constants;
 mod direction;
