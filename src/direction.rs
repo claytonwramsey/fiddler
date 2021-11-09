@@ -1,4 +1,4 @@
-use crate::square::Square;
+use crate::Square;
 use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Copy, Clone, Debug)]
@@ -10,6 +10,46 @@ use std::ops::{Add, Mul, Neg, Sub};
 pub struct Direction(pub i8);
 
 impl Direction {
+    pub const NODIR: Direction = Direction(0);
+    //adding 8 to a square in conventional form brings up a row
+    pub const NORTH: Direction = Direction(8);
+    //adding 1 moves you east in conventional
+    pub const EAST: Direction = Direction(1);
+
+    //sadly, the nature of rust consts means this doesn't work
+    //pub const SOUTH: Direction = -NORTH;
+    pub const SOUTH: Direction = Direction(-8);
+    pub const WEST: Direction = Direction(-1);
+
+    //composite directions
+    pub const NORTHWEST: Direction = Direction(Direction::NORTH.0 + Direction::WEST.0);
+    pub const NORTHEAST: Direction = Direction(Direction::NORTH.0 + Direction::EAST.0);
+    pub const SOUTHEAST: Direction = Direction(Direction::SOUTH.0 + Direction::EAST.0);
+    pub const SOUTHWEST: Direction = Direction(Direction::SOUTH.0 + Direction::WEST.0);
+
+    //knight directions
+    pub const NNW: Direction = Direction(2 * Direction::NORTH.0 + Direction::WEST.0);
+    pub const NNE: Direction = Direction(2 * Direction::NORTH.0 + Direction::EAST.0);
+    pub const NEE: Direction = Direction(Direction::NORTH.0 + 2 * Direction::EAST.0);
+    pub const SEE: Direction = Direction(Direction::SOUTH.0 + 2 * Direction::EAST.0);
+    pub const SSE: Direction = Direction(2 * Direction::SOUTH.0 + Direction::EAST.0);
+    pub const SSW: Direction = Direction(2 * Direction::SOUTH.0 + Direction::WEST.0);
+    pub const SWW: Direction = Direction(Direction::SOUTH.0 + 2 * Direction::WEST.0);
+    pub const NWW: Direction = Direction(Direction::NORTH.0 + 2 * Direction::WEST.0);
+
+    pub const ROOK_DIRECTIONS: [Direction; 4] = [
+        Direction::NORTH,
+        Direction::SOUTH,
+        Direction::EAST,
+        Direction::WEST,
+    ];
+    pub const BISHOP_DIRECTIONS: [Direction; 4] = [
+        Direction::NORTHWEST,
+        Direction::NORTHEAST,
+        Direction::SOUTHWEST,
+        Direction::SOUTHEAST,
+    ];
+
     #[inline]
     #[allow(dead_code)]
     /**
@@ -78,36 +118,6 @@ impl PartialEq for Direction {
 }
 impl Eq for Direction {}
 
-pub const NODIR: Direction = Direction(0);
-//adding 8 to a square in conventional form brings up a row
-pub const NORTH: Direction = Direction(8);
-//adding 1 moves you east in conventional
-pub const EAST: Direction = Direction(1);
-
-//sadly, the nature of rust consts means this doesn't work
-//pub const SOUTH: Direction = -NORTH;
-pub const SOUTH: Direction = Direction(-8);
-pub const WEST: Direction = Direction(-1);
-
-//composite directions
-pub const NORTHWEST: Direction = Direction(NORTH.0 + WEST.0);
-pub const NORTHEAST: Direction = Direction(NORTH.0 + EAST.0);
-pub const SOUTHEAST: Direction = Direction(SOUTH.0 + EAST.0);
-pub const SOUTHWEST: Direction = Direction(SOUTH.0 + WEST.0);
-
-//knight directions
-pub const NNW: Direction = Direction(2 * NORTH.0 + WEST.0);
-pub const NNE: Direction = Direction(2 * NORTH.0 + EAST.0);
-pub const NEE: Direction = Direction(NORTH.0 + 2 * EAST.0);
-pub const SEE: Direction = Direction(SOUTH.0 + 2 * EAST.0);
-pub const SSE: Direction = Direction(2 * SOUTH.0 + EAST.0);
-pub const SSW: Direction = Direction(2 * SOUTH.0 + WEST.0);
-pub const SWW: Direction = Direction(SOUTH.0 + 2 * WEST.0);
-pub const NWW: Direction = Direction(NORTH.0 + 2 * WEST.0);
-
-pub const ROOK_DIRECTIONS: [Direction; 4] = [NORTH, SOUTH, EAST, WEST];
-pub const BISHOP_DIRECTIONS: [Direction; 4] = [NORTHWEST, NORTHEAST, SOUTHWEST, SOUTHEAST];
-
 #[cfg(test)]
 mod tests {
 
@@ -116,19 +126,19 @@ mod tests {
 
     #[test]
     fn test_add_directions() {
-        assert_eq!(NODIR + EAST, EAST);
-        assert_eq!(EAST + WEST, NODIR);
+        assert_eq!(Direction::NODIR + Direction::EAST, Direction::EAST);
+        assert_eq!(Direction::EAST + Direction::WEST, Direction::NODIR);
     }
 
     #[test]
     fn test_opposite_directions() {
-        assert_eq!(-EAST, WEST);
-        assert_eq!(-NORTH, SOUTH);
+        assert_eq!(-Direction::EAST, Direction::WEST);
+        assert_eq!(-Direction::NORTH, Direction::SOUTH);
     }
 
     #[test]
     fn test_subtraction() {
-        assert_eq!(NORTHEAST - EAST, NORTH);
-        assert_eq!(EAST - EAST, NODIR);
+        assert_eq!(Direction::NORTHEAST - Direction::EAST, Direction::NORTH);
+        assert_eq!(Direction::EAST - Direction::EAST, Direction::NODIR);
     }
 }

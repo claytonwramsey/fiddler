@@ -1,8 +1,10 @@
-use crate::bitboard::{Bitboard, BB_EMPTY};
-use crate::direction::{Direction, BISHOP_DIRECTIONS, ROOK_DIRECTIONS};
-use crate::square::Square;
+use crate::direction::Direction;
+use crate::Bitboard;
+use crate::Square;
+
 use rand::thread_rng;
 use rand::Rng;
+
 use std::mem::{transmute, MaybeUninit};
 use std::vec::Vec;
 
@@ -285,8 +287,8 @@ impl Magic {
      */
     pub fn new() -> Magic {
         Magic {
-            mask: BB_EMPTY,
-            magic: BB_EMPTY,
+            mask: Bitboard::EMPTY,
+            magic: Bitboard::EMPTY,
             attacks: Vec::new(),
             shift: 0,
         }
@@ -310,16 +312,18 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             table[i].magic = SAVED_BISHOP_MAGICS[i];
             table[i].shift = BISHOP_SHIFTS[i];
         }
-        table[i].attacks.resize(1 << table[i].shift, BB_EMPTY);
+        table[i]
+            .attacks
+            .resize(1 << table[i].shift, Bitboard::EMPTY);
         let num_points = table[i].mask.0.count_ones();
         for j in 0..(1 << num_points) {
             let occupancy = index_to_occupancy(j, table[i].mask);
             let attack = match is_rook {
-                true => directional_attacks(sq, ROOK_DIRECTIONS, occupancy),
-                false => directional_attacks(sq, BISHOP_DIRECTIONS, occupancy),
+                true => directional_attacks(sq, Direction::ROOK_DIRECTIONS, occupancy),
+                false => directional_attacks(sq, Direction::BISHOP_DIRECTIONS, occupancy),
             };
             let key = compute_magic_key(occupancy, table[i].magic, table[i].shift);
-            if table[i].attacks[key] == BB_EMPTY {
+            if table[i].attacks[key] == Bitboard::EMPTY {
                 table[i].attacks[key] = attack;
             } else if table[i].attacks[key] != attack {
                 //This should never happen, since we should expect our loads to
@@ -383,17 +387,17 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 
         //we know that there are at most 12 pieces that will matter when it
         //comes to attack lookups
-        let mut occupancies = [BB_EMPTY; 1 << 12];
-        let mut attacks = [BB_EMPTY; 1 << 12];
+        let mut occupancies = [Bitboard::EMPTY; 1 << 12];
+        let mut attacks = [Bitboard::EMPTY; 1 << 12];
 
         //compute every possible occupancy arrangement for attacking
         for j in 0..(1 << num_points) {
             occupancies[j] = index_to_occupancy(j, table[i].mask);
             //compute attacks
             if is_rook {
-                attacks[j] = directional_attacks(sq, ROOK_DIRECTIONS, occupancies[j])
+                attacks[j] = directional_attacks(sq, Direction::ROOK_DIRECTIONS, occupancies[j])
             } else {
-                attacks[j] = directional_attacks(sq, BISHOP_DIRECTIONS, occupancies[j])
+                attacks[j] = directional_attacks(sq, Direction::BISHOP_DIRECTIONS, occupancies[j])
             }
         }
         //try random magics until one works
@@ -403,11 +407,11 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             let magic = random_sparse_bitboard();
 
             //repopulate the usage table with zeros
-            used = [BB_EMPTY; 1 << 12];
+            used = [Bitboard::EMPTY; 1 << 12];
             found_magic = true;
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], magic, table[i].shift);
-                if used[key] == BB_EMPTY {
+                if used[key] == Bitboard::EMPTY {
                     used[key] = attacks[j];
                 } else if used[key] != attacks[j] {
                     found_magic = false;
@@ -435,7 +439,9 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             );
         } else {
             // found a magic, populate the attack vector
-            table[i].attacks.resize(1 << table[i].shift, BB_EMPTY);
+            table[i]
+                .attacks
+                .resize(1 << table[i].shift, Bitboard::EMPTY);
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
                 table[i].attacks[key] = attacks[j];
@@ -488,7 +494,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
  * Given some mask, create the occupancy bitboard according to this index.
  */
 fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
-    let mut result = BB_EMPTY;
+    let mut result = Bitboard::EMPTY;
     let num_points = mask.0.count_ones();
 
     //comment this out if you think you're clever
@@ -514,7 +520,7 @@ fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
 }
 
 fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) -> Bitboard {
-    let mut result = BB_EMPTY;
+    let mut result = Bitboard::EMPTY;
     for dir in dirs {
         let mut current_square = sq;
         for _ in 0..7 {
@@ -644,7 +650,7 @@ mod tests {
         ];
         for i in 0..3 {
             let resulting_attack =
-                directional_attacks(squares[i], BISHOP_DIRECTIONS, occupancies[i]);
+                directional_attacks(squares[i], Direction::BISHOP_DIRECTIONS, occupancies[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }

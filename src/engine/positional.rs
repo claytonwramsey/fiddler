@@ -1,10 +1,10 @@
 use crate::engine::greedy::greedy_evaluate;
-use crate::game::Game;
-use crate::movegen::MoveGenerator;
 use crate::engine::Eval;
+use crate::Game;
+use crate::MoveGenerator;
 
 /**
- * Evaluate a position by both its material and the positional value of the 
+ * Evaluate a position by both its material and the positional value of the
  * position.
  */
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {

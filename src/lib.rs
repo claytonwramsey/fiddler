@@ -13,7 +13,7 @@ mod direction;
 pub use crate::direction::Direction;
 
 mod engine;
-pub use crate::engine::{Engine};
+pub use crate::engine::Engine;
 
 mod fens;
 

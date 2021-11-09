@@ -1,10 +1,10 @@
-use crate::game::Game;
-use crate::movegen::MoveGenerator;
-use crate::engine::{Eval};
+use crate::constants::{BLACK, WHITE};
+use crate::engine::Eval;
 use crate::piece::*;
 use crate::util::opposite_color;
-use crate::constants::{WHITE, BLACK};
-use crate::square::Square;
+use crate::Game;
+use crate::MoveGenerator;
+use crate::Square;
 
 /**
  * Get the value of one piece by its type.
@@ -35,7 +35,7 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
                 WHITE => Eval::BLACK_MATE,
                 BLACK => Eval::WHITE_MATE,
                 _ => Eval(0),
-            }
+            };
         }
         return Eval(0);
     }

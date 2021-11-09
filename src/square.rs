@@ -1,6 +1,7 @@
-use crate::bitboard::Bitboard;
 use crate::constants::{FILE_NAMES, RANK_NAMES};
-use crate::direction::Direction;
+use crate::Bitboard;
+use crate::Direction;
+
 use std::cmp::max;
 use std::fmt::{Display, Formatter, Result};
 use std::ops::{Add, AddAssign, Sub};
@@ -241,16 +242,16 @@ mod tests {
 
     #[allow(unused_imports)]
     use super::*;
-    use crate::direction::{EAST, NORTHEAST};
+    use crate::Direction;
 
     #[test]
     fn test_add_square_and_direction() {
-        assert_eq!(A1 + EAST, B1);
-        assert_eq!(A1 + NORTHEAST, B2);
+        assert_eq!(A1 + Direction::EAST, B1);
+        assert_eq!(A1 + Direction::NORTHEAST, B2);
     }
 
     #[test]
     fn test_add_direction_and_square() {
-        assert_eq!(EAST + A1, B1);
+        assert_eq!(Direction::EAST + A1, B1);
     }
 }

@@ -1,8 +1,9 @@
-use crate::engine::{Engine, Eval, EvaluationFn};
+use crate::constants::{BLACK, WHITE};
 use crate::engine::positional::positional_evaluate;
-use crate::constants::{WHITE, BLACK};
-use crate::game::Game;
-use crate::movegen::MoveGenerator;
+use crate::engine::{Eval, EvaluationFn};
+use crate::Engine;
+use crate::Game;
+use crate::MoveGenerator;
 
 use std::cmp::{max, min};
 use std::time::Instant;
@@ -20,9 +21,16 @@ impl Minimax {
     /**
      * Evaluate a position at a given depth. The depth is the number of plays to make. Even depths are recommended for fair evaluations.
      */
-    pub fn evaluate_at_depth(&mut self, depth: i8, alpha_in: Eval, beta_in: Eval, g: &mut Game, mgen: &MoveGenerator) -> Eval {
+    pub fn evaluate_at_depth(
+        &mut self,
+        depth: i8,
+        alpha_in: Eval,
+        beta_in: Eval,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+    ) -> Eval {
         self.num_nodes_evaluated += 1;
-        if depth <= 0  || g.is_game_over(mgen) {
+        if depth <= 0 || g.is_game_over(mgen) {
             return (self.evaluator)(g, mgen);
         }
 
@@ -52,8 +60,7 @@ impl Minimax {
                     break;
                 }
                 alpha = max(alpha, evaluation);
-            }
-            else {
+            } else {
                 //black moves on this turn
                 evaluation = min(evaluation, eval_for_m);
                 if evaluation <= alpha {
@@ -85,7 +92,12 @@ impl Engine for Minimax {
         let eval = self.evaluate_at_depth(self.depth, Eval::MIN, Eval::MAX, g, mgen);
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
-        println!("evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec)", self.num_nodes_evaluated, nsecs, self.num_nodes_evaluated as f64 / nsecs);
+        println!(
+            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec)",
+            self.num_nodes_evaluated,
+            nsecs,
+            self.num_nodes_evaluated as f64 / nsecs
+        );
         return eval;
     }
 }
@@ -94,9 +106,9 @@ impl Engine for Minimax {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::moves::Move;
     #[allow(unused_imports)]
     use crate::fens::*;
+    use crate::moves::Move;
     use std::collections::HashMap;
 
     #[test]
@@ -120,7 +132,6 @@ mod tests {
 
         println!("moves with evals are:");
         print_move_map(&e.get_evals(&mut g, &mgen));
-        
     }
 
     #[test]
@@ -134,7 +145,6 @@ mod tests {
     }
 
     fn test_eval_helper(fen: &str, eval: Eval) {
-        
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = Minimax::default();

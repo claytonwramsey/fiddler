@@ -1,17 +1,14 @@
-use crate::bitboard::{Bitboard, BB_EMPTY};
-use crate::board::Board;
 use crate::constants::{Color, BLACK};
-use crate::direction::{
-    Direction, EAST, NEE, NNE, NNW, NORTH, NORTHEAST, NORTHWEST, NWW, SEE, SOUTH, SOUTHEAST,
-    SOUTHWEST, SSE, SSW, SWW, WEST,
-};
 use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
+use crate::moves::Move;
 use crate::piece::{
     PieceType, BISHOP, KING, KNIGHT, NO_TYPE, PAWN, PIECE_TYPES, PROMOTE_TYPES, QUEEN, ROOK,
 };
-use crate::moves::Move;
 use crate::square::Square;
 use crate::util::{opposite_color, pawn_direction, pawn_promote_rank, pawn_start_rank};
+use crate::Bitboard;
+use crate::Board;
+use crate::Direction;
 
 #[allow(dead_code)]
 /**
@@ -47,7 +44,7 @@ impl MoveGenerator {
     pub fn new() -> MoveGenerator {
         MoveGenerator {
             mtable: MagicTable::load(),
-            pawn_attacks: create_step_attacks(&vec![NORTHEAST, NORTHWEST], 1),
+            pawn_attacks: create_step_attacks(&vec![Direction::NORTHEAST, Direction::NORTHWEST], 1),
             king_moves: create_step_attacks(&get_king_steps(), 1),
             knight_moves: create_step_attacks(&get_knight_steps(), 2),
         }
@@ -102,7 +99,7 @@ impl MoveGenerator {
         //iterate through all the pieces of this color and enumerate their moves
         for pt in PIECE_TYPES {
             let mut pieces_to_move = board.get_pieces_of_type_and_color(pt, color);
-            while pieces_to_move != BB_EMPTY {
+            while pieces_to_move != Bitboard::EMPTY {
                 //square of next piece to move
                 let sq = Square::from(pieces_to_move);
                 //remove that square
@@ -202,11 +199,11 @@ impl MoveGenerator {
         let can_kingside_castle = board
             .castle_rights
             .is_kingside_castle_legal(board.player_to_move)
-            && board.get_occupancy() & kingside_castle_passthrough_sqs == BB_EMPTY;
+            && board.get_occupancy() & kingside_castle_passthrough_sqs == Bitboard::EMPTY;
         let can_queenside_castle = board
             .castle_rights
             .is_queenside_castle_legal(board.player_to_move)
-            && board.get_occupancy() & queenside_castle_passthrough_sqs == BB_EMPTY;
+            && board.get_occupancy() & queenside_castle_passthrough_sqs == Bitboard::EMPTY;
 
         if can_kingside_castle {
             moves.push(Move::new(sq, Square::new(sq.rank(), 6), NO_TYPE));
@@ -228,14 +225,16 @@ impl MoveGenerator {
         let promote_rank = pawn_promote_rank(player_color);
         let from_bb = Bitboard::from(sq);
         let occupancy = board.get_occupancy();
-        let capture_sqs = [sq + dir + EAST, sq + dir + WEST];
+        let capture_sqs = [sq + dir + Direction::EAST, sq + dir + Direction::WEST];
         let opponents = board.get_color_occupancy(board.color_at_square(sq));
-        let mut target_squares = BB_EMPTY;
+        let mut target_squares = Bitboard::EMPTY;
         //this will never be out of bounds because pawns don't live on promotion rank
         if !occupancy.is_square_occupied(sq + dir) {
             target_squares |= Bitboard::from(sq + dir);
             //pawn is on start rank and double-move square is not occupied
-            if (start_rank & from_bb) != BB_EMPTY && !occupancy.is_square_occupied(sq + 2 * dir) {
+            if (start_rank & from_bb) != Bitboard::EMPTY
+                && !occupancy.is_square_occupied(sq + 2 * dir)
+            {
                 target_squares |= Bitboard::from(sq + 2 * dir);
             }
         }
@@ -252,7 +251,7 @@ impl MoveGenerator {
         let promotion_bb = target_squares & promote_rank;
         let not_promotion_bb = target_squares & !promote_rank;
         let mut moves = bitboard_to_moves(sq, not_promotion_bb);
-        if promotion_bb != BB_EMPTY {
+        if promotion_bb != Bitboard::EMPTY {
             for promote_type in PROMOTE_TYPES {
                 moves.extend(bitboard_to_promotions(sq, promotion_bb, promote_type));
             }
@@ -332,7 +331,7 @@ fn bitboard_to_moves(from_sq: Square, bb: Bitboard) -> Vec<Move> {
 fn bitboard_to_promotions(from_sq: Square, bb: Bitboard, promote_type: PieceType) -> Vec<Move> {
     let mut targets = bb;
     let mut moves = Vec::new();
-    while targets != BB_EMPTY {
+    while targets != Bitboard::EMPTY {
         let to_sq = Square::from(targets);
         moves.push(Move::new(from_sq, to_sq, promote_type));
         targets &= !Bitboard::from(to_sq);
@@ -345,7 +344,14 @@ fn bitboard_to_promotions(from_sq: Square, bb: Bitboard, promote_type: PieceType
  */
 fn get_king_steps() -> Vec<Direction> {
     vec![
-        NORTH, NORTHEAST, EAST, SOUTHEAST, SOUTH, SOUTHWEST, WEST, NORTHWEST,
+        Direction::NORTH,
+        Direction::NORTHEAST,
+        Direction::EAST,
+        Direction::SOUTHEAST,
+        Direction::SOUTH,
+        Direction::SOUTHWEST,
+        Direction::WEST,
+        Direction::NORTHWEST,
     ]
 }
 
@@ -353,7 +359,16 @@ fn get_king_steps() -> Vec<Direction> {
  * Get the steps a knight can make.
  */
 fn get_knight_steps() -> Vec<Direction> {
-    vec![NNW, NNE, NEE, SEE, SSE, SSW, SWW, NWW]
+    vec![
+        Direction::NNW,
+        Direction::NNE,
+        Direction::NEE,
+        Direction::SEE,
+        Direction::SSE,
+        Direction::SSW,
+        Direction::SWW,
+        Direction::NWW,
+    ]
 }
 
 #[cfg(test)]

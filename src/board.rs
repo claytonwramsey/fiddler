@@ -1,11 +1,11 @@
-use crate::bitboard::{Bitboard, BB_EMPTY};
-use crate::castling::CastleRights;
 use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::{PieceType, KING, NO_TYPE, PAWN, ROOK, NUM_PIECE_TYPES};
-use crate::moves::Move;
+use crate::piece::{PieceType, KING, NO_TYPE, NUM_PIECE_TYPES, PAWN, ROOK};
 use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
 use crate::zobrist;
+use crate::Bitboard;
+use crate::CastleRights;
+use crate::Move;
 
 use std::default::Default;
 use std::fmt::{Display, Formatter};
@@ -52,8 +52,15 @@ impl Board {
      */
     pub fn empty() -> Board {
         let mut board = Board {
-            sides: [BB_EMPTY, BB_EMPTY],
-            pieces: [BB_EMPTY, BB_EMPTY, BB_EMPTY, BB_EMPTY, BB_EMPTY, BB_EMPTY],
+            sides: [Bitboard::EMPTY, Bitboard::EMPTY],
+            pieces: [
+                Bitboard::EMPTY,
+                Bitboard::EMPTY,
+                Bitboard::EMPTY,
+                Bitboard::EMPTY,
+                Bitboard::EMPTY,
+                Bitboard::EMPTY,
+            ],
             en_passant_square: BAD_SQUARE,
             player_to_move: WHITE,
             castle_rights: CastleRights::NO_RIGHTS,
@@ -216,7 +223,7 @@ impl Board {
     pub fn type_at_square(&self, sq: Square) -> PieceType {
         let sq_bb = Bitboard::from(sq);
         for i in 0..NUM_PIECE_TYPES {
-            if (self.pieces[i] & sq_bb) != BB_EMPTY {
+            if (self.pieces[i] & sq_bb) != Bitboard::EMPTY {
                 return PieceType(i as u8);
             }
         }
@@ -231,10 +238,10 @@ impl Board {
      */
     pub fn color_at_square(&self, sq: Square) -> Color {
         let bb = Bitboard::from(sq);
-        if self.sides[BLACK] & bb != BB_EMPTY {
+        if self.sides[BLACK] & bb != Bitboard::EMPTY {
             return BLACK;
         }
-        if self.sides[WHITE] & bb != BB_EMPTY {
+        if self.sides[WHITE] & bb != Bitboard::EMPTY {
             return WHITE;
         }
         return NO_COLOR;
@@ -264,7 +271,8 @@ impl Board {
     pub fn is_move_promotion(&self, m: Move) -> bool {
         self.get_pieces_of_type_and_color(PAWN, self.player_to_move)
             .is_square_occupied(m.from_square())
-            && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move) != BB_EMPTY
+            && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move)
+                != Bitboard::EMPTY
     }
 
     /**
@@ -272,10 +280,10 @@ impl Board {
      * Returns false if the board is invalid.
      */
     pub fn is_valid(&self) -> bool {
-        let mut sides_checksum = BB_EMPTY;
-        let mut sides_checkor = BB_EMPTY;
-        let mut pieces_checksum = BB_EMPTY;
-        let mut pieces_checkor = BB_EMPTY;
+        let mut sides_checksum = Bitboard::EMPTY;
+        let mut sides_checkor = Bitboard::EMPTY;
+        let mut pieces_checksum = Bitboard::EMPTY;
+        let mut pieces_checkor = Bitboard::EMPTY;
         for bb in self.sides {
             sides_checksum += bb;
             sides_checkor |= bb;

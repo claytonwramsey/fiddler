@@ -1,13 +1,13 @@
-use crate::game::Game;
-use crate::movegen::MoveGenerator;
-use crate::moves::{Move, BAD_MOVE};
+use crate::Game;
+use crate::Move;
+use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::{Mul, AddAssign, SubAssign};
+use std::ops::{AddAssign, Mul, SubAssign};
 
-pub mod minimax;
 pub mod greedy;
+pub mod minimax;
 pub mod positional;
 
 pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
@@ -19,7 +19,6 @@ pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
  * update its internal data.
  */
 pub trait Engine {
-
     /**
      * Evaluate the position of the given game. `g` is only given as mutable to
      * allow this method access to the ability to make and undo moves, but `g`
@@ -38,7 +37,7 @@ pub trait Engine {
             .into_iter()
             .max_by(|a, b| a.1.cmp(&b.1))
             .map(|(k, _)| k)
-            .unwrap_or(BAD_MOVE)
+            .unwrap_or(Move::BAD_MOVE)
     }
 
     /**
@@ -63,7 +62,6 @@ pub trait Engine {
         return evals;
     }
 }
-
 
 const MATE_0_VAL: i32 = 1_000_000;
 
@@ -114,7 +112,7 @@ impl Eval {
 
     #[inline]
     /**
-     * Step this evaluation back in time one move. "normal" evaluations will 
+     * Step this evaluation back in time one move. "normal" evaluations will
      * not be changed, but mates will be moved one closer to 0.
      */
     pub fn step_back(&self) -> Eval {
@@ -133,8 +131,6 @@ impl Eval {
     pub fn is_mate(&self) -> bool {
         self.0 > MATE_CUTOFF || self.0 < -MATE_CUTOFF
     }
-
-
 }
 
 impl Display for Eval {

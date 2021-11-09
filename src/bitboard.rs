@@ -1,4 +1,4 @@
-use crate::square::Square;
+use crate::Square;
 use std::fmt::{Display, Formatter, Result};
 use std::iter::Iterator;
 use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
@@ -10,12 +10,12 @@ use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul,
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
-/**
- * An empty bitboard.
- */
-pub const BB_EMPTY: Bitboard = Bitboard(0);
-
 impl Bitboard {
+    /**
+     * An empty bitboard.
+     */
+    pub const EMPTY: Bitboard = Bitboard(0);
+
     #[inline]
     /**
      * Determine whether a square of a bitboard is occupied.

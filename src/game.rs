@@ -1,6 +1,6 @@
 use crate::Board;
-use crate::movegen::MoveGenerator;
-use crate::moves::Move;
+use crate::Move;
+use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -138,8 +138,8 @@ impl Game {
     #[inline]
     #[allow(dead_code)]
     /**
-     * Get the current state of the game as a board. Will panic if there is no 
-     * history (but this should never happen if the game was initialized 
+     * Get the current state of the game as a board. Will panic if there is no
+     * history (but this should never happen if the game was initialized
      * correctly)
      */
     pub fn get_board(&self) -> &Board {
@@ -186,8 +186,8 @@ impl Default for Game {
 mod tests {
     use super::*;
     use crate::board;
-    use crate::piece::NO_TYPE;
     use crate::moves::Move;
+    use crate::piece::NO_TYPE;
     use crate::square::*;
 
     #[test]

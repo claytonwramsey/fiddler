@@ -18,6 +18,12 @@ pub struct Move(pub u16);
 impl Move {
     #[allow(dead_code)]
     /**
+     * A sentinel value for a move which is illegal, or otherwise inexpressible.
+     */
+    pub const BAD_MOVE: Move = Move(0xFFFF);
+
+    #[allow(dead_code)]
+    /**
      * Make a new `Move` for a piece. Assumes that all the inputs are valid.
      */
     pub fn new(from_square: Square, to_square: Square, promote_type: PieceType) -> Move {
@@ -71,9 +77,3 @@ impl Display for Move {
         }
     }
 }
-
-#[allow(dead_code)]
-/**
- * A sentinel value for a move which is illegal, or otherwise inexpressible.
- */
-pub const BAD_MOVE: Move = Move(0xFFFF);
