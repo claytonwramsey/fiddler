@@ -8,6 +8,7 @@ use std::ops::{Mul, AddAssign, SubAssign};
 
 pub mod minimax;
 pub mod greedy;
+pub mod positional;
 
 pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
 
@@ -88,11 +89,37 @@ const PAWN_VALUE: i32 = 1_000;
 pub struct Eval(i32);
 
 impl Eval {
+    pub const MIN: Eval = Eval(-MATE_0_VAL - 1);
+    pub const MAX: Eval = Eval(MATE_0_VAL + 1);
+
+    pub const BLACK_MATE: Eval = Eval(-MATE_0_VAL);
+    pub const WHITE_MATE: Eval = Eval(MATE_0_VAL);
+
+    #[inline]
     /**
      * Get an evaluation equivalent to the given pawn value.
      */
     pub fn pawns(x: f64) -> Eval {
         Eval((x / (PAWN_VALUE as f64)) as i32)
+    }
+
+    #[inline]
+    #[allow(dead_code)]
+    /**
+     * Create an Eval based on the number of half-moves required for White to mate. -mate_in(n) will give Black to mate in the number of plies.
+     */
+    pub fn mate_in(nplies: u16) -> Eval {
+        Eval(MATE_0_VAL - (nplies as i32))
+    }
+
+    #[inline]
+    pub fn step_back(self) -> Eval {
+        if self.0 > MATE_CUTOFF {
+            return Eval(self.0 - 1);
+        } else if self.0 < -MATE_CUTOFF {
+            return Eval(self.0 + 1);
+        }
+        self
     }
 }
 
@@ -134,9 +161,3 @@ impl SubAssign<Eval> for Eval {
         self.0 -= rhs.0;
     }
 }
-
-pub const MIN_EVAL: Eval = Eval(-MATE_0_VAL - 1);
-pub const MAX_EVAL: Eval = Eval(MATE_0_VAL + 1);
-
-pub const BLACK_MATE_EVAL: Eval = Eval(-MATE_0_VAL);
-pub const WHITE_MATE_EVAL: Eval = Eval(MATE_0_VAL);

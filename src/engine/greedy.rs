@@ -1,6 +1,6 @@
 use crate::game::Game;
 use crate::movegen::MoveGenerator;
-use crate::engine::{Eval, WHITE_MATE_EVAL, BLACK_MATE_EVAL};
+use crate::engine::{Eval};
 use crate::piece::*;
 use crate::util::opposite_color;
 use crate::constants::{WHITE, BLACK};
@@ -32,8 +32,8 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     if g.is_game_over(mgen) {
         if mgen.is_square_attacked_by(b, king_sq, opposite_color(player)) {
             return match b.player_to_move {
-                WHITE => BLACK_MATE_EVAL,
-                BLACK => WHITE_MATE_EVAL,
+                WHITE => Eval::BLACK_MATE,
+                BLACK => Eval::WHITE_MATE,
                 _ => Eval(0),
             }
         }

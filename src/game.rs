@@ -32,6 +32,15 @@ pub struct Game {
 }
 
 impl Game {
+    pub fn from_fen(fen: &str) -> Result<Game, &'static str> {
+        let b = Board::from_fen(fen)?;
+        Ok(Game {
+            history: vec![b],
+            moves: Vec::new(),
+            repetitions: HashMap::from([(b, 1)]),
+        })
+    }
+
     #[allow(dead_code)]
     /**
      * Empty out the history of this game completely, but leave the original
