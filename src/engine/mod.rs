@@ -4,7 +4,7 @@ use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::{AddAssign, Mul, SubAssign, Add};
+use std::ops::{Add, AddAssign, Mul, SubAssign};
 
 pub mod greedy;
 pub mod minimax;

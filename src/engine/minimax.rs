@@ -1,14 +1,14 @@
 use crate::constants::{BLACK, WHITE};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::{Eval, EvaluationFn};
+use crate::Board;
 use crate::Engine;
 use crate::Game;
-use crate::Board;
 use crate::MoveGenerator;
 
 use std::cmp::{max, min};
-use std::time::Instant;
 use std::collections::HashMap;
+use std::time::Instant;
 
 /**
  * A stupid-simple engine which will evaluate the entire tree.
@@ -23,13 +23,17 @@ pub struct Minimax {
      */
     pub evaluator: EvaluationFn,
     /**
+     * The transposition table.
+     */
+    transpose_table: HashMap<Board, TTableEntry>,
+    /**
      * The cumulative number of nodes evaluated in this evaluation event.
      */
     num_nodes_evaluated: u64,
     /**
-     * The transposition table.
+     * The cumulative number of transpositions.
      */
-    transpose_table: HashMap<Board, TTableEntry>,
+    num_transpositions: u64,
 }
 
 /**
@@ -41,14 +45,19 @@ struct TTableEntry {
      */
     pub depth: i8,
     /**
-     * The evaluation we found at this position.
+     * Lower bound on the evaluation we found at this position.
      */
-    pub eval: Eval,
+    pub lower_bound: Eval,
+    /**
+     * Upper bound on the evaluation we found at this position.
+     */
+    pub upper_bound: Eval,
 }
 
 impl Minimax {
     /**
-     * Evaluate a position at a given depth. The depth is the number of plays to make. Even depths are recommended for fair evaluations.
+     * Evaluate a position at a given depth. The depth is the number of plays
+     * to make. Even depths are recommended for fair evaluations.
      */
     pub fn evaluate_at_depth(
         &mut self,
@@ -61,9 +70,20 @@ impl Minimax {
         self.num_nodes_evaluated += 1;
         let b = g.get_board();
 
+        let mut alpha = alpha_in;
+        let mut beta = beta_in;
+
         if let Some(v) = self.transpose_table.get(b) {
             if v.depth >= depth {
-                return v.eval;
+                self.num_transpositions += 1;
+                if v.lower_bound >= beta_in {
+                    return v.lower_bound;
+                }
+                if v.upper_bound <= alpha_in {
+                    return v.upper_bound;
+                }
+                alpha = max(alpha, v.lower_bound);
+                beta = min(beta, v.upper_bound);
             }
         }
 
@@ -73,14 +93,12 @@ impl Minimax {
                 *g.get_board(),
                 TTableEntry {
                     depth: depth,
-                    eval: eval,
+                    upper_bound: eval,
+                    lower_bound: eval,
                 },
             );
             return eval;
         }
-
-        let mut alpha = alpha_in;
-        let mut beta = beta_in;
 
         let player_to_move = b.player_to_move;
 
@@ -90,9 +108,14 @@ impl Minimax {
             _ => Eval(0),
         };
 
+        //these will be mutated by alpha-beta, but should not be put in the
+        //transpoisition table
+        let mut alpha_changing = alpha_in;
+        let mut beta_changing = beta_in;
         for m in mgen.get_moves(b) {
             g.make_move(m);
-            let eval_for_m = self.evaluate_at_depth(depth - 1, alpha, beta, g, mgen);
+            let eval_for_m =
+                self.evaluate_at_depth(depth - 1, alpha_changing, beta_changing, g, mgen);
 
             if let Err(_) = g.undo() {
                 println!("undo failed despite having move history!");
@@ -104,23 +127,36 @@ impl Minimax {
                 if evaluation >= beta {
                     break;
                 }
-                alpha = max(alpha, evaluation);
+                alpha_changing = max(alpha_changing, evaluation);
             } else {
                 //black moves on this turn
                 evaluation = min(evaluation, eval_for_m);
                 if evaluation <= alpha {
                     break;
                 }
-                beta = min(beta, evaluation);
+                beta_changing = min(beta_changing, evaluation);
             }
         }
 
         evaluation = evaluation.step_back();
+        let mut lower_bound = Eval::MIN;
+        let mut upper_bound = Eval::MAX;
+        if evaluation <= alpha {
+            upper_bound = evaluation;
+        }
+        if evaluation >= beta {
+            lower_bound = evaluation;
+        }
+        if alpha < evaluation && evaluation < beta {
+            lower_bound = evaluation;
+            upper_bound = evaluation;
+        }
         self.transpose_table.insert(
             *g.get_board(),
             TTableEntry {
                 depth: depth,
-                eval: evaluation,
+                lower_bound: lower_bound,
+                upper_bound: upper_bound,
             },
         );
         return evaluation;
@@ -140,8 +176,9 @@ impl Default for Minimax {
         Minimax {
             depth: 5,
             evaluator: positional_evaluate,
-            num_nodes_evaluated: 0,
             transpose_table: HashMap::new(),
+            num_nodes_evaluated: 0,
+            num_transpositions: 0,
         }
     }
 }
@@ -150,15 +187,17 @@ impl Engine for Minimax {
     #[inline]
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval {
         self.num_nodes_evaluated = 0;
+        self.num_transpositions = 0;
         let tic = Instant::now();
         let eval = self.evaluate_at_depth(self.depth, Eval::MIN, Eval::MAX, g, mgen);
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         println!(
-            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec)",
+            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions",
             self.num_nodes_evaluated,
             nsecs,
-            self.num_nodes_evaluated as f64 / nsecs
+            self.num_nodes_evaluated as f64 / nsecs,
+            self.num_transpositions,
         );
         return eval;
     }
