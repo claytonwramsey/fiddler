@@ -12,3 +12,5 @@ opt-level = 3
 [dependencies]
 rand = "0.8.4"
 
+[profile.bench]
+debug = true

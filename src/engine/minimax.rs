@@ -3,18 +3,47 @@ use crate::engine::positional::positional_evaluate;
 use crate::engine::{Eval, EvaluationFn};
 use crate::Engine;
 use crate::Game;
+use crate::Board;
 use crate::MoveGenerator;
 
 use std::cmp::{max, min};
 use std::time::Instant;
+use std::collections::HashMap;
 
 /**
  * A stupid-simple engine which will evaluate the entire tree.
  */
 pub struct Minimax {
-    depth: i8,
-    evaluator: EvaluationFn,
+    /**
+     * The depth at which this algorithm will evaluate a position.
+     */
+    pub depth: i8,
+    /**
+     * The function used to evaluate the quality of a position.
+     */
+    pub evaluator: EvaluationFn,
+    /**
+     * The cumulative number of nodes evaluated in this evaluation event.
+     */
     num_nodes_evaluated: u64,
+    /**
+     * The transposition table.
+     */
+    transpose_table: HashMap<Board, TTableEntry>,
+}
+
+/**
+ * An entry in the transposition table.
+ */
+struct TTableEntry {
+    /**
+     * The depth at which this position was evaluated.
+     */
+    pub depth: i8,
+    /**
+     * The evaluation we found at this position.
+     */
+    pub eval: Eval,
 }
 
 impl Minimax {
@@ -30,14 +59,30 @@ impl Minimax {
         mgen: &MoveGenerator,
     ) -> Eval {
         self.num_nodes_evaluated += 1;
+        let b = g.get_board();
+
+        if let Some(v) = self.transpose_table.get(b) {
+            if v.depth >= depth {
+                return v.eval;
+            }
+        }
+
         if depth <= 0 || g.is_game_over(mgen) {
-            return (self.evaluator)(g, mgen);
+            let eval = (self.evaluator)(g, mgen);
+            self.transpose_table.insert(
+                *g.get_board(),
+                TTableEntry {
+                    depth: depth,
+                    eval: eval,
+                },
+            );
+            return eval;
         }
 
         let mut alpha = alpha_in;
         let mut beta = beta_in;
 
-        let player_to_move = g.get_board().player_to_move;
+        let player_to_move = b.player_to_move;
 
         let mut evaluation = match player_to_move {
             WHITE => Eval::MIN,
@@ -45,7 +90,7 @@ impl Minimax {
             _ => Eval(0),
         };
 
-        for m in mgen.get_moves(g.get_board()) {
+        for m in mgen.get_moves(b) {
             g.make_move(m);
             let eval_for_m = self.evaluate_at_depth(depth - 1, alpha, beta, g, mgen);
 
@@ -66,11 +111,27 @@ impl Minimax {
                 if evaluation <= alpha {
                     break;
                 }
-                beta = max(alpha, beta);
+                beta = min(beta, evaluation);
             }
         }
 
-        return evaluation.step_back();
+        evaluation = evaluation.step_back();
+        self.transpose_table.insert(
+            *g.get_board(),
+            TTableEntry {
+                depth: depth,
+                eval: evaluation,
+            },
+        );
+        return evaluation;
+    }
+
+    /**
+     * Clear out internal data.
+     */
+    pub fn clear(&mut self) {
+        self.num_nodes_evaluated = 0;
+        self.transpose_table.clear();
     }
 }
 
@@ -80,6 +141,7 @@ impl Default for Minimax {
             depth: 5,
             evaluator: positional_evaluate,
             num_nodes_evaluated: 0,
+            transpose_table: HashMap::new(),
         }
     }
 }
@@ -103,7 +165,7 @@ impl Engine for Minimax {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     #[allow(unused_imports)]
     use super::*;
     #[allow(unused_imports)]
@@ -115,7 +177,7 @@ mod tests {
     /**
      * Test Minimax's evaluation of the start position of the game.
      */
-    fn test_eval_start() {
+    pub fn test_eval_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         let mut e = Minimax::default();

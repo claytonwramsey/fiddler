@@ -4,7 +4,7 @@ use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::{AddAssign, Mul, SubAssign};
+use std::ops::{AddAssign, Mul, SubAssign, Add};
 
 pub mod greedy;
 pub mod minimax;
@@ -98,7 +98,7 @@ impl Eval {
      * Get an evaluation equivalent to the given pawn value.
      */
     pub fn pawns(x: f64) -> Eval {
-        Eval((x / (PAWN_VALUE as f64)) as i32)
+        Eval((x * PAWN_VALUE as f64) as i32)
     }
 
     #[inline]
@@ -161,13 +161,23 @@ impl Mul<u32> for Eval {
 }
 
 impl AddAssign<Eval> for Eval {
+    #[inline]
     fn add_assign(&mut self, rhs: Eval) {
         self.0 += rhs.0;
     }
 }
 
 impl SubAssign<Eval> for Eval {
+    #[inline]
     fn sub_assign(&mut self, rhs: Eval) {
         self.0 -= rhs.0;
+    }
+}
+
+impl Add<Eval> for Eval {
+    type Output = Self;
+    #[inline]
+    fn add(self, rhs: Eval) -> Eval {
+        Eval(self.0 + rhs.0)
     }
 }

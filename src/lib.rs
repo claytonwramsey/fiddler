@@ -12,7 +12,7 @@ mod constants;
 mod direction;
 pub use crate::direction::Direction;
 
-mod engine;
+pub mod engine;
 pub use crate::engine::Engine;
 
 mod fens;
