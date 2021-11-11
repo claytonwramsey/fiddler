@@ -1,10 +1,11 @@
 use crate::constants::{BLACK, WHITE};
 use crate::engine::positional::positional_evaluate;
-use crate::engine::{Eval, EvaluationFn};
+use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Board;
 use crate::Engine;
 use crate::Game;
 use crate::MoveGenerator;
+use crate::Move;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -22,6 +23,10 @@ pub struct Minimax {
      * The function used to evaluate the quality of a position.
      */
     pub evaluator: EvaluationFn,
+    /**
+     * The function used to determine which moves should be explored first.
+     */
+    pub candidator: MoveCandidacyFn,
     /**
      * The transposition table.
      */
@@ -112,7 +117,14 @@ impl Minimax {
         //transpoisition table
         let mut alpha_changing = alpha_in;
         let mut beta_changing = beta_in;
-        for m in mgen.get_moves(b) {
+
+        let mut moves = mgen.get_moves(b);
+        if depth > 1 {
+            //negate because sort is ascending
+            moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        }
+
+        for m in moves {
             g.make_move(m);
             let eval_for_m =
                 self.evaluate_at_depth(depth - 1, alpha_changing, beta_changing, g, mgen);
@@ -176,6 +188,7 @@ impl Default for Minimax {
         Minimax {
             depth: 5,
             evaluator: positional_evaluate,
+            candidator: crate::engine::candidacy::candidacy,
             transpose_table: HashMap::new(),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
@@ -201,6 +214,26 @@ impl Engine for Minimax {
         );
         return eval;
     }
+
+    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
+        let mut moves = g.get_moves(mgen);
+        //negate because sort is ascending
+        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        let mut evals = HashMap::new();
+        for m in moves {
+            g.make_move(m);
+            let ev = self.evaluate(g, mgen);
+
+            //this should never fail since we just made a move, but who knows?
+            if let Ok(_) = g.undo() {
+                evals.insert(m, ev);
+            } else {
+                println!("somehow, undoing failed on a game");
+            }
+            println!("{}: {}", m, ev);
+        }
+        return evals;
+    }
 }
 
 #[cfg(test)]
@@ -222,7 +255,7 @@ pub mod tests {
         let mut e = Minimax::default();
 
         println!("moves with evals are:");
-        print_move_map(&e.get_evals(&mut g, &mgen));
+        e.get_evals(&mut g, &mgen);
     }
 
     #[test]
@@ -231,8 +264,7 @@ pub mod tests {
         let mgen = MoveGenerator::new();
         let mut e = Minimax::default();
 
-        println!("moves with evals are:");
-        print_move_map(&e.get_evals(&mut g, &mgen));
+        e.get_evals(&mut g, &mgen);
     }
 
     #[test]
@@ -252,6 +284,8 @@ pub mod tests {
 
         assert_eq!(e.evaluate(&mut g, &mgen), eval);
     }
+
+    #[allow(dead_code)]
     /**
      * Print a map from moves to evals in a user-readable way.
      */

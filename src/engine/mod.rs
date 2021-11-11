@@ -4,13 +4,22 @@ use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Mul, SubAssign};
+use std::ops::{Add, Sub, AddAssign, Mul, SubAssign, Neg};
 
 pub mod greedy;
 pub mod minimax;
 pub mod positional;
+pub mod candidacy;
 
+/**
+ * A function which can shallowly evaluate a position.
+ */
 pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
+
+/**
+ * A function which can decide how much it "likes" a move.
+ */
+pub type MoveCandidacyFn = fn(&mut Game, &MoveGenerator, Move) -> Eval;
 
 /**
  * An `Engine` is something that can evaluate a `Game`, and give moves which it
@@ -58,6 +67,7 @@ pub trait Engine {
             } else {
                 println!("somehow, undoing failed on a game");
             }
+            println!("{}: {}", m, ev);
         }
         return evals;
     }
@@ -179,5 +189,21 @@ impl Add<Eval> for Eval {
     #[inline]
     fn add(self, rhs: Eval) -> Eval {
         Eval(self.0 + rhs.0)
+    }
+}
+
+impl Sub<Eval> for Eval {
+    type Output = Self;
+    #[inline]
+    fn sub(self, rhs: Eval) -> Eval {
+        Eval(self.0 - rhs.0)
+    }
+}
+
+impl Neg for Eval {
+    type Output = Self;
+    #[inline]
+    fn neg(self) -> Eval {
+        Eval(-self.0)
     }
 }

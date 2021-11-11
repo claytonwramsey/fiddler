@@ -75,26 +75,31 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     for i in 0..NUM_PIECE_TYPES {
         let pt = PieceType(i as u8);
 
-        let val_table = match pt {
-            PAWN => &PAWN_VALUES,
-            KNIGHT => &KNIGHT_VALUES,
-            BISHOP => &BISHOP_VALUES,
-            ROOK => &ROOK_VALUES,
-            KING => &KING_VALUES,
-            QUEEN => &QUEEN_VALUES,
-            _ => &DEFAULT_VALUES,
-        };
-
         for sq in b.get_pieces_of_type_and_color(pt, WHITE) {
-            positional_eval += Eval::pawns(val_table[sq.0 as usize]);
+            positional_eval += value_at_square(pt, sq);
         }
         for sq in b.get_pieces_of_type_and_color(pt, BLACK) {
             //Invert the square that Black is on, since positional values are
             //flipped (as pawns move the other way, etc)
             let alt_sq = Square::new(7 - sq.rank(), sq.file());
-            positional_eval -= Eval::pawns(val_table[alt_sq.0 as usize]);
+            positional_eval -= value_at_square(pt, alt_sq);
         }
     }
 
     return starting_eval + positional_eval;
+}
+
+#[inline]
+pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
+    let val_table = match pt {
+        PAWN => &PAWN_VALUES,
+        KNIGHT => &KNIGHT_VALUES,
+        BISHOP => &BISHOP_VALUES,
+        ROOK => &ROOK_VALUES,
+        KING => &KING_VALUES,
+        QUEEN => &QUEEN_VALUES,
+        _ => &DEFAULT_VALUES,
+    };
+
+    Eval::pawns(val_table[sq.0 as usize])
 }
