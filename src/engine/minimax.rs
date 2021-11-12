@@ -4,8 +4,8 @@ use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Board;
 use crate::Engine;
 use crate::Game;
-use crate::MoveGenerator;
 use crate::Move;
+use crate::MoveGenerator;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;

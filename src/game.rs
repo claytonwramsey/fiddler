@@ -187,7 +187,7 @@ mod tests {
     use super::*;
     use crate::board;
     use crate::moves::Move;
-    use crate::piece::NO_TYPE;
+    use crate::PieceType;
     use crate::square::*;
 
     #[test]
@@ -197,9 +197,9 @@ mod tests {
      */
     fn test_play_e4() {
         let mut g = Game::default();
-        let m = Move::new(E2, E4, NO_TYPE);
+        let m = Move::new(E2, E4, PieceType::NO_TYPE);
         let old_board = *g.get_board();
-        g.make_move(Move::new(E2, E4, NO_TYPE));
+        g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
         let new_board = g.get_board();
         board::tests::test_move_result_helper(old_board, *new_board, m);
     }
@@ -210,7 +210,7 @@ mod tests {
      */
     fn test_undo_move() {
         let mut g = Game::default();
-        let m = Move::new(E2, E4, NO_TYPE);
+        let m = Move::new(E2, E4, PieceType::NO_TYPE);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(*g.get_board(), Board::default());
@@ -232,8 +232,8 @@ mod tests {
      */
     fn test_undo_multiple_moves() {
         let mut g = Game::default();
-        let m0 = Move::new(E2, E4, NO_TYPE);
-        let m1 = Move::new(E7, E5, NO_TYPE);
+        let m0 = Move::new(E2, E4, PieceType::NO_TYPE);
+        let m1 = Move::new(E7, E5, PieceType::NO_TYPE);
         g.make_move(m0);
         g.make_move(m1);
         assert_eq!(g.undo_n(2), Ok(()));
@@ -247,7 +247,7 @@ mod tests {
      */
     fn test_undo_equality() {
         let mut g = Game::default();
-        g.make_move(Move::new(E2, E4, NO_TYPE));
+        g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::default());
     }
@@ -259,7 +259,7 @@ mod tests {
      */
     fn test_clear_board() {
         let mut g = Game::default();
-        g.make_move(Move::new(E2, E4, NO_TYPE));
+        g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
         g.clear();
         assert_eq!(g, Game::default());
     }

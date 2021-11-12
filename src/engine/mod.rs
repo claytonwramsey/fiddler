@@ -4,12 +4,12 @@ use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Sub, AddAssign, Mul, SubAssign, Neg};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
+pub mod candidacy;
 pub mod greedy;
 pub mod minimax;
 pub mod positional;
-pub mod candidacy;
 
 /**
  * A function which can shallowly evaluate a position.

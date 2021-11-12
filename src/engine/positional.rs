@@ -1,7 +1,7 @@
 use crate::constants::{BLACK, WHITE};
 use crate::engine::greedy::greedy_evaluate;
 use crate::engine::Eval;
-use crate::piece::{PieceType, BISHOP, KING, KNIGHT, NUM_PIECE_TYPES, PAWN, QUEEN, ROOK};
+use crate::piece::PieceType;
 use crate::Game;
 use crate::MoveGenerator;
 use crate::Square;
@@ -72,7 +72,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut positional_eval = Eval(0);
 
     let b = g.get_board();
-    for i in 0..NUM_PIECE_TYPES {
+    for i in 0..PieceType::NUM_TYPES {
         let pt = PieceType(i as u8);
 
         for sq in b.get_pieces_of_type_and_color(pt, WHITE) {
@@ -92,12 +92,12 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 #[inline]
 pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
     let val_table = match pt {
-        PAWN => &PAWN_VALUES,
-        KNIGHT => &KNIGHT_VALUES,
-        BISHOP => &BISHOP_VALUES,
-        ROOK => &ROOK_VALUES,
-        KING => &KING_VALUES,
-        QUEEN => &QUEEN_VALUES,
+        PieceType::PAWN => &PAWN_VALUES,
+        PieceType::KNIGHT => &KNIGHT_VALUES,
+        PieceType::BISHOP => &BISHOP_VALUES,
+        PieceType::ROOK => &ROOK_VALUES,
+        PieceType::KING => &KING_VALUES,
+        PieceType::QUEEN => &QUEEN_VALUES,
         _ => &DEFAULT_VALUES,
     };
 

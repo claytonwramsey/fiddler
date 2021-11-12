@@ -1,4 +1,4 @@
-use crate::piece::{PieceType, NO_TYPE};
+use crate::PieceType;
 use crate::square::Square;
 use std::fmt::{Display, Formatter, Result};
 
@@ -64,7 +64,7 @@ impl Move {
 
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        if self.promote_type() == NO_TYPE {
+        if self.promote_type() == PieceType::NO_TYPE {
             return write!(f, "{} -> {}", self.from_square(), self.to_square());
         } else {
             return write!(

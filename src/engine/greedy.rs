@@ -11,11 +11,11 @@ use crate::Square;
  */
 pub fn piece_value(pt: PieceType) -> Eval {
     Eval::pawns(match pt {
-        PAWN => 1.0,
-        KNIGHT => 3.0,
-        BISHOP => 3.0,
-        ROOK => 5.0,
-        QUEEN => 9.0,
+        PieceType::PAWN => 1.0,
+        PieceType::KNIGHT => 3.0,
+        PieceType::BISHOP => 3.0,
+        PieceType::ROOK => 5.0,
+        PieceType::QUEEN => 9.0,
         _ => 0.0,
     })
 }
@@ -27,7 +27,7 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut eval = Eval(0);
     let b = g.get_board();
     let player = b.player_to_move;
-    let king_sq = Square::from(b.get_pieces_of_type_and_color(KING, player));
+    let king_sq = Square::from(b.get_pieces_of_type_and_color(PieceType::KING, player));
 
     if g.is_game_over(mgen) {
         if mgen.is_square_attacked_by(b, king_sq, opposite_color(player)) {
@@ -40,7 +40,7 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         return Eval(0);
     }
 
-    for i in 0..NUM_PIECE_TYPES {
+    for i in 0..PieceType::NUM_TYPES {
         let pt = PieceType(i as u8);
         eval += piece_value(pt) * b.get_pieces_of_type_and_color(pt, WHITE).0.count_ones();
         eval -= piece_value(pt) * b.get_pieces_of_type_and_color(pt, BLACK).0.count_ones();

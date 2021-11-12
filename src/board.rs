@@ -1,5 +1,5 @@
 use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::{PieceType, KING, NO_TYPE, NUM_PIECE_TYPES, PAWN, ROOK};
+use crate::piece::PieceType;
 use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::util::{opposite_color, pawn_promote_rank};
 use crate::zobrist;
@@ -25,7 +25,7 @@ pub struct Board {
      * The squares occupied by (in order) pawns, knights, bishops, rooks,
      * queens, and kings.
      */
-    pub pieces: [Bitboard; NUM_PIECE_TYPES],
+    pub pieces: [Bitboard; PieceType::NUM_TYPES],
     /**
      * The color of the player to move. Should always be `BLACK` or `WHITE`.
      */
@@ -96,7 +96,7 @@ impl Board {
                 true => WHITE,
                 false => BLACK,
             };
-            if pt != NO_TYPE {
+            if pt != PieceType::NO_TYPE {
                 //character is a piece type
                 board.add_piece(Square::new(r, c), pt, color);
                 c += 1;
@@ -222,12 +222,12 @@ impl Board {
      */
     pub fn type_at_square(&self, sq: Square) -> PieceType {
         let sq_bb = Bitboard::from(sq);
-        for i in 0..NUM_PIECE_TYPES {
+        for i in 0..PieceType::NUM_TYPES {
             if (self.pieces[i] & sq_bb) != Bitboard::EMPTY {
                 return PieceType(i as u8);
             }
         }
-        return NO_TYPE;
+        return PieceType::NO_TYPE;
     }
 
     #[inline]
@@ -254,7 +254,7 @@ impl Board {
     pub fn is_move_en_passant(&self, m: Move) -> bool {
         m.to_square() == self.en_passant_square
             && m.from_square().file() != m.to_square().file()
-            && self.type_at_square(m.from_square()) == PAWN
+            && self.type_at_square(m.from_square()) == PieceType::PAWN
     }
 
     #[inline]
@@ -263,13 +263,13 @@ impl Board {
      * pseudo-legal.
      */
     pub fn is_move_castle(&self, m: Move) -> bool {
-        self.get_pieces_of_type(KING)
+        self.get_pieces_of_type(PieceType::KING)
             .is_square_occupied(m.from_square())
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
     pub fn is_move_promotion(&self, m: Move) -> bool {
-        self.get_pieces_of_type_and_color(PAWN, self.player_to_move)
+        self.get_pieces_of_type_and_color(PieceType::PAWN, self.player_to_move)
             .is_square_occupied(m.from_square())
             && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move)
                 != Bitboard::EMPTY
@@ -319,7 +319,7 @@ impl Board {
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
         let is_promotion =
-            mover_type == PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
+            mover_type == PieceType::PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
         let is_long_move = from_sq.chebyshev_to(to_sq) > 1;
@@ -344,7 +344,7 @@ impl Board {
         //remove previous EP square from hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
         //update EP square
-        self.en_passant_square = match mover_type == PAWN && is_long_move {
+        self.en_passant_square = match mover_type == PieceType::PAWN && is_long_move {
             true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
             false => BAD_SQUARE,
         };
@@ -354,7 +354,7 @@ impl Board {
         /* Handling castling */
         //in normal castling, we describe it with a `Move` as a king move which
         //jumps two or three squares.
-        if mover_type == KING && is_long_move {
+        if mover_type == PieceType::KING && is_long_move {
             //a long move from a king means this must be a castle
             //G file is file 6 (TODO move this to be a constant?)
             let is_kingside_castle = to_sq.file() == 6;
@@ -369,12 +369,12 @@ impl Board {
             let rook_from_sq = Square::new(from_sq.rank(), rook_from_file);
             let rook_to_sq = Square::new(from_sq.rank(), rook_to_file);
             self.remove_piece(rook_from_sq);
-            self.add_piece(rook_to_sq, ROOK, self.player_to_move);
+            self.add_piece(rook_to_sq, PieceType::ROOK, self.player_to_move);
         }
 
         /* Handling castling rights */
         let rights_to_remove;
-        if mover_type == KING {
+        if mover_type == PieceType::KING {
             rights_to_remove = CastleRights::color_rights(self.player_to_move);
         } else {
             //don't need to check if it's a rook because moving from this square
@@ -421,7 +421,7 @@ impl Board {
         self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
         let mask = !Bitboard::from(sq);
 
-        for i in 0..NUM_PIECE_TYPES {
+        for i in 0..PieceType::NUM_TYPES {
             self.pieces[i] &= mask;
         }
         self.sides[BLACK] &= mask;
@@ -452,7 +452,7 @@ impl Board {
      */
     pub fn set_piece(&mut self, sq: Square, pt: PieceType, color: Color) {
         self.remove_piece(sq);
-        if pt != NO_TYPE {
+        if pt != PieceType::NO_TYPE {
             self.add_piece(sq, pt, color);
         }
     }
@@ -566,7 +566,6 @@ pub mod tests {
     use super::*;
     use crate::fens;
     use crate::movegen::MoveGenerator;
-    use crate::piece::QUEEN;
     use crate::square::*;
 
     /**
@@ -631,7 +630,7 @@ pub mod tests {
      * Test that we can play e4 on the first move of the game.
      */
     fn test_play_e4() {
-        test_move_helper(Board::default(), Move::new(E2, E4, NO_TYPE));
+        test_move_helper(Board::default(), Move::new(E2, E4, PieceType::NO_TYPE));
     }
 
     #[test]
@@ -639,7 +638,7 @@ pub mod tests {
      * Test that we can capture en passant.
      */
     fn test_en_passant() {
-        test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, NO_TYPE));
+        test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, PieceType::NO_TYPE));
     }
 
     /**
@@ -649,7 +648,7 @@ pub mod tests {
     fn test_white_kingide_castle() {
         test_fen_helper(
             fens::WHITE_KINGSIDE_CASTLE_READY_FEN,
-            Move::new(E1, G1, NO_TYPE),
+            Move::new(E1, G1, PieceType::NO_TYPE),
         );
     }
 
@@ -658,7 +657,7 @@ pub mod tests {
      * Test that White can promote their pawn to a queen
      */
     fn test_white_promote_queen() {
-        test_fen_helper(fens::WHITE_READY_TO_PROMOTE_FEN, Move::new(F7, F8, QUEEN));
+        test_fen_helper(fens::WHITE_READY_TO_PROMOTE_FEN, Move::new(F7, F8, PieceType::QUEEN));
     }
 
     /**
@@ -710,12 +709,12 @@ pub mod tests {
         }
         assert_eq!(new_board.color_at_square(m.to_square()), mover_color);
 
-        assert_eq!(new_board.type_at_square(m.from_square()), NO_TYPE);
+        assert_eq!(new_board.type_at_square(m.from_square()), PieceType::NO_TYPE);
         assert_eq!(new_board.color_at_square(m.from_square()), NO_COLOR);
 
         //Check en passant worked correctly
         if is_en_passant {
-            assert_eq!(new_board.type_at_square(old_board.en_passant_square), PAWN);
+            assert_eq!(new_board.type_at_square(old_board.en_passant_square), PieceType::PAWN);
             assert_eq!(
                 new_board.color_at_square(old_board.en_passant_square),
                 old_board.player_to_move
@@ -737,10 +736,10 @@ pub mod tests {
             let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file);
             let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file);
 
-            assert_eq!(new_board.type_at_square(rook_start_sq), NO_TYPE);
+            assert_eq!(new_board.type_at_square(rook_start_sq), PieceType::NO_TYPE);
             assert_eq!(new_board.color_at_square(rook_start_sq), NO_COLOR);
 
-            assert_eq!(new_board.type_at_square(rook_end_sq), ROOK);
+            assert_eq!(new_board.type_at_square(rook_end_sq), PieceType::ROOK);
             assert_eq!(
                 new_board.color_at_square(rook_end_sq),
                 old_board.player_to_move

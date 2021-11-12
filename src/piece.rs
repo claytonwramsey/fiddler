@@ -1,9 +1,5 @@
 use std::fmt::{Display, Formatter, Result};
 
-/**
- * Total number of piece types. TODO: should this be moved to piece.rs?
- */
-pub const NUM_PIECE_TYPES: usize = 6;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 /**
@@ -13,18 +9,58 @@ pub const NUM_PIECE_TYPES: usize = 6;
 pub struct PieceType(pub u8);
 
 impl PieceType {
+
+        
+    /**
+     * Total number of piece types. TODO: should this be moved to piece.rs?
+     */
+    pub const NUM_TYPES: usize = 6;
+
+    #[allow(dead_code)]
+    pub const NO_TYPE: PieceType = PieceType(7);
+
+    //these piece types should match that of the indices in board::bb_indices
+    #[allow(dead_code)]
+    pub const PAWN: PieceType = PieceType(0);
+    #[allow(dead_code)]
+    pub const KNIGHT: PieceType = PieceType(1);
+    #[allow(dead_code)]
+    pub const BISHOP: PieceType = PieceType(2);
+    #[allow(dead_code)]
+    pub const ROOK: PieceType = PieceType(3);
+    #[allow(dead_code)]
+    pub const QUEEN: PieceType = PieceType(4);
+    #[allow(dead_code)]
+    pub const KING: PieceType = PieceType(5);
+
+    pub const ALL_TYPES: [PieceType; PieceType::NUM_TYPES] = [
+        PieceType::PAWN,
+        PieceType::KNIGHT,
+        PieceType::BISHOP,
+        PieceType::ROOK,
+        PieceType::QUEEN,
+        PieceType::KING,
+    ];
+
+    pub const PROMOTE_TYPES: [PieceType; 4] = [
+        PieceType::KNIGHT,
+        PieceType::BISHOP,
+        PieceType::ROOK,
+        PieceType::QUEEN,
+    ];
+
     /**
      * Get the FEN code of this piece as an uppercase string.
      */
     pub fn get_code(self) -> &'static str {
         match self {
-            NO_TYPE => "_",
-            PAWN => "P",
-            KNIGHT => "N",
-            BISHOP => "B",
-            ROOK => "R",
-            QUEEN => "Q",
-            KING => "K",
+            PieceType::NO_TYPE => "_",
+            PieceType::PAWN => "P",
+            PieceType::KNIGHT => "N",
+            PieceType::BISHOP => "B",
+            PieceType::ROOK => "R",
+            PieceType::QUEEN => "Q",
+            PieceType::KING => "K",
             _ => "?",
         }
     }
@@ -34,13 +70,13 @@ impl PieceType {
      */
     pub fn from_code(c: char) -> PieceType {
         match c {
-            'P' => PAWN,
-            'N' => KNIGHT,
-            'B' => BISHOP,
-            'R' => ROOK,
-            'Q' => QUEEN,
-            'K' => KING,
-            _ => NO_TYPE,
+            'P' => PieceType::PAWN,
+            'N' => PieceType::KNIGHT,
+            'B' => PieceType::BISHOP,
+            'R' => PieceType::ROOK,
+            'Q' => PieceType::QUEEN,
+            'K' => PieceType::KING,
+            _ => PieceType::NO_TYPE,
         }
     }
 }
@@ -50,24 +86,3 @@ impl Display for PieceType {
         write!(f, "{}", self.get_code())
     }
 }
-
-#[allow(dead_code)]
-pub const NO_TYPE: PieceType = PieceType(7);
-
-//these piece types should match that of the indices in board::bb_indices
-#[allow(dead_code)]
-pub const PAWN: PieceType = PieceType(0);
-#[allow(dead_code)]
-pub const KNIGHT: PieceType = PieceType(1);
-#[allow(dead_code)]
-pub const BISHOP: PieceType = PieceType(2);
-#[allow(dead_code)]
-pub const ROOK: PieceType = PieceType(3);
-#[allow(dead_code)]
-pub const QUEEN: PieceType = PieceType(4);
-#[allow(dead_code)]
-pub const KING: PieceType = PieceType(5);
-
-pub const PIECE_TYPES: [PieceType; NUM_PIECE_TYPES] = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
-
-pub const PROMOTE_TYPES: [PieceType; 4] = [KNIGHT, BISHOP, ROOK, QUEEN];

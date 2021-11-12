@@ -1,9 +1,7 @@
 use crate::constants::{Color, BLACK};
 use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::moves::Move;
-use crate::piece::{
-    PieceType, BISHOP, KING, KNIGHT, NO_TYPE, PAWN, PIECE_TYPES, PROMOTE_TYPES, QUEEN, ROOK,
-};
+use crate::PieceType;
 use crate::square::Square;
 use crate::util::{opposite_color, pawn_direction, pawn_promote_rank, pawn_start_rank};
 use crate::Bitboard;
@@ -97,7 +95,7 @@ impl MoveGenerator {
     pub fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let mut moves = Vec::new();
         //iterate through all the pieces of this color and enumerate their moves
-        for pt in PIECE_TYPES {
+        for pt in PieceType::ALL_TYPES {
             let mut pieces_to_move = board.get_pieces_of_type_and_color(pt, color);
             while pieces_to_move != Bitboard::EMPTY {
                 //square of next piece to move
@@ -118,7 +116,7 @@ impl MoveGenerator {
         let mut newboard = *board;
         let player = board.color_at_square(m.from_square());
         newboard.make_move(m);
-        let player_king_bb = newboard.get_pieces_of_type_and_color(KING, player);
+        let player_king_bb = newboard.get_pieces_of_type_and_color(PieceType::KING, player);
         let player_king_square = Square::from(player_king_bb);
         self.is_square_attacked_by(&newboard, player_king_square, opposite_color(player))
     }
@@ -206,10 +204,10 @@ impl MoveGenerator {
             && board.get_occupancy() & queenside_castle_passthrough_sqs == Bitboard::EMPTY;
 
         if can_kingside_castle {
-            moves.push(Move::new(sq, Square::new(sq.rank(), 6), NO_TYPE));
+            moves.push(Move::new(sq, Square::new(sq.rank(), 6), PieceType::NO_TYPE));
         }
         if can_queenside_castle {
-            moves.push(Move::new(sq, Square::new(sq.rank(), 2), NO_TYPE));
+            moves.push(Move::new(sq, Square::new(sq.rank(), 2), PieceType::NO_TYPE));
         }
         return moves;
     }
@@ -252,7 +250,7 @@ impl MoveGenerator {
         let not_promotion_bb = target_squares & !promote_rank;
         let mut moves = bitboard_to_moves(sq, not_promotion_bb);
         if promotion_bb != Bitboard::EMPTY {
-            for promote_type in PROMOTE_TYPES {
+            for promote_type in PieceType::PROMOTE_TYPES {
                 moves.extend(bitboard_to_promotions(sq, promotion_bb, promote_type));
             }
         }
@@ -321,7 +319,7 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
  * this to a list of `Move`s with promotion type `NO_TYPE`.
  */
 fn bitboard_to_moves(from_sq: Square, bb: Bitboard) -> Vec<Move> {
-    bitboard_to_promotions(from_sq, bb, NO_TYPE)
+    bitboard_to_promotions(from_sq, bb, PieceType::NO_TYPE)
 }
 
 /**

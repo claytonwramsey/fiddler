@@ -1,5 +1,5 @@
 use crate::constants::{Color, WHITE};
-use crate::piece::{PieceType, NO_TYPE, NUM_PIECE_TYPES};
+use crate::PieceType;
 use crate::square::{Square, BAD_SQUARE};
 
 #[inline]
@@ -45,7 +45,7 @@ pub fn get_player_to_move_key(player_to_move: Color) -> u64 {
     }
 }
 
-const SQUARE_KEYS: [[[u64; 2]; NUM_PIECE_TYPES]; 64] = [
+const SQUARE_KEYS: [[[u64; 2]; PieceType::NUM_TYPES]; 64] = [
     [
         [13515657874892102023, 15129553140981592645],
         [14809938836708178893, 15774518201988393282],
