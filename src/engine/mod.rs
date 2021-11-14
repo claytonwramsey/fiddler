@@ -9,6 +9,7 @@ use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 pub mod candidacy;
 pub mod greedy;
 pub mod minimax;
+pub use minimax::Minimax;
 pub mod positional;
 
 /**

@@ -151,12 +151,12 @@ impl MoveGenerator {
      */
     fn sq_pseudolegal_moves(&self, board: &Board, sq: Square, pt: PieceType) -> Vec<Move> {
         match pt {
-            PAWN => self.pawn_moves(board, sq),
-            KNIGHT => self.knight_moves(board, sq),
-            KING => self.king_moves(board, sq),
-            BISHOP => self.bishop_moves(board, sq),
-            ROOK => self.rook_moves(board, sq),
-            QUEEN => self.queen_moves(board, sq),
+            PieceType::PAWN => self.pawn_moves(board, sq),
+            PieceType::KNIGHT => self.knight_moves(board, sq),
+            PieceType::KING => self.king_moves(board, sq),
+            PieceType::BISHOP => self.bishop_moves(board, sq),
+            PieceType::ROOK => self.rook_moves(board, sq),
+            PieceType::QUEEN => self.queen_moves(board, sq),
             //bad type gets empty vector of moves
             _ => Vec::new(),
         }

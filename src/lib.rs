@@ -15,7 +15,7 @@ pub use crate::direction::Direction;
 pub mod engine;
 pub use crate::engine::Engine;
 
-mod fens;
+pub mod fens;
 
 mod game;
 pub use crate::game::Game;

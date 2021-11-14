@@ -8,7 +8,7 @@ use crate::square::{Square, BAD_SQUARE};
  */
 pub fn get_square_key(sq: Square, pt: PieceType, color: Color) -> u64 {
     match pt {
-        NO_TYPE => 0,
+        PieceType::NO_TYPE => 0,
         _ => SQUARE_KEYS[sq.0 as usize][pt.0 as usize][color],
     }
 }

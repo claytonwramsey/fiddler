@@ -12,7 +12,7 @@ impl PieceType {
 
         
     /**
-     * Total number of piece types. TODO: should this be moved to piece.rs?
+     * Total number of piece types.
      */
     pub const NUM_TYPES: usize = 6;
 
