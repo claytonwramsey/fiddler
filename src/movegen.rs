@@ -155,12 +155,52 @@ impl MoveGenerator {
      * self-check?
      */
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
-        let mut newboard = *board;
+        /*let mut newboard = *board;
         let player = board.color_at_square(m.from_square());
         newboard.make_move(m);
         let player_king_bb = newboard.get_type_and_color(PieceType::KING, player);
         let player_king_square = Square::from(player_king_bb);
-        self.is_square_attacked_by(&newboard, player_king_square, opposite_color(player))
+        self.is_square_attacked_by(&newboard, player_king_square, opposite_color(player))*/
+        
+        let player = board.player_to_move;
+        let player_king_bb = board.get_type_and_color(PieceType::KING, player);
+        if player_king_bb == Bitboard::EMPTY {
+            //if there's no king, I guess you can't check it?
+            return false;
+        }
+        let is_king_move = player_king_bb.is_square_occupied(m.from_square());
+
+
+        if is_king_move {
+            //if the king is moving, we only need to know if 
+            return self.is_square_attacked_by(board, m.to_square(), opposite_color(player));
+        }
+        // The mover is not a king. Self checks can only happen by discovery. 
+        // Typically, only one square is emptied by moving. However, in en
+        // passant, two squares are emptied. We can check the results by masking
+        // out the squares which were emptied, and then seeing which attacks
+        // went through using magic bitboards.
+
+        let mut squares_emptied = Bitboard::from(m.from_square());
+        if board.is_move_en_passant(m) {
+            squares_emptied |= Bitboard::from(board.en_passant_square);
+        }
+
+        let occupancy = board.get_occupancy() & !squares_emptied;
+        let king_square = Square::from(player_king_bb);
+        let opponent = opposite_color(player);
+
+        //The squares that a rook would see if it were in the king's square.
+        let seen_rook_bb = get_rook_attacks(occupancy, king_square, &self.mtable);
+        //The squares that a bishop would see if it were in the king's square.
+        let seen_bishop_bb = get_bishop_attacks(occupancy, king_square, &self.mtable);
+
+        let enemy_rook_bb = board.get_type_and_color(PieceType::ROOK, opponent);
+        let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, opponent);
+        let enemey_bishop_bb = board.get_type_and_color(PieceType::BISHOP, opponent);
+        
+        //Check that the king cannot be seen by any enemy rooks, queens, or bishops.
+        return (seen_rook_bb & (enemy_queen_bb | enemy_rook_bb)) | (seen_bishop_bb & (enemy_queen_bb | enemey_bishop_bb)) != Bitboard::EMPTY;
     }
 
     #[inline]
