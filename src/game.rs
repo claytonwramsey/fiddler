@@ -187,8 +187,8 @@ mod tests {
     use super::*;
     use crate::board;
     use crate::moves::Move;
-    use crate::PieceType;
     use crate::square::*;
+    use crate::PieceType;
 
     #[test]
     /**

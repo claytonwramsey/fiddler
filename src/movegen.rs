@@ -1,12 +1,12 @@
 use crate::constants::{Color, BLACK};
 use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::moves::Move;
-use crate::PieceType;
 use crate::square::Square;
 use crate::util::{opposite_color, pawn_direction, pawn_start_rank};
 use crate::Bitboard;
 use crate::Board;
 use crate::Direction;
+use crate::PieceType;
 
 #[allow(dead_code)]
 /**
@@ -94,48 +94,41 @@ impl MoveGenerator {
      */
     pub fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = pawn_start_rank(opposite_color(color));
-        // Number of start squares 
-        let num_promotion_from_squares = (
-                board.get_type_and_color(PieceType::PAWN, color) & 
-                about_to_promote_bb)
-            .0.count_ones() as usize;
+        // Number of start squares
+        let num_promotion_from_squares = (board.get_type_and_color(PieceType::PAWN, color)
+            & about_to_promote_bb)
+            .0
+            .count_ones() as usize;
         let mut normal_bitboards = Vec::with_capacity(
-            board.get_color_occupancy(color).0.count_ones() as usize - num_promotion_from_squares);
+            board.get_color_occupancy(color).0.count_ones() as usize - num_promotion_from_squares,
+        );
         let mut promotion_bitboards = Vec::with_capacity(num_promotion_from_squares);
-        
+
         let pawns = board.get_type_and_color(PieceType::PAWN, color);
         let non_promoting_pawns = pawns & !about_to_promote_bb;
         let promoting_pawns = pawns & about_to_promote_bb;
 
         for sq in non_promoting_pawns {
-                normal_bitboards.push(
-                    (sq, self.pawn_moves(board, sq))
-                );
-            }
+            normal_bitboards.push((sq, self.pawn_moves(board, sq)));
+        }
         for sq in promoting_pawns {
-            promotion_bitboards.push(
-                (sq, self.pawn_moves(board, sq))
-            );
+            promotion_bitboards.push((sq, self.pawn_moves(board, sq)));
         }
 
         //iterate through all the pieces of this color and enumerate their moves
         for pt in PieceType::NON_PAWN_TYPES {
             let pieces_to_move = board.get_type_and_color(pt, color);
             for sq in pieces_to_move {
-                normal_bitboards.push(
-                    (sq, self.sq_pseudolegal_moves(board, sq, pt))
-                );
+                normal_bitboards.push((sq, self.sq_pseudolegal_moves(board, sq, pt)));
             }
         }
 
-        let mut num_moves: u32 = normal_bitboards
-            .iter()
-            .map(|x| x.1.0.count_ones())
-            .sum();
-        num_moves += (PieceType::NUM_PROMOTE_TYPES as u32) * promotion_bitboards
-            .iter()
-            .map(|x| x.1.0.count_ones())
-            .sum::<u32>();
+        let mut num_moves: u32 = normal_bitboards.iter().map(|x| x.1 .0.count_ones()).sum();
+        num_moves += (PieceType::NUM_PROMOTE_TYPES as u32)
+            * promotion_bitboards
+                .iter()
+                .map(|x| x.1 .0.count_ones())
+                .sum::<u32>();
         let mut moves = Vec::with_capacity(num_moves as usize);
         for (from_sq, bb) in normal_bitboards {
             bitboard_to_moves(from_sq, bb, &mut moves);
@@ -161,7 +154,7 @@ impl MoveGenerator {
         let player_king_bb = newboard.get_type_and_color(PieceType::KING, player);
         let player_king_square = Square::from(player_king_bb);
         self.is_square_attacked_by(&newboard, player_king_square, opposite_color(player))*/
-        
+
         let player = board.player_to_move;
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
         if player_king_bb == Bitboard::EMPTY {
@@ -170,12 +163,11 @@ impl MoveGenerator {
         }
         let is_king_move = player_king_bb.is_square_occupied(m.from_square());
 
-
         if is_king_move {
-            //if the king is moving, we only need to know if 
+            //if the king is moving, we only need to know if
             return self.is_square_attacked_by(board, m.to_square(), opposite_color(player));
         }
-        // The mover is not a king. Self checks can only happen by discovery. 
+        // The mover is not a king. Self checks can only happen by discovery.
         // Typically, only one square is emptied by moving. However, in en
         // passant, two squares are emptied. We can check the results by masking
         // out the squares which were emptied, and then seeing which attacks
@@ -198,9 +190,11 @@ impl MoveGenerator {
         let enemy_rook_bb = board.get_type_and_color(PieceType::ROOK, opponent);
         let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, opponent);
         let enemey_bishop_bb = board.get_type_and_color(PieceType::BISHOP, opponent);
-        
+
         //Check that the king cannot be seen by any enemy rooks, queens, or bishops.
-        return (seen_rook_bb & (enemy_queen_bb | enemy_rook_bb)) | (seen_bishop_bb & (enemy_queen_bb | enemey_bishop_bb)) != Bitboard::EMPTY;
+        return (seen_rook_bb & (enemy_queen_bb | enemy_rook_bb))
+            | (seen_bishop_bb & (enemy_queen_bb | enemey_bishop_bb))
+            != Bitboard::EMPTY;
     }
 
     #[inline]
@@ -250,8 +244,7 @@ impl MoveGenerator {
      * this position. Also, haha bob seger.
      */
     fn knight_moves(&self, board: &Board, sq: Square) -> Bitboard {
-        self.knight_moves[sq.0 as usize]
-            & !board.get_color_occupancy(board.color_at_square(sq))
+        self.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq))
     }
 
     #[inline]
@@ -344,8 +337,8 @@ impl MoveGenerator {
      * position.
      */
     fn rook_moves(&self, board: &Board, sq: Square) -> Bitboard {
-            get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
-                & !board.get_color_occupancy(board.color_at_square(sq))
+        get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
+            & !board.get_color_occupancy(board.color_at_square(sq))
     }
 
     #[inline]
@@ -388,10 +381,15 @@ fn bitboard_to_moves(from_sq: Square, bb: Bitboard, target: &mut Vec<Move>) {
 
 /**
  * Given a bitboard of possible to-squares and a fixed from-square, convert
- * this to a list of `Move`s with the given promotion type and push them onto 
+ * this to a list of `Move`s with the given promotion type and push them onto
  * the target.
  */
-fn bitboard_to_promotions(from_sq: Square, bb: Bitboard, promote_type: PieceType, target: &mut Vec<Move>) {
+fn bitboard_to_promotions(
+    from_sq: Square,
+    bb: Bitboard,
+    promote_type: PieceType,
+    target: &mut Vec<Move>,
+) {
     for to_sq in bb {
         target.push(Move::new(from_sq, to_sq, promote_type));
     }

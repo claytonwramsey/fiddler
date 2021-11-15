@@ -318,8 +318,8 @@ impl Board {
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
-        let is_promotion =
-            mover_type == PieceType::PAWN && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
+        let is_promotion = mover_type == PieceType::PAWN
+            && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
         let is_long_move = from_sq.chebyshev_to(to_sq) > 1;
@@ -638,7 +638,10 @@ pub mod tests {
      * Test that we can capture en passant.
      */
     fn test_en_passant() {
-        test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, PieceType::NO_TYPE));
+        test_fen_helper(
+            fens::EN_PASSANT_READY_FEN,
+            Move::new(E5, F6, PieceType::NO_TYPE),
+        );
     }
 
     /**
@@ -657,7 +660,10 @@ pub mod tests {
      * Test that White can promote their pawn to a queen
      */
     fn test_white_promote_queen() {
-        test_fen_helper(fens::WHITE_READY_TO_PROMOTE_FEN, Move::new(F7, F8, PieceType::QUEEN));
+        test_fen_helper(
+            fens::WHITE_READY_TO_PROMOTE_FEN,
+            Move::new(F7, F8, PieceType::QUEEN),
+        );
     }
 
     /**
@@ -709,12 +715,18 @@ pub mod tests {
         }
         assert_eq!(new_board.color_at_square(m.to_square()), mover_color);
 
-        assert_eq!(new_board.type_at_square(m.from_square()), PieceType::NO_TYPE);
+        assert_eq!(
+            new_board.type_at_square(m.from_square()),
+            PieceType::NO_TYPE
+        );
         assert_eq!(new_board.color_at_square(m.from_square()), NO_COLOR);
 
         //Check en passant worked correctly
         if is_en_passant {
-            assert_eq!(new_board.type_at_square(old_board.en_passant_square), PieceType::PAWN);
+            assert_eq!(
+                new_board.type_at_square(old_board.en_passant_square),
+                PieceType::PAWN
+            );
             assert_eq!(
                 new_board.color_at_square(old_board.en_passant_square),
                 old_board.player_to_move

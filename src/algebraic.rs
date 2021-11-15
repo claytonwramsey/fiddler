@@ -1,8 +1,8 @@
+use crate::constants;
 use crate::Board;
 use crate::Move;
-use crate::PieceType;
-use crate::constants;
 use crate::MoveGenerator;
+use crate::PieceType;
 
 #[allow(dead_code)]
 /**
@@ -30,7 +30,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         let other_moves = mgen.get_moves(b);
         let from_sq = m.from_square();
 
-        // Type of the piece moving 
+        // Type of the piece moving
         if mover_type != PieceType::PAWN || is_move_capture {
             s += mover_type.get_code();
         }
@@ -40,10 +40,10 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         let mut is_unclear_rank = false;
         let mut is_unclear_file = false;
         for other_move in other_moves {
-            if other_move != m && 
-                other_move.to_square() == m.to_square() &&
-                b.type_at_square(other_move.from_square()) == mover_type {
-
+            if other_move != m
+                && other_move.to_square() == m.to_square()
+                && b.type_at_square(other_move.from_square()) == mover_type
+            {
                 is_unclear = true;
                 if other_move.from_square().rank() == from_sq.rank() {
                     is_unclear_rank = true;
@@ -69,7 +69,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
             s += "x";
         }
 
-        s+= &m.to_square().to_string();
+        s += &m.to_square().to_string();
 
         //TODO checks + mates here
     }
