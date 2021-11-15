@@ -186,7 +186,7 @@ impl Minimax {
 impl Default for Minimax {
     fn default() -> Minimax {
         Minimax {
-            depth: 7,
+            depth: 5,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: HashMap::new(),

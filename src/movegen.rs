@@ -148,14 +148,8 @@ impl MoveGenerator {
      * self-check?
      */
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
-        /*let mut newboard = *board;
-        let player = board.color_at_square(m.from_square());
-        newboard.make_move(m);
-        let player_king_bb = newboard.get_type_and_color(PieceType::KING, player);
-        let player_king_square = Square::from(player_king_bb);
-        self.is_square_attacked_by(&newboard, player_king_square, opposite_color(player))*/
 
-        let player = board.player_to_move;
+        let player = board.color_at_square(m.from_square());
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
         if player_king_bb == Bitboard::EMPTY {
             //if there's no king, I guess you can't check it?
@@ -243,7 +237,7 @@ impl MoveGenerator {
         }
 
         // Check for king attacks
-        let king_vision = self.king_moves(board, sq);
+        let king_vision = self.king_moves[sq.0 as usize];
         if king_vision & board.get_type_and_color(PieceType::KING, color) != Bitboard::EMPTY {
             return true;
         }
@@ -253,7 +247,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Given a set of squares
+     * Given a set of squares, are these squares attacked by the given color?
      */
     pub fn are_squares_attacked_by(&self, board: &Board, squares: Bitboard, color: Color) -> bool {
         squares
