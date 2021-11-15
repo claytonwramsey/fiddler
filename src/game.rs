@@ -186,6 +186,7 @@ impl Default for Game {
 mod tests {
     use super::*;
     use crate::board;
+    use crate::fens::*;
     use crate::moves::Move;
     use crate::square::*;
     use crate::PieceType;
@@ -250,6 +251,20 @@ mod tests {
         g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::default());
+    }
+
+    #[test]
+    /**
+     * Test that a mated position is in fact over.
+     */
+    fn test_is_mate_over() {
+        let g = Game::from_fen(SCHOLARS_MATE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let moves = mgen.get_moves(g.get_board());
+        for m in moves {
+            println!("{}", m);
+        }
+        assert!(g.is_game_over(&mgen));
     }
 
     #[test]

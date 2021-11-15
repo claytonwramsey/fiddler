@@ -58,5 +58,11 @@ pub const MATE_IN_1_FEN: &'static str = "3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1";
  */
 pub const MATE_IN_4_FEN: &'static str = "3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1";
 
+/**
+ * A very special puzzle that Ian wrote for me.
+ */
 pub const MY_PUZZLE_FEN: &'static str =
     "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30";
+
+pub const SCHOLARS_MATE_FEN: &'static str =
+    "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4";

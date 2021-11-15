@@ -202,11 +202,53 @@ impl MoveGenerator {
      * In a given board state, is a square attacked by the given color?
      */
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
-        self.get_pseudolegal_moves(board, color)
-            .into_iter()
-            .filter(|m| m.to_square() == sq)
-            .next()
-            .is_some()
+        // Check for pawn attacks
+        let our_pawn_dir = pawn_direction(color);
+        let left_pawn_sight = sq + our_pawn_dir + Direction::WEST;
+        let right_pawn_sight = sq + our_pawn_dir + Direction::EAST;
+        let mut pawn_vision = Bitboard::EMPTY;
+        if left_pawn_sight.chebyshev_to(sq) == 1 {
+            pawn_vision |= Bitboard::from(left_pawn_sight);
+        }
+        if right_pawn_sight.chebyshev_to(sq) == 1 {
+            pawn_vision |= Bitboard::from(right_pawn_sight);
+        }
+        if pawn_vision & board.get_type_and_color(PieceType::PAWN, color) != Bitboard::EMPTY {
+            return true;
+        }
+
+        // Check for knight attacks
+        let knight_vision = self.knight_moves[sq.0 as usize];
+        if knight_vision & board.get_type_and_color(PieceType::KNIGHT, color) != Bitboard::EMPTY {
+            return true;
+        }
+
+        let occupancy = board.get_occupancy();
+        let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, color);
+
+        // Check for rook/horizontal queen attacks
+        let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
+        if rook_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::ROOK, color))
+            != Bitboard::EMPTY
+        {
+            return true;
+        }
+
+        // Check for bishop/diagonal queen attacks
+        let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
+        if bishop_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::BISHOP, color))
+            != Bitboard::EMPTY
+        {
+            return true;
+        }
+
+        // Check for king attacks
+        let king_vision = self.king_moves(board, sq);
+        if king_vision & board.get_type_and_color(PieceType::KING, color) != Bitboard::EMPTY {
+            return true;
+        }
+
+        return false;
     }
 
     #[inline]
