@@ -204,7 +204,7 @@ impl Board {
     /**
      * Get the squares occupied by pieces of a given type.
      */
-    pub fn get_pieces_of_type(&self, pt: PieceType) -> Bitboard {
+    pub fn get_type(&self, pt: PieceType) -> Bitboard {
         self.pieces[pt.0 as usize]
     }
 
@@ -212,8 +212,8 @@ impl Board {
     /**
      * Get the squares occupied by pieces of a given type and color.
      */
-    pub fn get_pieces_of_type_and_color(&self, pt: PieceType, color: Color) -> Bitboard {
-        self.get_pieces_of_type(pt) & self.get_color_occupancy(color)
+    pub fn get_type_and_color(&self, pt: PieceType, color: Color) -> Bitboard {
+        self.get_type(pt) & self.get_color_occupancy(color)
     }
 
     /**
@@ -263,13 +263,13 @@ impl Board {
      * pseudo-legal.
      */
     pub fn is_move_castle(&self, m: Move) -> bool {
-        self.get_pieces_of_type(PieceType::KING)
+        self.get_type(PieceType::KING)
             .is_square_occupied(m.from_square())
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
     pub fn is_move_promotion(&self, m: Move) -> bool {
-        self.get_pieces_of_type_and_color(PieceType::PAWN, self.player_to_move)
+        self.get_type_and_color(PieceType::PAWN, self.player_to_move)
             .is_square_occupied(m.from_square())
             && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move)
                 != Bitboard::EMPTY

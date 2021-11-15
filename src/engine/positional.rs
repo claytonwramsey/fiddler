@@ -75,10 +75,10 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     for i in 0..PieceType::NUM_TYPES {
         let pt = PieceType(i as u8);
 
-        for sq in b.get_pieces_of_type_and_color(pt, WHITE) {
+        for sq in b.get_type_and_color(pt, WHITE) {
             positional_eval += value_at_square(pt, sq);
         }
-        for sq in b.get_pieces_of_type_and_color(pt, BLACK) {
+        for sq in b.get_type_and_color(pt, BLACK) {
             //Invert the square that Black is on, since positional values are
             //flipped (as pawns move the other way, etc)
             let alt_sq = Square::new(7 - sq.rank(), sq.file());

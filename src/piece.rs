@@ -42,6 +42,16 @@ impl PieceType {
         PieceType::KING,
     ];
 
+    pub const NON_PAWN_TYPES: [PieceType; PieceType::NUM_TYPES - 1] = [
+        PieceType::KNIGHT,
+        PieceType::BISHOP,
+        PieceType::ROOK,
+        PieceType::QUEEN,
+        PieceType::KING,
+    ];
+
+    pub const NUM_PROMOTE_TYPES: usize = 4;
+
     pub const PROMOTE_TYPES: [PieceType; 4] = [
         PieceType::KNIGHT,
         PieceType::BISHOP,

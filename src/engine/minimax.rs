@@ -186,7 +186,7 @@ impl Minimax {
 impl Default for Minimax {
     fn default() -> Minimax {
         Minimax {
-            depth: 5,
+            depth: 7,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: HashMap::new(),
@@ -275,6 +275,15 @@ pub mod tests {
     #[test]
     fn test_mate_in_4_ply() {
         test_eval_helper(MATE_IN_4_FEN, Eval::mate_in(4));
+    }
+
+    #[test]
+    fn test_my_special_puzzle() {
+        let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let mut e = Minimax::default();
+
+        e.get_evals(&mut g, &mgen);
     }
 
     fn test_eval_helper(fen: &str, eval: Eval) {
