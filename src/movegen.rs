@@ -148,7 +148,6 @@ impl MoveGenerator {
      * self-check?
      */
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
-
         let player = board.color_at_square(m.from_square());
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
         if player_king_bb == Bitboard::EMPTY {
