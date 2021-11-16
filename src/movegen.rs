@@ -66,10 +66,10 @@ impl MoveGenerator {
                 let is_queen_castle = m.to_square().file() == 2;
                 let mut is_valid = true;
                 let mut king_passthru_min = 4;
-                let mut king_passthru_max = 6;
+                let mut king_passthru_max = 7;
                 if is_queen_castle {
                     king_passthru_min = 2;
-                    king_passthru_max = 4;
+                    king_passthru_max = 5;
                 }
                 for file in king_passthru_min..king_passthru_max {
                     let target_sq = Square::new(m.from_square().rank(), file);
@@ -212,9 +212,10 @@ impl MoveGenerator {
         let is_king_move = player_king_bb.is_square_occupied(m.from_square());
         //Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
+        let opponent = opposite_color(player);
 
         if is_king_move {
-            if self.is_square_attacked_by(board, m.to_square(), opposite_color(player)) {
+            if self.is_square_attacked_by(board, m.to_square(), opponent) {
                 return true;
             }
             // The previous check skips moves where the king blocks himself. We
@@ -222,7 +223,7 @@ impl MoveGenerator {
             king_square = m.to_square();
         }
         // Self checks can only happen by discovery (including by moving the
-        // king "out of its own way").
+        // king "out of its own way"), or by doing nothing about a check.
         // Typically, only one square is emptied by moving. However, in en
         // passant, two squares are emptied. We can check the results by masking
         // out the squares which were emptied, and then seeing which attacks
@@ -232,23 +233,9 @@ impl MoveGenerator {
         if board.is_move_en_passant(m) {
             squares_emptied |= Bitboard::from(board.en_passant_square);
         }
-
         let occupancy = board.get_occupancy() & !squares_emptied;
-        let opponent = opposite_color(player);
 
-        //The squares that a rook would see if it were in the king's square.
-        let seen_rook_bb = get_rook_attacks(occupancy, king_square, &self.mtable);
-        //The squares that a bishop would see if it were in the king's square.
-        let seen_bishop_bb = get_bishop_attacks(occupancy, king_square, &self.mtable);
-
-        let enemy_rook_bb = board.get_type_and_color(PieceType::ROOK, opponent);
-        let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, opponent);
-        let enemey_bishop_bb = board.get_type_and_color(PieceType::BISHOP, opponent);
-
-        //Check that the king cannot be seen by any enemy rooks, queens, or bishops.
-        return (seen_rook_bb & (enemy_queen_bb | enemy_rook_bb))
-            | (seen_bishop_bb & (enemy_queen_bb | enemey_bishop_bb))
-            != Bitboard::EMPTY;
+        return self.square_attackers_with_occupancy(board, king_square, opponent, occupancy) != Bitboard::EMPTY;
     }
 
     #[inline]
@@ -259,11 +246,20 @@ impl MoveGenerator {
         return self.get_square_attackers(board, sq, color) != Bitboard::EMPTY;
     }
 
+    #[inline]
     /**
      * Get the attackers of a given color on a square as a `Bitboard` 
      * representing the squares of the attackers.
      */
     pub fn get_square_attackers(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
+        self.square_attackers_with_occupancy(board, sq, color, board.get_occupancy())
+    }
+
+    /**
+     * Same functionality as get_square_attackers, but uses the provided 
+     * occupancy bitboard (as opposed to the board's occupancy.)
+     */
+    fn square_attackers_with_occupancy(&self, board: &Board, sq: Square, color: Color, occupancy: Bitboard) -> Bitboard {
         let mut attackers = Bitboard::EMPTY;
         // Check for pawn attacks
         let our_pawn_dir = pawn_direction(color);
@@ -282,7 +278,6 @@ impl MoveGenerator {
         let knight_vision = self.knight_moves[sq.0 as usize];
         attackers |= knight_vision & board.get_type_and_color(PieceType::KNIGHT, color);
 
-        let occupancy = board.get_occupancy();
         let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, color);
 
         // Check for rook/horizontal queen attacks
