@@ -89,6 +89,62 @@ impl MoveGenerator {
     }
 
     /**
+     * Does the player to move have any legal moves in this position?
+     */
+    pub fn has_moves(&self, board: &Board) -> bool {
+        let player = board.player_to_move;
+        let opponent = opposite_color(player);
+        let king_square = Square::from(board.get_type_and_color(PieceType::KING, player));
+        if king_square == crate::square::BAD_SQUARE {
+            // no king found
+            return false;
+        }
+        let king_attackers = self.get_square_attackers(board, king_square, opponent);
+        if king_attackers != Bitboard::EMPTY {
+            //king is in check
+
+            //King can probably get out on his own
+            let king_to_sqs = self.king_moves(board, king_square);
+            let mut king_moves = Vec::with_capacity(king_to_sqs.0.count_ones() as usize);
+            bitboard_to_moves(king_square, king_to_sqs, &mut king_moves);
+            for m in king_moves {
+                if !self.is_move_self_check(board, m) {
+                    return true;
+                }
+            }
+
+            //king moves could not prevent checks
+            //if this is a double check, we must be mated
+            if king_attackers.0.count_ones() > 1 {
+                return false;
+            }
+
+            //only blocks can save us from checks
+        }
+
+        let mut move_vec = Vec::new();
+        for pt in PieceType::ALL_TYPES {
+            for from_sq in board.get_type_and_color(pt, player) {
+                let to_bb = self.sq_pseudolegal_moves(board, from_sq, pt);
+                move_vec.reserve(to_bb.0.count_ones() as usize);
+
+                // we need not handle promotion because pawn promotion also 
+                // blocks. I would uses .drain() here normally, but that's not
+                // yet supported.
+                bitboard_to_moves(from_sq, to_bb, &mut move_vec);
+                for m in move_vec.iter() {
+                    if !self.is_move_self_check(board, *m) {
+                        return true;
+                    }
+                }
+                move_vec.clear();
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Enumerate the pseudolegal moves a player of the given color would be
      * able to make if it were their turn to move.
      */
@@ -201,6 +257,15 @@ impl MoveGenerator {
      * In a given board state, is a square attacked by the given color?
      */
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
+        return self.get_square_attackers(board, sq, color) != Bitboard::EMPTY;
+    }
+
+    /**
+     * Get the attackers of a given color on a square as a `Bitboard` 
+     * representing the squares of the attackers.
+     */
+    pub fn get_square_attackers(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
+        let mut attackers = Bitboard::EMPTY;
         // Check for pawn attacks
         let our_pawn_dir = pawn_direction(color);
         let left_pawn_sight = sq + our_pawn_dir + Direction::WEST;
@@ -212,42 +277,28 @@ impl MoveGenerator {
         if right_pawn_sight.chebyshev_to(sq) == 1 {
             pawn_vision |= Bitboard::from(right_pawn_sight);
         }
-        if pawn_vision & board.get_type_and_color(PieceType::PAWN, color) != Bitboard::EMPTY {
-            return true;
-        }
+        attackers |= pawn_vision & board.get_type_and_color(PieceType::PAWN, color);
 
         // Check for knight attacks
         let knight_vision = self.knight_moves[sq.0 as usize];
-        if knight_vision & board.get_type_and_color(PieceType::KNIGHT, color) != Bitboard::EMPTY {
-            return true;
-        }
+        attackers |= knight_vision & board.get_type_and_color(PieceType::KNIGHT, color);
 
         let occupancy = board.get_occupancy();
         let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, color);
 
         // Check for rook/horizontal queen attacks
         let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
-        if rook_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::ROOK, color))
-            != Bitboard::EMPTY
-        {
-            return true;
-        }
+        attackers |= rook_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::ROOK, color));
 
         // Check for bishop/diagonal queen attacks
         let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
-        if bishop_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::BISHOP, color))
-            != Bitboard::EMPTY
-        {
-            return true;
-        }
+        attackers |= bishop_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::BISHOP, color));
 
         // Check for king attacks
         let king_vision = self.king_moves[sq.0 as usize];
-        if king_vision & board.get_type_and_color(PieceType::KING, color) != Bitboard::EMPTY {
-            return true;
-        }
-
-        return false;
+        attackers |= king_vision & board.get_type_and_color(PieceType::KING, color);
+        
+        return attackers;
     }
 
     #[inline]
@@ -388,7 +439,7 @@ impl MoveGenerator {
      * position.
      */
     fn queen_moves(&self, board: &Board, sq: Square) -> Bitboard {
-        self.bishop_moves(board, sq) & self.rook_moves(board, sq)
+        self.bishop_moves(board, sq) | self.rook_moves(board, sq)
     }
 }
 
@@ -472,6 +523,7 @@ fn get_knight_steps() -> Vec<Direction> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
+    use crate::square::*;
 
     #[test]
     fn test_opening_moveset() {
@@ -482,5 +534,22 @@ mod tests {
             print!("{}, ", m);
         }
         print!("}}");
+    }
+
+    #[test]
+    /**
+     * Test that we can play Qf3, the critical move in the Fried Liver opening.
+     */
+    fn test_best_queen_fried_liver() {
+        let mg = MoveGenerator::new();
+        let m = Move::new(D1, F3, PieceType::NO_TYPE);
+        let b = Board::from_fen(crate::fens::FRIED_LIVER_FEN).unwrap();
+        let pms =mg.get_pseudolegal_moves(&b, crate::constants::WHITE);
+        for m2 in pms.iter() {
+            println!("{}", m2);
+        }
+        assert!(pms.contains(&m));
+        let moves = mg.get_moves(&b);
+        assert!(moves.contains(&m));
     }
 }

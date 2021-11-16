@@ -15,7 +15,7 @@ use std::time::Instant;
  * After going this many edges deep into the search tree, stop populating the 
  * transposition table to save memory.
  */
-const TRANSPOSITION_DEPTH_CUTOFF: i8 = 5;
+const TRANSPOSITION_DEPTH_CUTOFF: i8 = 4;
 
 /**
  * A stupid-simple engine which will evaluate the entire tree.
@@ -169,7 +169,7 @@ impl Minimax {
             lower_bound = evaluation;
             upper_bound = evaluation;
         }
-        if self.depth - depth > TRANSPOSITION_DEPTH_CUTOFF {
+        if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
             self.transpose_table.insert(
                 *g.get_board(),
                 TTableEntry {
@@ -193,11 +193,13 @@ impl Minimax {
 
 impl Default for Minimax {
     fn default() -> Minimax {
+        let branch_factor = 8f64;
+        let default_depth = 5;
         Minimax {
-            depth: 7,
+            depth: default_depth,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
-            transpose_table: HashMap::new(),
+            transpose_table: HashMap::with_capacity(branch_factor.powf(min(default_depth, TRANSPOSITION_DEPTH_CUTOFF) as f64) as usize),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
         }

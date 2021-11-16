@@ -152,12 +152,17 @@ impl Game {
      * game can continue)?
      */
     pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
-        let moves = mgen.get_moves(&self.get_board());
-        if moves.len() == 0 {
+        let num_reps = *self.repetitions.get(self.get_board()).unwrap_or(&0);
+        if num_reps >= 3 {
+            // draw by repetition
             return true;
         }
+
+        if mgen.has_moves(self.get_board()) {
+            return false;
+        }
         //TODO return true in case of draw by repetion or timeout
-        return false;
+        return true;
     }
 
     /**
@@ -264,6 +269,7 @@ mod tests {
         for m in moves {
             println!("{}", m);
         }
+        assert!(!mgen.has_moves(g.get_board()));
         assert!(g.is_game_over(&mgen));
     }
 
