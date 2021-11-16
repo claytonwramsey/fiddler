@@ -54,7 +54,7 @@ impl MoveGenerator {
      */
     pub fn get_moves(&self, board: &Board) -> Vec<Move> {
         let moves = self.get_pseudolegal_moves(board, board.player_to_move);
-        let mut legal_moves = Vec::<Move>::new();
+        let mut legal_moves = Vec::with_capacity(moves.capacity());
         for m in moves {
             let is_castle = board.is_move_castle(m);
             if !self.is_move_self_check(board, m) && !is_castle {
