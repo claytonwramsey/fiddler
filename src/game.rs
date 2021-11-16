@@ -4,6 +4,7 @@ use crate::MoveGenerator;
 
 use std::collections::HashMap;
 use std::default::Default;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /**
@@ -184,6 +185,16 @@ impl Default for Game {
             moves: Vec::new(),
             repetitions: HashMap::from([(Board::default(), 1)]),
         }
+    }
+}
+
+impl Display for Game {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for m in self.moves.iter() {
+            write!(f, "{}, ", m)?;
+        }
+
+        Ok(())
     }
 }
 

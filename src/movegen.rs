@@ -207,8 +207,7 @@ impl MoveGenerator {
         let player = board.color_at_square(m.from_square());
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
         if player_king_bb == Bitboard::EMPTY {
-            //if there's no king, I guess you can't check it?
-            return false;
+            panic!("king not found!");
         }
         let is_king_move = player_king_bb.is_square_occupied(m.from_square());
         //Square where the king will be after this move ends.
