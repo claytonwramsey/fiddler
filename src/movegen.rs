@@ -155,12 +155,19 @@ impl MoveGenerator {
             return false;
         }
         let is_king_move = player_king_bb.is_square_occupied(m.from_square());
+        //Square where the king will be after this move ends.
+        let mut king_square = Square::from(player_king_bb);
 
         if is_king_move {
-            //if the king is moving, we only need to know if
-            return self.is_square_attacked_by(board, m.to_square(), opposite_color(player));
+            if self.is_square_attacked_by(board, m.to_square(), opposite_color(player)) {
+                return true;
+            }
+            // The previous check skips moves where the king blocks himself. We
+            // can use magic bitboards to find out the rest.
+            king_square = m.to_square();
         }
-        // The mover is not a king. Self checks can only happen by discovery.
+        // Self checks can only happen by discovery (including by moving the
+        // king "out of its own way").
         // Typically, only one square is emptied by moving. However, in en
         // passant, two squares are emptied. We can check the results by masking
         // out the squares which were emptied, and then seeing which attacks
@@ -172,7 +179,6 @@ impl MoveGenerator {
         }
 
         let occupancy = board.get_occupancy() & !squares_emptied;
-        let king_square = Square::from(player_king_bb);
         let opponent = opposite_color(player);
 
         //The squares that a rook would see if it were in the king's square.

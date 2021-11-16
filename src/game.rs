@@ -269,6 +269,23 @@ mod tests {
 
     #[test]
     /**
+     * Test that making a mate found in testing results in the game being over.
+     */
+    fn test_mate_in_1() {
+        let mut g = Game::from_fen(MATE_IN_1_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+
+        let m = Move::new(B6, B8, PieceType::NO_TYPE);
+        assert!(g.get_moves(&mgen).contains(&m));
+        g.make_move(m);
+        for m2 in g.get_moves(&mgen) {
+            println!("{}", m2);
+        }
+        assert!(g.is_game_over(&mgen));
+    }
+
+    #[test]
+    /**
      * Test that clearing a board has the same effect of replacing it with a
      * default board, if the initial state was the initial board state.
      */

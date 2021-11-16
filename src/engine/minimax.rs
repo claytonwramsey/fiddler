@@ -12,6 +12,12 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 /**
+ * After going this many edges deep into the search tree, stop populating the 
+ * transposition table to save memory.
+ */
+const TRANSPOSITION_DEPTH_CUTOFF: i8 = 5;
+
+/**
  * A stupid-simple engine which will evaluate the entire tree.
  */
 pub struct Minimax {
@@ -163,14 +169,16 @@ impl Minimax {
             lower_bound = evaluation;
             upper_bound = evaluation;
         }
-        self.transpose_table.insert(
-            *g.get_board(),
-            TTableEntry {
-                depth: depth,
-                lower_bound: lower_bound,
-                upper_bound: upper_bound,
-            },
-        );
+        if self.depth - depth > TRANSPOSITION_DEPTH_CUTOFF {
+            self.transpose_table.insert(
+                *g.get_board(),
+                TTableEntry {
+                    depth: depth,
+                    lower_bound: lower_bound,
+                    upper_bound: upper_bound,
+                },
+            );
+        }
         return evaluation;
     }
 
@@ -186,7 +194,7 @@ impl Minimax {
 impl Default for Minimax {
     fn default() -> Minimax {
         Minimax {
-            depth: 5,
+            depth: 8,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: HashMap::new(),
