@@ -48,3 +48,5 @@ mod zobrist;
  * converting algebraic notation strings to `Move`s.
  */
 mod algebraic;
+
+pub mod cli;

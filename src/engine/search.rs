@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 /**
- * After going this many edges deep into the search tree, stop populating the 
+ * After going this many edges deep into the search tree, stop populating the
  * transposition table to save memory.
  */
 const TRANSPOSITION_DEPTH_CUTOFF: i8 = 6;
@@ -85,20 +85,20 @@ impl Minimax {
         let mut beta = beta_in;
 
         //if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-            if let Some(v) = self.transpose_table.get(b) {
-                if v.depth >= depth {
-                    if v.lower_bound >= beta_in {
-                        self.num_transpositions += 1;
-                        return v.lower_bound;
-                    }
-                    if v.upper_bound <= alpha_in {
-                        self.num_transpositions += 1;
-                        return v.upper_bound;
-                    }
-                    alpha = max(alpha, v.lower_bound);
-                    beta = min(beta, v.upper_bound);
+        if let Some(v) = self.transpose_table.get(b) {
+            if v.depth >= depth {
+                if v.lower_bound >= beta_in {
+                    self.num_transpositions += 1;
+                    return v.lower_bound;
                 }
+                if v.upper_bound <= alpha_in {
+                    self.num_transpositions += 1;
+                    return v.upper_bound;
+                }
+                alpha = max(alpha, v.lower_bound);
+                beta = min(beta, v.upper_bound);
             }
+        }
         //}
 
         if depth <= 0 || g.is_game_over(mgen) {
@@ -202,7 +202,9 @@ impl Default for Minimax {
             depth: default_depth,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
-            transpose_table: HashMap::with_capacity(branch_factor.powf(min(default_depth, TRANSPOSITION_DEPTH_CUTOFF) as f64) as usize),
+            transpose_table: HashMap::with_capacity(
+                branch_factor.powf(min(default_depth, TRANSPOSITION_DEPTH_CUTOFF) as f64) as usize,
+            ),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
         }

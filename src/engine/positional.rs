@@ -73,7 +73,6 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 
     let b = g.get_board();
     for pt in PieceType::ALL_TYPES {
-
         for sq in b.get_type_and_color(pt, WHITE) {
             positional_eval += value_at_square(pt, sq);
         }

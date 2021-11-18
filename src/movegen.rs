@@ -128,7 +128,7 @@ impl MoveGenerator {
                 let to_bb = self.sq_pseudolegal_moves(board, from_sq, pt);
                 move_vec.reserve(to_bb.0.count_ones() as usize);
 
-                // we need not handle promotion because pawn promotion also 
+                // we need not handle promotion because pawn promotion also
                 // blocks. I would uses .drain() here normally, but that's not
                 // yet supported.
                 bitboard_to_moves(from_sq, to_bb, &mut move_vec);
@@ -235,7 +235,8 @@ impl MoveGenerator {
         }
         let occupancy = board.get_occupancy() & !squares_emptied;
 
-        return self.square_attackers_with_occupancy(board, king_square, opponent, occupancy) != Bitboard::EMPTY;
+        return self.square_attackers_with_occupancy(board, king_square, opponent, occupancy)
+            != Bitboard::EMPTY;
     }
 
     #[inline]
@@ -248,7 +249,7 @@ impl MoveGenerator {
 
     #[inline]
     /**
-     * Get the attackers of a given color on a square as a `Bitboard` 
+     * Get the attackers of a given color on a square as a `Bitboard`
      * representing the squares of the attackers.
      */
     pub fn get_square_attackers(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
@@ -256,10 +257,16 @@ impl MoveGenerator {
     }
 
     /**
-     * Same functionality as get_square_attackers, but uses the provided 
+     * Same functionality as get_square_attackers, but uses the provided
      * occupancy bitboard (as opposed to the board's occupancy.)
      */
-    fn square_attackers_with_occupancy(&self, board: &Board, sq: Square, color: Color, occupancy: Bitboard) -> Bitboard {
+    fn square_attackers_with_occupancy(
+        &self,
+        board: &Board,
+        sq: Square,
+        color: Color,
+        occupancy: Bitboard,
+    ) -> Bitboard {
         let mut attackers = Bitboard::EMPTY;
         // Check for pawn attacks
         let our_pawn_dir = pawn_direction(color);
@@ -282,16 +289,18 @@ impl MoveGenerator {
 
         // Check for rook/horizontal queen attacks
         let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
-        attackers |= rook_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::ROOK, color));
+        attackers |=
+            rook_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::ROOK, color));
 
         // Check for bishop/diagonal queen attacks
         let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
-        attackers |= bishop_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::BISHOP, color));
+        attackers |=
+            bishop_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::BISHOP, color));
 
         // Check for king attacks
         let king_vision = self.king_moves[sq.0 as usize];
         attackers |= king_vision & board.get_type_and_color(PieceType::KING, color);
-        
+
         return attackers;
     }
 
@@ -538,7 +547,7 @@ mod tests {
         let mg = MoveGenerator::new();
         let m = Move::new(D1, F3, PieceType::NO_TYPE);
         let b = Board::from_fen(crate::fens::FRIED_LIVER_FEN).unwrap();
-        let pms =mg.get_pseudolegal_moves(&b, crate::constants::WHITE);
+        let pms = mg.get_pseudolegal_moves(&b, crate::constants::WHITE);
         for m2 in pms.iter() {
             println!("{}", m2);
         }

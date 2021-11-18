@@ -1,4 +1,4 @@
-use crabchess::engine::Minimax;
+use crabchess::engine::search::Minimax;
 use crabchess::fens::FRIED_LIVER_FEN;
 use crabchess::Engine;
 use crabchess::Game;
