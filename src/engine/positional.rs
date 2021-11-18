@@ -72,8 +72,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut positional_eval = Eval(0);
 
     let b = g.get_board();
-    for i in 0..PieceType::NUM_TYPES {
-        let pt = PieceType(i as u8);
+    for pt in PieceType::ALL_TYPES {
 
         for sq in b.get_type_and_color(pt, WHITE) {
             positional_eval += value_at_square(pt, sq);
@@ -102,4 +101,17 @@ pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
     };
 
     Eval::pawns(val_table[sq.0 as usize])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Game;
+
+    #[test]
+    fn test_equal_start() {
+        let mut g = Game::default();
+        let mgen = MoveGenerator::new();
+        assert_eq!(positional_evaluate(&mut g, &mgen), Eval(0));
+    }
 }

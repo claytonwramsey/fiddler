@@ -30,7 +30,6 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let king_sq = Square::from(b.get_type_and_color(PieceType::KING, player));
 
     if g.is_game_over(mgen) {
-        println!("{}", g);
         if mgen.is_square_attacked_by(b, king_sq, opposite_color(player)) {
             return match b.player_to_move {
                 WHITE => Eval::BLACK_MATE,
@@ -41,8 +40,7 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         return Eval(0);
     }
 
-    for i in 0..PieceType::NUM_TYPES {
-        let pt = PieceType(i as u8);
+    for pt in PieceType::ALL_TYPES {
         eval += piece_value(pt) * b.get_type_and_color(pt, WHITE).0.count_ones();
         eval -= piece_value(pt) * b.get_type_and_color(pt, BLACK).0.count_ones();
     }

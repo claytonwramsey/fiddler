@@ -271,6 +271,28 @@ mod tests {
 
     #[test]
     /**
+     * Test that undoing a move results in the previous position.
+     */
+    fn test_undo_fried_liver() {
+        let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
+        let m = Move::new(D1, F3, PieceType::NO_TYPE);
+        g.make_move(m);
+        assert_eq!(g.undo(), Ok(m));
+        assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN).unwrap());
+        assert_eq!(g.get_board(), &Board::from_fen(FRIED_LIVER_FEN).unwrap());
+    }
+
+    #[test]
+    /**
+     * Test that undoing with no history results in an error.
+     */
+    fn test_undo_fail() {
+        let mut g = Game::default();
+        assert!(g.undo().is_err());
+    }
+
+    #[test]
+    /**
      * Test that a mated position is in fact over.
      */
     fn test_is_mate_over() {
