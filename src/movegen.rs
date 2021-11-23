@@ -9,6 +9,7 @@ use crate::Direction;
 use crate::PieceType;
 
 #[allow(dead_code)]
+#[derive(Clone, Debug)]
 /**
  * A struct which contains all the necessary data to create moves.
  */

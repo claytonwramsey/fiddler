@@ -196,7 +196,7 @@ const BISHOP_SHIFTS: [u8; 64] = [
     6, 5, 5, 5, 5, 5, 5, 6, //8
 ];
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /**
  * A complete magic table which can generate moves for rooks and bishops.
  */
@@ -260,7 +260,7 @@ impl MagicTable {
  * A structure containing all the information needed to generate moves for a
  * rook or bishop.
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Magic {
     /**
      * A mask which, when &ed with the occupancy bitboard, will give only the
