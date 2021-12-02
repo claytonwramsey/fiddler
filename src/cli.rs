@@ -89,7 +89,9 @@ impl<'a> CrabchessApp<'a> {
         let mut has_quit = false;
         while !has_quit {
             let mut user_input = String::new();
-            self.input_stream.read_to_string(&mut user_input);
+            if let Err(e) = self.input_stream.read_to_string(&mut user_input) {
+                writeln!(self.output_stream, "failed to read off of input stream with error {}", e);
+            };
 
             let parse_result = self.parse_command(user_input);
             let command = match parse_result {
@@ -98,7 +100,7 @@ impl<'a> CrabchessApp<'a> {
             };
 
             let execution_result = match command {
-                Quit => {
+                Command::Quit => {
                     has_quit = true;
                     writeln!(self.output_stream, "Now quitting.");
                     Ok(())
@@ -185,7 +187,7 @@ impl<'a> CrabchessApp<'a> {
 
             _ => {
                 if let Err(_) =
-                    writeln!(self.output_stream, "the command type {} is unsupported", c)
+                    writeln!(self.output_stream, "the command type `{}` is unsupported", c)
                 {
                     return Err("write failed");
                 }
@@ -195,7 +197,7 @@ impl<'a> CrabchessApp<'a> {
     }
 
     fn echo_error(&mut self, s: &str) -> CommandResult {
-        if let Err(e) = writeln!(self.output_stream, "error: {}", s) {
+        if let Err(_) = writeln!(self.output_stream, "error: {}", s) {
             return Err("failed to write error to output stream");
         }
         Ok(())
