@@ -32,15 +32,20 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         let other_moves = mgen.get_moves(b);
         let from_sq = m.from_square();
 
-        // Type of the piece moving
-        if mover_type != PieceType::PAWN || is_move_capture {
-            s += mover_type.get_code();
-        }
-
+        
         // Resolution of un-clarity on mover location
         let mut is_unclear = false;
         let mut is_unclear_rank = false;
         let mut is_unclear_file = false;
+
+        // Type of the piece moving
+        if mover_type != PieceType::PAWN {
+            s += mover_type.get_code();
+        } else if is_move_capture {
+            is_unclear = true;
+            is_unclear_file = true;
+        }
+
         for other_move in other_moves {
             if other_move != m
                 && other_move.to_square() == m.to_square()
@@ -48,19 +53,19 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
             {
                 is_unclear = true;
                 if other_move.from_square().rank() == from_sq.rank() {
-                    is_unclear_rank = true;
+                    is_unclear_file = true;
                 }
                 if other_move.from_square().file() == from_sq.file() {
-                    is_unclear_file = true;
+                    is_unclear_rank = true;
                 }
             }
         }
 
         if is_unclear {
-            if !is_unclear_file {
+            if !is_unclear_rank {
                 //we can specify the mover by its file
                 s += constants::FILE_NAMES[from_sq.file()];
-            } else if !is_unclear_rank {
+            } else if !is_unclear_file {
                 //we can specify the mover by its rank
                 s += constants::RANK_NAMES[from_sq.rank()];
             } else {
@@ -136,6 +141,23 @@ mod tests {
 
     #[test]
     /**
+     * Test that capturing a pawn is parsed correctly.
+     */
+    fn test_algebraic_from_pawn_capture() {
+        let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let m = Move::new(E4, F5, PieceType::NO_TYPE);
+
+        let moves = mgen.get_moves(&b);
+        for m in moves.iter() {
+            println!("{} ", m);
+        }
+        
+        assert_eq!(algebraic_from_move(m, &b, &mgen), String::from("exf5"));
+    }
+
+    #[test]
+    /**
      * Test that the opening move e4 can be converted from a string to a move.
      */
     fn test_move_from_e4() {
@@ -144,6 +166,24 @@ mod tests {
         let m = Move::new(E2, E4, PieceType::NO_TYPE);
         let s = "e4";
 
+        assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
+    }
+    
+    #[test]
+    /**
+     * Test that capturing a pawn is parsed correctly.
+     */
+    fn test_move_from_pawn_capture() {
+        let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let m = Move::new(E4, F5, PieceType::NO_TYPE);
+        let s = "exf5";
+
+        let moves = mgen.get_moves(&b);
+        for m in moves.iter() {
+            println!("{} ", m);
+        }
+        
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
     }
 
@@ -158,4 +198,5 @@ mod tests {
 
         assert!(move_from_algebraic(s, &b, &mgen).is_err());
     }
+
 }

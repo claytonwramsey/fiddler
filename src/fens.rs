@@ -69,3 +69,15 @@ pub const MY_PUZZLE_FEN: &'static str =
  */
 pub const SCHOLARS_MATE_FEN: &'static str =
     "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4";
+
+/**
+ * White is ready to capture the pawn on f5 with exf5
+ */
+pub const PAWN_CAPTURE_FEN: &'static str = 
+    "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2";
+
+/**
+ * A board where a pawn is checking a king.
+ */
+pub const PAWN_CHECKING_KING_FEN: &'static str = 
+    "r1bq1b1r/ppp2kpp/2n5/3n4/2B5/8/PPP1pPPP/RN1Q1K1R w - - 0 10";

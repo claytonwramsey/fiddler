@@ -268,16 +268,20 @@ impl MoveGenerator {
         color: Color,
         occupancy: Bitboard,
     ) -> Bitboard {
+        if sq.0 == 64 {
+            println!("found an error board!");
+            println!("{}", board);
+        }
         let mut attackers = Bitboard::EMPTY;
         // Check for pawn attacks
-        let our_pawn_dir = pawn_direction(color);
-        let left_pawn_sight = sq + our_pawn_dir + Direction::WEST;
-        let right_pawn_sight = sq + our_pawn_dir + Direction::EAST;
+        let attackee_pawn_dir = pawn_direction(opposite_color(color));
+        let left_pawn_sight = sq + attackee_pawn_dir + Direction::WEST;
+        let right_pawn_sight = sq + attackee_pawn_dir + Direction::EAST;
         let mut pawn_vision = Bitboard::EMPTY;
-        if left_pawn_sight.chebyshev_to(sq) == 1 {
+        if left_pawn_sight.chebyshev_to(sq) <= 2 {
             pawn_vision |= Bitboard::from(left_pawn_sight);
         }
-        if right_pawn_sight.chebyshev_to(sq) == 1 {
+        if right_pawn_sight.chebyshev_to(sq) <= 2 {
             pawn_vision |= Bitboard::from(right_pawn_sight);
         }
         attackers |= pawn_vision & board.get_type_and_color(PieceType::PAWN, color);
@@ -391,7 +395,7 @@ impl MoveGenerator {
         let from_bb = Bitboard::from(sq);
         let occupancy = board.get_occupancy();
         let capture_sqs = [sq + dir + Direction::EAST, sq + dir + Direction::WEST];
-        let opponents = board.get_color_occupancy(board.color_at_square(sq));
+        let opponents = board.get_color_occupancy(opposite_color(board.color_at_square(sq)));
         let mut target_squares = Bitboard::EMPTY;
         //this will never be out of bounds because pawns don't live on promotion rank
         if !occupancy.is_square_occupied(sq + dir) {
@@ -405,7 +409,7 @@ impl MoveGenerator {
         }
         //captures
         for capture_sq in capture_sqs {
-            if capture_sq.is_inbounds() && capture_sq.chebyshev_to(sq) < 2 {
+            if capture_sq.is_inbounds() && capture_sq.chebyshev_to(sq) < 3 {
                 if capture_sq == board.en_passant_square {
                     target_squares |= Bitboard::from(capture_sq);
                 }
@@ -555,5 +559,32 @@ mod tests {
         assert!(pms.contains(&m));
         let moves = mg.get_moves(&b);
         assert!(moves.contains(&m));
+    }
+
+    #[test]
+    /**
+     * Test that capturing a pawn is parsed correctly.
+     */
+    fn test_pawn_capture_generated() {
+        let b = Board::from_fen(crate::fens::PAWN_CAPTURE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let m = Move::new(E4, F5, PieceType::NO_TYPE);
+
+        assert!(mgen.get_moves(&b).contains(&m));
+    }
+
+    #[test]
+    /**
+     * The pawn is checking the king. Is move enumeration correct?
+     */
+    fn test_enumerate_pawn_checking_king() {
+        let mgen = MoveGenerator::new();
+        let b = Board::from_fen(crate::fens::PAWN_CHECKING_KING_FEN).unwrap();
+        
+        let moves = mgen.get_moves(&b);
+
+        for m2 in moves.iter() {
+            println!("{}", m2);
+        }
     }
 }
