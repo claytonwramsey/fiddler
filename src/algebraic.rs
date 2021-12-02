@@ -80,7 +80,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
 }
 
 /**
- * Given the string of an algebraic-notation move, get the `Move` which can be 
+ * Given the string of an algebraic-notation move, get the `Move` which can be
  * played. Will return Err if the string is invalid.
  */
 pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<Move, &'static str> {
@@ -97,9 +97,12 @@ pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<M
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::square::*;
     use crate::fens::*;
+    use crate::square::*;
     #[test]
+    /**
+     * Test that playing e4 can be successfully converted to its algebraic form.
+     */
     fn test_e4_to_algebraic() {
         let b = Board::default();
         let mgen = MoveGenerator::new();
@@ -108,7 +111,6 @@ mod tests {
         assert_eq!(String::from("e4"), algebraic_from_move(m, &b, &mgen));
     }
 
-    
     #[test]
     fn test_mate() {
         let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
@@ -117,7 +119,6 @@ mod tests {
 
         println!("{}", b);
         assert_eq!(String::from("Rb8#"), algebraic_from_move(m, &b, &mgen));
-        
     }
 
     #[test]
@@ -125,7 +126,6 @@ mod tests {
      * Test that the opening move e4 can be converted from a string to a move.
      */
     fn test_move_from_e4() {
-        
         let b = Board::default();
         let mgen = MoveGenerator::new();
         let m = Move::new(E2, E4, PieceType::NO_TYPE);
@@ -134,16 +134,13 @@ mod tests {
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
     }
 
-
     #[test]
     /**
      * Test that you get an error out when you give it a bad string.
      */
     fn test_bad_algebraic() {
-        
         let b = Board::default();
         let mgen = MoveGenerator::new();
-        let m = Move::new(E2, E4, PieceType::NO_TYPE);
         let s = "garbage";
 
         assert!(move_from_algebraic(s, &b, &mgen).is_err());

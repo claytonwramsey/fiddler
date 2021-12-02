@@ -1,12 +1,12 @@
+use crate::algebraic::move_from_algebraic;
 use crate::engine::search::Minimax;
 use crate::Engine;
 use crate::Game;
-use crate::MoveGenerator;
 use crate::Move;
-use crate::algebraic::move_from_algebraic;
+use crate::MoveGenerator;
 
-use std::io;
 use std::fmt;
+use std::io;
 
 /**
  * A text-based application for running CrabChess.
@@ -50,7 +50,7 @@ enum Command {
     /**
      * Select an engine to play against.
      */
-    EngineSelect(Box<str>),
+    EngineSelect(String),
     /**
      * Play a move.
      */
@@ -102,12 +102,16 @@ impl<'a> CrabchessApp<'a> {
                     has_quit = true;
                     writeln!(self.output_stream, "Now quitting.");
                     Ok(())
-                },
+                }
                 _ => self.execute_command(command),
             };
 
             if let Err(s) = execution_result {
-                writeln!(self.output_stream, "an error occurred while executing the command: {}", s);
+                writeln!(
+                    self.output_stream,
+                    "an error occurred while executing the command: {}",
+                    s
+                );
             }
         }
     }
@@ -124,30 +128,69 @@ impl<'a> CrabchessApp<'a> {
         }
         let command_block = first_token.unwrap();
         if command_block.starts_with("/") {
-            //this is a "pure" command
-            return Err("no commands yet");
+            let command_name = command_block.get(1..);
+            if command_name == None {
+                return Err("no command specified");
+            }
+            let command = match command_name.unwrap() {
+                "q" | "quit" => Ok(Command::Quit),
+                "e" | "engine" => {
+                    let engine_opt = token_iter.next();
+                    match engine_opt {
+                        Some(engine_str) => Ok(Command::EngineSelect(String::from(engine_str))),
+                        None => Err("no engine information specified"),
+                    }
+                },
+                "l" | "load" => {
+                    let fen_str = String::from(s[command_block.len()..].trim());
+                    Ok(Command::LoadFen(fen_str))
+                }
+                "u" | "undo" => {
+                    let num_undo_token = token_iter.next();
+                    match num_undo_token {
+                        None => Ok(Command::Undo(1)),
+                        Some(num_undo_str) => {
+                            match num_undo_str.parse::<usize>() {
+                                Ok(num) => {
+                                    if num > 0 {
+                                        return Ok(Command::Undo(num));
+                                    }
+                                    Err("cannot undo 0 moves")
+                                },
+                                Err(_) => 
+                                    Err("could not parse number of moves to undo"),
+                            }
+                        }
+                    }
+                }
+                _ => Err("unrecognized command"),
+            };
+            return command;
         } else {
             //this is a move
             let move_token = first_token;
             if move_token.is_none() {
                 return Err("no move given to play");
             }
-            let move_result = move_from_algebraic(move_token.unwrap(), self.game.get_board(), &self.mgen)?;
-            
+            let move_result =
+                move_from_algebraic(move_token.unwrap(), self.game.get_board(), &self.mgen)?;
+
             Ok(Command::PlayMove(move_result))
         }
-
     }
 
     fn execute_command(&mut self, c: Command) -> CommandResult {
         match c {
             Command::EchoError(s) => self.echo_error(s),
-            
+
             _ => {
-                if let Err(e) = writeln!(self.output_stream, "the command type {} is unsupported", c) {
+                if let Err(_) =
+                    writeln!(self.output_stream, "the command type {} is unsupported", c)
+                {
                     return Err("write failed");
                 }
-                Ok(())},
+                Ok(())
+            }
         }
     }
 
@@ -174,8 +217,8 @@ impl<'a> Default for CrabchessApp<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PieceType;
     use crate::square::*;
+    use crate::PieceType;
 
     #[test]
     /**
@@ -183,9 +226,7 @@ mod tests {
      */
     fn test_parse_quit() {
         let app = CrabchessApp::default();
-        assert_eq!(
-            app.parse_command(String::from("/q")), 
-            Ok(Command::Quit));
+        assert_eq!(app.parse_command(String::from("/q")), Ok(Command::Quit));
     }
 
     #[test]
@@ -194,12 +235,13 @@ mod tests {
      */
     fn test_parse_move() {
         let app = CrabchessApp::default();
-        
+
         assert_eq!(
-            app.parse_command(String::from("e4")), 
-            Ok(Command::PlayMove(Move::new(E2, E4, PieceType::NO_TYPE))));
+            app.parse_command(String::from("e4")),
+            Ok(Command::PlayMove(Move::new(E2, E4, PieceType::NO_TYPE)))
+        );
     }
-    
+
     #[test]
     /**
      * Test that load input yields a load fen command.
@@ -207,8 +249,13 @@ mod tests {
     fn test_parse_load() {
         let app = CrabchessApp::default();
         assert_eq!(
-            app.parse_command(String::from("/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7")), 
-            Ok(Command::LoadFen(String::from("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"))));
+            app.parse_command(String::from(
+                "/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
+            )),
+            Ok(Command::LoadFen(String::from(
+                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
+            )))
+        );
     }
 
     #[test]
