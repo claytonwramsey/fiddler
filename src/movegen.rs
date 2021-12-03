@@ -234,10 +234,12 @@ impl MoveGenerator {
         if board.is_move_en_passant(m) {
             squares_emptied |= Bitboard::from(board.en_passant_square);
         }
-        let occupancy = board.get_occupancy() & !squares_emptied;
+        let occupancy = (board.get_occupancy() & !squares_emptied) | Bitboard::from(m.to_square());
 
-        return self.square_attackers_with_occupancy(board, king_square, opponent, occupancy)
-            != Bitboard::EMPTY;
+        let attackers = self.square_attackers_with_occupancy(board, king_square, opponent, occupancy);
+        
+        //attackers which we will capture are not a threat
+        return (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY;
     }
 
     #[inline]

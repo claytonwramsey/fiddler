@@ -1,6 +1,7 @@
 use crate::Game;
 use crate::Move;
 use crate::MoveGenerator;
+use crate::constants::{WHITE};
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -42,11 +43,33 @@ pub trait Engine {
      * use.
      */
     fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Move {
-        self.get_evals(g, mgen)
+        /*self.get_evals(g, mgen)
             .into_iter()
             .max_by(|a, b| a.1.cmp(&b.1))
             .map(|(k, _)| k)
-            .unwrap_or(Move::BAD_MOVE)
+            .unwrap_or(Move::BAD_MOVE)*/
+        let player = g.get_board().player_to_move;
+        let evals = self.get_evals(g, mgen);
+        let mut best_move = Move::BAD_MOVE;
+        let mut best_eval = match player {
+            WHITE => Eval::MIN,
+            _ => Eval::MAX,
+        };
+        for (m, eval) in evals.iter() {
+            if g.get_board().player_to_move == WHITE {
+                if best_eval < *eval {
+                    best_eval = *eval;
+                    best_move = *m;
+                }
+            }
+            else {
+                if best_eval > *eval {
+                    best_eval = *eval;
+                    best_move = *m;
+                }
+            }
+        }
+        return best_move;
     }
 
     /**

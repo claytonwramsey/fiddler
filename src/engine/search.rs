@@ -124,8 +124,8 @@ impl Minimax {
 
         //these will be mutated by alpha-beta, but should not be put in the
         //transpoisition table
-        let mut alpha_changing = alpha_in;
-        let mut beta_changing = beta_in;
+        let mut alpha_changing = alpha;
+        let mut beta_changing = beta;
 
         let mut moves = mgen.get_moves(b);
         if depth > 1 {

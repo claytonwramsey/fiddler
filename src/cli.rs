@@ -1,4 +1,4 @@
-use crate::algebraic::move_from_algebraic;
+use crate::algebraic::{move_from_algebraic, algebraic_from_move};
 use crate::engine::search::Minimax;
 use crate::Engine;
 use crate::Game;
@@ -64,6 +64,10 @@ enum Command {
      * Undo the most recent moves.
      */
     Undo(usize),
+    /**
+     * List the available moves to the user.
+     */
+    ListMoves,
 }
 
 impl fmt::Display for Command {
@@ -74,6 +78,7 @@ impl fmt::Display for Command {
             Command::EngineSelect(s) => write!(f, "select engine {}", s),
             Command::PlayMove(m) => write!(f, "play move {}", m),
             Command::LoadFen(s) => write!(f, "load fen {}", s),
+            Command::Undo(n) => write!(f, "undo {}", n),
             _ => write!(f, "undisplayable command"),
         }
     }
@@ -169,6 +174,7 @@ impl<'a> CrabchessApp<'a> {
                         }
                     }
                 }
+                "list" => Ok(Command::ListMoves),
                 _ => Err("unrecognized command"),
             };
             return command;
@@ -190,7 +196,8 @@ impl<'a> CrabchessApp<'a> {
             Command::EchoError(s) => self.echo_error(s),
             Command::LoadFen(fen) => self.load_fen(fen),
             Command::PlayMove(m) => self.try_move(m),
-
+            Command::ListMoves => self.list_moves(),
+            Command::Undo(n) => self.game.undo_n(n),
             _ => {
                 if let Err(_) =
                     writeln!(self.output_stream, "the command type `{}` is unsupported", c)
@@ -228,6 +235,17 @@ impl<'a> CrabchessApp<'a> {
         let m = self.engine.get_best_move(&mut self.game, &self.mgen);
         self.game.make_move(m);
         
+        Ok(())
+    }
+
+    fn list_moves(&mut self) -> CommandResult {
+        let moves = self.mgen.get_moves(self.game.get_board());
+        for m in moves.iter() {
+            if let Err(_) = writeln!(self.output_stream, "{}", algebraic_from_move(*m, self.game.get_board(), &self.mgen)) {
+                return Err("failed to write move list");
+            }
+            
+        }
         Ok(())
     }
 }
