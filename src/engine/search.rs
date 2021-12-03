@@ -6,6 +6,7 @@ use crate::Engine;
 use crate::Game;
 use crate::Move;
 use crate::MoveGenerator;
+use crate::algebraic::algebraic_from_move;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -15,7 +16,7 @@ use std::time::Instant;
  * After going this many edges deep into the search tree, stop populating the
  * transposition table to save memory.
  */
-const TRANSPOSITION_DEPTH_CUTOFF: i8 = 6;
+const TRANSPOSITION_DEPTH_CUTOFF: i8 = 7;
 
 /**
  * A stupid-simple engine which will evaluate the entire tree.
@@ -84,22 +85,22 @@ impl Minimax {
         let mut alpha = alpha_in;
         let mut beta = beta_in;
 
-        //if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-        if let Some(v) = self.transpose_table.get(b) {
-            if v.depth >= depth {
-                if v.lower_bound >= beta_in {
-                    self.num_transpositions += 1;
-                    return v.lower_bound;
+        if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
+            if let Some(v) = self.transpose_table.get(b) {
+                if v.depth >= depth {
+                    if v.lower_bound >= beta_in {
+                        self.num_transpositions += 1;
+                        return v.lower_bound;
+                    }
+                    if v.upper_bound <= alpha_in {
+                        self.num_transpositions += 1;
+                        return v.upper_bound;
+                    }
+                    alpha = max(alpha, v.lower_bound);
+                    beta = min(beta, v.upper_bound);
                 }
-                if v.upper_bound <= alpha_in {
-                    self.num_transpositions += 1;
-                    return v.upper_bound;
-                }
-                alpha = max(alpha, v.lower_bound);
-                beta = min(beta, v.upper_bound);
             }
         }
-        //}
 
         if depth <= 0 || g.is_game_over(mgen) {
             let eval = (self.evaluator)(g, mgen);
@@ -197,7 +198,7 @@ impl Minimax {
 impl Default for Minimax {
     fn default() -> Minimax {
         let branch_factor = 8f64;
-        let default_depth = 5;
+        let default_depth = 7;
         Minimax {
             depth: default_depth,
             evaluator: positional_evaluate,
@@ -245,7 +246,7 @@ impl Engine for Minimax {
             } else {
                 println!("somehow, undoing failed on a game");
             }
-            println!("{}: {}", m, ev);
+            println!("{}: {}", algebraic_from_move(m, g.get_board(), mgen), ev);
         }
         return evals;
     }

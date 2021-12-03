@@ -2,6 +2,7 @@ use crate::Game;
 use crate::Move;
 use crate::MoveGenerator;
 use crate::constants::{WHITE};
+use crate::algebraic::algebraic_from_move;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -90,7 +91,7 @@ pub trait Engine {
             } else {
                 println!("somehow, undoing failed on a game");
             }
-            println!("{}: {}", m, ev);
+            println!("{}: {}", algebraic_from_move(m, g.get_board(), mgen), ev);
         }
         return evals;
     }
@@ -170,10 +171,10 @@ impl Display for Eval {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if self.0 > MATE_CUTOFF {
             // white to mate
-            write!(f, "+M{:2.0}", (MATE_0_VAL - self.0 + 1) / 2)?;
+            write!(f, "+M{:.0}", (MATE_0_VAL - self.0 + 1) / 2)?;
         } else if self.0 < -MATE_CUTOFF {
             // black to mate
-            write!(f, "-M{:2.0}", (MATE_0_VAL + self.0 + 1) / 2)?;
+            write!(f, "-M{:.0}", (MATE_0_VAL + self.0 + 1) / 2)?;
         } else if self.0 == 0 {
             // draw
             write!(f, "00.00")?;
