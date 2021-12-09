@@ -1,3 +1,4 @@
+use crate::algebraic::algebraic_from_move;
 use crate::constants::{BLACK, WHITE};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
@@ -6,7 +7,6 @@ use crate::Engine;
 use crate::Game;
 use crate::Move;
 use crate::MoveGenerator;
-use crate::algebraic::algebraic_from_move;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;

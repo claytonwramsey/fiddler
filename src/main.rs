@@ -4,10 +4,10 @@ use crabchess::Engine;
 use crabchess::Game;
 use crabchess::MoveGenerator;
 
-
 //use crabchess::cli;
 fn main() {
-    let mut g = Game::from_fen("rnbqkbnr/ppp1pp1p/6p1/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3").unwrap();
+    let mut g =
+        Game::from_fen("rnbqkbnr/ppp1pp1p/6p1/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3").unwrap();
     let mgen = MoveGenerator::new();
     let mut e = Minimax::default();
 

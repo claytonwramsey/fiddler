@@ -236,8 +236,9 @@ impl MoveGenerator {
         }
         let occupancy = (board.get_occupancy() & !squares_emptied) | Bitboard::from(m.to_square());
 
-        let attackers = self.square_attackers_with_occupancy(board, king_square, opponent, occupancy);
-        
+        let attackers =
+            self.square_attackers_with_occupancy(board, king_square, opponent, occupancy);
+
         //attackers which we will capture are not a threat
         return (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY;
     }
@@ -582,7 +583,7 @@ mod tests {
     fn test_enumerate_pawn_checking_king() {
         let mgen = MoveGenerator::new();
         let b = Board::from_fen(crate::fens::PAWN_CHECKING_KING_FEN).unwrap();
-        
+
         let moves = mgen.get_moves(&b);
 
         for m2 in moves.iter() {

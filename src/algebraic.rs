@@ -1,9 +1,9 @@
 use crate::constants;
+use crate::util::opposite_color;
 use crate::Board;
 use crate::Move;
 use crate::MoveGenerator;
 use crate::PieceType;
-use crate::util::opposite_color;
 use crate::Square;
 
 #[allow(dead_code)]
@@ -32,7 +32,6 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         let other_moves = mgen.get_moves(b);
         let from_sq = m.from_square();
 
-        
         // Resolution of un-clarity on mover location
         let mut is_unclear = false;
         let mut is_unclear_rank = false;
@@ -83,7 +82,8 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         // Determine if the move was a check or a mate.
         let mut bcopy = *b;
         let player_color = b.player_to_move;
-        let enemy_king_sq = Square::from(b.get_type_and_color(PieceType::KING, opposite_color(player_color)));
+        let enemy_king_sq =
+            Square::from(b.get_type_and_color(PieceType::KING, opposite_color(player_color)));
         bcopy.make_move(m);
         if mgen.is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
             if mgen.get_moves(&bcopy).is_empty() {
@@ -152,7 +152,7 @@ mod tests {
         for m in moves.iter() {
             println!("{} ", m);
         }
-        
+
         assert_eq!(algebraic_from_move(m, &b, &mgen), String::from("exf5"));
     }
 
@@ -168,7 +168,7 @@ mod tests {
 
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
     }
-    
+
     #[test]
     /**
      * Test that capturing a pawn is parsed correctly.
@@ -183,7 +183,7 @@ mod tests {
         for m in moves.iter() {
             println!("{} ", m);
         }
-        
+
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
     }
 
@@ -198,5 +198,4 @@ mod tests {
 
         assert!(move_from_algebraic(s, &b, &mgen).is_err());
     }
-
 }
