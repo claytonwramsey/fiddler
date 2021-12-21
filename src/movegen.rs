@@ -210,7 +210,7 @@ impl MoveGenerator {
         if player_king_bb == Bitboard::EMPTY {
             panic!("king not found!");
         }
-        let is_king_move = player_king_bb.is_square_occupied(m.from_square());
+        let is_king_move = player_king_bb.contains(m.from_square());
         //Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
         let opponent = opposite_color(player);
@@ -401,11 +401,11 @@ impl MoveGenerator {
         let opponents = board.get_color_occupancy(opposite_color(board.color_at_square(sq)));
         let mut target_squares = Bitboard::EMPTY;
         //this will never be out of bounds because pawns don't live on promotion rank
-        if !occupancy.is_square_occupied(sq + dir) {
+        if !occupancy.contains(sq + dir) {
             target_squares |= Bitboard::from(sq + dir);
             //pawn is on start rank and double-move square is not occupied
             if (start_rank & from_bb) != Bitboard::EMPTY
-                && !occupancy.is_square_occupied(sq + 2 * dir)
+                && !occupancy.contains(sq + 2 * dir)
             {
                 target_squares |= Bitboard::from(sq + 2 * dir);
             }

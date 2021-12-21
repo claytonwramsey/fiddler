@@ -264,13 +264,13 @@ impl Board {
      */
     pub fn is_move_castle(&self, m: Move) -> bool {
         self.get_type(PieceType::KING)
-            .is_square_occupied(m.from_square())
+            .contains(m.from_square())
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
     pub fn is_move_promotion(&self, m: Move) -> bool {
         self.get_type_and_color(PieceType::PAWN, self.player_to_move)
-            .is_square_occupied(m.from_square())
+            .contains(m.from_square())
             && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move)
                 != Bitboard::EMPTY
     }
@@ -319,7 +319,7 @@ impl Board {
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
         let is_promotion = mover_type == PieceType::PAWN
-            && pawn_promote_rank(self.player_to_move).is_square_occupied(to_sq);
+            && pawn_promote_rank(self.player_to_move).contains(to_sq);
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
         let is_long_move = from_sq.chebyshev_to(to_sq) > 1;

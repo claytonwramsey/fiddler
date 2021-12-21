@@ -1,5 +1,6 @@
 use crate::algebraic::algebraic_from_move;
 use crate::constants::{BLACK, WHITE};
+use crate::util::opposite_color;
 use crate::engine::positional::positional_evaluate;
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Board;
@@ -80,13 +81,12 @@ impl Minimax {
         mgen: &MoveGenerator,
     ) -> Eval {
         self.num_nodes_evaluated += 1;
-        let b = g.get_board();
-
+        
         let mut alpha = alpha_in;
         let mut beta = beta_in;
 
         if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-            if let Some(v) = self.transpose_table.get(b) {
+            if let Some(v) = self.transpose_table.get(g.get_board()) {
                 if v.depth >= depth {
                     if v.lower_bound >= beta_in {
                         self.num_transpositions += 1;
@@ -103,7 +103,7 @@ impl Minimax {
         }
 
         if depth <= 0 || g.is_game_over(mgen) {
-            let eval = (self.evaluator)(g, mgen);
+            let eval = self.quiesce(g, mgen, alpha_in, beta_in);
             self.transpose_table.insert(
                 *g.get_board(),
                 TTableEntry {
@@ -115,7 +115,7 @@ impl Minimax {
             return eval;
         }
 
-        let player_to_move = b.player_to_move;
+        let player_to_move = g.get_board().player_to_move;
 
         let mut evaluation = match player_to_move {
             WHITE => Eval::MIN,
@@ -128,20 +128,19 @@ impl Minimax {
         let mut alpha_changing = alpha;
         let mut beta_changing = beta;
 
-        let mut moves = mgen.get_moves(b);
+        let mut moves = mgen.get_moves(g.get_board());
         if depth > 1 {
             //negate because sort is ascending
             moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
         }
 
         for m in moves {
+
             g.make_move(m);
             let eval_for_m =
                 self.evaluate_at_depth(depth - 1, alpha_changing, beta_changing, g, mgen);
 
-            if let Err(_) = g.undo() {
-                println!("undo failed despite having move history!");
-            }
+            g.undo().ok();
 
             //alpha-beta pruning
             if player_to_move == WHITE {
@@ -187,6 +186,58 @@ impl Minimax {
     }
 
     /**
+     * Perform a quiescent (captures-only) search of the remaining moves.
+     */
+    fn quiesce(&mut self, g: &mut Game, mgen: &MoveGenerator, alpha_in: Eval, beta_in: Eval) -> Eval{
+        self.num_nodes_evaluated += 1;
+
+        let player = g.get_board().player_to_move;
+        let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
+        let mut captures: Vec<Move> = g.get_moves(mgen)
+                        .into_iter()
+                        .filter(|m| enemy_occupancy.contains(m.to_square())).collect();
+                        
+        if captures.len() == 0 {
+            return (self.evaluator)(g, mgen);
+        }
+
+        captures.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+
+        let mut alpha = alpha_in;
+        let mut beta = beta_in;
+
+        let mut evaluation = match player {
+            WHITE => Eval::MIN,
+            _ => Eval::MAX,
+        };
+
+        for mov in captures {
+            g.make_move(mov);
+            let eval_for_mov = self.quiesce(g, mgen, alpha, beta);
+
+            g.undo().ok();
+
+            //alpha-beta pruning
+            if player == WHITE {
+                evaluation = max(evaluation, eval_for_mov);
+                if evaluation >= beta {
+                    break;
+                }
+                alpha = max(alpha, evaluation);
+            } else {
+                //black moves on this turn
+                evaluation = min(evaluation, eval_for_mov);
+                if evaluation <= alpha {
+                    break;
+                }
+                beta = min(beta, evaluation);
+            }
+        }
+
+        return evaluation;
+    }
+
+    /**
      * Clear out internal data.
      */
     pub fn clear(&mut self) {
@@ -197,8 +248,8 @@ impl Minimax {
 
 impl Default for Minimax {
     fn default() -> Minimax {
-        let branch_factor = 8f64;
-        let default_depth = 7;
+        let branch_factor = 10f64;
+        let default_depth = 5;
         Minimax {
             depth: default_depth,
             evaluator: positional_evaluate,

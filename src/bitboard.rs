@@ -20,7 +20,7 @@ impl Bitboard {
     /**
      * Determine whether a square of a bitboard is occupied.
      */
-    pub fn is_square_occupied(self, square: Square) -> bool {
+    pub fn contains(self, square: Square) -> bool {
         self.0 & (1 << square.0) != 0
     }
 }
