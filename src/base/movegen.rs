@@ -1,12 +1,12 @@
-use crate::constants::{Color, BLACK};
-use crate::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
-use crate::moves::Move;
-use crate::square::Square;
-use crate::util::{opposite_color, pawn_direction, pawn_start_rank};
-use crate::Bitboard;
-use crate::Board;
-use crate::Direction;
-use crate::PieceType;
+use crate::base::constants::{Color, BLACK};
+use crate::base::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
+use crate::base::moves::Move;
+use crate::base::square::Square;
+use crate::base::util::{opposite_color, pawn_direction, pawn_start_rank};
+use crate::base::Bitboard;
+use crate::base::Board;
+use crate::base::Direction;
+use crate::base::PieceType;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
@@ -96,7 +96,7 @@ impl MoveGenerator {
         let player = board.player_to_move;
         let opponent = opposite_color(player);
         let king_square = Square::from(board.get_type_and_color(PieceType::KING, player));
-        if king_square == crate::square::BAD_SQUARE {
+        if king_square == crate::base::square::BAD_SQUARE {
             // no king found
             return false;
         }
@@ -534,7 +534,7 @@ fn get_knight_steps() -> Vec<Direction> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::square::*;
+    use crate::base::square::*;
 
     #[test]
     fn test_opening_moveset() {
@@ -554,8 +554,8 @@ mod tests {
     fn test_best_queen_fried_liver() {
         let mg = MoveGenerator::new();
         let m = Move::new(D1, F3, PieceType::NO_TYPE);
-        let b = Board::from_fen(crate::fens::FRIED_LIVER_FEN).unwrap();
-        let pms = mg.get_pseudolegal_moves(&b, crate::constants::WHITE);
+        let b = Board::from_fen(crate::base::fens::FRIED_LIVER_FEN).unwrap();
+        let pms = mg.get_pseudolegal_moves(&b, crate::base::constants::WHITE);
         for m2 in pms.iter() {
             println!("{}", m2);
         }
@@ -569,7 +569,7 @@ mod tests {
      * Test that capturing a pawn is parsed correctly.
      */
     fn test_pawn_capture_generated() {
-        let b = Board::from_fen(crate::fens::PAWN_CAPTURE_FEN).unwrap();
+        let b = Board::from_fen(crate::base::fens::PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let m = Move::new(E4, F5, PieceType::NO_TYPE);
 
@@ -582,7 +582,7 @@ mod tests {
      */
     fn test_enumerate_pawn_checking_king() {
         let mgen = MoveGenerator::new();
-        let b = Board::from_fen(crate::fens::PAWN_CHECKING_KING_FEN).unwrap();
+        let b = Board::from_fen(crate::base::fens::PAWN_CHECKING_KING_FEN).unwrap();
 
         let moves = mgen.get_moves(&b);
 

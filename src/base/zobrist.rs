@@ -1,6 +1,6 @@
-use crate::constants::{Color, WHITE};
-use crate::square::{Square, BAD_SQUARE};
-use crate::PieceType;
+use crate::base::constants::{Color, WHITE};
+use crate::base::square::{Square, BAD_SQUARE};
+use crate::base::PieceType;
 
 #[inline]
 /**

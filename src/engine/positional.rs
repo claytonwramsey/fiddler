@@ -1,10 +1,10 @@
-use crate::constants::{BLACK, WHITE};
+use crate::base::constants::{BLACK, WHITE};
 use crate::engine::greedy::greedy_evaluate;
 use crate::engine::Eval;
-use crate::piece::PieceType;
-use crate::Game;
-use crate::MoveGenerator;
-use crate::Square;
+use crate::base::piece::PieceType;
+use crate::base::Game;
+use crate::base::MoveGenerator;
+use crate::base::Square;
 
 type ValueTable = [f64; 64];
 
@@ -105,7 +105,7 @@ pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Game;
+    use crate::base::Game;
 
     #[test]
     fn test_equal_start() {

@@ -1,6 +1,6 @@
-use crate::Board;
-use crate::Move;
-use crate::MoveGenerator;
+use crate::base::Board;
+use crate::base::Move;
+use crate::base::MoveGenerator;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -201,11 +201,11 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board;
-    use crate::fens::*;
-    use crate::moves::Move;
-    use crate::square::*;
-    use crate::PieceType;
+    use crate::base::board;
+    use crate::base::fens::*;
+    use crate::base::moves::Move;
+    use crate::base::square::*;
+    use crate::base::PieceType;
 
     #[test]
     /**

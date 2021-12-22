@@ -1,7 +1,7 @@
 use crate::engine::{greedy, positional, Eval};
-use crate::Game;
-use crate::Move;
-use crate::MoveGenerator;
+use crate::base::Game;
+use crate::base::Move;
+use crate::base::MoveGenerator;
 use std::cmp::max;
 
 pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {

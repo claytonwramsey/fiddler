@@ -1,10 +1,10 @@
-use crate::constants;
-use crate::util::opposite_color;
-use crate::Board;
-use crate::Move;
-use crate::MoveGenerator;
-use crate::PieceType;
-use crate::Square;
+use crate::base::constants;
+use crate::base::util::opposite_color;
+use crate::base::Board;
+use crate::base::Move;
+use crate::base::MoveGenerator;
+use crate::base::PieceType;
+use crate::base::Square;
 
 #[allow(dead_code)]
 /**
@@ -115,8 +115,8 @@ pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<M
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fens::*;
-    use crate::square::*;
+    use crate::base::fens::*;
+    use crate::base::square::*;
     #[test]
     /**
      * Test that playing e4 can be successfully converted to its algebraic form.

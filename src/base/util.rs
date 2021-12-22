@@ -1,6 +1,6 @@
-use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::Bitboard;
-use crate::Direction;
+use crate::base::constants::{Color, BLACK, NO_COLOR, WHITE};
+use crate::base::Bitboard;
+use crate::base::Direction;
 
 #[inline]
 #[allow(dead_code)]

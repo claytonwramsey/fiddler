@@ -1,6 +1,6 @@
-use crate::direction::Direction;
-use crate::Bitboard;
-use crate::Square;
+use crate::base::direction::Direction;
+use crate::base::Bitboard;
+use crate::base::Square;
 
 use rand::thread_rng;
 use rand::Rng;
@@ -568,7 +568,7 @@ mod tests {
     use super::*;
 
     #[allow(unused_imports)]
-    use crate::square::*;
+    use crate::base::square::*;
 
     #[test]
     fn test_rook_mask() {

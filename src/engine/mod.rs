@@ -1,8 +1,8 @@
-use crate::algebraic::algebraic_from_move;
-use crate::constants::WHITE;
-use crate::Game;
-use crate::Move;
-use crate::MoveGenerator;
+use crate::base::algebraic::algebraic_from_move;
+use crate::base::constants::WHITE;
+use crate::base::Game;
+use crate::base::Move;
+use crate::base::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};

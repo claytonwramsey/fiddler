@@ -1,10 +1,10 @@
-use crate::constants::{BLACK, WHITE};
+use crate::base::constants::{BLACK, WHITE};
 use crate::engine::Eval;
-use crate::piece::*;
-use crate::util::opposite_color;
-use crate::Game;
-use crate::MoveGenerator;
-use crate::Square;
+use crate::base::PieceType;
+use crate::base::util::opposite_color;
+use crate::base::Game;
+use crate::base::MoveGenerator;
+use crate::base::Square;
 
 /**
  * Get the value of one piece by its type.

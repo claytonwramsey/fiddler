@@ -1,11 +1,11 @@
-use crate::constants::{Color, BLACK, NO_COLOR, WHITE};
-use crate::piece::PieceType;
-use crate::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
-use crate::util::{opposite_color, pawn_promote_rank};
-use crate::zobrist;
-use crate::Bitboard;
-use crate::CastleRights;
-use crate::Move;
+use crate::base::constants::{Color, BLACK, NO_COLOR, WHITE};
+use crate::base::piece::PieceType;
+use crate::base::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
+use crate::base::util::{opposite_color, pawn_promote_rank};
+use crate::base::zobrist;
+use crate::base::Bitboard;
+use crate::base::CastleRights;
+use crate::base::Move;
 
 use std::default::Default;
 use std::fmt::{Display, Formatter};
@@ -401,7 +401,7 @@ impl Board {
      */
     pub fn try_move(
         &mut self,
-        mgen: &crate::movegen::MoveGenerator,
+        mgen: &crate::base::movegen::MoveGenerator,
         m: Move,
     ) -> Result<(), &'static str> {
         let legal_moves = mgen.get_moves(self);
@@ -564,9 +564,9 @@ impl Default for Board {
 pub mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::fens;
-    use crate::movegen::MoveGenerator;
-    use crate::square::*;
+    use crate::base::fens;
+    use crate::base::movegen::MoveGenerator;
+    use crate::base::square::*;
 
     /**
      * A board with the white king on A1 and the black king on H8.

@@ -1,13 +1,13 @@
-use crate::algebraic::algebraic_from_move;
-use crate::constants::{BLACK, WHITE};
-use crate::util::opposite_color;
+use crate::base::algebraic::algebraic_from_move;
+use crate::base::constants::{BLACK, WHITE};
+use crate::base::util::opposite_color;
 use crate::engine::positional::positional_evaluate;
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
-use crate::Board;
+use crate::base::Board;
 use crate::Engine;
-use crate::Game;
-use crate::Move;
-use crate::MoveGenerator;
+use crate::base::Game;
+use crate::base::Move;
+use crate::base::MoveGenerator;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -308,8 +308,8 @@ pub mod tests {
     #[allow(unused_imports)]
     use super::*;
     #[allow(unused_imports)]
-    use crate::fens::*;
-    use crate::moves::Move;
+    use crate::base::fens::*;
+    use crate::base::moves::Move;
     use std::collections::HashMap;
 
     #[test]

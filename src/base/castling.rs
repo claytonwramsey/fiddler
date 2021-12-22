@@ -1,4 +1,4 @@
-use crate::constants::{Color, BLACK, WHITE};
+use crate::base::constants::{Color, BLACK, WHITE};
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 

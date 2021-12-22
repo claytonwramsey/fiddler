@@ -1,6 +1,6 @@
-use crate::constants::{FILE_NAMES, RANK_NAMES};
-use crate::Bitboard;
-use crate::Direction;
+use crate::base::constants::{FILE_NAMES, RANK_NAMES};
+use crate::base::Bitboard;
+use crate::base::Direction;
 
 use std::cmp::max;
 use std::fmt::{Display, Formatter, Result};
@@ -242,7 +242,7 @@ mod tests {
 
     #[allow(unused_imports)]
     use super::*;
-    use crate::Direction;
+    use crate::base::Direction;
 
     #[test]
     fn test_add_square_and_direction() {

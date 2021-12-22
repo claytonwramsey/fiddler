@@ -1,5 +1,5 @@
-use crate::square::Square;
-use crate::PieceType;
+use crate::base::square::Square;
+use crate::base::PieceType;
 use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

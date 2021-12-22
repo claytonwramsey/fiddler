@@ -1,9 +1,9 @@
-use crate::algebraic::{algebraic_from_move, move_from_algebraic};
+use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::engine::search::Minimax;
 use crate::Engine;
-use crate::Game;
-use crate::Move;
-use crate::MoveGenerator;
+use crate::base::Game;
+use crate::base::Move;
+use crate::base::MoveGenerator;
 
 use std::fmt;
 use std::io;
@@ -270,8 +270,8 @@ impl<'a> Default for CrabchessApp<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::square::*;
-    use crate::PieceType;
+    use crate::base::square::*;
+    use crate::base::PieceType;
 
     #[test]
     /**
