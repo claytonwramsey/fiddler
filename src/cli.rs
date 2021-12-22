@@ -1,4 +1,4 @@
-use crate::algebraic::{move_from_algebraic, algebraic_from_move};
+use crate::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::engine::search::Minimax;
 use crate::Engine;
 use crate::Game;
@@ -100,7 +100,11 @@ impl<'a> CrabchessApp<'a> {
             let mut buf_reader = io::BufReader::new(&mut self.input_stream);
 
             if let Err(e) = buf_reader.read_line(&mut user_input) {
-                writeln!(self.output_stream, "failed to read off of input stream with error {}", e)?;
+                writeln!(
+                    self.output_stream,
+                    "failed to read off of input stream with error {}",
+                    e
+                )?;
             };
 
             let parse_result = self.parse_command(user_input);
@@ -125,7 +129,6 @@ impl<'a> CrabchessApp<'a> {
                     s
                 )?;
             }
-
         }
         Ok(())
     }
@@ -151,7 +154,7 @@ impl<'a> CrabchessApp<'a> {
                 "e" | "engine" => {
                     let engine_opt = String::from(s[command_block.len()..].trim());
                     Ok(Command::EngineSelect(engine_opt))
-                },
+                }
                 "l" | "load" => {
                     let fen_str = String::from(s[command_block.len()..].trim());
                     Ok(Command::LoadFen(fen_str))
@@ -160,18 +163,15 @@ impl<'a> CrabchessApp<'a> {
                     let num_undo_token = token_iter.next();
                     match num_undo_token {
                         None => Ok(Command::Undo(1)),
-                        Some(num_undo_str) => {
-                            match num_undo_str.parse::<usize>() {
-                                Ok(num) => {
-                                    if num > 0 {
-                                        return Ok(Command::Undo(num));
-                                    }
-                                    Err("cannot undo 0 moves")
-                                },
-                                Err(_) => 
-                                    Err("could not parse number of moves to undo"),
+                        Some(num_undo_str) => match num_undo_str.parse::<usize>() {
+                            Ok(num) => {
+                                if num > 0 {
+                                    return Ok(Command::Undo(num));
+                                }
+                                Err("cannot undo 0 moves")
                             }
-                        }
+                            Err(_) => Err("could not parse number of moves to undo"),
+                        },
                     }
                 }
                 "list" => Ok(Command::ListMoves),
@@ -199,9 +199,11 @@ impl<'a> CrabchessApp<'a> {
             Command::ListMoves => self.list_moves(),
             Command::Undo(n) => self.game.undo_n(n),
             _ => {
-                if let Err(_) =
-                    writeln!(self.output_stream, "the command type `{}` is unsupported", c)
-                {
+                if let Err(_) = writeln!(
+                    self.output_stream,
+                    "the command type `{}` is unsupported",
+                    c
+                ) {
                     return Err("write failed");
                 }
                 Ok(())
@@ -222,7 +224,7 @@ impl<'a> CrabchessApp<'a> {
                 self.game = game;
                 Ok(())
             }
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
@@ -234,17 +236,20 @@ impl<'a> CrabchessApp<'a> {
         //perform engine move
         let m = self.engine.get_best_move(&mut self.game, &self.mgen);
         self.game.make_move(m);
-        
+
         Ok(())
     }
 
     fn list_moves(&mut self) -> CommandResult {
         let moves = self.mgen.get_moves(self.game.get_board());
         for m in moves.iter() {
-            if let Err(_) = writeln!(self.output_stream, "{}", algebraic_from_move(*m, self.game.get_board(), &self.mgen)) {
+            if let Err(_) = writeln!(
+                self.output_stream,
+                "{}",
+                algebraic_from_move(*m, self.game.get_board(), &self.mgen)
+            ) {
                 return Err("failed to write move list");
             }
-            
         }
         Ok(())
     }

@@ -2,5 +2,5 @@ target
 Cargo.lock
 .pytest_cache
 perf.*
-profile.svg
+*.svg
 stacks.folded

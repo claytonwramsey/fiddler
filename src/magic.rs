@@ -529,7 +529,7 @@ fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) ->
             }
             current_square += dir;
             result |= Bitboard::from(current_square);
-            if occupancy.is_square_occupied(current_square) {
+            if occupancy.contains(current_square) {
                 break;
             }
         }
