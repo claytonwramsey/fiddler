@@ -7,10 +7,9 @@ use crate::base::PieceType;
 use crate::base::Square;
 
 #[allow(dead_code)]
-/**
- * Given a `Move` and the `Board` it was played on, construct the
- * algebraic-notation version of the move. Assumes the move was legal.
- */
+///
+/// Given a `Move` and the `Board` it was played on, construct the///algebraic-notation version of the move. Assumes the move was legal.
+///
 pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     //longest possible algebraic string would be something along the lines of
     //Qe4xd4# (7 chars)
@@ -96,10 +95,9 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     return s;
 }
 
-/**
- * Given the string of an algebraic-notation move, get the `Move` which can be
- * played. Will return Err if the string is invalid.
- */
+///
+/// Given the string of an algebraic-notation move, get the `Move` which can be///played. Will return Err if the string is invalid.
+///
 pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<Move, &'static str> {
     let moves = mgen.get_moves(b);
     for m in moves {
@@ -117,9 +115,9 @@ mod tests {
     use crate::base::fens::*;
     use crate::base::square::*;
     #[test]
-    /**
-     * Test that playing e4 can be successfully converted to its algebraic form.
-     */
+    ///
+    ///Test that playing e4 can be successfully converted to its algebraic form.
+    ///
     fn test_e4_to_algebraic() {
         let b = Board::default();
         let mgen = MoveGenerator::new();
@@ -139,9 +137,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * Test that capturing a pawn is parsed correctly.
-     */
+    ///
+    ///Test that capturing a pawn is parsed correctly.
+    ///
     fn test_algebraic_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -156,9 +154,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * Test that the opening move e4 can be converted from a string to a move.
-     */
+    ///
+    ///Test that the opening move e4 can be converted from a string to a move.
+    ///
     fn test_move_from_e4() {
         let b = Board::default();
         let mgen = MoveGenerator::new();
@@ -169,9 +167,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * Test that capturing a pawn is parsed correctly.
-     */
+    ///
+    ///Test that capturing a pawn is parsed correctly.
+    ///
     fn test_move_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -187,9 +185,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * Test that you get an error out when you give it a bad string.
-     */
+    ///
+    ///Test that you get an error out when you give it a bad string.
+    ///
     fn test_bad_algebraic() {
         let b = Board::default();
         let mgen = MoveGenerator::new();

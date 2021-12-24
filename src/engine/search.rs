@@ -11,47 +11,46 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
-/**
- * After going this many edges deep into the search tree, stop populating the
- * transposition table to save memory.
- */
+///
+/// After going this many edges deep into the search tree, stop populating the///transposition table to save memory.
+///
 const TRANSPOSITION_DEPTH_CUTOFF: i8 = 7;
 
-/**
- * A stupid-simple engine which will evaluate the entire tree.
- */
+///
+/// A stupid-simple engine which will evaluate the entire tree.
+///
 pub struct Minimax {
-    /**
-     * The depth at which this algorithm will evaluate a position.
-     */
+    ///
+    ///The depth at which this algorithm will evaluate a position.
+    ///
     pub depth: i8,
-    /**
-     * The function used to evaluate the quality of a position.
-     */
+    ///
+    ///The function used to evaluate the quality of a position.
+    ///
     pub evaluator: EvaluationFn,
-    /**
-     * The function used to determine which moves should be explored first.
-     */
+    ///
+    ///The function used to determine which moves should be explored first.
+    ///
     pub candidator: MoveCandidacyFn,
-    /**
-     * The transposition table.
-     */
+    ///
+    ///The transposition table.
+    ///
     transpose_table: TTable,
-    /**
-     * The cumulative number of nodes evaluated in this evaluation event.
-     */
+    ///
+    ///The cumulative number of nodes evaluated in this evaluation event.
+    ///
     num_nodes_evaluated: u64,
-    /**
-     * The cumulative number of transpositions.
-     */
+    ///
+    ///The cumulative number of transpositions.
+    ///
     num_transpositions: u64,
 }
 
 impl Minimax {
-    /**
-     * Evaluate a position at a given depth. The depth is the number of plays
-     * to make. Even depths are recommended for fair evaluations.
-     */
+    ///
+    ///Evaluate a position at a given depth. The depth is the number of plays
+    ///to make. Even depths are recommended for fair evaluations.
+    ///
     pub fn evaluate_at_depth(
         &mut self,
         depth: i8,
@@ -164,9 +163,9 @@ impl Minimax {
         return evaluation;
     }
 
-    /**
-     * Perform a quiescent (captures-only) search of the remaining moves.
-     */
+    ///
+    ///Perform a quiescent (captures-only) search of the remaining moves.
+    ///
     fn quiesce(
         &mut self,
         g: &mut Game,
@@ -230,9 +229,9 @@ impl Minimax {
         return evaluation;
     }
 
-    /**
-     * Clear out internal data.
-     */
+    ///
+    ///Clear out internal data.
+    ///
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
     }
@@ -302,9 +301,9 @@ pub mod tests {
     use std::collections::HashMap;
 
     #[test]
-    /**
-     * Test Minimax's evaluation of the start position of the game.
-     */
+    ///
+    ///Test Minimax's evaluation of the start position of the game.
+    ///
     pub fn test_eval_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
@@ -351,9 +350,9 @@ pub mod tests {
     }
 
     #[allow(dead_code)]
-    /**
-     * Print a map from moves to evals in a user-readable way.
-     */
+    ///
+    ///Print a map from moves to evals in a user-readable way.
+    ///
     fn print_move_map(map: &HashMap<Move, Eval>) {
         for (m, eval) in map {
             println!("{}:{}", m, eval);

@@ -6,9 +6,9 @@ use crate::base::PieceType;
 use crate::base::Square;
 use crate::engine::Eval;
 
-/**
- * Get the value of one piece by its type.
- */
+///
+/// Get the value of one piece by its type.
+///
 pub fn piece_value(pt: PieceType) -> Eval {
     Eval::pawns(match pt {
         PieceType::PAWN => 1.0,
@@ -20,9 +20,9 @@ pub fn piece_value(pt: PieceType) -> Eval {
     })
 }
 
-/**
- * Evaluate a position solely by the amount of material available.
- */
+///
+/// Evaluate a position solely by the amount of material available.
+///
 pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut eval = Eval(0);
     let b = g.get_board();

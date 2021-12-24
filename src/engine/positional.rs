@@ -59,10 +59,9 @@ const BISHOP_VALUES: ValueTable = [
 const DEFAULT_VALUES: ValueTable = [0.0; 64];
 
 #[allow(dead_code)]
-/**
- * Evaluate a position by both its material and the positional value of the
- * position.
- */
+///
+/// Evaluate a position by both its material and the positional value of the///position.
+///
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let starting_eval = greedy_evaluate(g, mgen);
     if starting_eval.is_mate() {

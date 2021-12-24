@@ -3,9 +3,9 @@ use crate::base::square::{Square, BAD_SQUARE};
 use crate::base::PieceType;
 
 #[inline]
-/**
- * Get the Zobrist key for a given key, type, and square.
- */
+///
+/// Get the Zobrist key for a given key, type, and square.
+///
 pub fn get_square_key(sq: Square, pt: PieceType, color: Color) -> u64 {
     match pt {
         PieceType::NO_TYPE => 0,
@@ -14,19 +14,17 @@ pub fn get_square_key(sq: Square, pt: PieceType, color: Color) -> u64 {
 }
 
 #[inline]
-/**
- * Get the Zobrist key for a castling right. 0 is for white king castle, 1 is
- * for white queen castle, 2 is for black king castle, and 3 is for black queen
- * castle.
- */
+///
+/// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is///for white queen castle, 2 is for black king castle, and 3 is for black queen///castle.
+///
 pub fn get_castle_key(right: u8) -> u64 {
     CASTLE_KEYS[right as usize]
 }
 
 #[inline]
-/**
- * Get the Zobrist key of an en passant square.
- */
+///
+/// Get the Zobrist key of an en passant square.
+///
 pub fn get_ep_key(ep_square: Square) -> u64 {
     match ep_square {
         BAD_SQUARE => 0,
@@ -35,9 +33,9 @@ pub fn get_ep_key(ep_square: Square) -> u64 {
 }
 
 #[inline]
-/**
- * Get the Zobrist key for the player to move
- */
+///
+/// Get the Zobrist key for the player to move
+///
 pub fn get_player_to_move_key(player_to_move: Color) -> u64 {
     match player_to_move {
         WHITE => 0,

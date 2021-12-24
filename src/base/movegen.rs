@@ -10,36 +10,36 @@ use crate::base::PieceType;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
-/**
- * A struct which contains all the necessary data to create moves.
- */
+///
+/// A struct which contains all the necessary data to create moves.
+///
 pub struct MoveGenerator {
-    /**
-     * A magic move generator.
-     */
+    ///
+    ///A magic move generator.
+    ///
     mtable: MagicTable,
-    /**
-     * A bitboard of all the squares which a pawn on the given square can
-     * attack.
-     */
+    ///
+    ///A bitboard of all the squares which a pawn on the given square can
+    ///attack.
+    ///
     pawn_attacks: [Bitboard; 64], //for now unused, will be used later
-    /**
-     * A bitboard of all the squares a king can move to if his position is the
-     * index in the list.
-     */
+    ///
+    ///A bitboard of all the squares a king can move to if his position is the
+    ///index in the list.
+    ///
     king_moves: [Bitboard; 64],
-    /**
-     * A bitboard of all the squares a knight can move to if its position is
-     * the index of the list.
-     */
+    ///
+    ///A bitboard of all the squares a knight can move to if its position is
+    ///the index of the list.
+    ///
     knight_moves: [Bitboard; 64],
 }
 
 impl MoveGenerator {
     #[allow(dead_code)]
-    /**
-     * Load up a new MoveGenerator.
-     */
+    ///
+    ///Load up a new MoveGenerator.
+    ///
     pub fn new() -> MoveGenerator {
         MoveGenerator {
             mtable: MagicTable::load(),
@@ -50,9 +50,9 @@ impl MoveGenerator {
     }
 
     #[allow(dead_code)]
-    /**
-     * Get all the legal moves on a board.
-     */
+    ///
+    ///Get all the legal moves on a board.
+    ///
     pub fn get_moves(&self, board: &Board) -> Vec<Move> {
         let moves = self.get_pseudolegal_moves(board, board.player_to_move);
         let mut legal_moves = Vec::with_capacity(moves.capacity());
@@ -89,9 +89,9 @@ impl MoveGenerator {
         return legal_moves;
     }
 
-    /**
-     * Does the player to move have any legal moves in this position?
-     */
+    ///
+    ///Does the player to move have any legal moves in this position?
+    ///
     pub fn has_moves(&self, board: &Board) -> bool {
         let player = board.player_to_move;
         let opponent = opposite_color(player);
@@ -145,10 +145,10 @@ impl MoveGenerator {
         return false;
     }
 
-    /**
-     * Enumerate the pseudolegal moves a player of the given color would be
-     * able to make if it were their turn to move.
-     */
+    ///
+    ///Enumerate the pseudolegal moves a player of the given color would be
+    ///able to make if it were their turn to move.
+    ///
     pub fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = pawn_start_rank(opposite_color(color));
         // Number of start squares
@@ -181,8 +181,8 @@ impl MoveGenerator {
         }
 
         let mut num_moves: u32 = normal_bitboards.iter().map(|x| x.1 .0.count_ones()).sum();
-        num_moves += (PieceType::NUM_PROMOTE_TYPES as u32)
-            * promotion_bitboards
+        num_moves += (PieceType::NUM_PROMOTE_TYPES as u32) * 
+            promotion_bitboards
                 .iter()
                 .map(|x| x.1 .0.count_ones())
                 .sum::<u32>();
@@ -200,10 +200,10 @@ impl MoveGenerator {
         return moves;
     }
 
-    /**
-     * In a given board state, is a move illegal because it would be a
-     * self-check?
-     */
+    ///
+    ///In a given board state, is a move illegal because it would be a
+    ///self-check?
+    ///
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
         let player = board.color_at_square(m.from_square());
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
@@ -244,26 +244,26 @@ impl MoveGenerator {
     }
 
     #[inline]
-    /**
-     * In a given board state, is a square attacked by the given color?
-     */
+    ///
+    ///In a given board state, is a square attacked by the given color?
+    ///
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
         return self.get_square_attackers(board, sq, color) != Bitboard::EMPTY;
     }
 
     #[inline]
-    /**
-     * Get the attackers of a given color on a square as a `Bitboard`
-     * representing the squares of the attackers.
-     */
+    ///
+    ///Get the attackers of a given color on a square as a `Bitboard`
+    ///representing the squares of the attackers.
+    ///
     pub fn get_square_attackers(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         self.square_attackers_with_occupancy(board, sq, color, board.get_occupancy())
     }
 
-    /**
-     * Same functionality as get_square_attackers, but uses the provided
-     * occupancy bitboard (as opposed to the board's occupancy.)
-     */
+    ///
+    ///Same functionality as get_square_attackers, but uses the provided
+    ///occupancy bitboard (as opposed to the board's occupancy.)
+    ///
     fn square_attackers_with_occupancy(
         &self,
         board: &Board,
@@ -313,9 +313,9 @@ impl MoveGenerator {
     }
 
     #[inline]
-    /**
-     * Given a set of squares, are these squares attacked by the given color?
-     */
+    ///
+    ///Given a set of squares, are these squares attacked by the given color?
+    ///
     pub fn are_squares_attacked_by(&self, board: &Board, squares: Bitboard, color: Color) -> bool {
         squares
             .filter(|sq| !self.is_square_attacked_by(board, *sq, color))
@@ -324,10 +324,10 @@ impl MoveGenerator {
     }
 
     #[inline]
-    /**
-     * Enumerate all the pseudolegal moves that can be made by a given piece
-     * type at the given position.
-     */
+    ///
+    ///Enumerate all the pseudolegal moves that can be made by a given piece
+    ///type at the given position.
+    ///
     fn sq_pseudolegal_moves(&self, board: &Board, sq: Square, pt: PieceType) -> Bitboard {
         match pt {
             PieceType::PAWN => self.pawn_moves(board, sq),
@@ -342,19 +342,19 @@ impl MoveGenerator {
     }
 
     #[inline]
-    /**
-     * Get the pseudolegal moves that a knight on the square `sq` could make in
-     * this position. Also, haha bob seger.
-     */
+    ///
+    ///Get the pseudolegal moves that a knight on the square `sq` could make in
+    ///this position. Also, haha bob seger.
+    ///
     fn knight_moves(&self, board: &Board, sq: Square) -> Bitboard {
         self.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq))
     }
 
     #[inline]
-    /**
-     * Get the pseudolegal moves that a king on square `sq` could make in this
-     * position. Does not check if castling can be done through or out of check.
-     */
+    ///
+    ///Get the pseudolegal moves that a king on square `sq` could make in this
+    ///position. Does not check if castling can be done through or out of check.
+    ///
     fn king_moves(&self, board: &Board, sq: Square) -> Bitboard {
         let mut moves =
             self.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq));
@@ -387,10 +387,10 @@ impl MoveGenerator {
         return moves;
     }
 
-    /**
-     * Get the pseudolegal moves that a pawn on square `sq` could make in this
-     * position.
-     */
+    ///
+    ///Get the pseudolegal moves that a pawn on square `sq` could make in this
+    ///position.
+    ///
     fn pawn_moves(&self, board: &Board, sq: Square) -> Bitboard {
         let player_color = board.color_at_square(sq);
         let dir = pawn_direction(player_color);
@@ -423,40 +423,38 @@ impl MoveGenerator {
     }
 
     #[inline]
-    /**
-     * Get the pseudolegal moves that a bishop on square `sq` could make in
-     * this position.
-     */
+    ///
+    ///Get the pseudolegal moves that a bishop on square `sq` could make in
+    ///this position.
+    ///
     fn bishop_moves(&self, board: &Board, sq: Square) -> Bitboard {
         get_bishop_attacks(board.get_occupancy(), sq, &self.mtable)
             & !board.get_color_occupancy(board.color_at_square(sq))
     }
 
     #[inline]
-    /**
-     * Get the pseudolegal moves that a rook on square `sq` could make in this
-     * position.
-     */
+    ///
+    ///Get the pseudolegal moves that a rook on square `sq` could make in this
+    ///position.
+    ///
     fn rook_moves(&self, board: &Board, sq: Square) -> Bitboard {
         get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
             & !board.get_color_occupancy(board.color_at_square(sq))
     }
 
     #[inline]
-    /**
-     * Get the pseudolegal moves that a queen on square `sq` could make in this
-     * position.
-     */
+    ///
+    ///Get the pseudolegal moves that a queen on square `sq` could make in this
+    ///position.
+    ///
     fn queen_moves(&self, board: &Board, sq: Square) -> Bitboard {
         self.bishop_moves(board, sq) | self.rook_moves(board, sq)
     }
 }
 
-/**
- * Get the step attacks that could be made by moving in `dirs` from each point
- * in the square. Exclude the steps that travel more than `max_dist` (this
- * prevents overflow around the edges of the board).
- */
+///
+/// Get the step attacks that could be made by moving in `dirs` from each point///in the square. Exclude the steps that travel more than `max_dist` (this///prevents overflow around the edges of the board).
+///
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard(0); 64];
     for i in 0..64usize {
@@ -472,19 +470,16 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
 }
 
 #[inline]
-/**
- * Given a bitboard of possible to-squares and a fixed from-square, convert
- * this to a list of `Move`s with promotion type `NO_TYPE`.
- */
+///
+/// Given a bitboard of possible to-squares and a fixed from-square, convert///this to a list of `Move`s with promotion type `NO_TYPE`.
+///
 fn bitboard_to_moves(from_sq: Square, bb: Bitboard, target: &mut Vec<Move>) {
     bitboard_to_promotions(from_sq, bb, PieceType::NO_TYPE, target);
 }
 
-/**
- * Given a bitboard of possible to-squares and a fixed from-square, convert
- * this to a list of `Move`s with the given promotion type and push them onto
- * the target.
- */
+///
+/// Given a bitboard of possible to-squares and a fixed from-square, convert///this to a list of `Move`s with the given promotion type and push them onto///the target.
+///
 fn bitboard_to_promotions(
     from_sq: Square,
     bb: Bitboard,
@@ -496,9 +491,9 @@ fn bitboard_to_promotions(
     }
 }
 
-/**
- * Get the steps a king can make.
- */
+///
+/// Get the steps a king can make.
+///
 fn get_king_steps() -> Vec<Direction> {
     vec![
         Direction::NORTH,
@@ -512,9 +507,9 @@ fn get_king_steps() -> Vec<Direction> {
     ]
 }
 
-/**
- * Get the steps a knight can make.
- */
+///
+/// Get the steps a knight can make.
+///
 fn get_knight_steps() -> Vec<Direction> {
     vec![
         Direction::NNW,
@@ -546,9 +541,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * Test that we can play Qf3, the critical move in the Fried Liver opening.
-     */
+    ///
+    ///Test that we can play Qf3, the critical move in the Fried Liver opening.
+    ///
     fn test_best_queen_fried_liver() {
         let mg = MoveGenerator::new();
         let m = Move::new(D1, F3, PieceType::NO_TYPE);
@@ -563,9 +558,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * Test that capturing a pawn is parsed correctly.
-     */
+    ///
+    ///Test that capturing a pawn is parsed correctly.
+    ///
     fn test_pawn_capture_generated() {
         let b = Board::from_fen(crate::base::fens::PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -575,9 +570,9 @@ mod tests {
     }
 
     #[test]
-    /**
-     * The pawn is checking the king. Is move enumeration correct?
-     */
+    ///
+    ///The pawn is checking the king. Is move enumeration correct?
+    ///
     fn test_enumerate_pawn_checking_king() {
         let mgen = MoveGenerator::new();
         let b = Board::from_fen(crate::base::fens::PAWN_CHECKING_KING_FEN).unwrap();

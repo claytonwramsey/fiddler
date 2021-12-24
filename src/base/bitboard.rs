@@ -3,23 +3,22 @@ use std::fmt::{Display, Formatter, Result};
 use std::iter::Iterator;
 use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
 
-/**
- * a bitboard to express positions
- * uses standard form, so H8G8F8 (...) C1B1A1.
- */
+///
+/// a bitboard to express positions///uses standard form, so H8G8F8 (...) C1B1A1.
+///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
-    /**
-     * An empty bitboard.
-     */
+    ///
+    ///An empty bitboard.
+    ///
     pub const EMPTY: Bitboard = Bitboard(0);
 
     #[inline]
-    /**
-     * Determine whether a square of a bitboard is occupied.
-     */
+    ///
+    ///Determine whether a square of a bitboard is occupied.
+    ///
     pub fn contains(self, square: Square) -> bool {
         self.0 & (1 << square.0) != 0
     }

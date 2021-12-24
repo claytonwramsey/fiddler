@@ -4,9 +4,9 @@ use crate::base::Direction;
 
 #[inline]
 #[allow(dead_code)]
-/**
- * Get the opposite color of the given `Color`.
- */
+///
+/// Get the opposite color of the given `Color`.
+///
 pub const fn opposite_color(color: Color) -> Color {
     match color {
         WHITE => BLACK,
@@ -16,9 +16,9 @@ pub const fn opposite_color(color: Color) -> Color {
 }
 
 #[inline]
-/**
- * Get the direction that a pawn of the given color normally moves.
- */
+///
+/// Get the direction that a pawn of the given color normally moves.
+///
 pub const fn pawn_direction(color: Color) -> Direction {
     match color {
         WHITE => Direction::NORTH,
@@ -28,9 +28,9 @@ pub const fn pawn_direction(color: Color) -> Direction {
 }
 
 #[inline]
-/**
- * Get the promotion rank of a given color.
- */
+///
+/// Get the promotion rank of a given color.
+///
 pub const fn pawn_promote_rank(color: Color) -> Bitboard {
     match color {
         WHITE => Bitboard(0xFF00000000000000),
@@ -40,9 +40,9 @@ pub const fn pawn_promote_rank(color: Color) -> Bitboard {
 }
 
 #[inline]
-/**
- * Get a `Bitboard` with 1's on the start rank of the pawn of the given color.
- */
+///
+/// Get a `Bitboard` with 1's on the start rank of the pawn of the given color.
+///
 pub const fn pawn_start_rank(color: Color) -> Bitboard {
     match color {
         WHITE => Bitboard(0x000000000000FF00),

@@ -14,36 +14,36 @@ pub mod positional;
 pub mod search;
 pub mod transposition;
 
-/**
- * A function which can shallowly evaluate a position.
- */
+///
+/// A function which can shallowly evaluate a position.
+///
 pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
 
-/**
- * A function which can decide how much it "likes" a move.
- */
+///
+/// A function which can decide how much it "likes" a move.
+///
 pub type MoveCandidacyFn = fn(&mut Game, &MoveGenerator, Move) -> Eval;
 
-/**
- * An `Engine` is something that can evaluate a `Game`, and give moves which it
- * thinks are good. All the public methods require it to be mutable so that the
- * engine can alter its internal state (such as with transposition tables) to
- * update its internal data.
- */
+///
+/// An `Engine` is something that can evaluate a `Game`, and give moves which 
+/// it thinks are good. All the public methods require it to be mutable so that 
+/// the engine can alter its internal state (such as with transposition tables) 
+/// to update its internal data.
+///
 pub trait Engine {
-    /**
-     * Evaluate the position of the given game. `g` is only given as mutable to
-     * allow this method access to the ability to make and undo moves, but `g`
-     * should be the same before and after its use.
-     */
+    ///
+    ///Evaluate the position of the given game. `g` is only given as mutable to
+    ///allow this method access to the ability to make and undo moves, but `g`
+    ///should be the same before and after its use.
+    ///
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval;
 
-    /**
-     * Get what this engine believes to be the best move in the given position.
-     * `g` is only given as mutable to allow this method access to the ability
-     * to make and undo moves, but `g` should be the same before and after its
-     * use.
-     */
+    ///
+    /// Get what this engine believes to be the best move in the given position.
+    /// `g` is only given as mutable to allow this method access to the ability
+    /// to make and undo moves, but `g` should be the same before and after its
+    /// use.
+    ///
     fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Move {
         /*self.get_evals(g, mgen)
         .into_iter()
@@ -73,11 +73,11 @@ pub trait Engine {
         return best_move;
     }
 
-    /**
-     * Get the evaluation of each move in this position. `g` is only given as
-     * mutable to allow this method access to the ability to make and undo
-     * moves, but `g` should be the same before and after its use.
-     */
+    ///
+    /// Get the evaluation of each move in this position. `g` is only given as
+    /// mutable to allow this method access to the ability to make and undo
+    /// moves, but `g` should be the same before and after its use.
+    ///
     fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
         let moves = g.get_moves(mgen);
         let mut evals = HashMap::new();
@@ -104,20 +104,20 @@ const MATE_CUTOFF: i32 = 999_000;
 const PAWN_VALUE: i32 = 1_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-/**
- * A wrapper for the evaluation of a position.
- * The higher an evaluation is, the better the position is for White. An
- * evaluation of 0 is a draw.
- *
- * Internally, the i32 represents an integer. The integer value is 1/1000 of a
- * pawn (so if the internal value is +2000, the position is +2 pawns for White).
- *
- * Values >= 999,000 are reserved for mates. 1,000,000 is White to mate in
- * 0 (i.e. White has won the game), 999,999 is White to mate in 1 (White will
- * play their move and mate), 999,998 is White to mate in 1, with Black to
- * move (Black will play their move, then White will play their move to mate)
- * and so on. Values of <= -999,000 are reserved for black mates, likewise.
- */
+///
+/// A wrapper for the evaluation of a position.
+/// The higher an evaluation is, the better the position is for White. An
+/// evaluation of 0 is a draw.
+/// Internally, the i32 represents an integer. The integer value is 1/1000 of a 
+/// pawn (so if the internal value is +2000, the position is +2 pawns for White)
+/// .
+/// 
+/// Values >= 999,000 are reserved for mates. 1,000,000 is White to mate in
+/// 0 (i.e. White has won the game), 999,999 is White to mate in 1 (White will
+/// play their move and mate), 999,998 is White to mate in 1, with Black to
+/// move (Black will play their move, then White will play their move to mate)
+/// and so on. Values of <= -999,000 are reserved for black mates, likewise.
+///
 pub struct Eval(i32);
 
 impl Eval {
@@ -128,27 +128,28 @@ impl Eval {
     pub const WHITE_MATE: Eval = Eval(MATE_0_VAL);
 
     #[inline]
-    /**
-     * Get an evaluation equivalent to the given pawn value.
-     */
+    ///
+    /// Get an evaluation equivalent to the given pawn value.
+    ///
     pub fn pawns(x: f64) -> Eval {
         Eval((x * PAWN_VALUE as f64) as i32)
     }
 
     #[inline]
     #[allow(dead_code)]
-    /**
-     * Create an Eval based on the number of half-moves required for White to mate. -mate_in(n) will give Black to mate in the number of plies.
-     */
+    ///
+    /// Create an Eval based on the number of half-moves required for White to 
+    /// mate. -mate_in(n) will give Black to mate in the number of plies.
+    ///
     pub fn mate_in(nplies: u16) -> Eval {
         Eval(MATE_0_VAL - (nplies as i32))
     }
 
     #[inline]
-    /**
-     * Step this evaluation back in time one move. "normal" evaluations will
-     * not be changed, but mates will be moved one closer to 0.
-     */
+    ///
+    /// Step this evaluation back in time one move. "normal" evaluations will
+    /// not be changed, but mates will be moved one closer to 0.
+    ///
     pub fn step_back(&self) -> Eval {
         if self.0 > MATE_CUTOFF {
             return Eval(self.0 - 1);
@@ -159,9 +160,9 @@ impl Eval {
     }
 
     #[inline]
-    /**
-     * Is this evaluation a mate (i.e. a non-normal evaluation)?
-     */
+    ///
+    /// Is this evaluation a mate (i.e. a non-normal evaluation)?
+    ///
     pub fn is_mate(&self) -> bool {
         self.0 > MATE_CUTOFF || self.0 < -MATE_CUTOFF
     }

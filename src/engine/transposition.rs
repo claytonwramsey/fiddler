@@ -5,59 +5,59 @@ use std::hash::{Hasher, Hash};
 use crate::base::Board;
 use crate::engine::Eval;
 
-/**
- * Convenient bad-key value which may help with debugging.
- */
+///
+/// Convenient bad-key value which may help with debugging.
+///
 const BAD_HASH: u64 = 0x00000000DEADBEEF;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-/**
- *  A table which stores transposition data. It will automatically evict an
- *  "old" element if another one takes its place. It behaves much like a
- *  hash-map from positions to table-entries.
-*/
+///
+/// A table which stores transposition data. It will automatically evict an
+/// "old" element if another one takes its place. It behaves much like a
+/// hash-map from positions to table-entries.
+///
 pub struct TTable {
-    /**
-     * Sentinel `None` value that we return a pointer to in case we have a hash 
-     * match but not a key-value match
-     */
+    ///
+    ///Sentinel `None` value that we return a pointer to in case we have a hash 
+    ///match but not a key-value match
+    ///
     sentinel: Option<EvalData>,
     entries: Vec<TTableEntry>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EvalData {
-    /**
-     * The depth to which the position was evaluated.
-     */
+    ///
+    ///The depth to which the position was evaluated.
+    ///
     pub depth: i8,
-    /**
-     * A lower bound on the evaluation of the position.
-     */
+    ///
+    ///A lower bound on the evaluation of the position.
+    ///
     pub lower_bound: Eval,
-    /**
-     * An upper bound on the evaluation of the position.
-     */
+    ///
+    ///An upper bound on the evaluation of the position.
+    ///
     pub upper_bound: Eval,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/**
- *  An entry in the transposition table.
- */
+///
+///  An entry in the transposition table.
+///
 struct TTableEntry {
-    /**
-     *  The hash which caused this entry. Used as a speedy way to avoid
-     *  comparing a whole board.
-     */
+    ///
+    /// The hash which caused this entry. Used as a speedy way to avoid
+    /// comparing a whole board.
+    ///
     pub hash: u64,
-    /**
-     *  The board with this evaluation.
-     */
+    ///
+    /// The board with this evaluation.
+    ///
     pub key: Board,
-    /**
-     * The transposition data.
-     */
+    ///
+    ///The transposition data.
+    ///
     pub data: Option<EvalData>,
 }
 
