@@ -178,7 +178,7 @@ impl Minimax {
 
         let player = g.get_board().player_to_move;
         let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
-        let king_square = Square::from(g.get_board().get_type_and_color(PieceType::KING, WHITE));
+        let king_square = Square::from(g.get_board().get_type_and_color(PieceType::KING, player));
         let currently_in_check = mgen.is_square_attacked_by(
             g.get_board(), 
             king_square, opposite_color(player));
@@ -240,7 +240,7 @@ impl Minimax {
 
 impl Default for Minimax {
     fn default() -> Minimax {
-        let default_depth = 4;
+        let default_depth = 5;
         Minimax {
             depth: default_depth,
             evaluator: positional_evaluate,
