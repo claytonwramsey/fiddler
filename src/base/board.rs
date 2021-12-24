@@ -47,6 +47,22 @@ pub struct Board {
 }
 
 impl Board {
+
+    pub const BAD_BOARD: Board = Board {
+        sides: [Bitboard::EMPTY, Bitboard::EMPTY],
+        pieces: [
+            Bitboard::EMPTY,
+            Bitboard::EMPTY,
+            Bitboard::EMPTY,
+            Bitboard::EMPTY,
+            Bitboard::EMPTY,
+            Bitboard::EMPTY,
+        ],
+        en_passant_square: BAD_SQUARE,
+        player_to_move: WHITE,
+        castle_rights: CastleRights::NO_RIGHTS,
+        hash: 0,
+    };
     /**
      * Create an empty board with no pieces or castle rights.
      */
@@ -263,8 +279,7 @@ impl Board {
      * pseudo-legal.
      */
     pub fn is_move_castle(&self, m: Move) -> bool {
-        self.get_type(PieceType::KING)
-            .contains(m.from_square())
+        self.get_type(PieceType::KING).contains(m.from_square())
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
@@ -318,8 +333,8 @@ impl Board {
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq);
         let is_en_passant = self.is_move_en_passant(m);
-        let is_promotion = mover_type == PieceType::PAWN
-            && pawn_promote_rank(self.player_to_move).contains(to_sq);
+        let is_promotion =
+            mover_type == PieceType::PAWN && pawn_promote_rank(self.player_to_move).contains(to_sq);
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
         let is_long_move = from_sq.chebyshev_to(to_sq) > 1;

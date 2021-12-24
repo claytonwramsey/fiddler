@@ -404,9 +404,7 @@ impl MoveGenerator {
         if !occupancy.contains(sq + dir) {
             target_squares |= Bitboard::from(sq + dir);
             //pawn is on start rank and double-move square is not occupied
-            if (start_rank & from_bb) != Bitboard::EMPTY
-                && !occupancy.contains(sq + 2 * dir)
-            {
+            if (start_rank & from_bb) != Bitboard::EMPTY && !occupancy.contains(sq + 2 * dir) {
                 target_squares |= Bitboard::from(sq + 2 * dir);
             }
         }

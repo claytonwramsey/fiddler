@@ -1,10 +1,10 @@
 use crate::base::constants::{BLACK, WHITE};
-use crate::engine::greedy::greedy_evaluate;
-use crate::engine::Eval;
 use crate::base::piece::PieceType;
 use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::Square;
+use crate::engine::greedy::greedy_evaluate;
+use crate::engine::Eval;
 
 type ValueTable = [f64; 64];
 

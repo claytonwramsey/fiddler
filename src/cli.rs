@@ -1,9 +1,9 @@
 use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
-use crate::engine::search::Minimax;
-use crate::Engine;
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
+use crate::engine::search::Minimax;
+use crate::Engine;
 
 use std::fmt;
 use std::io;

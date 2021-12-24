@@ -1,9 +1,8 @@
-use crabchess::engine::search::Minimax;
 use crabchess::base::fens::FRIED_LIVER_FEN;
-use crabchess::engine::Engine;
 use crabchess::base::Game;
 use crabchess::base::MoveGenerator;
-
+use crabchess::engine::search::Minimax;
+use crabchess::engine::Engine;
 
 use crabchess::cli;
 fn main() {

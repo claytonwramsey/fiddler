@@ -1,13 +1,13 @@
 use crate::base::algebraic::algebraic_from_move;
 use crate::base::constants::{BLACK, WHITE};
 use crate::base::util::opposite_color;
-use crate::engine::positional::positional_evaluate;
-use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
-use crate::base::Board;
-use crate::Engine;
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
+use crate::engine::positional::positional_evaluate;
+use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
+use crate::engine::transposition::{EvalData, TTable};
+use crate::Engine;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -38,7 +38,7 @@ pub struct Minimax {
     /**
      * The transposition table.
      */
-    transpose_table: HashMap<Board, TTableEntry>,
+    transpose_table: TTable,
     /**
      * The cumulative number of nodes evaluated in this evaluation event.
      */
@@ -47,24 +47,6 @@ pub struct Minimax {
      * The cumulative number of transpositions.
      */
     num_transpositions: u64,
-}
-
-/**
- * An entry in the transposition table.
- */
-struct TTableEntry {
-    /**
-     * The depth at which this position was evaluated.
-     */
-    pub depth: i8,
-    /**
-     * Lower bound on the evaluation we found at this position.
-     */
-    pub lower_bound: Eval,
-    /**
-     * Upper bound on the evaluation we found at this position.
-     */
-    pub upper_bound: Eval,
 }
 
 impl Minimax {
@@ -81,12 +63,12 @@ impl Minimax {
         mgen: &MoveGenerator,
     ) -> Eval {
         self.num_nodes_evaluated += 1;
-        
+
         let mut alpha = alpha_in;
         let mut beta = beta_in;
 
         if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-            if let Some(v) = self.transpose_table.get(g.get_board()) {
+            if let Some(v) = self.transpose_table[g.get_board()] {
                 if v.depth >= depth {
                     if v.lower_bound >= beta_in {
                         self.num_transpositions += 1;
@@ -104,14 +86,14 @@ impl Minimax {
 
         if depth <= 0 || g.is_game_over(mgen) {
             let eval = self.quiesce(g, mgen, alpha_in, beta_in);
-            /*self.transpose_table.insert(
+            self.transpose_table.store(
                 *g.get_board(),
-                TTableEntry {
+                EvalData {
                     depth: depth,
                     upper_bound: eval,
                     lower_bound: eval,
                 },
-            );*/
+            );
             return eval;
         }
 
@@ -135,7 +117,6 @@ impl Minimax {
         }
 
         for m in moves {
-
             g.make_move(m);
             let eval_for_m =
                 self.evaluate_at_depth(depth - 1, alpha_changing, beta_changing, g, mgen);
@@ -173,14 +154,14 @@ impl Minimax {
             upper_bound = evaluation;
         }
         if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-            /*self.transpose_table.insert(
+            self.transpose_table.store(
                 *g.get_board(),
-                TTableEntry {
+                EvalData {
                     depth: depth,
                     lower_bound: lower_bound,
                     upper_bound: upper_bound,
                 },
-            );*/
+            );
         }
         return evaluation;
     }
@@ -188,15 +169,23 @@ impl Minimax {
     /**
      * Perform a quiescent (captures-only) search of the remaining moves.
      */
-    fn quiesce(&mut self, g: &mut Game, mgen: &MoveGenerator, alpha_in: Eval, beta_in: Eval) -> Eval{
+    fn quiesce(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        alpha_in: Eval,
+        beta_in: Eval,
+    ) -> Eval {
         self.num_nodes_evaluated += 1;
 
         let player = g.get_board().player_to_move;
         let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
-        let mut captures: Vec<Move> = g.get_moves(mgen)
-                        .into_iter()
-                        .filter(|m| enemy_occupancy.contains(m.to_square())).collect();
-                        
+        let mut captures: Vec<Move> = g
+            .get_moves(mgen)
+            .into_iter()
+            .filter(|m| enemy_occupancy.contains(m.to_square()))
+            .collect();
+
         if captures.len() == 0 {
             return (self.evaluator)(g, mgen);
         }
@@ -242,21 +231,17 @@ impl Minimax {
      */
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
-        self.transpose_table.clear();
     }
 }
 
 impl Default for Minimax {
     fn default() -> Minimax {
-        let branch_factor = 10f64;
         let default_depth = 4;
         Minimax {
             depth: default_depth,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
-            transpose_table: HashMap::with_capacity(
-                branch_factor.powf(min(default_depth, TRANSPOSITION_DEPTH_CUTOFF) as f64) as usize,
-            ),
+            transpose_table: TTable::default(),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
         }

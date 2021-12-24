@@ -12,6 +12,7 @@ pub mod candidacy;
 pub mod greedy;
 pub mod positional;
 pub mod search;
+pub mod transposition;
 
 /**
  * A function which can shallowly evaluate a position.
