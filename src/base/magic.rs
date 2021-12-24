@@ -208,7 +208,7 @@ pub struct MagicTable {
 impl MagicTable {
     #[allow(dead_code)]
     ///
-    ///Create an empty MagicTable.
+    /// Create an empty MagicTable.
     ///
     pub fn new() -> MagicTable {
         let rtable = {
@@ -232,7 +232,7 @@ impl MagicTable {
     }
 
     ///
-    ///Create a pre-loaded MagicTable.
+    /// Create a pre-loaded MagicTable.
     ///
     #[allow(dead_code)]
     pub fn load() -> MagicTable {
@@ -244,7 +244,7 @@ impl MagicTable {
     }
 
     ///
-    ///Create a MagicTable from scratch, generating new magics.
+    /// Create a MagicTable from scratch, generating new magics.
     ///
     #[allow(dead_code)]
     pub fn make() -> MagicTable {
@@ -257,32 +257,32 @@ impl MagicTable {
 }
 
 ///
-/// A structure containing all the information needed to generate moves for a///rook or bishop.
+/// A structure containing all the information needed to generate moves for a/// rook or bishop.
 ///
 #[derive(Clone, Debug)]
 pub struct Magic {
     ///
-    ///A mask which, when &ed with the occupancy bitboard, will give only the
-    ///bits that matter when computing moves.
+    /// A mask which, when &ed with the occupancy bitboard, will give only the
+    /// bits that matter when computing moves.
     ///
     pub mask: Bitboard,
     ///
-    ///The magic number to multiply to hash the current board effectively.
+    /// The magic number to multiply to hash the current board effectively.
     ///
     pub magic: Bitboard,
     ///
-    ///A lookup vector of squares attacked.
+    /// A lookup vector of squares attacked.
     ///
     pub attacks: Vec<Bitboard>,
     ///
-    ///The shift related to this square.
+    /// The shift related to this square.
     ///
     pub shift: u8,
 }
 
 impl Magic {
     ///
-    ///Create an empty Magic.
+    /// Create an empty Magic.
     ///
     pub fn new() -> Magic {
         Magic {
@@ -295,7 +295,7 @@ impl Magic {
 }
 
 ///
-/// A helper function to load data into a MagicTable. is_rook is True if you are///loading data for a rook.
+/// A helper function to load data into a MagicTable. is_rook is True if you are/// loading data for a rook.
 ///
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
@@ -336,7 +336,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 ///
-/// Get the attacks a square has given a magic lookup table and the current///occupancy.
+/// Get the attacks a square has given a magic lookup table and the current/// occupancy.
 ///
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
     let idx = sq.0 as usize;
@@ -364,7 +364,7 @@ fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
 }
 
 ///
-/// Populate a magic table. If `is_rook` is true, it will make magics for rook///moves; otherwise it will make magics for bishops.
+/// Populate a magic table. If `is_rook` is true, it will make magics for rook/// moves; otherwise it will make magics for bishops.
 ///
 fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
@@ -447,7 +447,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 ///
-/// Create the mask for the relevant bits in magic of a rook. `sq` is the square///that a rook would occupy to receiver this mask.
+/// Create the mask for the relevant bits in magic of a rook. `sq` is the square/// that a rook would occupy to receiver this mask.
 ///
 fn get_rook_mask(sq: Square) -> Bitboard {
     let index = sq.0 as i8;
@@ -466,7 +466,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 }
 
 ///
-/// Create the mask for the relevant bits in magic of a bishop. `sq` is the  ///square that a bishop would be on to receiver this mask.
+/// Create the mask for the relevant bits in magic of a bishop. `sq` is the  /// square that a bishop would be on to receiver this mask.
 ///
 fn get_bishop_mask(sq: Square) -> Bitboard {
     //thank u chessprogramming wiki for this code

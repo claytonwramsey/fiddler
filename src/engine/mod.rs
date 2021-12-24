@@ -25,16 +25,16 @@ pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
 pub type MoveCandidacyFn = fn(&mut Game, &MoveGenerator, Move) -> Eval;
 
 ///
-/// An `Engine` is something that can evaluate a `Game`, and give moves which 
-/// it thinks are good. All the public methods require it to be mutable so that 
-/// the engine can alter its internal state (such as with transposition tables) 
+/// An `Engine` is something that can evaluate a `Game`, and give moves which
+/// it thinks are good. All the public methods require it to be mutable so that
+/// the engine can alter its internal state (such as with transposition tables)
 /// to update its internal data.
 ///
 pub trait Engine {
     ///
-    ///Evaluate the position of the given game. `g` is only given as mutable to
-    ///allow this method access to the ability to make and undo moves, but `g`
-    ///should be the same before and after its use.
+    /// Evaluate the position of the given game. `g` is only given as mutable to
+    /// allow this method access to the ability to make and undo moves, but `g`
+    /// should be the same before and after its use.
     ///
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval;
 
@@ -108,10 +108,10 @@ const PAWN_VALUE: i32 = 1_000;
 /// A wrapper for the evaluation of a position.
 /// The higher an evaluation is, the better the position is for White. An
 /// evaluation of 0 is a draw.
-/// Internally, the i32 represents an integer. The integer value is 1/1000 of a 
+/// Internally, the i32 represents an integer. The integer value is 1/1000 of a
 /// pawn (so if the internal value is +2000, the position is +2 pawns for White)
 /// .
-/// 
+///
 /// Values >= 999,000 are reserved for mates. 1,000,000 is White to mate in
 /// 0 (i.e. White has won the game), 999,999 is White to mate in 1 (White will
 /// play their move and mate), 999,998 is White to mate in 1, with Black to
@@ -138,7 +138,7 @@ impl Eval {
     #[inline]
     #[allow(dead_code)]
     ///
-    /// Create an Eval based on the number of half-moves required for White to 
+    /// Create an Eval based on the number of half-moves required for White to
     /// mate. -mate_in(n) will give Black to mate in the number of plies.
     ///
     pub fn mate_in(nplies: u16) -> Eval {

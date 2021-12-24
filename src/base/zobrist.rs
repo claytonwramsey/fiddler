@@ -15,7 +15,7 @@ pub fn get_square_key(sq: Square, pt: PieceType, color: Color) -> u64 {
 
 #[inline]
 ///
-/// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is///for white queen castle, 2 is for black king castle, and 3 is for black queen///castle.
+/// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is/// for white queen castle, 2 is for black king castle, and 3 is for black queen/// castle.
 ///
 pub fn get_castle_key(right: u8) -> u64 {
     CASTLE_KEYS[right as usize]

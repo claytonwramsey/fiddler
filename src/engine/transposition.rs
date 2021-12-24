@@ -1,6 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::ops::Index;
-use std::hash::{Hasher, Hash};
 
 use crate::base::Board;
 use crate::engine::Eval;
@@ -18,25 +18,28 @@ const BAD_HASH: u64 = 0x00000000DEADBEEF;
 ///
 pub struct TTable {
     ///
-    ///Sentinel `None` value that we return a pointer to in case we have a hash 
-    ///match but not a key-value match
+    /// Sentinel `None` value that we return a pointer to in case we have a hash
+    /// match but not a key-value match
     ///
     sentinel: Option<EvalData>,
     entries: Vec<TTableEntry>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// A struct containing information about prior evaluation of a position.
+///
 pub struct EvalData {
     ///
-    ///The depth to which the position was evaluated.
+    /// The depth to which the position was evaluated.
     ///
     pub depth: i8,
     ///
-    ///A lower bound on the evaluation of the position.
+    /// A lower bound on the evaluation of the position.
     ///
     pub lower_bound: Eval,
     ///
-    ///An upper bound on the evaluation of the position.
+    /// An upper bound on the evaluation of the position.
     ///
     pub upper_bound: Eval,
 }
@@ -56,31 +59,38 @@ struct TTableEntry {
     ///
     pub key: Board,
     ///
-    ///The transposition data.
+    /// The transposition data.
     ///
     pub data: Option<EvalData>,
 }
 
 impl TTable {
-
+    ///
+    /// Create a transposition table with a fixed capacity.
+    ///
     pub fn with_capacity(capacity: usize) -> TTable {
         TTable {
             sentinel: None,
-            entries: vec![TTableEntry {
-                hash: BAD_HASH,
-                key: Board::BAD_BOARD,
-                data: None
-            }; capacity],
+            entries: vec![
+                TTableEntry {
+                    hash: BAD_HASH,
+                    key: Board::BAD_BOARD,
+                    data: None
+                };
+                capacity
+            ],
         }
     }
 
+    ///
+    /// Store some evaluation data in the transposition table.
+    ///
     pub fn store(&mut self, key: Board, value: EvalData) {
-        
         let mut hasher = DefaultHasher::new();
         key.hash(&mut hasher);
         let hash = hasher.finish();
         let index = hash as usize % self.entries.len();
-        self.entries[index] = TTableEntry{
+        self.entries[index] = TTableEntry {
             hash: hash,
             key: key,
             data: Some(value),
@@ -104,18 +114,18 @@ impl Index<&Board> for TTable {
         let index = key_hash as usize % self.entries.len();
         let entry = &self.entries[index];
 
-        // First, compare hashes to "fast-track" checking if these 
+        // First, compare hashes to "fast-track" checking if these
         // positions are truly equal.
         if entry.hash != key_hash {
             return &self.sentinel;
         }
 
-        // Since the hashes matched, these positions are likely equal. 
+        // Since the hashes matched, these positions are likely equal.
         // Check whether they're truly equal.
         if *key != entry.key {
             return &self.sentinel;
         }
-        
+
         &entry.data
     }
 }
@@ -156,6 +166,5 @@ mod tests {
         data.upper_bound = Eval(4);
         ttable.store(b, data);
         assert_eq!(ttable[&b], Some(data));
-
     }
 }

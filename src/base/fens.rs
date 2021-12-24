@@ -11,7 +11,7 @@ pub const BOARD_START_FEN: &'static str =
 
 #[allow(dead_code)]
 ///
-/// A board with a black king on H8 and white king on A1, and nothing else.///White to  move.
+/// A board with a black king on H8 and white king on A1, and nothing else./// White to  move.
 ///
 pub const TWO_KINGS_BOARD_FEN: &'static str = "7k/8/8/8/8/8/8/K7 w - - 0 1";
 
@@ -31,12 +31,12 @@ pub const WHITE_KINGSIDE_CASTLE_READY_FEN: &'static str =
 
 #[allow(dead_code)]
 ///
-/// A board where White is ready to promote the f7-pawn. Also, the position is///mate in 7.
+/// A board where White is ready to promote the f7-pawn. Also, the position is/// mate in 7.
 ///
 pub const WHITE_READY_TO_PROMOTE_FEN: &'static str = "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1";
 
 ///
-/// A board where White has played the Fried Liver Attack and is ready to bring///his king.
+/// A board where White has played the Fried Liver Attack and is ready to bring/// his king.
 ///
 #[allow(dead_code)]
 pub const FRIED_LIVER_FEN: &'static str =
@@ -50,7 +50,7 @@ pub const MATE_IN_1_FEN: &'static str = "3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1";
 
 #[allow(dead_code)]
 ///
-/// A board where White can mate in 4 plies with ...Kc8 Rg7 Kb8 Rd8# and ...Ke8///Rd6 Kf8 Rd8#
+/// A board where White can mate in 4 plies with ...Kc8 Rg7 Kb8 Rd8# and ...Ke8/// Rd6 Kf8 Rd8#
 ///
 pub const MATE_IN_4_FEN: &'static str = "3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1";
 

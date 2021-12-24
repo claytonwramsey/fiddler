@@ -35,11 +35,11 @@ pub use crate::base::square::Square;
 pub mod util;
 
 ///
-/// A module for storing the hashes of positions in a computationally efficient///manner.
+/// A module for storing the hashes of positions in a computationally efficient/// manner.
 ///
 mod zobrist;
 
 ///
-/// A module for converting `Move`s to their algebraic notation form, as well as///converting algebraic notation strings to `Move`s.
+/// A module for converting `Move`s to their algebraic notation form, as well as/// converting algebraic notation strings to `Move`s.
 ///
 pub mod algebraic;

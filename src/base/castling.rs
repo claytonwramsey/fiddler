@@ -6,7 +6,7 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 ///
 /// A simple struct to store a piece's castling rights.
 /// The internal bits are used to represent castling rights.
-/// From MSB to LSB: 
+/// From MSB to LSB:
 /// * 4 unused bits
 /// * Black queenside castling
 /// * Black kingside castling
@@ -22,7 +22,7 @@ impl CastleRights {
     pub const BLACK_RIGHTS: CastleRights = CastleRights(12);
 
     ///
-    ///Create a `CastleRights` for kingside castling on one side
+    /// Create a `CastleRights` for kingside castling on one side
     ///
     #[inline]
     pub fn king_castle(color: Color) -> CastleRights {
@@ -34,7 +34,7 @@ impl CastleRights {
     }
 
     ///
-    ///Create a `CastleRights` for queenside castling on one side
+    /// Create a `CastleRights` for queenside castling on one side
     ///
     #[inline]
     pub fn queen_castle(color: Color) -> CastleRights {
@@ -55,7 +55,7 @@ impl CastleRights {
 
     #[inline]
     ///
-    ///Can the given color legally castle kingside?
+    /// Can the given color legally castle kingside?
     ///
     pub fn is_kingside_castle_legal(&self, color: Color) -> bool {
         *self & CastleRights::king_castle(color) != CastleRights::NO_RIGHTS
@@ -63,7 +63,7 @@ impl CastleRights {
 
     #[inline]
     ///
-    ///Can the given color legally castle kingside?
+    /// Can the given color legally castle kingside?
     ///
     pub fn is_queenside_castle_legal(&self, color: Color) -> bool {
         *self & CastleRights::queen_castle(color) != CastleRights::NO_RIGHTS

@@ -3,8 +3,8 @@ use crate::base::constants::{BLACK, WHITE};
 use crate::base::util::opposite_color;
 use crate::base::{Game, Move, MoveGenerator, PieceType, Square};
 use crate::engine::positional::positional_evaluate;
-use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::engine::transposition::{EvalData, TTable};
+use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
 use std::cmp::{max, min};
@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 ///
-/// After going this many edges deep into the search tree, stop populating the///transposition table to save memory.
+/// After going this many edges deep into the search tree, stop populating the/// transposition table to save memory.
 ///
 const TRANSPOSITION_DEPTH_CUTOFF: i8 = 7;
 
@@ -21,35 +21,35 @@ const TRANSPOSITION_DEPTH_CUTOFF: i8 = 7;
 ///
 pub struct Minimax {
     ///
-    ///The depth at which this algorithm will evaluate a position.
+    /// The depth at which this algorithm will evaluate a position.
     ///
     pub depth: i8,
     ///
-    ///The function used to evaluate the quality of a position.
+    /// The function used to evaluate the quality of a position.
     ///
     pub evaluator: EvaluationFn,
     ///
-    ///The function used to determine which moves should be explored first.
+    /// The function used to determine which moves should be explored first.
     ///
     pub candidator: MoveCandidacyFn,
     ///
-    ///The transposition table.
+    /// The transposition table.
     ///
     transpose_table: TTable,
     ///
-    ///The cumulative number of nodes evaluated in this evaluation event.
+    /// The cumulative number of nodes evaluated in this evaluation event.
     ///
     num_nodes_evaluated: u64,
     ///
-    ///The cumulative number of transpositions.
+    /// The cumulative number of transpositions.
     ///
     num_transpositions: u64,
 }
 
 impl Minimax {
     ///
-    ///Evaluate a position at a given depth. The depth is the number of plays
-    ///to make. Even depths are recommended for fair evaluations.
+    /// Evaluate a position at a given depth. The depth is the number of plays
+    /// to make. Even depths are recommended for fair evaluations.
     ///
     pub fn evaluate_at_depth(
         &mut self,
@@ -164,7 +164,7 @@ impl Minimax {
     }
 
     ///
-    ///Perform a quiescent (captures-only) search of the remaining moves.
+    /// Perform a quiescent (captures-only) search of the remaining moves.
     ///
     fn quiesce(
         &mut self,
@@ -178,15 +178,15 @@ impl Minimax {
         let player = g.get_board().player_to_move;
         let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
         let king_square = Square::from(g.get_board().get_type_and_color(PieceType::KING, player));
-        let currently_in_check = mgen.is_square_attacked_by(
-            g.get_board(), 
-            king_square, opposite_color(player));
+        let currently_in_check =
+            mgen.is_square_attacked_by(g.get_board(), king_square, opposite_color(player));
         let mut moves: Vec<Move> = g.get_moves(mgen);
 
         if !currently_in_check {
-            moves = moves.into_iter()
-            .filter(|m| enemy_occupancy.contains(m.to_square()))
-            .collect();
+            moves = moves
+                .into_iter()
+                .filter(|m| enemy_occupancy.contains(m.to_square()))
+                .collect();
         }
 
         if moves.len() == 0 {
@@ -230,7 +230,7 @@ impl Minimax {
     }
 
     ///
-    ///Clear out internal data.
+    /// Clear out internal data.
     ///
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
@@ -239,9 +239,8 @@ impl Minimax {
 
 impl Default for Minimax {
     fn default() -> Minimax {
-        let default_depth = 5;
         Minimax {
-            depth: default_depth,
+            depth: 4,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: TTable::default(),
@@ -302,7 +301,7 @@ pub mod tests {
 
     #[test]
     ///
-    ///Test Minimax's evaluation of the start position of the game.
+    /// Test Minimax's evaluation of the start position of the game.
     ///
     pub fn test_eval_start() {
         let mut g = Game::default();
@@ -351,7 +350,7 @@ pub mod tests {
 
     #[allow(dead_code)]
     ///
-    ///Print a map from moves to evals in a user-readable way.
+    /// Print a map from moves to evals in a user-readable way.
     ///
     fn print_move_map(map: &HashMap<Move, Eval>) {
         for (m, eval) in map {

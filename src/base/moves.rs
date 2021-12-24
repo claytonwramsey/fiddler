@@ -17,13 +17,13 @@ pub struct Move(pub u16);
 impl Move {
     #[allow(dead_code)]
     ///
-    ///A sentinel value for a move which is illegal, or otherwise inexpressible.
+    /// A sentinel value for a move which is illegal, or otherwise inexpressible.
     ///
     pub const BAD_MOVE: Move = Move(0xFFFF);
 
     #[allow(dead_code)]
     ///
-    ///Make a new `Move` for a piece. Assumes that all the inputs are valid.
+    /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
     ///
     pub fn new(from_square: Square, to_square: Square, promote_type: PieceType) -> Move {
         let from_square_bits = from_square.0 as u16;
@@ -36,7 +36,7 @@ impl Move {
     #[allow(dead_code)]
     #[inline]
     ///
-    ///Get the target square of this move.
+    /// Get the target square of this move.
     ///
     pub fn to_square(self) -> Square {
         Square(((self.0 >> 6) & 63u16) as u8)
@@ -45,7 +45,7 @@ impl Move {
     #[allow(dead_code)]
     #[inline]
     ///
-    ///Get the square that a piece moves from to execute this move.
+    /// Get the square that a piece moves from to execute this move.
     ///
     pub fn from_square(self) -> Square {
         Square((self.0 & 63u16) as u8)
@@ -54,7 +54,7 @@ impl Move {
     #[allow(dead_code)]
     #[inline]
     ///
-    ///Get the promotion type of this move.
+    /// Get the promotion type of this move.
     ///
     pub fn promote_type(self) -> PieceType {
         PieceType(((self.0 >> 12) & 7u16) as u8)

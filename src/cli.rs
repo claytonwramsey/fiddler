@@ -14,23 +14,23 @@ use std::io::BufRead;
 ///
 pub struct CrabchessApp<'a> {
     ///
-    ///The currently-played game.
+    /// The currently-played game.
     ///
     game: Game,
     ///
-    ///The generator for moves.
+    /// The generator for moves.
     ///
     mgen: MoveGenerator,
     ///
-    ///The currently-running engine to play against.
+    /// The currently-running engine to play against.
     ///
     engine: Box<dyn Engine + 'a>,
     ///
-    ///The input stream to receive messages from.
+    /// The input stream to receive messages from.
     ///
     input_stream: Box<dyn io::Read + 'a>,
     ///
-    ///The output stream to send messages to.
+    /// The output stream to send messages to.
     ///
     output_stream: Box<dyn io::Write + 'a>,
 }
@@ -41,31 +41,31 @@ pub struct CrabchessApp<'a> {
 ///
 enum Command {
     ///
-    ///Quit the currently-running application.
+    /// Quit the currently-running application.
     ///
     Quit,
     ///
-    ///Echo an error message to the output stream.
+    /// Echo an error message to the output stream.
     ///
     EchoError(&'static str),
     ///
-    ///Select an engine to play against.
+    /// Select an engine to play against.
     ///
     EngineSelect(String),
     ///
-    ///Play a move.
+    /// Play a move.
     ///
     PlayMove(Move),
     ///
-    ///Load a FEN (Forsyth-Edwards Notation) string of a board position.
+    /// Load a FEN (Forsyth-Edwards Notation) string of a board position.
     ///
     LoadFen(String),
     ///
-    ///Undo the most recent moves.
+    /// Undo the most recent moves.
     ///
     Undo(usize),
     ///
-    ///List the available moves to the user.
+    /// List the available moves to the user.
     ///
     ListMoves,
 }
@@ -88,8 +88,8 @@ type CommandResult = Result<(), &'static str>;
 
 impl<'a> CrabchessApp<'a> {
     ///
-    ///Run the command line application.
-    ///Will continue running until the user specifies to quit.
+    /// Run the command line application.
+    /// Will continue running until the user specifies to quit.
     ///
     pub fn run(&mut self) -> std::io::Result<()> {
         let mut has_quit = false;
@@ -134,8 +134,8 @@ impl<'a> CrabchessApp<'a> {
     }
 
     ///
-    ///Parse the given text command, and create a new `Command` to describe it.
-    ///Will return an `Err` if it cannot parse the given command.
+    /// Parse the given text command, and create a new `Command` to describe it.
+    /// Will return an `Err` if it cannot parse the given command.
     ///
     fn parse_command(&self, s: String) -> Result<Command, &'static str> {
         let mut token_iter = s.split_ascii_whitespace();
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     ///
-    ///Test that the quit input yields a quit command.
+    /// Test that the quit input yields a quit command.
     ///
     fn test_parse_quit() {
         let app = CrabchessApp::default();
@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     ///
-    ///Test that move input yields a move command.
+    /// Test that move input yields a move command.
     ///
     fn test_parse_move() {
         let app = CrabchessApp::default();
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     ///
-    ///Test that load input yields a load fen command.
+    /// Test that load input yields a load fen command.
     ///
     fn test_parse_load() {
         let app = CrabchessApp::default();
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     ///
-    ///Test that executing a FEN load is successful.
+    /// Test that executing a FEN load is successful.
     ///
     fn test_execute_load() {
         let mut app = CrabchessApp::default();
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     ///
-    ///Test that we can parse an engine selection command.
+    /// Test that we can parse an engine selection command.
     ///
     fn test_parse_engine() {
         let app = CrabchessApp::default();
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     ///
-    ///Test that a garbage input does not parse correctly.
+    /// Test that a garbage input does not parse correctly.
     ///
     fn test_garbage_failure() {
         let app = CrabchessApp::default();

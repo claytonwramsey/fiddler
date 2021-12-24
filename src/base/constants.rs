@@ -24,6 +24,6 @@ pub const WHITE: Color = 0;
 pub const BLACK: Color = 1;
 
 ///
-/// A spare sentinel color that can be given when WHITE or BLACK are invalid///colors.
+/// A spare sentinel color that can be given when WHITE or BLACK are invalid/// colors.
 ///
 pub const NO_COLOR: Color = 2;

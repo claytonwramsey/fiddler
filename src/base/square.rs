@@ -9,7 +9,7 @@ use std::ops::{Add, AddAssign, Sub};
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 ///
 /// A single integer containing all the data to identify one square on a board.
-///From MSB to LSB, this is composed of:
+/// From MSB to LSB, this is composed of:
 /// * 2 unused bits
 /// * 3 bits for the rank
 /// * 3 bits for the file
@@ -19,8 +19,8 @@ pub struct Square(pub u8);
 impl Square {
     #[inline]
     ///
-    ///Create a Square from the given rank and file. The ranks run from 0 to 7
-    ///(instead of 1 through 8), and the files run from A to H.
+    /// Create a Square from the given rank and file. The ranks run from 0 to 7
+    /// (instead of 1 through 8), and the files run from A to H.
     ///
     pub fn new(rank: usize, file: usize) -> Square {
         Square((((rank & 7) << 3) | (file & 7)) as u8)
@@ -28,7 +28,7 @@ impl Square {
 
     #[inline]
     ///
-    ///Get the integer representing the rank (0 -> 1, ...) of this square.
+    /// Get the integer representing the rank (0 -> 1, ...) of this square.
     ///
     pub fn rank(self) -> usize {
         return ((self.0 >> 3u8) & 7u8) as usize;
@@ -36,7 +36,7 @@ impl Square {
 
     #[inline]
     ///
-    ///Get the integer representing the file (0 -> A, ...) of this square.
+    /// Get the integer representing the file (0 -> A, ...) of this square.
     ///
     pub fn file(self) -> usize {
         return (self.0 & 7u8) as usize;
@@ -44,7 +44,7 @@ impl Square {
 
     #[inline]
     ///
-    ///Return false if this is an illegal (i.e. inaccessible) square.
+    /// Return false if this is an illegal (i.e. inaccessible) square.
     ///
     pub fn is_inbounds(self) -> bool {
         self.0 < 64
@@ -52,7 +52,7 @@ impl Square {
 
     #[inline]
     ///
-    ///Get the Chebyshev distance to another square.
+    /// Get the Chebyshev distance to another square.
     ///
     pub fn chebyshev_to(self, rhs: Square) -> u8 {
         let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
