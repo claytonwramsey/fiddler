@@ -90,7 +90,7 @@ impl TTable {
 
 impl Default for TTable {
     fn default() -> TTable {
-        TTable::with_capacity(1 << 16)
+        TTable::with_capacity(1 << 20)
     }
 }
 
@@ -101,7 +101,7 @@ impl Index<&Board> for TTable {
         let mut hasher = DefaultHasher::new();
         key.hash(&mut hasher);
         let key_hash = hasher.finish();
-        let index = key_hash as usize & self.entries.len();
+        let index = key_hash as usize % self.entries.len();
         let entry = &self.entries[index];
 
         // First, compare hashes to "fast-track" checking if these 

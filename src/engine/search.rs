@@ -1,9 +1,7 @@
 use crate::base::algebraic::algebraic_from_move;
 use crate::base::constants::{BLACK, WHITE};
 use crate::base::util::opposite_color;
-use crate::base::Game;
-use crate::base::Move;
-use crate::base::MoveGenerator;
+use crate::base::{Game, Move, MoveGenerator, PieceType, Square};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::engine::transposition::{EvalData, TTable};
@@ -180,17 +178,23 @@ impl Minimax {
 
         let player = g.get_board().player_to_move;
         let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
-        let mut captures: Vec<Move> = g
-            .get_moves(mgen)
-            .into_iter()
+        let king_square = Square::from(g.get_board().get_type_and_color(PieceType::KING, WHITE));
+        let currently_in_check = mgen.is_square_attacked_by(
+            g.get_board(), 
+            king_square, opposite_color(player));
+        let mut moves: Vec<Move> = g.get_moves(mgen);
+
+        if !currently_in_check {
+            moves = moves.into_iter()
             .filter(|m| enemy_occupancy.contains(m.to_square()))
             .collect();
+        }
 
-        if captures.len() == 0 {
+        if moves.len() == 0 {
             return (self.evaluator)(g, mgen);
         }
 
-        captures.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
 
         let mut alpha = alpha_in;
         let mut beta = beta_in;
@@ -200,7 +204,7 @@ impl Minimax {
             _ => Eval::MAX,
         };
 
-        for mov in captures {
+        for mov in moves {
             g.make_move(mov);
             let eval_for_mov = self.quiesce(g, mgen, alpha, beta);
 
