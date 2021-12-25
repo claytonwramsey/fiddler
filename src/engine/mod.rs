@@ -141,7 +141,7 @@ impl Eval {
     /// Create an Eval based on the number of half-moves required for White to
     /// mate. -mate_in(n) will give Black to mate in the number of plies.
     ///
-    pub fn mate_in(nplies: u16) -> Eval {
+    pub const fn mate_in(nplies: u16) -> Eval {
         Eval(MATE_0_VAL - (nplies as i32))
     }
 

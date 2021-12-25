@@ -49,9 +49,9 @@ impl PVSearch {
     ///
     pub fn pvs(&mut self, depth: i8, g: &mut Game, mgen: &MoveGenerator, alpha_in: Eval, beta_in: Eval) -> Eval {
         self.num_nodes_evaluated += 1;
-        let us = g.get_board().player_to_move;
 
         if depth == 0 || g.is_game_over(mgen) {
+            let us = g.get_board().player_to_move;
             // (1 - 2 * us) will cause the evaluation to be positive for 
             // whichever player is moving. This will cascade up the Negamax 
             // inversions to make the final result at the top correct.
@@ -63,7 +63,6 @@ impl PVSearch {
         // Sort moves so that the most promising move is evaluated first
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
 
-        //println!("{}", g);
         let mut moves_iter = moves.into_iter();
 
         // Lower bound on evaluation. Will be
@@ -85,10 +84,10 @@ impl PVSearch {
             g.make_move(m);
             // zero-window search
             score = -self.pvs(depth - 1, g, mgen, -alpha - Eval(1), -alpha).step_back();
-            if alpha < score && score < beta {
+            if true {//alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option 
                 // in this tree
-                score = -self.pvs(depth - 1, g, mgen, -beta, -score);
+                score = -self.pvs(depth - 1, g, mgen, -beta, -score).step_back();
             }
             g.undo().unwrap();
             alpha = max(alpha, score);
