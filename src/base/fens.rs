@@ -1,6 +1,3 @@
-///
-/// A file storing a list of FENs for testing purposes.
-///
 
 #[allow(dead_code)]
 ///
@@ -77,3 +74,13 @@ pub const PAWN_CAPTURE_FEN: &'static str =
 ///
 pub const PAWN_CHECKING_KING_FEN: &'static str =
     "r1bq1b1r/ppp2kpp/2n5/3n4/2B5/8/PPP1pPPP/RN1Q1K1R w - - 0 10";
+
+/// 
+/// A board where the black queen on E2 has mated White's king.
+/// 
+pub const WHITE_MATED_FEN: &'static str = "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11";
+
+/// 
+/// Black cannot play d6 because it is pinned by the bishop.
+/// 
+pub const D_PAWN_PINNED_FEN: &'static str = "r1bqkb1r/pppppppp/7n/1B6/1n2P3/2N2N2/PPPP1PPP/R1BQK2R b KQkq - 2 4";

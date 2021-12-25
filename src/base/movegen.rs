@@ -60,8 +60,7 @@ impl MoveGenerator {
             let is_castle = board.is_move_castle(m);
             if !self.is_move_self_check(board, m) && !is_castle {
                 legal_moves.push(m);
-            }
-            if is_castle {
+            } else  if is_castle {
                 // TODO make castle illegal if in check or must move through
                 // check
                 let is_queen_castle = m.to_square().file() == 2;
@@ -109,7 +108,7 @@ impl MoveGenerator {
             let mut king_moves = Vec::with_capacity(king_to_sqs.0.count_ones() as usize);
             bitboard_to_moves(king_square, king_to_sqs, &mut king_moves);
             for m in king_moves {
-                if !self.is_move_self_check(board, m) {
+                if !self.is_move_self_check(board, m) && !board.is_move_castle(m) {
                     return true;
                 }
             }
@@ -124,7 +123,7 @@ impl MoveGenerator {
         }
 
         let mut move_vec = Vec::new();
-        for pt in PieceType::ALL_TYPES {
+        for pt in PieceType::NON_KING_TYPES {
             for from_sq in board.get_type_and_color(pt, player) {
                 let to_bb = self.sq_pseudolegal_moves(board, from_sq, pt);
                 move_vec.reserve(to_bb.0.count_ones() as usize);
@@ -528,6 +527,7 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
     use crate::base::square::*;
+    use crate::base::fens::*;
 
     #[test]
     fn test_opening_moveset() {
@@ -547,7 +547,7 @@ mod tests {
     fn test_best_queen_fried_liver() {
         let mg = MoveGenerator::new();
         let m = Move::new(D1, F3, PieceType::NO_TYPE);
-        let b = Board::from_fen(crate::base::fens::FRIED_LIVER_FEN).unwrap();
+        let b = Board::from_fen(FRIED_LIVER_FEN).unwrap();
         let pms = mg.get_pseudolegal_moves(&b, crate::base::constants::WHITE);
         for m2 in pms.iter() {
             println!("{}", m2);
@@ -562,7 +562,7 @@ mod tests {
     /// Test that capturing a pawn is parsed correctly.
     ///
     fn test_pawn_capture_generated() {
-        let b = Board::from_fen(crate::base::fens::PAWN_CAPTURE_FEN).unwrap();
+        let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let m = Move::new(E4, F5, PieceType::NO_TYPE);
 
@@ -575,12 +575,19 @@ mod tests {
     ///
     fn test_enumerate_pawn_checking_king() {
         let mgen = MoveGenerator::new();
-        let b = Board::from_fen(crate::base::fens::PAWN_CHECKING_KING_FEN).unwrap();
+        let b = Board::from_fen(PAWN_CHECKING_KING_FEN).unwrap();
 
         let moves = mgen.get_moves(&b);
 
         for m2 in moves.iter() {
             println!("{}", m2);
         }
+    }
+
+    #[test]
+    fn test_white_mated_has_no_moves() {
+        let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        assert!(!mgen.has_moves(&b));
     }
 }

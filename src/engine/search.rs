@@ -63,7 +63,7 @@ impl PVSearch {
         // Sort moves so that the most promising move is evaluated first
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
 
-        println!("{}", g);
+        //println!("{}", g);
         let mut moves_iter = moves.into_iter();
 
         // Lower bound on evaluation. Will be
@@ -72,7 +72,7 @@ impl PVSearch {
 
         let first_move = moves_iter.next().unwrap();
         g.make_move(first_move);
-        let mut score = -self.pvs(depth - 1, g, mgen, -beta, -alpha);
+        let mut score = -self.pvs(depth - 1, g, mgen, -beta, -alpha).step_back();
         g.undo().unwrap();
 
         alpha = max(alpha, score);
@@ -84,7 +84,7 @@ impl PVSearch {
         for m in moves_iter {
             g.make_move(m);
             // zero-window search
-            score = -self.pvs(depth - 1, g, mgen, -alpha - Eval(1), -alpha);
+            score = -self.pvs(depth - 1, g, mgen, -alpha - Eval(1), -alpha).step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option 
                 // in this tree
@@ -179,7 +179,7 @@ impl PVSearch {
 impl Default for PVSearch {
     fn default() -> PVSearch {
         PVSearch {
-            depth: 8,
+            depth: 5,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: TTable::default(),

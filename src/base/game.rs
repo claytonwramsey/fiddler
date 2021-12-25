@@ -307,6 +307,19 @@ mod tests {
     }
 
     #[test]
+    fn test_is_mate_over_2() {
+        let g: Game = Game::from_fen(WHITE_MATED_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let moves = mgen.get_moves(g.get_board());
+        println!("moves: ");
+        for m in moves {
+            println!("{}", m);
+        }
+        assert!(!mgen.has_moves(g.get_board()));
+        assert!(g.is_game_over(&mgen));
+    }
+
+    #[test]
     ///
     /// Test that making a mate found in testing results in the game being over.
     ///
