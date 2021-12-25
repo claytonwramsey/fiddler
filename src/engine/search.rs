@@ -1,9 +1,9 @@
 use crate::base::algebraic::algebraic_from_move;
-use crate::base::constants::{BLACK, WHITE};
+use crate::base::constants::{WHITE};
 use crate::base::util::opposite_color;
 use crate::base::{Game, Move, MoveGenerator, PieceType, Square};
 use crate::engine::positional::positional_evaluate;
-use crate::engine::transposition::{EvalData, TTable};
+use crate::engine::transposition::{TTable};
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
@@ -12,14 +12,9 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 ///
-/// After going this many edges deep into the search tree, stop populating the/// transposition table to save memory.
+/// A chess engine which uses Principal Variation Search.
 ///
-const TRANSPOSITION_DEPTH_CUTOFF: i8 = 7;
-
-///
-/// A stupid-simple engine which will evaluate the entire tree.
-///
-pub struct Minimax {
+pub struct PVSearch {
     ///
     /// The depth at which this algorithm will evaluate a position.
     ///
@@ -32,6 +27,7 @@ pub struct Minimax {
     /// The function used to determine which moves should be explored first.
     ///
     pub candidator: MoveCandidacyFn,
+    #[allow(unused)]
     ///
     /// The transposition table.
     ///
@@ -46,123 +42,66 @@ pub struct Minimax {
     num_transpositions: u64,
 }
 
-impl Minimax {
+impl PVSearch {
     ///
-    /// Evaluate a position at a given depth. The depth is the number of plays
-    /// to make. Even depths are recommended for fair evaluations.
+    /// Use Principal Variation Search to evaluate the givne game to a depth. 
+    /// This search uses Negamax,  
     ///
-    pub fn evaluate_at_depth(
-        &mut self,
-        depth: i8,
-        alpha_in: Eval,
-        beta_in: Eval,
-        g: &mut Game,
-        mgen: &MoveGenerator,
-    ) -> Eval {
+    pub fn pvs(&mut self, depth: i8, g: &mut Game, mgen: &MoveGenerator, alpha_in: Eval, beta_in: Eval) -> Eval {
         self.num_nodes_evaluated += 1;
+        let us = g.get_board().player_to_move;
 
+        if depth == 0 || g.is_game_over(mgen) {
+            // (1 - 2 * us) will cause the evaluation to be positive for 
+            // whichever player is moving. This will cascade up the Negamax 
+            // inversions to make the final result at the top correct.
+            return (self.evaluator)(g, mgen) * (1 - 2 * us as i32);
+        }
+
+        let mut moves = g.get_moves(mgen);
+
+        // Sort moves so that the most promising move is evaluated first
+        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+
+        println!("{}", g);
+        let mut moves_iter = moves.into_iter();
+
+        // Lower bound on evaluation. Will be
+        let beta = beta_in;
         let mut alpha = alpha_in;
-        let mut beta = beta_in;
 
-        if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-            if let Some(v) = self.transpose_table[g.get_board()] {
-                if v.depth >= depth {
-                    if v.lower_bound >= beta_in {
-                        self.num_transpositions += 1;
-                        return v.lower_bound;
-                    }
-                    if v.upper_bound <= alpha_in {
-                        self.num_transpositions += 1;
-                        return v.upper_bound;
-                    }
-                    alpha = max(alpha, v.lower_bound);
-                    beta = min(beta, v.upper_bound);
-                }
-            }
+        let first_move = moves_iter.next().unwrap();
+        g.make_move(first_move);
+        let mut score = -self.pvs(depth - 1, g, mgen, -beta, -alpha);
+        g.undo().unwrap();
+
+        alpha = max(alpha, score);
+        if alpha >= beta {
+            // Beta cutoff, we have  found a better line somewhere else
+            return alpha;
         }
 
-        if depth <= 0 || g.is_game_over(mgen) {
-            let eval = self.quiesce(g, mgen, alpha_in, beta_in);
-            self.transpose_table.store(
-                *g.get_board(),
-                EvalData {
-                    depth: depth,
-                    upper_bound: eval,
-                    lower_bound: eval,
-                },
-            );
-            return eval;
-        }
-
-        let player_to_move = g.get_board().player_to_move;
-
-        let mut evaluation = match player_to_move {
-            WHITE => Eval::MIN,
-            BLACK => Eval::MAX,
-            _ => Eval(0),
-        };
-
-        //these will be mutated by alpha-beta, but should not be put in the
-        //transpoisition table
-        let mut alpha_changing = alpha;
-        let mut beta_changing = beta;
-
-        let mut moves = mgen.get_moves(g.get_board());
-        if depth > 1 {
-            //negate because sort is ascending
-            moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
-        }
-
-        for m in moves {
+        for m in moves_iter {
             g.make_move(m);
-            let eval_for_m =
-                self.evaluate_at_depth(depth - 1, alpha_changing, beta_changing, g, mgen);
-
-            g.undo().ok();
-
-            //alpha-beta pruning
-            if player_to_move == WHITE {
-                evaluation = max(evaluation, eval_for_m);
-                if evaluation >= beta {
-                    break;
-                }
-                alpha_changing = max(alpha_changing, evaluation);
-            } else {
-                //black moves on this turn
-                evaluation = min(evaluation, eval_for_m);
-                if evaluation <= alpha {
-                    break;
-                }
-                beta_changing = min(beta_changing, evaluation);
+            // zero-window search
+            score = -self.pvs(depth - 1, g, mgen, -alpha - Eval(1), -alpha);
+            if alpha < score && score < beta {
+                // zero-window search failed high, so there is a better option 
+                // in this tree
+                score = -self.pvs(depth - 1, g, mgen, -beta, -score);
+            }
+            g.undo().unwrap();
+            alpha = max(alpha, score);
+            if alpha >= beta {
+                // Beta cutoff, we have  found a better line somewhere else
+                break;
             }
         }
 
-        evaluation = evaluation.step_back();
-        let mut lower_bound = Eval::MIN;
-        let mut upper_bound = Eval::MAX;
-        if evaluation <= alpha {
-            upper_bound = evaluation;
-        }
-        if evaluation >= beta {
-            lower_bound = evaluation;
-        }
-        if alpha < evaluation && evaluation < beta {
-            lower_bound = evaluation;
-            upper_bound = evaluation;
-        }
-        if self.depth - depth < TRANSPOSITION_DEPTH_CUTOFF {
-            self.transpose_table.store(
-                *g.get_board(),
-                EvalData {
-                    depth: depth,
-                    lower_bound: lower_bound,
-                    upper_bound: upper_bound,
-                },
-            );
-        }
-        return evaluation;
+        return alpha;
     }
 
+    #[allow(dead_code)]
     ///
     /// Perform a quiescent (captures-only) search of the remaining moves.
     ///
@@ -237,10 +176,10 @@ impl Minimax {
     }
 }
 
-impl Default for Minimax {
-    fn default() -> Minimax {
-        Minimax {
-            depth: 4,
+impl Default for PVSearch {
+    fn default() -> PVSearch {
+        PVSearch {
+            depth: 8,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: TTable::default(),
@@ -250,13 +189,13 @@ impl Default for Minimax {
     }
 }
 
-impl Engine for Minimax {
+impl Engine for PVSearch {
     #[inline]
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let eval = self.evaluate_at_depth(self.depth, Eval::MIN, Eval::MAX, g, mgen);
+        let eval = self.pvs(self.depth, g, mgen, Eval::MIN, Eval::MAX);
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         println!(
@@ -301,12 +240,12 @@ pub mod tests {
 
     #[test]
     ///
-    /// Test Minimax's evaluation of the start position of the game.
+    /// Test PVSearch's evaluation of the start position of the game.
     ///
     pub fn test_eval_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
-        let mut e = Minimax::default();
+        let mut e = PVSearch::default();
 
         println!("moves with evals are:");
         e.get_evals(&mut g, &mgen);
@@ -316,7 +255,7 @@ pub mod tests {
     fn test_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::new();
-        let mut e = Minimax::default();
+        let mut e = PVSearch::default();
 
         e.get_evals(&mut g, &mgen);
     }
@@ -335,7 +274,7 @@ pub mod tests {
     fn test_my_special_puzzle() {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::new();
-        let mut e = Minimax::default();
+        let mut e = PVSearch::default();
 
         e.get_evals(&mut g, &mgen);
     }
@@ -343,7 +282,7 @@ pub mod tests {
     fn test_eval_helper(fen: &str, eval: Eval) {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();
-        let mut e = Minimax::default();
+        let mut e = PVSearch::default();
 
         assert_eq!(e.evaluate(&mut g, &mgen), eval);
     }

@@ -183,7 +183,7 @@ const ROOK_SHIFTS: [u8; 64] = [
 ];
 
 ///
-/// The target shift size for bishop move enumeration. Smaller is better/
+/// The target shift size for bishop move enumeration. Smaller is better.
 ///
 const BISHOP_SHIFTS: [u8; 64] = [
     6, 5, 5, 5, 5, 5, 5, 6, //rank 1
@@ -295,7 +295,8 @@ impl Magic {
 }
 
 ///
-/// A helper function to load data into a MagicTable. is_rook is True if you are/// loading data for a rook.
+/// A helper function to load data into a `MagicTable`. `is_rook` is `true` if 
+/// you are loading data for a rook, and `false` for a bishop.
 ///
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
@@ -336,7 +337,8 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 ///
-/// Get the attacks a square has given a magic lookup table and the current/// occupancy.
+/// Get the attacks a square has given a magic lookup table and the current
+/// occupancy.
 ///
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
     let idx = sq.0 as usize;
@@ -364,7 +366,8 @@ fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
 }
 
 ///
-/// Populate a magic table. If `is_rook` is true, it will make magics for rook/// moves; otherwise it will make magics for bishops.
+/// Populate a magic table. If `is_rook` is true, it will make magics for rook 
+/// moves; otherwise it will make magics for bishops.
 ///
 fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
@@ -447,7 +450,8 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 ///
-/// Create the mask for the relevant bits in magic of a rook. `sq` is the square/// that a rook would occupy to receiver this mask.
+/// Create the mask for the relevant bits in magic of a rook. `sq` is the 
+/// square that a rook would occupy to receive this mask.
 ///
 fn get_rook_mask(sq: Square) -> Bitboard {
     let index = sq.0 as i8;
@@ -466,7 +470,8 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 }
 
 ///
-/// Create the mask for the relevant bits in magic of a bishop. `sq` is the  /// square that a bishop would be on to receiver this mask.
+/// Create the mask for the relevant bits in magic of a bishop. `sq` is the 
+/// square that a bishop would be on to receiver this mask.
 ///
 fn get_bishop_mask(sq: Square) -> Bitboard {
     //thank u chessprogramming wiki for this code

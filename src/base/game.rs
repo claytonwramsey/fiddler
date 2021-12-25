@@ -8,7 +8,8 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 ///
-/// A struct containing game information, which unlike a `Board`, knows about/// its history and can do things like repetition timing.
+/// A struct containing game information, which unlike a `Board`, knows about
+/// its history and can do things like repetition timing.
 ///
 pub struct Game {
     ///
@@ -208,8 +209,8 @@ mod tests {
 
     #[test]
     ///
-    /// Test that we can play a simple move on a Game and have the board states
-    /// update accordingly.
+    /// Test that we can play a simple move on a `Game` and have the board 
+    /// states update accordingly.
     ///
     fn test_play_e4() {
         let mut g = Game::default();

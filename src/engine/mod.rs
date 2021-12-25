@@ -195,6 +195,14 @@ impl Mul<u32> for Eval {
     }
 }
 
+impl Mul<i32> for Eval {
+    type Output = Self;
+    #[inline]
+    fn mul(self, rhs: i32) -> Self::Output {
+        Eval(self.0 * rhs)
+    }
+}
+
 impl AddAssign<Eval> for Eval {
     #[inline]
     fn add_assign(&mut self, rhs: Eval) {

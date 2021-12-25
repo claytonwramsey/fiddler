@@ -2,7 +2,7 @@ use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
-use crate::engine::search::Minimax;
+use crate::engine::search::PVSearch;
 use crate::Engine;
 
 use std::fmt;
@@ -260,7 +260,7 @@ impl<'a> Default for CrabchessApp<'a> {
         CrabchessApp {
             game: Game::default(),
             mgen: MoveGenerator::new(),
-            engine: Box::new(Minimax::default()),
+            engine: Box::new(PVSearch::default()),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
         }
