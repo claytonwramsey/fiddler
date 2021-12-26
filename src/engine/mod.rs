@@ -86,11 +86,8 @@ pub trait Engine {
             let ev = self.evaluate(g, mgen);
 
             //this should never fail since we just made a move, but who knows?
-            if let Ok(_) = g.undo() {
-                evals.insert(m, ev);
-            } else {
-                println!("somehow, undoing failed on a game");
-            }
+            g.undo().unwrap();
+            evals.insert(m, ev);
             println!("{}: {}", algebraic_from_move(m, g.get_board(), mgen), ev);
         }
         return evals;
@@ -121,10 +118,23 @@ const PAWN_VALUE: i32 = 1_000;
 pub struct Eval(i32);
 
 impl Eval {
+    ///
+    /// An evaluation which is smaller than every other "normal" evaluation.
+    /// 
     pub const MIN: Eval = Eval(-MATE_0_VAL - 1);
+
+    ///
+    /// An evaluation which is larger than every other "normal" evaluation.
+    /// 
     pub const MAX: Eval = Eval(MATE_0_VAL + 1);
 
+    ///
+    /// An evaluation where Black has won the game by mate.
+    /// 
     pub const BLACK_MATE: Eval = Eval(-MATE_0_VAL);
+    ///
+    /// An evaluation where White has won the game by mate.
+    /// 
     pub const WHITE_MATE: Eval = Eval(MATE_0_VAL);
 
     #[inline]
@@ -136,10 +146,10 @@ impl Eval {
     }
 
     #[inline]
-    #[allow(dead_code)]
     ///
-    /// Create an Eval based on the number of half-moves required for White to
-    /// mate. -mate_in(n) will give Black to mate in the number of plies.
+    /// Create an `Eval` based on the number of half-moves required for White to
+    /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of 
+    /// plies.
     ///
     pub const fn mate_in(nplies: u16) -> Eval {
         Eval(MATE_0_VAL - (nplies as i32))
@@ -155,6 +165,20 @@ impl Eval {
             return Eval(self.0 - 1);
         } else if self.0 < -MATE_CUTOFF {
             return Eval(self.0 + 1);
+        }
+        *self
+    }
+
+    #[inline]
+    ///
+    /// Step this evaluation forward in time one move. "normal" evaluations will
+    /// not be changed, but mates will be moved one further from 0.
+    ///
+    pub fn step_forward(&self) -> Eval {
+        if self.0 > MATE_CUTOFF {
+            return Eval(self.0 + 1);
+        } else if self.0 < -MATE_CUTOFF {
+            return Eval(self.0 - 1);
         }
         *self
     }

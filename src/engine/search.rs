@@ -45,7 +45,8 @@ pub struct PVSearch {
 impl PVSearch {
     ///
     /// Use Principal Variation Search to evaluate the givne game to a depth. 
-    /// This search uses Negamax,  
+    /// This search uses Negamax, which inverts at every step to save on 
+    /// branches.
     ///
     pub fn pvs(&mut self, depth: i8, g: &mut Game, mgen: &MoveGenerator, alpha_in: Eval, beta_in: Eval) -> Eval {
         self.num_nodes_evaluated += 1;
@@ -55,7 +56,12 @@ impl PVSearch {
             // (1 - 2 * us) will cause the evaluation to be positive for 
             // whichever player is moving. This will cascade up the Negamax 
             // inversions to make the final result at the top correct.
-            return (self.evaluator)(g, mgen) * (1 - 2 * us as i32);
+            // This step must also be done at the top level so that positions 
+            // with Black to move are evaluated as negative when faced 
+            // outwardly.
+            let evaluation = (self.evaluator)(g, mgen);
+            //println!("{}: {}", g, evaluation);
+            return evaluation * (1 - 2 * us as i32);
         }
 
         let mut moves = g.get_moves(mgen);
@@ -71,23 +77,42 @@ impl PVSearch {
 
         let first_move = moves_iter.next().unwrap();
         g.make_move(first_move);
-        let mut score = -self.pvs(depth - 1, g, mgen, -beta, -alpha).step_back();
+        let mut score = -self.pvs(
+            depth - 1, 
+            g, 
+            mgen, 
+            -beta.step_forward(), 
+            -alpha.step_forward()
+        );
         g.undo().unwrap();
 
         alpha = max(alpha, score);
         if alpha >= beta {
             // Beta cutoff, we have  found a better line somewhere else
-            return alpha;
+            return alpha.step_back();
         }
 
         for m in moves_iter {
             g.make_move(m);
             // zero-window search
-            score = -self.pvs(depth - 1, g, mgen, -alpha - Eval(1), -alpha).step_back();
-            if true {//alpha < score && score < beta {
+            score = -self.pvs(
+                depth - 1, 
+                g, 
+                mgen, 
+                -alpha.step_forward() - Eval(1), 
+                -alpha.step_forward()
+            );
+            if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option 
-                // in this tree
-                score = -self.pvs(depth - 1, g, mgen, -beta, -score).step_back();
+                // in this tree. we already have a score from before that we 
+                // can use as a lower bound in this search.
+                score = -self.pvs(
+                    depth - 1, 
+                    g, 
+                    mgen, 
+                    -beta.step_forward(), 
+                    -score.step_forward()
+                );
             }
             g.undo().unwrap();
             alpha = max(alpha, score);
@@ -96,8 +121,7 @@ impl PVSearch {
                 break;
             }
         }
-
-        return alpha;
+        return alpha.step_back();
     }
 
     #[allow(dead_code)]
@@ -145,7 +169,7 @@ impl PVSearch {
             g.make_move(mov);
             let eval_for_mov = self.quiesce(g, mgen, alpha, beta);
 
-            g.undo().ok();
+            g.undo().unwrap();
 
             //alpha-beta pruning
             if player == WHITE {
@@ -204,7 +228,7 @@ impl Engine for PVSearch {
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
         );
-        return eval;
+        return eval * (1 - 2 * g.get_board().player_to_move as i32);
     }
 
     fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {

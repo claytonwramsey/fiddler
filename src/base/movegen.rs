@@ -95,11 +95,14 @@ impl MoveGenerator {
         let player = board.player_to_move;
         let opponent = opposite_color(player);
         let king_square = Square::from(board.get_type_and_color(PieceType::KING, player));
-        if king_square == crate::base::square::BAD_SQUARE {
+        /*if king_square == crate::base::square::BAD_SQUARE {
             // no king found
             return false;
-        }
+        }*/
         let king_attackers = self.get_square_attackers(board, king_square, opponent);
+        
+        // moves which can be generated from a given from-square
+        let mut move_vec = Vec::new();
         if king_attackers != Bitboard::EMPTY {
             //king is in check
 
@@ -120,10 +123,25 @@ impl MoveGenerator {
             }
 
             //only blocks can save us from checks
-        }
+        } else {
+            // examine king moves normally
+            for from_sq in board.get_type_and_color(PieceType::KING, player) {
+                let to_bb = self.sq_pseudolegal_moves(board, from_sq, PieceType::KING);
+                move_vec.reserve(to_bb.0.count_ones() as usize);
 
-        let mut move_vec = Vec::new();
+                // I would uses .drain() here normally, but that's not
+                // yet supported.
+                bitboard_to_moves(from_sq, to_bb, &mut move_vec);
+                for m in move_vec.iter() {
+                    if !self.is_move_self_check(board, *m) {
+                        return true;
+                    }
+                }
+                move_vec.clear();
+            }
+        }
         for pt in PieceType::NON_KING_TYPES {
+            // examine moves that other pieces can make
             for from_sq in board.get_type_and_color(pt, player) {
                 let to_bb = self.sq_pseudolegal_moves(board, from_sq, pt);
                 move_vec.reserve(to_bb.0.count_ones() as usize);
@@ -206,9 +224,9 @@ impl MoveGenerator {
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
         let player = board.color_at_square(m.from_square());
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
-        if player_king_bb == Bitboard::EMPTY {
+        /*if player_king_bb == Bitboard::EMPTY {
             panic!("king not found!");
-        }
+        }*/
         let is_king_move = player_king_bb.contains(m.from_square());
         //Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
@@ -589,5 +607,13 @@ mod tests {
         let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
         let mgen = MoveGenerator::new();
         assert!(!mgen.has_moves(&b));
+    }
+
+    #[test]
+    fn test_king_has_only_one_move() {
+        let b = Board::from_fen(KING_HAS_ONE_MOVE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        assert!(mgen.has_moves(&b));
+        assert!(mgen.get_moves(&b).len() == 1);
     }
 }

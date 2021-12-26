@@ -79,3 +79,8 @@ pub const PAWN_CHECKING_KING_FEN: &'static str =
 /// A board where the black queen on E2 has mated White's king.
 /// 
 pub const WHITE_MATED_FEN: &'static str = "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11";
+
+/// 
+/// A FEN where the Black king has only one legal move (Kc8).
+/// 
+pub const KING_HAS_ONE_MOVE_FEN: &'static str = "2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2";
