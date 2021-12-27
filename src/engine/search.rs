@@ -1,13 +1,11 @@
 use crate::base::algebraic::algebraic_from_move;
-use crate::base::constants::{WHITE};
-use crate::base::util::opposite_color;
-use crate::base::{Game, Move, MoveGenerator, PieceType, Square};
+use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::transposition::{TTable};
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
@@ -129,73 +127,6 @@ impl PVSearch {
         return alpha.step_back();
     }
 
-    #[allow(dead_code)]
-    ///
-    /// Perform a quiescent (captures-only) search of the remaining moves.
-    ///
-    fn quiesce(
-        &mut self,
-        g: &mut Game,
-        mgen: &MoveGenerator,
-        alpha_in: Eval,
-        beta_in: Eval,
-    ) -> Eval {
-        self.num_nodes_evaluated += 1;
-
-        let player = g.get_board().player_to_move;
-        let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
-        let king_square = Square::from(g.get_board().get_type_and_color(PieceType::KING, player));
-        let currently_in_check =
-            mgen.is_square_attacked_by(g.get_board(), king_square, opposite_color(player));
-        let mut moves: Vec<Move> = g.get_moves(mgen);
-
-        if !currently_in_check {
-            moves = moves
-                .into_iter()
-                .filter(|m| enemy_occupancy.contains(m.to_square()))
-                .collect();
-        }
-
-        if moves.len() == 0 {
-            return (self.evaluator)(g, mgen);
-        }
-
-        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
-
-        let mut alpha = alpha_in;
-        let mut beta = beta_in;
-
-        let mut evaluation = match player {
-            WHITE => Eval::MIN,
-            _ => Eval::MAX,
-        };
-
-        for mov in moves {
-            g.make_move(mov);
-            let eval_for_mov = self.quiesce(g, mgen, alpha, beta);
-
-            g.undo().unwrap();
-
-            //alpha-beta pruning
-            if player == WHITE {
-                evaluation = max(evaluation, eval_for_mov);
-                if evaluation >= beta {
-                    break;
-                }
-                alpha = max(alpha, evaluation);
-            } else {
-                //black moves on this turn
-                evaluation = min(evaluation, eval_for_mov);
-                if evaluation <= alpha {
-                    break;
-                }
-                beta = min(beta, evaluation);
-            }
-        }
-
-        return evaluation;
-    }
-
     ///
     /// Clear out internal data.
     ///
@@ -286,43 +217,65 @@ pub mod tests {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
+        e.depth = 4; // this prevents taking too long on searches
 
         println!("moves with evals are:");
         e.get_evals(&mut g, &mgen);
     }
 
     #[test]
+    ///
+    /// A test on the evaluation of the game in the fried liver position. The 
+    /// only winning move for White is Qd3+.
+    /// 
     fn test_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
+        e.depth = 5; // this prevents taking too long on searches
 
         e.get_evals(&mut g, &mgen);
     }
 
     #[test]
+    ///
+    /// A test that the engine can find a mate in 1 move.
+    /// 
     fn test_mate_in_1() {
-        test_eval_helper(MATE_IN_1_FEN, Eval::mate_in(1));
+        test_eval_helper(MATE_IN_1_FEN, Eval::mate_in(1), 2);
     }
 
     #[test]
+    ///
+    /// A test that shows the engine can find a mate in 4 plies, given enough 
+    /// depth.
+    /// 
     fn test_mate_in_4_ply() {
-        test_eval_helper(MATE_IN_4_FEN, Eval::mate_in(4));
+        test_eval_helper(MATE_IN_4_FEN, Eval::mate_in(4), 5);
     }
 
     #[test]
+    ///
+    /// A test for a puzzle made by Ian.
+    /// 
     fn test_my_special_puzzle() {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
+        e.depth = 5;
 
         e.get_evals(&mut g, &mgen);
     }
 
-    fn test_eval_helper(fen: &str, eval: Eval) {
+    ///
+    /// A helper function which ensures that the evaluation of a position is 
+    /// equal to what we expect it to be.
+    /// 
+    fn test_eval_helper(fen: &str, eval: Eval, depth: i8) {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
+        e.depth = depth;
 
         assert_eq!(e.evaluate(&mut g, &mgen), eval);
     }
