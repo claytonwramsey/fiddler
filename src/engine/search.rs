@@ -8,7 +8,7 @@ use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
 use std::cmp::{max, min};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
 ///
@@ -32,6 +32,11 @@ pub struct PVSearch {
     /// The transposition table.
     ///
     transpose_table: TTable,
+    ///
+    /// The set of "killer" moves. The outer vec is for each depth, and the 
+    /// inner one is for the set of moves at that depth.
+    /// 
+    killer_moves: Vec<VecDeque<Move>>,
     ///
     /// The cumulative number of nodes evaluated in this evaluation event.
     ///
@@ -201,14 +206,26 @@ impl PVSearch {
 
 impl Default for PVSearch {
     fn default() -> PVSearch {
-        PVSearch {
-            depth: 5,
+        let num_killers = 2;
+        let depth = 5;
+        let mut searcher = PVSearch {
+            depth: depth,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: TTable::default(),
+            killer_moves: Vec::new(),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
+        };
+        for _ in 0..depth {
+            let mut moves_deque_init = VecDeque::new();
+            for _ in 0..num_killers {
+                moves_deque_init.push_back(Move::BAD_MOVE);
+            }
+            searcher.killer_moves.push(moves_deque_init);
         }
+
+        searcher
     }
 }
 
