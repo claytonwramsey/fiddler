@@ -288,10 +288,10 @@ impl MoveGenerator {
         color: Color,
         occupancy: Bitboard,
     ) -> Bitboard {
-        if sq.0 == 64 {
+        /*if sq.0 == 64 {
             println!("found an error board!");
             println!("{}", board);
-        }
+        }*/
         let mut attackers = Bitboard::EMPTY;
         // Check for pawn attacks
         let attackee_pawn_dir = pawn_direction(opposite_color(color));
@@ -470,7 +470,8 @@ impl MoveGenerator {
 }
 
 ///
-/// Get the step attacks that could be made by moving in `dirs` from each point/// in the square. Exclude the steps that travel more than `max_dist` (this/// prevents overflow around the edges of the board).
+/// Get the step attacks that could be made by moving in `dirs` from each point/// in the square. Exclude the steps that travel more than `max_dist` (this
+/// prevents overflow around the edges of the board).
 ///
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard(0); 64];
@@ -488,14 +489,17 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
 
 #[inline]
 ///
-/// Given a bitboard of possible to-squares and a fixed from-square, convert/// this to a list of `Move`s with promotion type `NO_TYPE`.
+/// Given a bitboard of possible to-squares and a fixed from-square, convert
+/// this to a list of `Move`s with promotion type `NO_TYPE`.
 ///
 fn bitboard_to_moves(from_sq: Square, bb: Bitboard, target: &mut Vec<Move>) {
     bitboard_to_promotions(from_sq, bb, PieceType::NO_TYPE, target);
 }
 
 ///
-/// Given a bitboard of possible to-squares and a fixed from-square, convert/// this to a list of `Move`s with the given promotion type and push them onto/// the target.
+/// Given a bitboard of possible to-squares and a fixed from-square, convert
+/// this to a list of `Move`s with the given promotion type and push them onto
+/// the target.
 ///
 fn bitboard_to_promotions(
     from_sq: Square,
@@ -603,6 +607,9 @@ mod tests {
     }
 
     #[test]
+    ///
+    /// In a mated position, make sure that the king has no moves.
+    /// 
     fn test_white_mated_has_no_moves() {
         let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -610,6 +617,9 @@ mod tests {
     }
 
     #[test]
+    /// 
+    /// Check that the king has exactly one move in this position.
+    /// 
     fn test_king_has_only_one_move() {
         let b = Board::from_fen(KING_HAS_ONE_MOVE_FEN).unwrap();
         let mgen = MoveGenerator::new();
