@@ -1,4 +1,3 @@
-
 ///
 /// The FEN of the official starting position for any chess game.
 ///
