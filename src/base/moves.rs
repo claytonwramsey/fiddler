@@ -15,13 +15,11 @@ use std::fmt::{Display, Formatter, Result};
 pub struct Move(pub u16);
 
 impl Move {
-    #[allow(dead_code)]
     ///
     /// A sentinel value for a move which is illegal, or otherwise inexpressible.
     ///
     pub const BAD_MOVE: Move = Move(0xFFFF);
 
-    #[allow(dead_code)]
     ///
     /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
     ///
@@ -33,7 +31,6 @@ impl Move {
         return Move(my_value);
     }
 
-    #[allow(dead_code)]
     #[inline]
     ///
     /// Get the target square of this move.
@@ -42,7 +39,6 @@ impl Move {
         Square(((self.0 >> 6) & 63u16) as u8)
     }
 
-    #[allow(dead_code)]
     #[inline]
     ///
     /// Get the square that a piece moves from to execute this move.
@@ -51,7 +47,6 @@ impl Move {
         Square((self.0 & 63u16) as u8)
     }
 
-    #[allow(dead_code)]
     #[inline]
     ///
     /// Get the promotion type of this move.

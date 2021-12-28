@@ -8,7 +8,6 @@ use crate::base::Board;
 use crate::base::Direction;
 use crate::base::PieceType;
 
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 ///
 /// A struct which contains all the necessary data to create moves.
@@ -18,6 +17,7 @@ pub struct MoveGenerator {
     /// A magic move generator.
     ///
     mtable: MagicTable,
+    #[allow(unused)]
     ///
     /// A bitboard of all the squares which a pawn on the given square can
     /// attack.
@@ -36,7 +36,6 @@ pub struct MoveGenerator {
 }
 
 impl MoveGenerator {
-    #[allow(dead_code)]
     ///
     /// Load up a new MoveGenerator.
     ///
@@ -49,7 +48,6 @@ impl MoveGenerator {
         }
     }
 
-    #[allow(dead_code)]
     ///
     /// Get all the legal moves on a board.
     ///
@@ -546,7 +544,6 @@ fn get_knight_steps() -> Vec<Direction> {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use super::*;
     use crate::base::fens::*;
     use crate::base::square::*;

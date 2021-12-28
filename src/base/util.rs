@@ -37,7 +37,8 @@ pub const fn pawn_promote_rank(color: Color) -> Bitboard {
 
 #[inline]
 ///
-/// Get a `Bitboard` with 1's on the start rank of the pawn of the given color.
+/// Get a `Bitboard` with 1's on the start rank of the pawn of the given color. 
+/// Assumes the given color is either `WHITE` or `BLACK`.
 ///
 pub const fn pawn_start_rank(color: Color) -> Bitboard {
     // White: 0x000000000000FF00

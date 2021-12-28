@@ -219,9 +219,7 @@ impl Engine for PVSearch {
 
 #[cfg(test)]
 pub mod tests {
-    #[allow(unused_imports)]
     use super::*;
-    #[allow(unused_imports)]
     use crate::base::fens::*;
     use crate::base::moves::Move;
     use std::collections::HashMap;
@@ -297,7 +295,6 @@ pub mod tests {
         assert_eq!(e.evaluate(&mut g, &mgen), eval);
     }
 
-    #[allow(dead_code)]
     ///
     /// Print a map from moves to evals in a user-readable way.
     ///

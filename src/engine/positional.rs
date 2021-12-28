@@ -58,7 +58,6 @@ const BISHOP_VALUES: ValueTable = [
 
 const DEFAULT_VALUES: ValueTable = [0.0; 64];
 
-#[allow(dead_code)]
 ///
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///

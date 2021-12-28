@@ -576,7 +576,6 @@ impl Default for Board {
 
 #[cfg(test)]
 pub mod tests {
-    #[allow(unused_imports)]
     use super::*;
     use crate::base::fens;
     use crate::base::movegen::MoveGenerator;

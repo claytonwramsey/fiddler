@@ -118,8 +118,6 @@ impl Eq for Direction {}
 
 #[cfg(test)]
 mod tests {
-
-    #[allow(dead_code)]
     use super::*;
 
     #[test]

@@ -239,7 +239,6 @@ pub const BAD_SQUARE: Square = Square(64);
 #[cfg(test)]
 mod tests {
 
-    #[allow(unused_imports)]
     use super::*;
     use crate::base::Direction;
 

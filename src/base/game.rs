@@ -42,7 +42,6 @@ impl Game {
         })
     }
 
-    #[allow(dead_code)]
     ///
     /// Empty out the history of this game completely, but leave the original
     /// start state of the board.
@@ -56,7 +55,6 @@ impl Game {
         self.repetitions.entry(start_board).or_insert(1);
     }
 
-    #[allow(dead_code)]
     ///
     /// Make a move, assuming said move is illegal. If the history is empty
     /// (this should never happen if normal operations occurred), the move will
@@ -76,7 +74,6 @@ impl Game {
         self.moves.push(m);
     }
 
-    #[allow(dead_code)]
     ///
     /// Attempt to play a move, which may or may not be legal. If the move is
     /// legal, the move will be executed and the state will change, then
@@ -97,7 +94,6 @@ impl Game {
         }
     }
 
-    #[allow(dead_code)]
     ///
     /// Undo the most recent move. The return will be `Ok` if there are moves
     /// left to undo, with the internal value being the move that was undone,
@@ -121,7 +117,6 @@ impl Game {
         Ok(move_removed)
     }
 
-    #[allow(dead_code)]
     ///
     /// Undo a set number of moves. Returns an Err if you attempt to remove too
     /// many moves (and will not undo anything if that is the case).
@@ -137,7 +132,6 @@ impl Game {
     }
 
     #[inline]
-    #[allow(dead_code)]
     ///
     /// Get the current state of the game as a board. Will panic if there is no
     /// history (but this should never happen if the game was initialized
@@ -147,7 +141,6 @@ impl Game {
         self.history.last().unwrap()
     }
 
-    #[inline]
     ///
     /// In the current state, is the game complete (i.e. is there no way the
     /// game can continue)?

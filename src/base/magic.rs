@@ -206,7 +206,6 @@ pub struct MagicTable {
 }
 
 impl MagicTable {
-    #[allow(dead_code)]
     ///
     /// Create an empty MagicTable.
     ///
@@ -234,7 +233,6 @@ impl MagicTable {
     ///
     /// Create a pre-loaded MagicTable.
     ///
-    #[allow(dead_code)]
     pub fn load() -> MagicTable {
         let mut mtable = MagicTable::new();
         load_magic_helper(&mut mtable.rook_magic, true);
@@ -246,7 +244,6 @@ impl MagicTable {
     ///
     /// Create a MagicTable from scratch, generating new magics.
     ///
-    #[allow(dead_code)]
     pub fn make() -> MagicTable {
         let mut mtable = MagicTable::new();
         make_magic_helper(&mut mtable.rook_magic, true);
@@ -347,12 +344,10 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard
     return table[idx].attacks[key];
 }
 
-#[allow(dead_code)]
 pub fn get_rook_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
     get_attacks(occupancy, sq, &mtable.rook_magic)
 }
 
-#[allow(dead_code)]
 pub fn get_bishop_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
     get_attacks(occupancy, sq, &mtable.bishop_magic)
 }
@@ -563,10 +558,7 @@ fn random_sparse_bitboard() -> Bitboard {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use super::*;
-
-    #[allow(unused_imports)]
     use crate::base::square::*;
 
     #[test]

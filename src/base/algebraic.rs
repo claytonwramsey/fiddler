@@ -6,7 +6,6 @@ use crate::base::MoveGenerator;
 use crate::base::PieceType;
 use crate::base::Square;
 
-#[allow(dead_code)]
 ///
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.
