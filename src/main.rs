@@ -7,9 +7,10 @@ use crabchess::engine::Engine;
 use crabchess::cli;
 fn main() {
     let mut g =
-        Game::from_fen("rnbqkbnr/ppp1pp1p/6p1/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3").unwrap();
+        Game::from_fen(FRIED_LIVER_FEN).unwrap();
     let mgen = MoveGenerator::new();
     let mut e = PVSearch::default();
+    e.set_depth(5);
 
     let x = e.get_evals(&mut g, &mgen);
     println!("{:?}", x);
