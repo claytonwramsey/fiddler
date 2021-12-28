@@ -295,6 +295,7 @@ pub mod tests {
         assert_eq!(e.evaluate(&mut g, &mgen), eval);
     }
 
+    #[allow(unused)]
     ///
     /// Print a map from moves to evals in a user-readable way.
     ///

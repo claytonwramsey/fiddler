@@ -4,6 +4,7 @@ use crabchess::base::MoveGenerator;
 use crabchess::engine::search::PVSearch;
 use crabchess::engine::Engine;
 
+#[allow(unused_imports)]
 use crabchess::cli;
 fn main() {
     let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
