@@ -6,7 +6,7 @@ use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
 use std::cmp::max;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::time::Instant;
 
 ///
@@ -31,10 +31,10 @@ pub struct PVSearch {
     ///
     transpose_table: TTable,
     ///
-    /// The set of "killer" moves. The outer vec is for each depth, and the 
-    /// inner one is for the set of moves at that depth.
+    /// The set of "killer" moves. Each index corresponds to a depth (0 is most 
+    /// shallow, etc).
     /// 
-    killer_moves: Vec<VecDeque<Move>>,
+    killer_moves: Vec<Move>,
     ///
     /// The cumulative number of nodes evaluated in this evaluation event.
     ///
@@ -70,7 +70,14 @@ impl PVSearch {
         let mut moves = g.get_moves(mgen);
 
         // Sort moves so that the most promising move is evaluated first
-        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        let killer_index = (self.depth - depth) as usize;
+        let retrieved_killer_move = self.killer_moves[killer_index];
+        moves.sort_by_cached_key(|m| {
+            if *m == retrieved_killer_move {
+                return Eval::MIN;
+            }
+            -(self.candidator)(g, mgen, *m)
+        });
 
         let mut moves_iter = moves.into_iter();
 
@@ -91,7 +98,8 @@ impl PVSearch {
 
         alpha = max(alpha, score);
         if alpha >= beta {
-            // Beta cutoff, we have  found a better line somewhere else
+            // Beta cutoff, we have found a better line somewhere else
+            self.killer_moves[killer_index] = first_move;
             return alpha.step_back();
         }
 
@@ -121,6 +129,7 @@ impl PVSearch {
             alpha = max(alpha, score);
             if alpha >= beta {
                 // Beta cutoff, we have  found a better line somewhere else
+                self.killer_moves[killer_index] = m;
                 break;
             }
         }
@@ -133,14 +142,22 @@ impl PVSearch {
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
     }
+
+    /// 
+    /// Set the depth of this engine's search.
+    /// 
+    pub fn set_depth(&mut self, depth: i8) {
+        self.depth = depth;
+        for _ in 0..depth {
+            self.killer_moves.push(Move::BAD_MOVE);
+        }
+    }
 }
 
 impl Default for PVSearch {
     fn default() -> PVSearch {
-        let num_killers = 2;
-        let depth = 5;
         let mut searcher = PVSearch {
-            depth: depth,
+            depth: 0,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
             transpose_table: TTable::default(),
@@ -148,14 +165,7 @@ impl Default for PVSearch {
             num_nodes_evaluated: 0,
             num_transpositions: 0,
         };
-        for _ in 0..depth {
-            let mut moves_deque_init = VecDeque::new();
-            for _ in 0..num_killers {
-                moves_deque_init.push_back(Move::BAD_MOVE);
-            }
-            searcher.killer_moves.push(moves_deque_init);
-        }
-
+        searcher.set_depth(5);
         searcher
     }
 }
@@ -217,7 +227,7 @@ pub mod tests {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.depth = 4; // this prevents taking too long on searches
+        e.set_depth(5); // this prevents taking too long on searches
 
         println!("moves with evals are:");
         e.get_evals(&mut g, &mgen);
@@ -232,7 +242,7 @@ pub mod tests {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.depth = 5; // this prevents taking too long on searches
+        e.set_depth(7); // this prevents taking too long on searches
 
         e.get_evals(&mut g, &mgen);
     }
@@ -262,7 +272,7 @@ pub mod tests {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.depth = 5;
+        e.set_depth(5);
 
         e.get_evals(&mut g, &mgen);
     }
@@ -275,7 +285,7 @@ pub mod tests {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.depth = depth;
+        e.set_depth(depth);
 
         assert_eq!(e.evaluate(&mut g, &mgen), eval);
     }
