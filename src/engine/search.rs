@@ -1,7 +1,7 @@
 use crate::base::algebraic::algebraic_from_move;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
-use crate::engine::transposition::{TTable};
+use crate::engine::transposition::TTable;
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
@@ -31,9 +31,9 @@ pub struct PVSearch {
     ///
     transpose_table: TTable,
     ///
-    /// The set of "killer" moves. Each index corresponds to a depth (0 is most 
+    /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
-    /// 
+    ///
     killer_moves: Vec<Move>,
     ///
     /// The cumulative number of nodes evaluated in this evaluation event.
@@ -47,20 +47,27 @@ pub struct PVSearch {
 
 impl PVSearch {
     ///
-    /// Use Principal Variation Search to evaluate the givne game to a depth. 
-    /// This search uses Negamax, which inverts at every step to save on 
+    /// Use Principal Variation Search to evaluate the givne game to a depth.
+    /// This search uses Negamax, which inverts at every step to save on
     /// branches.
     ///
-    pub fn pvs(&mut self, depth: i8, g: &mut Game, mgen: &MoveGenerator, alpha_in: Eval, beta_in: Eval) -> Eval {
+    pub fn pvs(
+        &mut self,
+        depth: i8,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        alpha_in: Eval,
+        beta_in: Eval,
+    ) -> Eval {
         self.num_nodes_evaluated += 1;
 
         if depth == 0 || g.is_game_over(mgen) {
             let us = g.get_board().player_to_move;
-            // (1 - 2 * us) will cause the evaluation to be positive for 
-            // whichever player is moving. This will cascade up the Negamax 
+            // (1 - 2 * us) will cause the evaluation to be positive for
+            // whichever player is moving. This will cascade up the Negamax
             // inversions to make the final result at the top correct.
-            // This step must also be done at the top level so that positions 
-            // with Black to move are evaluated as negative when faced 
+            // This step must also be done at the top level so that positions
+            // with Black to move are evaluated as negative when faced
             // outwardly.
             let evaluation = (self.evaluator)(g, mgen);
             //println!("{}: {}", g, evaluation);
@@ -88,11 +95,11 @@ impl PVSearch {
         let first_move = moves_iter.next().unwrap();
         g.make_move(first_move);
         let mut score = -self.pvs(
-            depth - 1, 
-            g, 
-            mgen, 
-            -beta.step_forward(), 
-            -alpha.step_forward()
+            depth - 1,
+            g,
+            mgen,
+            -beta.step_forward(),
+            -alpha.step_forward(),
         );
         g.undo().unwrap();
 
@@ -107,22 +114,22 @@ impl PVSearch {
             g.make_move(m);
             // zero-window search
             score = -self.pvs(
-                depth - 1, 
-                g, 
-                mgen, 
-                -alpha.step_forward() - Eval(1), 
-                -alpha.step_forward()
+                depth - 1,
+                g,
+                mgen,
+                -alpha.step_forward() - Eval(1),
+                -alpha.step_forward(),
             );
             if alpha < score && score < beta {
-                // zero-window search failed high, so there is a better option 
-                // in this tree. we already have a score from before that we 
+                // zero-window search failed high, so there is a better option
+                // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
                 score = -self.pvs(
-                    depth - 1, 
-                    g, 
-                    mgen, 
-                    -beta.step_forward(), 
-                    -score.step_forward()
+                    depth - 1,
+                    g,
+                    mgen,
+                    -beta.step_forward(),
+                    -score.step_forward(),
                 );
             }
             g.undo().unwrap();
@@ -143,9 +150,9 @@ impl PVSearch {
         self.num_nodes_evaluated = 0;
     }
 
-    /// 
+    ///
     /// Set the depth of this engine's search.
-    /// 
+    ///
     pub fn set_depth(&mut self, depth: i8) {
         self.depth = depth;
         for _ in 0..depth {
@@ -235,9 +242,9 @@ pub mod tests {
 
     #[test]
     ///
-    /// A test on the evaluation of the game in the fried liver position. The 
+    /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
-    /// 
+    ///
     fn test_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -250,16 +257,16 @@ pub mod tests {
     #[test]
     ///
     /// A test that the engine can find a mate in 1 move.
-    /// 
+    ///
     fn test_mate_in_1() {
         test_eval_helper(MATE_IN_1_FEN, Eval::mate_in(1), 2);
     }
 
     #[test]
     ///
-    /// A test that shows the engine can find a mate in 4 plies, given enough 
+    /// A test that shows the engine can find a mate in 4 plies, given enough
     /// depth.
-    /// 
+    ///
     fn test_mate_in_4_ply() {
         test_eval_helper(MATE_IN_4_FEN, Eval::mate_in(4), 5);
     }
@@ -267,7 +274,7 @@ pub mod tests {
     #[test]
     ///
     /// A test for a puzzle made by Ian.
-    /// 
+    ///
     fn test_my_special_puzzle() {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -278,9 +285,9 @@ pub mod tests {
     }
 
     ///
-    /// A helper function which ensures that the evaluation of a position is 
+    /// A helper function which ensures that the evaluation of a position is
     /// equal to what we expect it to be.
-    /// 
+    ///
     fn test_eval_helper(fen: &str, eval: Eval, depth: i8) {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();

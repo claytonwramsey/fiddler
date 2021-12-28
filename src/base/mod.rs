@@ -35,7 +35,7 @@ pub use crate::base::square::Square;
 pub mod util;
 
 ///
-/// A module for storing the hashes of positions in a computationally efficient 
+/// A module for storing the hashes of positions in a computationally efficient
 /// manner.
 ///
 mod zobrist;

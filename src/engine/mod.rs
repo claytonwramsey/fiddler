@@ -114,38 +114,38 @@ pub struct Eval(i32);
 impl Eval {
     ///
     /// An evaluation which is smaller than every other "normal" evaluation.
-    /// 
+    ///
     pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1);
 
     ///
     /// An evaluation which is larger than every other "normal" evaluation.
-    /// 
+    ///
     pub const MAX: Eval = Eval(Eval::MATE_0_VAL + 1);
 
     ///
     /// An evaluation where Black has won the game by mate.
-    /// 
+    ///
     pub const BLACK_MATE: Eval = Eval(-Eval::MATE_0_VAL);
-    
+
     ///
     /// An evaluation where White has won the game by mate.
-    /// 
+    ///
     pub const WHITE_MATE: Eval = Eval(Eval::MATE_0_VAL);
 
     ///
-    /// The internal evaluation of a mate in 0 for White (i.e. White made the 
+    /// The internal evaluation of a mate in 0 for White (i.e. White made the
     /// mating move on the previous ply).
-    /// 
+    ///
     const MATE_0_VAL: i32 = 1_000_000;
 
-    /// 
+    ///
     /// The highest value of a position which is not a mate.
-    /// 
+    ///
     const MATE_CUTOFF: i32 = 999_000;
 
     ///
     /// The value of one pawn.
-    /// 
+    ///
     const PAWN_VALUE: i32 = 1_000;
 
     #[inline]
@@ -159,7 +159,7 @@ impl Eval {
     #[inline]
     ///
     /// Create an `Eval` based on the number of half-moves required for White to
-    /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of 
+    /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
     /// plies.
     ///
     pub const fn mate_in(nplies: u16) -> Eval {
@@ -169,8 +169,8 @@ impl Eval {
     #[inline]
     ///
     /// Step this evaluation back in time one move. "normal" evaluations will
-    /// not be changed, but mates will be moved one closer to 0. When the 
-    /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined 
+    /// not be changed, but mates will be moved one closer to 0. When the
+    /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined
     /// behavior.
     ///
     pub fn step_back(&self) -> Eval {
@@ -180,8 +180,8 @@ impl Eval {
     #[inline]
     ///
     /// Step this evaluation forward in time one move. "normal" evaluations will
-    /// not be changed, but mates will be moved one further from 0. When the 
-    /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined 
+    /// not be changed, but mates will be moved one further from 0. When the
+    /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined
     /// behavior.
     ///
     pub fn step_forward(&self) -> Eval {
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     ///
     /// Test that stepping forward a normal evaluation will make no changes.
-    /// 
+    ///
     fn test_step_forward_draw() {
         assert_eq!(Eval(0), Eval(0).step_forward());
     }
@@ -285,7 +285,7 @@ mod tests {
     #[test]
     ///
     /// Test that stepping forward a normal evaluation will make no changes.
-    /// 
+    ///
     fn test_step_backward_draw() {
         assert_eq!(Eval(0), Eval(0).step_back());
     }
@@ -293,15 +293,18 @@ mod tests {
     #[test]
     ///
     /// Test that stepping forward the highest non-mate will make no change.
-    /// 
+    ///
     fn test_step_forward_highest_non_mate() {
-        assert_eq!(Eval(Eval::MATE_CUTOFF), Eval(Eval::MATE_CUTOFF).step_forward());
+        assert_eq!(
+            Eval(Eval::MATE_CUTOFF),
+            Eval(Eval::MATE_CUTOFF).step_forward()
+        );
     }
 
     #[test]
     ///
     /// Test that stepping backward the highest non-mate will make no change.
-    /// 
+    ///
     fn test_step_bacwkard_highest_non_mate() {
         assert_eq!(Eval(Eval::MATE_CUTOFF), Eval(Eval::MATE_CUTOFF).step_back());
     }
@@ -309,35 +312,53 @@ mod tests {
     #[test]
     ///
     /// Test that stepping forward the lowest non-mate will make no change.
-    /// 
+    ///
     fn test_step_forward_lowest_non_mate() {
-        assert_eq!(-Eval(Eval::MATE_CUTOFF), -Eval(Eval::MATE_CUTOFF).step_forward());
+        assert_eq!(
+            -Eval(Eval::MATE_CUTOFF),
+            -Eval(Eval::MATE_CUTOFF).step_forward()
+        );
     }
 
     #[test]
     ///
     /// Test that stepping forward the lowest non-mate will make no change.
-    /// 
+    ///
     fn test_step_bacwkard_lowest_non_mate() {
-        assert_eq!(-Eval(Eval::MATE_CUTOFF), -Eval(Eval::MATE_CUTOFF).step_back());
+        assert_eq!(
+            -Eval(Eval::MATE_CUTOFF),
+            -Eval(Eval::MATE_CUTOFF).step_back()
+        );
     }
 
     #[test]
     ///
-    /// Test that stepping forward the mates closest to being a normal 
+    /// Test that stepping forward the mates closest to being a normal
     /// evaluation will correctly step forward.
-    /// 
+    ///
     fn test_step_forward_tightest_mates() {
-        assert_eq!(Eval(Eval::MATE_CUTOFF + 2), Eval(Eval::MATE_CUTOFF + 1).step_forward());
-        assert_eq!(-Eval(Eval::MATE_CUTOFF + 2), -Eval(Eval::MATE_CUTOFF + 1).step_forward());
+        assert_eq!(
+            Eval(Eval::MATE_CUTOFF + 2),
+            Eval(Eval::MATE_CUTOFF + 1).step_forward()
+        );
+        assert_eq!(
+            -Eval(Eval::MATE_CUTOFF + 2),
+            -Eval(Eval::MATE_CUTOFF + 1).step_forward()
+        );
     }
     #[test]
     ///
-    /// Test that stepping forward the mates closest to being a normal 
+    /// Test that stepping forward the mates closest to being a normal
     /// evaluation will correctly step forward.
-    /// 
+    ///
     fn test_step_backward_tightest_mates() {
-        assert_eq!(Eval(Eval::MATE_CUTOFF + 1), Eval(Eval::MATE_CUTOFF + 2).step_back());
-        assert_eq!(-Eval(Eval::MATE_CUTOFF + 1), -Eval(Eval::MATE_CUTOFF + 2).step_back());
+        assert_eq!(
+            Eval(Eval::MATE_CUTOFF + 1),
+            Eval(Eval::MATE_CUTOFF + 2).step_back()
+        );
+        assert_eq!(
+            -Eval(Eval::MATE_CUTOFF + 1),
+            -Eval(Eval::MATE_CUTOFF + 2).step_back()
+        );
     }
 }

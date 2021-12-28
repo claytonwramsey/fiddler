@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     ///
-    /// Test that we can play a simple move on a `Game` and have the board 
+    /// Test that we can play a simple move on a `Game` and have the board
     /// states update accordingly.
     ///
     fn test_play_e4() {

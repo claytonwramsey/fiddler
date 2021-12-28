@@ -6,8 +6,7 @@ use crabchess::engine::Engine;
 
 use crabchess::cli;
 fn main() {
-    let mut g =
-        Game::from_fen(FRIED_LIVER_FEN).unwrap();
+    let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
     let mgen = MoveGenerator::new();
     let mut e = PVSearch::default();
     e.set_depth(5);

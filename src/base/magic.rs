@@ -295,7 +295,7 @@ impl Magic {
 }
 
 ///
-/// A helper function to load data into a `MagicTable`. `is_rook` is `true` if 
+/// A helper function to load data into a `MagicTable`. `is_rook` is `true` if
 /// you are loading data for a rook, and `false` for a bishop.
 ///
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
@@ -366,7 +366,7 @@ fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
 }
 
 ///
-/// Populate a magic table. If `is_rook` is true, it will make magics for rook 
+/// Populate a magic table. If `is_rook` is true, it will make magics for rook
 /// moves; otherwise it will make magics for bishops.
 ///
 fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
@@ -450,7 +450,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 }
 
 ///
-/// Create the mask for the relevant bits in magic of a rook. `sq` is the 
+/// Create the mask for the relevant bits in magic of a rook. `sq` is the
 /// square that a rook would occupy to receive this mask.
 ///
 fn get_rook_mask(sq: Square) -> Bitboard {
@@ -470,7 +470,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 }
 
 ///
-/// Create the mask for the relevant bits in magic of a bishop. `sq` is the 
+/// Create the mask for the relevant bits in magic of a bishop. `sq` is the
 /// square that a bishop would be on to receiver this mask.
 ///
 fn get_bishop_mask(sq: Square) -> Bitboard {

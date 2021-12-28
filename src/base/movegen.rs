@@ -60,7 +60,7 @@ impl MoveGenerator {
             let is_castle = board.is_move_castle(m);
             if !self.is_move_self_check(board, m) && !is_castle {
                 legal_moves.push(m);
-            } else  if is_castle {
+            } else if is_castle {
                 // TODO make castle illegal if in check or must move through
                 // check
                 let is_queen_castle = m.to_square().file() == 2;
@@ -100,7 +100,7 @@ impl MoveGenerator {
             return false;
         }*/
         let king_attackers = self.get_square_attackers(board, king_square, opponent);
-        
+
         // moves which can be generated from a given from-square
         let mut move_vec = Vec::new();
         if king_attackers != Bitboard::EMPTY {
@@ -548,8 +548,8 @@ fn get_knight_steps() -> Vec<Direction> {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use crate::base::square::*;
     use crate::base::fens::*;
+    use crate::base::square::*;
 
     #[test]
     fn test_opening_moveset() {
@@ -609,7 +609,7 @@ mod tests {
     #[test]
     ///
     /// In a mated position, make sure that the king has no moves.
-    /// 
+    ///
     fn test_white_mated_has_no_moves() {
         let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
         let mgen = MoveGenerator::new();
@@ -617,9 +617,9 @@ mod tests {
     }
 
     #[test]
-    /// 
+    ///
     /// Check that the king has exactly one move in this position.
-    /// 
+    ///
     fn test_king_has_only_one_move() {
         let b = Board::from_fen(KING_HAS_ONE_MOVE_FEN).unwrap();
         let mgen = MoveGenerator::new();
