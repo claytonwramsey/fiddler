@@ -163,12 +163,7 @@ impl Eval {
     /// behavior.
     ///
     pub fn step_back(&self) -> Eval {
-        if self.0 > MATE_CUTOFF {
-            return Eval(self.0 - 1);
-        } else if self.0 < -MATE_CUTOFF {
-            return Eval(self.0 + 1);
-        }
-        *self
+        Eval(self.0 - self.0 / (MATE_CUTOFF + 1))
     }
 
     #[inline]
@@ -179,12 +174,7 @@ impl Eval {
     /// behavior.
     ///
     pub fn step_forward(&self) -> Eval {
-        if self.0 > MATE_CUTOFF {
-            return Eval(self.0 + 1);
-        } else if self.0 < -MATE_CUTOFF {
-            return Eval(self.0 - 1);
-        }
-        *self
+        Eval(self.0 + self.0 / (MATE_CUTOFF + 1))
     }
 
     #[inline]
