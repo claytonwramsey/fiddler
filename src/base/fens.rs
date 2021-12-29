@@ -76,3 +76,8 @@ pub const WHITE_MATED_FEN: &'static str =
 /// A FEN where the Black king has only one legal move (Kc8).
 ///
 pub const KING_HAS_ONE_MOVE_FEN: &'static str = "2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2";
+
+///
+/// A FEN where Black is ready to castle queenside.
+/// 
+pub const BLACK_QUEENSIDE_CASTLE_READY_FEN: &'static str = "r3kb1r/ppp1p1pp/2nq1n2/1B1p4/3P4/2N2Q2/PPP2PPP/R1B1K2R b KQkq - 0 8";

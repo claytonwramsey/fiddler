@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 
+use super::algebraic::algebraic_from_move;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 ///
 /// A struct containing game information, which unlike a `Board`, knows about
@@ -183,8 +185,10 @@ impl Default for Game {
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for m in self.moves.iter() {
-            write!(f, "{}, ", m)?;
+        for i in 0..self.moves.len() {
+            let b = self.history[i];
+            let m = self.moves[i];
+            write!(f, "{} ", algebraic_from_move(m, &b, &MoveGenerator::new()))?;
         }
 
         Ok(())

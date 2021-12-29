@@ -1,5 +1,6 @@
 use crate::base::algebraic::algebraic_from_move;
 use crate::base::{Game, Move, MoveGenerator};
+use crate::base::util::opposite_color;
 use crate::engine::positional::positional_evaluate;
 use crate::engine::transposition::TTable;
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
@@ -62,16 +63,18 @@ impl PVSearch {
         self.num_nodes_evaluated += 1;
 
         if depth == 0 || g.is_game_over(mgen) {
-            let us = g.get_board().player_to_move;
             // (1 - 2 * us) will cause the evaluation to be positive for
             // whichever player is moving. This will cascade up the Negamax
             // inversions to make the final result at the top correct.
             // This step must also be done at the top level so that positions
             // with Black to move are evaluated as negative when faced
             // outwardly.
-            let evaluation = (self.evaluator)(g, mgen);
-            //println!("{}: {}", g, evaluation);
-            return evaluation * (1 - 2 * us as i32);
+            return self.quiesce(
+                depth, 
+                g, 
+                mgen, 
+                alpha_in, 
+                beta_in);
         }
 
         let mut moves = g.get_moves(mgen);
@@ -100,14 +103,14 @@ impl PVSearch {
             mgen,
             -beta.step_forward(),
             -alpha.step_forward(),
-        );
+        ).step_back();
         g.undo().unwrap();
 
         alpha = max(alpha, score);
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
             self.killer_moves[killer_index] = first_move;
-            return alpha.step_back();
+            return alpha;
         }
 
         for m in moves_iter {
@@ -119,7 +122,7 @@ impl PVSearch {
                 mgen,
                 -alpha.step_forward() - Eval(1),
                 -alpha.step_forward(),
-            );
+            ).step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
@@ -130,7 +133,7 @@ impl PVSearch {
                     mgen,
                     -beta.step_forward(),
                     -score.step_forward(),
-                );
+                ).step_back();
             }
             g.undo().unwrap();
             alpha = max(alpha, score);
@@ -140,7 +143,95 @@ impl PVSearch {
                 break;
             }
         }
-        return alpha.step_back();
+        return alpha;
+    }
+
+    ///
+    /// Use quiescent search (captures only) to evaluate a position as deep as 
+    /// it needs to go.
+    /// 
+    fn quiesce(
+        &mut self,
+        depth: i8,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        alpha_in: Eval,
+        beta_in: Eval,
+    )  -> Eval{
+        self.num_nodes_evaluated += 1;
+
+        let player = g.get_board().player_to_move;
+
+        // capturing is unforced, so we can stop here if the player to move 
+        // doesn't want to capture.
+        let leaf_evaluation = (self.evaluator)(g, mgen);
+        let mut score = leaf_evaluation * (1 - 2 * player as i32);
+        let mut alpha = alpha_in;
+        let beta = beta_in;
+
+        alpha = max(score, alpha);
+        if alpha >= beta {
+            // beta cutoff, this line would not be selected because there is a 
+            // better option somewhere else
+            return alpha;
+        }
+
+        let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
+        let mut moves = g.get_moves(mgen).into_iter()
+            .filter(|m| enemy_occupancy.contains(m.to_square()))
+            .collect::<Vec<Move>>();
+        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        let mut moves_iter = moves.into_iter();
+
+        // we must wrap with an if in case there are no captures
+        if let Some(first_move) = moves_iter.next() {
+            g.make_move(first_move);
+            score = -self.quiesce(
+                depth - 1,
+                g,
+                mgen,
+                -beta.step_forward(),
+                -alpha.step_forward(),
+            ).step_back();
+            g.undo().unwrap();
+
+            alpha = max(alpha, score.step_back());
+            if alpha >= beta {
+                // Beta cutoff, we have found a better line somewhere else
+                return alpha;
+            }
+        }
+
+        for m in moves_iter {
+            g.make_move(m);
+            // zero-window search
+            score = -self.quiesce(
+                depth - 1,
+                g,
+                mgen,
+                -alpha.step_forward() - Eval(1),
+                -alpha.step_forward(),
+            ).step_back();
+            if alpha < score && score < beta {
+                // zero-window search failed high, so there is a better option
+                // in this tree. we already have a score from before that we
+                // can use as a lower bound in this search.
+                score = -self.quiesce(
+                    depth - 1,
+                    g,
+                    mgen,
+                    -beta.step_forward(),
+                    -score.step_forward(),
+                ).step_back();
+            }
+            g.undo().unwrap();
+            alpha = max(alpha, score);
+            if alpha >= beta {
+                // Beta cutoff, we have  found a better line somewhere else
+                break;
+            }
+        }
+        return alpha;
     }
 
     ///
@@ -183,7 +274,13 @@ impl Engine for PVSearch {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let eval = self.pvs(self.depth, g, mgen, Eval::MIN, Eval::MAX);
+        let eval = self.pvs(
+            self.depth, 
+            g, 
+            mgen, 
+            Eval::MIN, 
+            Eval::MAX) 
+            * (1 - 2 * g.get_board().player_to_move as i32);
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         println!(
@@ -193,7 +290,7 @@ impl Engine for PVSearch {
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
         );
-        return eval * (1 - 2 * g.get_board().player_to_move as i32);
+        return eval;
     }
 
     fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
@@ -247,7 +344,7 @@ pub mod tests {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.set_depth(7); // this prevents taking too long on searches
+        e.set_depth(6); // this prevents taking too long on searches
 
         e.get_evals(&mut g, &mgen);
     }

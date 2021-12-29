@@ -623,4 +623,11 @@ mod tests {
         assert!(mgen.has_moves(&b));
         assert!(mgen.get_moves(&b).len() == 1);
     }
+
+    #[test]
+    fn test_queenside_castle() {
+        let b = Board::from_fen(BLACK_QUEENSIDE_CASTLE_READY_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        assert!(mgen.get_moves(&b).contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
+    }
 }
