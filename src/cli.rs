@@ -198,6 +198,7 @@ impl<'a> CrabchessApp<'a> {
             Command::PlayMove(m) => self.try_move(m),
             Command::ListMoves => self.list_moves(),
             Command::Undo(n) => self.game.undo_n(n),
+            Command::EngineSelect(s) => self.select_engine(s),
             _ => {
                 if let Err(_) = writeln!(
                     self.output_stream,
@@ -211,6 +212,9 @@ impl<'a> CrabchessApp<'a> {
         }
     }
 
+    ///
+    /// Echo out an error string to the user.
+    /// 
     fn echo_error(&mut self, s: &str) -> CommandResult {
         if let Err(_) = writeln!(self.output_stream, "error: {}", s) {
             return Err("failed to write error to output stream");
@@ -218,6 +222,9 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
+    ///
+    /// Attempt to load a FEN string into the game.
+    /// 
     fn load_fen(&mut self, fen: String) -> CommandResult {
         match Game::from_fen(fen.as_str()) {
             Ok(game) => {
@@ -228,6 +235,9 @@ impl<'a> CrabchessApp<'a> {
         }
     }
 
+    ///
+    /// Attempt to play a move.
+    /// 
     fn try_move(&mut self, m: Move) -> CommandResult {
         if let Err(e) = self.game.try_move(&self.mgen, m) {
             return Err(e);
@@ -240,6 +250,9 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
+    ///
+    /// Print out a list of the available moves in this position.
+    /// 
     fn list_moves(&mut self) -> CommandResult {
         let moves = self.mgen.get_moves(self.game.get_board());
         for m in moves.iter() {
@@ -252,6 +265,21 @@ impl<'a> CrabchessApp<'a> {
             }
         }
         Ok(())
+    }
+
+    ///
+    /// Select an engine based on the given options string.
+    /// 
+    fn select_engine(&mut self, opts: String) -> CommandResult {
+        // For now, we just use it to set the depth, as there are no engines to 
+        // select.
+        match opts.parse::<usize>() {
+            Ok(num) =>  {
+                self.engine.set_depth(num);
+                Ok(())
+            },
+            Err(e) => Err("could not parse engine selection")
+        }
     }
 }
 

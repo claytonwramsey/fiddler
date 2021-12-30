@@ -241,15 +241,6 @@ impl PVSearch {
         self.num_nodes_evaluated = 0;
     }
 
-    ///
-    /// Set the depth of this engine's search.
-    ///
-    pub fn set_depth(&mut self, depth: i8) {
-        self.depth = depth;
-        for _ in 0..depth {
-            self.killer_moves.push(Move::BAD_MOVE);
-        }
-    }
 }
 
 impl Default for PVSearch {
@@ -269,6 +260,13 @@ impl Default for PVSearch {
 }
 
 impl Engine for PVSearch {
+    fn set_depth(&mut self, depth: usize) {
+        self.depth = depth as i8;
+        for _ in 0..depth {
+            self.killer_moves.push(Move::BAD_MOVE);
+        }
+    }
+
     #[inline]
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval {
         self.num_nodes_evaluated = 0;
@@ -383,7 +381,7 @@ pub mod tests {
     /// A helper function which ensures that the evaluation of a position is
     /// equal to what we expect it to be.
     ///
-    fn test_eval_helper(fen: &str, eval: Eval, depth: i8) {
+    fn test_eval_helper(fen: &str, eval: Eval, depth: usize) {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();

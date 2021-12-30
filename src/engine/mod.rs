@@ -39,6 +39,14 @@ pub trait Engine {
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval;
 
     ///
+    /// Set the depth of the engine's search functionality. The exact effects 
+    /// of this method may vary from engine to engine, but it should be 
+    /// expected that higher depths result in longer search times and better 
+    /// evaluations.
+    /// 
+    fn set_depth(&mut self, depth: usize);
+
+    ///
     /// Get what this engine believes to be the best move in the given position.
     /// `g` is only given as mutable to allow this method access to the ability
     /// to make and undo moves, but `g` should be the same before and after its
