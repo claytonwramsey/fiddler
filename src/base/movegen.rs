@@ -87,6 +87,13 @@ impl MoveGenerator {
     }
 
     ///
+    /// Get moves which are "loud," i.e. captures or checks.
+    /// 
+    pub fn get_loud_moves(&self, board: &Board) -> Vec<Move> {
+        todo!()
+    }
+
+    ///
     /// Does the player to move have any legal moves in this position?
     ///
     pub fn has_moves(&self, board: &Board) -> bool {
@@ -162,9 +169,9 @@ impl MoveGenerator {
 
     ///
     /// Enumerate the pseudolegal moves a player of the given color would be
-    /// able to make if it were their turn to move.
+    /// able to make if it were their turn to move. 
     ///
-    pub fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
+    fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = pawn_start_rank(opposite_color(color));
         // Number of start squares
         let num_promotion_from_squares = (board.get_type_and_color(PieceType::PAWN, color)
@@ -368,7 +375,8 @@ impl MoveGenerator {
     #[inline]
     ///
     /// Get the pseudolegal moves that a king on square `sq` could make in this
-    /// position. Does not check if castling can be done through or out of check.
+    /// position. Does not check if castling can be done through or out of 
+    /// check.
     ///
     fn king_moves(&self, board: &Board, sq: Square) -> Bitboard {
         let mut moves =
@@ -380,8 +388,8 @@ impl MoveGenerator {
             _ => Bitboard(0x0000000000000060),
         };
         let queenside_castle_passthrough_sqs = match board.player_to_move {
-            BLACK => Bitboard(0x0700000000000000),
-            _ => Bitboard(0x0000000000000070),
+            BLACK => Bitboard(0x0C00000000000000),
+            _ => Bitboard(0x000000000000000C),
         };
 
         let can_kingside_castle = board
@@ -561,7 +569,8 @@ mod tests {
 
     #[test]
     ///
-    /// Test that we can play Qf3, the critical move in the Fried Liver opening.
+    /// Test that we can play Qf3+, the critical move in the Fried Liver 
+    /// opening.
     ///
     fn test_best_queen_fried_liver() {
         let mg = MoveGenerator::new();
@@ -625,6 +634,9 @@ mod tests {
     }
 
     #[test]
+    /// 
+    /// Test that queenside castling actually works.
+    /// 
     fn test_queenside_castle() {
         let b = Board::from_fen(BLACK_QUEENSIDE_CASTLE_READY_FEN).unwrap();
         let mgen = MoveGenerator::new();
