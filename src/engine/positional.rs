@@ -3,6 +3,7 @@ use crate::base::piece::PieceType;
 use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::Square;
+use crate::base::Move;
 use crate::engine::greedy::greedy_evaluate;
 use crate::engine::Eval;
 
@@ -61,8 +62,8 @@ const DEFAULT_VALUES: ValueTable = [0.0; 64];
 ///
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///
-pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
-    let starting_eval = greedy_evaluate(g, mgen);
+pub fn positional_evaluate(g: &mut Game, moves: &[Move], mgen: &MoveGenerator) -> Eval {
+    let starting_eval = greedy_evaluate(g, moves, mgen);
     if starting_eval.is_mate() {
         return starting_eval;
     }
@@ -109,6 +110,7 @@ mod tests {
     fn test_equal_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
-        assert_eq!(positional_evaluate(&mut g, &mgen), Eval(0));
+        let moves = g.get_moves(&mgen);
+        assert_eq!(positional_evaluate(&mut g, &moves, &mgen), Eval(0));
     }
 }

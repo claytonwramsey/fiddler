@@ -278,7 +278,7 @@ impl<'a> CrabchessApp<'a> {
                 self.engine.set_depth(num);
                 Ok(())
             },
-            Err(e) => Err("could not parse engine selection")
+            Err(_) => Err("could not parse engine selection")
         }
     }
 }

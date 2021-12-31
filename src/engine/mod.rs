@@ -15,9 +15,11 @@ pub mod search;
 pub mod transposition;
 
 ///
-/// A function which can shallowly evaluate a position.
+/// A function which can shallowly evaluate a position. The given array of 
+/// moves is the set of moves in the position, but a move generator is also 
+/// given in case the function desires it. 
 ///
-pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
+pub type EvaluationFn = fn(&mut Game, &[Move], &MoveGenerator) -> Eval;
 
 ///
 /// A function which can decide how much it "likes" a move.

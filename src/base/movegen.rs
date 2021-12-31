@@ -86,6 +86,7 @@ impl MoveGenerator {
         return legal_moves;
     }
 
+    #[allow(unused)]
     ///
     /// Get moves which are "loud," i.e. captures or checks.
     /// 

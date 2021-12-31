@@ -4,6 +4,7 @@ use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::PieceType;
 use crate::base::Square;
+use crate::base::Move;
 use crate::engine::Eval;
 
 ///
@@ -23,13 +24,13 @@ pub fn piece_value(pt: PieceType) -> Eval {
 ///
 /// Evaluate a position solely by the amount of material available.
 ///
-pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
+pub fn greedy_evaluate(g: &mut Game, moves: &[Move], mgen: &MoveGenerator) -> Eval {
     let mut eval = Eval(0);
     let b = g.get_board();
     let player = b.player_to_move;
     let king_sq = Square::from(b.get_type_and_color(PieceType::KING, player));
 
-    if g.is_game_over(mgen) {
+    if moves.len() == 0 {
         if mgen.is_square_attacked_by(b, king_sq, opposite_color(player)) {
             return match b.player_to_move {
                 WHITE => Eval::BLACK_MATE,

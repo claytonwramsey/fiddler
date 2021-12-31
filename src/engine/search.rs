@@ -161,10 +161,11 @@ impl PVSearch {
         self.num_nodes_evaluated += 1;
 
         let player = g.get_board().player_to_move;
+        let mut moves = g.get_moves(mgen);
 
         // capturing is unforced, so we can stop here if the player to move 
         // doesn't want to capture.
-        let leaf_evaluation = (self.evaluator)(g, mgen);
+        let leaf_evaluation = (self.evaluator)(g, &moves, mgen);
         let mut score = leaf_evaluation * (1 - 2 * player as i32);
         let mut alpha = alpha_in;
         let beta = beta_in;
@@ -177,7 +178,7 @@ impl PVSearch {
         }
 
         let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
-        let mut moves = g.get_moves(mgen).into_iter()
+        moves = moves.into_iter()
             .filter(|m| enemy_occupancy.contains(m.to_square()))
             .collect::<Vec<Move>>();
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));

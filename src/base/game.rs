@@ -148,12 +148,7 @@ impl Game {
     /// game can continue)?
     ///
     pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
-        let num_reps = *self.repetitions.get(self.get_board()).unwrap_or(&0);
-        if num_reps >= 3 {
-            // draw by repetition
-            return true;
-        }
-
+        
         if mgen.has_moves(self.get_board()) {
             return false;
         }
@@ -162,11 +157,27 @@ impl Game {
     }
 
     ///
+    /// Has this game been drawn due to its move history (i.e. due to the 50 
+    /// move rule or due to repetition)?
+    /// 
+    fn is_drawn_historically(&self) -> bool {
+        let num_reps = *self.repetitions.get(self.get_board()).unwrap_or(&0);
+        if num_reps >= 3 {
+            // draw by repetition
+            return true;
+        }
+
+        // TODO 50 move rule
+        return false;
+
+    }
+
+    ///
     /// Get the legal moves in this position. Will be empty if the position is
     /// drawn or the game is over.
     ///
     pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
-        if self.is_game_over(mgen) {
+        if self.is_drawn_historically() {
             return Vec::new();
         }
         return mgen.get_moves(&self.get_board());
