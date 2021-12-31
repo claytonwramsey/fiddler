@@ -13,7 +13,7 @@ use crate::base::Square;
 pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     //longest possible algebraic string would be something along the lines of
     //Qe4xd4# (7 chars)
-    //e8=Q#
+    //exd8=Q#
     //O-O-O+
     let mut s = String::with_capacity(7);
 
@@ -77,18 +77,26 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
 
         s += &m.to_square().to_string();
 
-        // Determine if the move was a check or a mate.
-        let mut bcopy = *b;
-        let player_color = b.player_to_move;
-        let enemy_king_sq =
-            Square::from(b.get_type_and_color(PieceType::KING, opposite_color(player_color)));
-        bcopy.make_move(m);
-        if mgen.is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
-            if mgen.get_moves(&bcopy).is_empty() {
-                s += "#";
-            } else {
-                s += "+";
-            }
+        // Add promote types
+        let promote_type = m.promote_type();
+        if promote_type != PieceType::NO_TYPE {
+            s += "=";
+            s += promote_type.get_code();
+        }
+
+    }
+    
+    // Determine if the move was a check or a mate.
+    let mut bcopy = *b;
+    let player_color = b.player_to_move;
+    let enemy_king_sq =
+        Square::from(b.get_type_and_color(PieceType::KING, opposite_color(player_color)));
+    bcopy.make_move(m);
+    if mgen.is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
+        if mgen.get_moves(&bcopy).is_empty() {
+            s += "#";
+        } else {
+            s += "+";
         }
     }
 
