@@ -691,14 +691,11 @@ pub mod tests {
     #[test]
     ///
     /// Test that capturing a rook removes the right to castle with that rook.
-    /// 
+    ///
     fn test_no_castle_after_capture() {
         let m = Move::new(B2, H8, PieceType::NO_TYPE);
         let mgen = MoveGenerator::new();
-        test_fen_helper(
-            fens::ROOK_HANGING_FEN,
-            m
-        );
+        test_fen_helper(fens::ROOK_HANGING_FEN, m);
         let mut b = Board::from_fen(fens::ROOK_HANGING_FEN).unwrap();
         b.make_move(m);
         let castle_move = Move::new(E8, G8, PieceType::NO_TYPE);
@@ -796,35 +793,31 @@ pub mod tests {
                 old_board.player_to_move
             );
 
-            assert!(!new_board.castle_rights.is_kingside_castle_legal(mover_color));
-            assert!(!new_board.castle_rights.is_queenside_castle_legal(mover_color));
+            assert!(!new_board
+                .castle_rights
+                .is_kingside_castle_legal(mover_color));
+            assert!(!new_board
+                .castle_rights
+                .is_queenside_castle_legal(mover_color));
         }
 
         // Check castling rights were removed correctly
         if mover_type == PieceType::ROOK {
             match m.from_square() {
-                A1 => assert!(
-                    !new_board.castle_rights.is_queenside_castle_legal(WHITE)),
-                A8 => assert!(
-                    !new_board.castle_rights.is_kingside_castle_legal(WHITE)),
-                H1 => assert!(
-                    !new_board.castle_rights.is_queenside_castle_legal(BLACK)),
-                H8 => assert!(
-                    !new_board.castle_rights.is_kingside_castle_legal(BLACK)),
-                _ => {},
+                A1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(WHITE)),
+                A8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(WHITE)),
+                H1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(BLACK)),
+                H8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(BLACK)),
+                _ => {}
             };
         }
 
         match m.to_square() {
-            A1 => assert!(
-                !new_board.castle_rights.is_queenside_castle_legal(WHITE)),
-            A8 => assert!(
-                !new_board.castle_rights.is_kingside_castle_legal(WHITE)),
-            H1 => assert!(
-                !new_board.castle_rights.is_queenside_castle_legal(BLACK)),
-            H8 => assert!(
-                !new_board.castle_rights.is_kingside_castle_legal(BLACK)),
-            _ => {},
+            A1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(WHITE)),
+            A8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(WHITE)),
+            H1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(BLACK)),
+            H8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(BLACK)),
+            _ => {}
         };
     }
 }

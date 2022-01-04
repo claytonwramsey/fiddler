@@ -83,9 +83,8 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
             s += "=";
             s += promote_type.get_code();
         }
-
     }
-    
+
     // Determine if the move was a check or a mate.
     let mut bcopy = *b;
     let player_color = b.player_to_move;

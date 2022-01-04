@@ -89,7 +89,7 @@ impl MoveGenerator {
     #[allow(unused)]
     ///
     /// Get moves which are "loud," i.e. captures or checks.
-    /// 
+    ///
     pub fn get_loud_moves(&self, board: &Board) -> Vec<Move> {
         todo!()
     }
@@ -170,7 +170,7 @@ impl MoveGenerator {
 
     ///
     /// Enumerate the pseudolegal moves a player of the given color would be
-    /// able to make if it were their turn to move. 
+    /// able to make if it were their turn to move.
     ///
     fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = pawn_start_rank(opposite_color(color));
@@ -376,7 +376,7 @@ impl MoveGenerator {
     #[inline]
     ///
     /// Get the pseudolegal moves that a king on square `sq` could make in this
-    /// position. Does not check if castling can be done through or out of 
+    /// position. Does not check if castling can be done through or out of
     /// check.
     ///
     fn king_moves(&self, board: &Board, sq: Square) -> Bitboard {
@@ -570,7 +570,7 @@ mod tests {
 
     #[test]
     ///
-    /// Test that we can play Qf3+, the critical move in the Fried Liver 
+    /// Test that we can play Qf3+, the critical move in the Fried Liver
     /// opening.
     ///
     fn test_best_queen_fried_liver() {
@@ -635,12 +635,14 @@ mod tests {
     }
 
     #[test]
-    /// 
+    ///
     /// Test that queenside castling actually works.
-    /// 
+    ///
     fn test_queenside_castle() {
         let b = Board::from_fen(BLACK_QUEENSIDE_CASTLE_READY_FEN).unwrap();
         let mgen = MoveGenerator::new();
-        assert!(mgen.get_moves(&b).contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
+        assert!(mgen
+            .get_moves(&b)
+            .contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
     }
 }

@@ -1,10 +1,10 @@
 use crate::base::constants::{BLACK, WHITE};
 use crate::base::util::opposite_color;
 use crate::base::Game;
+use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::base::PieceType;
 use crate::base::Square;
-use crate::base::Move;
 use crate::engine::Eval;
 
 ///

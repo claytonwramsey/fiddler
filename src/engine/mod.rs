@@ -15,9 +15,9 @@ pub mod search;
 pub mod transposition;
 
 ///
-/// A function which can shallowly evaluate a position. The given array of 
-/// moves is the set of moves in the position, but a move generator is also 
-/// given in case the function desires it. 
+/// A function which can shallowly evaluate a position. The given array of
+/// moves is the set of moves in the position, but a move generator is also
+/// given in case the function desires it.
 ///
 pub type EvaluationFn = fn(&mut Game, &[Move], &MoveGenerator) -> Eval;
 
@@ -41,11 +41,11 @@ pub trait Engine {
     fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval;
 
     ///
-    /// Set the depth of the engine's search functionality. The exact effects 
-    /// of this method may vary from engine to engine, but it should be 
-    /// expected that higher depths result in longer search times and better 
+    /// Set the depth of the engine's search functionality. The exact effects
+    /// of this method may vary from engine to engine, but it should be
+    /// expected that higher depths result in longer search times and better
     /// evaluations.
-    /// 
+    ///
     fn set_depth(&mut self, depth: usize);
 
     ///

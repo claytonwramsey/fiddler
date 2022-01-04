@@ -1,9 +1,9 @@
 use crate::base::constants::{BLACK, WHITE};
 use crate::base::piece::PieceType;
 use crate::base::Game;
+use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::base::Square;
-use crate::base::Move;
 use crate::engine::greedy::greedy_evaluate;
 use crate::engine::Eval;
 

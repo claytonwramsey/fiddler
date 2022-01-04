@@ -148,11 +148,10 @@ impl Game {
     /// game can continue)?
     ///
     pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
-
         if self.is_drawn_historically() {
             return true;
         }
-        
+
         if mgen.has_moves(self.get_board()) {
             return false;
         }
@@ -161,9 +160,9 @@ impl Game {
     }
 
     ///
-    /// Has this game been drawn due to its move history (i.e. due to the 50 
+    /// Has this game been drawn due to its move history (i.e. due to the 50
     /// move rule or due to repetition)?
-    /// 
+    ///
     fn is_drawn_historically(&self) -> bool {
         let num_reps = *self.repetitions.get(self.get_board()).unwrap_or(&0);
         if num_reps >= 3 {
@@ -173,7 +172,6 @@ impl Game {
 
         // TODO 50 move rule
         return false;
-
     }
 
     ///
