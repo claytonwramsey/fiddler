@@ -94,7 +94,8 @@ impl PVSearch {
         // Lower bound on evaluation. Will be
         let beta = beta_in;
         let mut alpha = alpha_in;
-
+        // This should always have a move since this was not a "terminal" 
+        // position of the game
         let first_move = moves_iter.next().unwrap();
         g.make_move(first_move);
         let mut score = -self.pvs(

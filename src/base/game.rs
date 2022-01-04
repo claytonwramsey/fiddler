@@ -148,6 +148,10 @@ impl Game {
     /// game can continue)?
     ///
     pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
+
+        if self.is_drawn_historically() {
+            return true;
+        }
         
         if mgen.has_moves(self.get_board()) {
             return false;
