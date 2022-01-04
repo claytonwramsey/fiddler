@@ -81,3 +81,9 @@ pub const KING_HAS_ONE_MOVE_FEN: &'static str = "2k5/4R3/8/5K2/3R4/8/8/8 b - - 2
 /// A FEN where Black is ready to castle queenside.
 /// 
 pub const BLACK_QUEENSIDE_CASTLE_READY_FEN: &'static str = "r3kb1r/ppp1p1pp/2nq1n2/1B1p4/3P4/2N2Q2/PPP2PPP/R1B1K2R b KQkq - 0 8";
+
+///
+/// A FEN where Black's rook on H8 is hanging, but if it isn't taken, Black can 
+/// castle kingside.
+/// 
+pub const ROOK_HANGING_FEN: &'static str = "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5";

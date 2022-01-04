@@ -387,7 +387,7 @@ impl Board {
         }
 
         /* Handling castling rights */
-        let rights_to_remove;
+        let mut rights_to_remove;
         if mover_type == PieceType::KING {
             rights_to_remove = CastleRights::color_rights(self.player_to_move);
         } else {
@@ -400,6 +400,15 @@ impl Board {
                 H8 => CastleRights::king_castle(BLACK),
                 _ => CastleRights::NO_RIGHTS,
             };
+
+            // capturing a rook also removes rights
+            rights_to_remove |= match to_sq {
+                A1 => CastleRights::queen_castle(WHITE),
+                H1 => CastleRights::king_castle(WHITE),
+                A8 => CastleRights::queen_castle(BLACK),
+                H8 => CastleRights::king_castle(BLACK),
+                _ => CastleRights::NO_RIGHTS,
+            }
         }
         self.remove_castle_rights(rights_to_remove);
 
@@ -679,6 +688,23 @@ pub mod tests {
         );
     }
 
+    #[test]
+    ///
+    /// Test that capturing a rook removes the right to castle with that rook.
+    /// 
+    fn test_no_castle_after_capture() {
+        let m = Move::new(B2, H8, PieceType::NO_TYPE);
+        let mgen = MoveGenerator::new();
+        test_fen_helper(
+            fens::ROOK_HANGING_FEN,
+            m
+        );
+        let mut b = Board::from_fen(fens::ROOK_HANGING_FEN).unwrap();
+        b.make_move(m);
+        let castle_move = Move::new(E8, G8, PieceType::NO_TYPE);
+        assert!(b.try_move(&mgen, castle_move).is_err());
+    }
+
     ///
     /// A helper function which will load a board from a FEN and then try
     /// running the given move on that board.
@@ -769,8 +795,36 @@ pub mod tests {
                 new_board.color_at_square(rook_end_sq),
                 old_board.player_to_move
             );
+
+            assert!(!new_board.castle_rights.is_kingside_castle_legal(mover_color));
+            assert!(!new_board.castle_rights.is_queenside_castle_legal(mover_color));
         }
 
-        // TODO Check castling rights were removed correctly
+        // Check castling rights were removed correctly
+        if mover_type == PieceType::ROOK {
+            match m.from_square() {
+                A1 => assert!(
+                    !new_board.castle_rights.is_queenside_castle_legal(WHITE)),
+                A8 => assert!(
+                    !new_board.castle_rights.is_kingside_castle_legal(WHITE)),
+                H1 => assert!(
+                    !new_board.castle_rights.is_queenside_castle_legal(BLACK)),
+                H8 => assert!(
+                    !new_board.castle_rights.is_kingside_castle_legal(BLACK)),
+                _ => {},
+            };
+        }
+
+        match m.to_square() {
+            A1 => assert!(
+                !new_board.castle_rights.is_queenside_castle_legal(WHITE)),
+            A8 => assert!(
+                !new_board.castle_rights.is_kingside_castle_legal(WHITE)),
+            H1 => assert!(
+                !new_board.castle_rights.is_queenside_castle_legal(BLACK)),
+            H8 => assert!(
+                !new_board.castle_rights.is_kingside_castle_legal(BLACK)),
+            _ => {},
+        };
     }
 }

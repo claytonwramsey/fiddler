@@ -2,7 +2,8 @@ use std::fmt::{Display, Formatter, Result};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 ///
-/// A struct representing the type of a piece. Only the rightmost 3 bits are/// used.
+/// A struct representing the type of a piece. Only the rightmost 3 bits are
+/// used.
 ///
 pub struct PieceType(pub u8);
 
