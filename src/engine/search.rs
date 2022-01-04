@@ -17,7 +17,7 @@ pub struct PVSearch {
     ///
     /// The depth at which this algorithm will evaluate a position.
     ///
-    pub depth: i8,
+    depth: i8,
     ///
     /// The function used to evaluate the quality of a position.
     ///
@@ -26,11 +26,10 @@ pub struct PVSearch {
     /// The function used to determine which moves should be explored first.
     ///
     pub candidator: MoveCandidacyFn,
-    #[allow(unused)]
     ///
     /// The transposition table.
     ///
-    transpose_table: TTable,
+    ttable: TTable,
     ///
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
@@ -102,7 +101,9 @@ impl PVSearch {
                 -alpha.step_forward(),
             )
             .step_back();
-        g.undo().unwrap();
+        #[allow(unused_must_use)] {
+            g.undo();
+        }
 
         alpha = max(alpha, score);
         if alpha >= beta {
@@ -137,7 +138,9 @@ impl PVSearch {
                     )
                     .step_back();
             }
-            g.undo().unwrap();
+            #[allow(unused_must_use)] {
+                g.undo();
+            }
             alpha = max(alpha, score);
             if alpha >= beta {
                 // Beta cutoff, we have  found a better line somewhere else
@@ -199,7 +202,9 @@ impl PVSearch {
                     -alpha.step_forward(),
                 )
                 .step_back();
-            g.undo().unwrap();
+            #[allow(unused_must_use)] {
+                g.undo();
+            }
 
             alpha = max(alpha, score.step_back());
             if alpha >= beta {
@@ -234,7 +239,9 @@ impl PVSearch {
                     )
                     .step_back();
             }
-            g.undo().unwrap();
+            #[allow(unused_must_use)] {
+                g.undo();
+            }
             alpha = max(alpha, score);
             if alpha >= beta {
                 // Beta cutoff, we have  found a better line somewhere else
@@ -258,7 +265,7 @@ impl Default for PVSearch {
             depth: 0,
             evaluator: positional_evaluate,
             candidator: crate::engine::candidacy::candidacy,
-            transpose_table: TTable::default(),
+            ttable: TTable::default(),
             killer_moves: Vec::new(),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
