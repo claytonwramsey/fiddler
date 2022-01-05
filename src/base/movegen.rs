@@ -52,38 +52,9 @@ impl MoveGenerator {
     /// Get all the legal moves on a board.
     ///
     pub fn get_moves(&self, board: &Board) -> Vec<Move> {
-        let moves = self.get_pseudolegal_moves(board, board.player_to_move);
-        let mut legal_moves = Vec::with_capacity(moves.capacity());
-        for m in moves {
-            let is_castle = board.is_move_castle(m);
-            if !self.is_move_self_check(board, m) && !is_castle {
-                legal_moves.push(m);
-            } else if is_castle {
-                // TODO make castle illegal if in check or must move through
-                // check
-                let is_queen_castle = m.to_square().file() == 2;
-                let mut is_valid = true;
-                let mut king_passthru_min = 4;
-                let mut king_passthru_max = 7;
-                if is_queen_castle {
-                    king_passthru_min = 2;
-                    king_passthru_max = 5;
-                }
-                for file in king_passthru_min..king_passthru_max {
-                    let target_sq = Square::new(m.from_square().rank(), file);
-                    is_valid &= !self.is_square_attacked_by(
-                        board,
-                        target_sq,
-                        opposite_color(board.player_to_move),
-                    );
-                }
-                if is_valid {
-                    legal_moves.push(m);
-                }
-            }
-        }
-
-        return legal_moves;
+        self.get_pseudolegal_moves(board, board.player_to_move).into_iter()
+            .filter(|m| self.is_pseudolegal_move_legal(board, m))
+            .collect()
     }
 
     #[allow(unused)]
@@ -166,6 +137,38 @@ impl MoveGenerator {
         }
 
         return false;
+    }
+
+    ///
+    /// Given a pseudolegal move, was that move legal?
+    /// 
+    fn is_pseudolegal_move_legal(&self, board: &Board, m: &Move) -> bool {
+        let is_castle = board.is_move_castle(*m);
+        if self.is_move_self_check(board, *m) {
+            return false;
+        }
+        if is_castle {
+            // this move is a castle
+            let is_queen_castle = m.to_square().file() == 2;
+            let mut king_passthru_min = 4;
+            let mut king_passthru_max = 7;
+            if is_queen_castle {
+                king_passthru_min = 2;
+                king_passthru_max = 5;
+            }
+            for file in king_passthru_min..king_passthru_max {
+                let target_sq = Square::new(m.from_square().rank(), file);
+                if self.is_square_attacked_by(
+                    board,
+                    target_sq,
+                    opposite_color(board.player_to_move),
+                ) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     ///
