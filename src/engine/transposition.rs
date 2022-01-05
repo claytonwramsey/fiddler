@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Index;
 
 use crate::base::Board;
+use crate::base::Move;
 use crate::engine::Eval;
 
 ///
@@ -22,6 +23,9 @@ pub struct TTable {
     /// match but not a key-value match
     ///
     sentinel: Option<EvalData>,
+    ///
+    /// List of all entries in the transposition table.
+    /// 
     entries: Vec<TTableEntry>,
 }
 
@@ -42,6 +46,11 @@ pub struct EvalData {
     /// An upper bound on the evaluation of the position.
     ///
     pub upper_bound: Eval,
+    ///
+    /// The critical move in the position. Will be `Move::BAD_MOVE` if the 
+    /// critical move is unknown.
+    /// 
+    pub critical_move: Move,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,7 +109,7 @@ impl TTable {
 
 impl Default for TTable {
     fn default() -> TTable {
-        TTable::with_capacity(1 << 20)
+        TTable::with_capacity(1 << 22)
     }
 }
 
@@ -148,6 +157,7 @@ mod tests {
             depth: 0,
             upper_bound: Eval(0),
             lower_bound: Eval(0),
+            critical_move: Move::BAD_MOVE,
         };
         ttable.store(b, data);
         assert_eq!(ttable[&b], Some(data));
@@ -161,6 +171,7 @@ mod tests {
             depth: 0,
             upper_bound: Eval(0),
             lower_bound: Eval(0),
+            critical_move: Move::BAD_MOVE,
         };
         ttable.store(b, data);
         data.upper_bound = Eval(4);

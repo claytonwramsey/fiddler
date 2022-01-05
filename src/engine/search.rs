@@ -2,11 +2,11 @@ use crate::base::algebraic::algebraic_from_move;
 use crate::base::util::opposite_color;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
-use crate::engine::transposition::TTable;
+use crate::engine::transposition::{TTable, EvalData};
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
-use std::cmp::max;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -49,7 +49,9 @@ impl PVSearch {
     ///
     /// Use Principal Variation Search to evaluate the givne game to a depth.
     /// This search uses Negamax, which inverts at every step to save on
-    /// branches.
+    /// branches. This will return a lower bound on the position's value for 
+    /// the player to move, where said lower bound is exact if it is less than 
+    /// `beta_in`.
     ///
     pub fn pvs(
         &mut self,
@@ -60,6 +62,30 @@ impl PVSearch {
         beta_in: Eval,
     ) -> Eval {
         self.num_nodes_evaluated += 1;
+
+        // Lower bound on evaluation.
+        let mut alpha = alpha_in;
+        // Upper bound on evaluation. 
+        let mut beta = beta_in;
+
+        // Retrieve transposition data and use it to improve our estimate on 
+        // the position
+        let mut stored_move = Move::BAD_MOVE;
+        if let Some(edata) = self.ttable[g.get_board()] {
+            self.num_transpositions += 1;
+            stored_move = edata.critical_move;
+            // this was a deeper search on the position
+            if edata.depth >= depth {
+                if edata.lower_bound >= beta_in {
+                    return edata.lower_bound;
+                }
+                if edata.upper_bound <= alpha_in {
+                    return edata.upper_bound;
+                }
+                alpha = max(alpha, edata.lower_bound);
+                beta = min(beta, edata.upper_bound);
+            }
+        }
 
         if depth == 0 || g.is_game_over(mgen) {
             // (1 - 2 * us) will cause the evaluation to be positive for
@@ -77,23 +103,23 @@ impl PVSearch {
         let killer_index = (self.depth - depth) as usize;
         let retrieved_killer_move = self.killer_moves[killer_index];
         moves.sort_by_cached_key(|m| {
-            if *m == retrieved_killer_move {
+            if *m == stored_move {
                 return Eval::MIN;
+            }
+            if *m == retrieved_killer_move {
+                return Eval::MIN + Eval(1);
             }
             -(self.candidator)(g, mgen, *m)
         });
 
         let mut moves_iter = moves.into_iter();
 
-        // Lower bound on evaluation. Will be
-        let beta = beta_in;
-        let mut alpha = alpha_in;
         // This should always have a move since this was not a "terminal"
         // position of the game
-        let first_move = moves_iter.next().unwrap();
-        g.make_move(first_move);
-        let mut score = -self
-            .pvs(
+        let mut critical_move = moves_iter.next().unwrap();
+
+        g.make_move(critical_move);
+        let mut score = -self.pvs(
                 depth - 1,
                 g,
                 mgen,
@@ -104,11 +130,18 @@ impl PVSearch {
         #[allow(unused_must_use)] {
             g.undo();
         }
+        let mut best_score_this_position = score;
 
         alpha = max(alpha, score);
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
-            self.killer_moves[killer_index] = first_move;
+            self.killer_moves[killer_index] = critical_move;
+            self.ttable.store(*g.get_board(), EvalData {
+                depth: depth,
+                lower_bound: best_score_this_position,
+                upper_bound: Eval::MAX,
+                critical_move: critical_move
+            });
             return alpha;
         }
 
@@ -141,13 +174,32 @@ impl PVSearch {
             #[allow(unused_must_use)] {
                 g.undo();
             }
-            alpha = max(alpha, score);
+            if score >= best_score_this_position {
+                critical_move = m;
+                best_score_this_position = score;
+                alpha = max(score, alpha);
+            }
             if alpha >= beta {
                 // Beta cutoff, we have  found a better line somewhere else
                 self.killer_moves[killer_index] = m;
                 break;
             }
         }
+
+        let upper_bound = match best_score_this_position < beta {
+            true => best_score_this_position,
+            false => Eval::MAX,
+        };
+        let lower_bound = match alpha < best_score_this_position {
+            true => best_score_this_position,
+            false => Eval::MIN,
+        };
+        self.ttable.store(*g.get_board(), EvalData {
+            depth: depth,
+            lower_bound: lower_bound,
+            upper_bound: upper_bound,
+            critical_move: critical_move
+        });
         return alpha;
     }
 
