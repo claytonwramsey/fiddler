@@ -75,7 +75,7 @@ impl PVSearch {
             self.num_transpositions += 1;
             stored_move = edata.critical_move;
             // this was a deeper search on the position
-            if edata.depth >= depth {
+            if edata.depth == depth {
                 if edata.lower_bound >= beta_in {
                     return edata.lower_bound;
                 }
