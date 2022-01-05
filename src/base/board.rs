@@ -290,6 +290,18 @@ impl Board {
     }
 
     ///
+    /// Is the given move a capture in the current state of the board?
+    /// 
+    pub fn is_move_capture(&self, m: Move) -> bool {
+        let opponents_bb = self.get_color_occupancy(opposite_color(self.player_to_move));
+
+        opponents_bb.contains(m.to_square()) 
+        || (self.get_type(PieceType::PAWN).contains(m.from_square()) 
+            && m.to_square() == self.en_passant_square)
+            
+    }
+
+    ///
     /// Check if the state of this board is valid,
     /// Returns false if the board is invalid.
     ///

@@ -26,7 +26,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         }
     } else {
         let mover_type = b.type_at_square(m.from_square());
-        let is_move_capture = b.get_occupancy().contains(m.to_square()) || b.is_move_en_passant(m);
+        let is_move_capture = b.is_move_capture(m);
         let other_moves = mgen.get_moves(b);
         let from_sq = m.from_square();
 

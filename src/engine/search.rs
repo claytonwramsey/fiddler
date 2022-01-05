@@ -1,5 +1,4 @@
 use crate::base::algebraic::algebraic_from_move;
-use crate::base::util::opposite_color;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::transposition::{TTable, EvalData};
@@ -75,7 +74,7 @@ impl PVSearch {
             self.num_transpositions += 1;
             stored_move = edata.critical_move;
             // this was a deeper search on the position
-            if edata.depth == depth {
+            if false {//edata.depth == depth {
                 if edata.lower_bound >= beta_in {
                     return edata.lower_bound;
                 }
@@ -218,7 +217,7 @@ impl PVSearch {
         self.num_nodes_evaluated += 1;
 
         let player = g.get_board().player_to_move;
-        let mut moves = g.get_moves(mgen);
+        let mut moves = g.get_loud_moves(mgen);
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
@@ -234,11 +233,6 @@ impl PVSearch {
             return alpha;
         }
 
-        let enemy_occupancy = g.get_board().get_color_occupancy(opposite_color(player));
-        moves = moves
-            .into_iter()
-            .filter(|m| enemy_occupancy.contains(m.to_square()))
-            .collect::<Vec<Move>>();
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
         let mut moves_iter = moves.into_iter();
 
