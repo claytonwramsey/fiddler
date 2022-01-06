@@ -53,7 +53,8 @@ impl MoveGenerator {
     /// Get all the legal moves on a board.
     ///
     pub fn get_moves(&self, board: &Board) -> Vec<Move> {
-        self.get_pseudolegal_moves(board, board.player_to_move).into_iter()
+        self.get_pseudolegal_moves(board, board.player_to_move)
+            .into_iter()
             .filter(|m| self.is_pseudolegal_move_legal(board, m))
             .collect()
     }
@@ -63,7 +64,8 @@ impl MoveGenerator {
     /// Get moves which are "loud," i.e. captures or checks.
     ///
     pub fn get_loud_moves(&self, board: &Board) -> Vec<Move> {
-        self.get_pseudolegal_loud_moves(board).into_iter()
+        self.get_pseudolegal_loud_moves(board)
+            .into_iter()
             .filter(|m| self.is_pseudolegal_move_legal(board, m))
             .collect()
     }
@@ -144,7 +146,7 @@ impl MoveGenerator {
 
     ///
     /// Given a pseudolegal move, is that move legal?
-    /// 
+    ///
     fn is_pseudolegal_move_legal(&self, board: &Board, m: &Move) -> bool {
         if self.is_move_self_check(board, *m) {
             return false;
@@ -183,7 +185,7 @@ impl MoveGenerator {
             panic!("king not found!");
         }*/
         let is_king_move = player_king_bb.contains(m.from_square());
-        //Square where the king will be after this move ends.
+        // Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
         let opponent = opposite_color(player);
 
@@ -212,7 +214,7 @@ impl MoveGenerator {
             self.square_attackers_with_occupancy(board, king_square, opponent, occupancy);
 
         //attackers which we will capture are not a threat
-        return attackers != Bitboard::from(m.to_square())
+        return (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY;
     }
 
     #[inline]
@@ -288,7 +290,7 @@ impl MoveGenerator {
 
     ///
     /// Enumerate the "loud" pseudolegal moves for a given board.
-    /// 
+    ///
     fn get_pseudolegal_loud_moves(&self, board: &Board) -> Vec<Move> {
         let player = board.player_to_move;
         let opponent = opposite_color(player);
@@ -319,7 +321,8 @@ impl MoveGenerator {
         for pt in PieceType::NON_PAWN_TYPES {
             let pieces_to_move = board.get_type_and_color(pt, player);
             for sq in pieces_to_move {
-                normal_bitboards.push((sq, self.sq_pseudolegal_moves(board, sq, pt) & opponents_bb));
+                normal_bitboards
+                    .push((sq, self.sq_pseudolegal_moves(board, sq, pt) & opponents_bb));
             }
         }
 
@@ -485,7 +488,7 @@ impl MoveGenerator {
 
     ///
     /// Get the captures a pawn can make in the current position.
-    /// 
+    ///
     fn pawn_captures(&self, board: &Board, sq: Square) -> Bitboard {
         let opponents = board.get_color_occupancy(opposite_color(board.player_to_move));
         let dir = pawn_direction(board.color_at_square(sq));
@@ -656,6 +659,7 @@ mod tests {
         let m = Move::new(E4, F5, PieceType::NO_TYPE);
 
         assert!(mgen.get_moves(&b).contains(&m));
+        assert!(mgen.get_loud_moves(&b).contains(&m));
     }
 
     #[test]
@@ -671,6 +675,12 @@ mod tests {
         for m2 in moves.iter() {
             println!("{}", m2);
         }
+
+        println!("---");
+
+        for lm in mgen.get_loud_moves(&b).iter() {
+            println!("{}", lm);
+        }
     }
 
     #[test]
@@ -681,6 +691,8 @@ mod tests {
         let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
         let mgen = MoveGenerator::new();
         assert!(!mgen.has_moves(&b));
+        assert!(mgen.get_moves(&b).len() == 0);
+        assert!(mgen.get_loud_moves(&b).len() == 0);
     }
 
     #[test]
@@ -708,9 +720,9 @@ mod tests {
 
     #[test]
     ///
-    /// Test that loud moves are generated correctly on the Fried Liver 
+    /// Test that loud moves are generated correctly on the Fried Liver
     /// position.
-    /// 
+    ///
     fn test_get_loud_moves_fried_liver() {
         loud_moves_helper(FRIED_LIVER_FEN);
     }
@@ -745,12 +757,16 @@ mod tests {
         loud_moves_helper(ROOK_HANGING_FEN);
     }
 
+    #[test]
+    fn test_recapture_knight_loud_move() {
+        loud_moves_helper("r2q1bkr/ppp3pp/2n5/3Np3/6Q1/8/PPPP1PPP/R1B1K2R b KQ - 0 10");
+    }
 
     ///
-    /// A helper function that will force that the given FEN will have loud 
+    /// A helper function that will force that the given FEN will have loud
     /// moves generated correctly.
-    /// 
-    fn loud_moves_helper(fen: &str){
+    ///
+    fn loud_moves_helper(fen: &str) {
         let b = Board::from_fen(fen).unwrap();
         let mgen = MoveGenerator::new();
 
@@ -760,9 +776,7 @@ mod tests {
         for loud_move in loud_moves.iter() {
             println!("{}", loud_move);
             assert!(moves.contains(&loud_move));
-            assert!(
-                b.is_move_capture(*loud_move)
-            );
+            assert!(b.is_move_capture(*loud_move));
         }
 
         for normal_move in moves.iter() {
@@ -770,7 +784,5 @@ mod tests {
                 assert!(loud_moves.contains(normal_move));
             }
         }
-
-
     }
 }

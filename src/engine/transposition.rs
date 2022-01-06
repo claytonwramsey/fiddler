@@ -25,7 +25,7 @@ pub struct TTable {
     sentinel: Option<EvalData>,
     ///
     /// List of all entries in the transposition table.
-    /// 
+    ///
     entries: Vec<TTableEntry>,
 }
 
@@ -47,9 +47,9 @@ pub struct EvalData {
     ///
     pub upper_bound: Eval,
     ///
-    /// The critical move in the position. Will be `Move::BAD_MOVE` if the 
+    /// The critical move in the position. Will be `Move::BAD_MOVE` if the
     /// critical move is unknown.
-    /// 
+    ///
     pub critical_move: Move,
 }
 
@@ -109,7 +109,7 @@ impl TTable {
 
 impl Default for TTable {
     fn default() -> TTable {
-        TTable::with_capacity(1 << 22)
+        TTable::with_capacity(1 << 25)
     }
 }
 

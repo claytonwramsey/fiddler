@@ -1,7 +1,7 @@
 use crate::base::algebraic::algebraic_from_move;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
-use crate::engine::transposition::{TTable, EvalData};
+use crate::engine::transposition::{EvalData, TTable};
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
 use crate::Engine;
 
@@ -46,10 +46,10 @@ pub struct PVSearch {
 
 impl PVSearch {
     ///
-    /// Use Principal Variation Search to evaluate the givne game to a depth.
+    /// Use Principal Variation Search to evaluate the given game to a depth.
     /// This search uses Negamax, which inverts at every step to save on
-    /// branches. This will return a lower bound on the position's value for 
-    /// the player to move, where said lower bound is exact if it is less than 
+    /// branches. This will return a lower bound on the position's value for
+    /// the player to move, where said lower bound is exact if it is less than
     /// `beta_in`.
     ///
     pub fn pvs(
@@ -64,17 +64,18 @@ impl PVSearch {
 
         // Lower bound on evaluation.
         let mut alpha = alpha_in;
-        // Upper bound on evaluation. 
+        // Upper bound on evaluation.
         let mut beta = beta_in;
 
-        // Retrieve transposition data and use it to improve our estimate on 
+        // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut stored_move = Move::BAD_MOVE;
         if let Some(edata) = self.ttable[g.get_board()] {
             self.num_transpositions += 1;
             stored_move = edata.critical_move;
             // this was a deeper search on the position
-            if false {//edata.depth == depth {
+            if false {
+                //edata.depth == depth {
                 if edata.lower_bound >= beta_in {
                     return edata.lower_bound;
                 }
@@ -85,18 +86,13 @@ impl PVSearch {
                 beta = min(beta, edata.upper_bound);
             }
         }
+        
+        let mut moves = g.get_moves(mgen);
 
-        if depth == 0 || g.is_game_over(mgen) {
-            // (1 - 2 * us) will cause the evaluation to be positive for
-            // whichever player is moving. This will cascade up the Negamax
-            // inversions to make the final result at the top correct.
-            // This step must also be done at the top level so that positions
-            // with Black to move are evaluated as negative when faced
-            // outwardly.
+        if depth == 0 || moves.len() == 0 {
             return self.quiesce(depth, g, mgen, alpha_in, beta_in);
         }
 
-        let mut moves = g.get_moves(mgen);
 
         // Sort moves so that the most promising move is evaluated first
         let killer_index = (self.depth - depth) as usize;
@@ -118,7 +114,8 @@ impl PVSearch {
         let mut critical_move = moves_iter.next().unwrap();
 
         g.make_move(critical_move);
-        let mut score = -self.pvs(
+        let mut score = -self
+            .pvs(
                 depth - 1,
                 g,
                 mgen,
@@ -126,7 +123,8 @@ impl PVSearch {
                 -alpha.step_forward(),
             )
             .step_back();
-        #[allow(unused_must_use)] {
+        #[allow(unused_must_use)]
+        {
             g.undo();
         }
         let mut best_score_this_position = score;
@@ -135,12 +133,14 @@ impl PVSearch {
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
             self.killer_moves[killer_index] = critical_move;
-            self.ttable.store(*g.get_board(), EvalData {
-                depth: depth,
-                lower_bound: best_score_this_position,
-                upper_bound: Eval::MAX,
-                critical_move: critical_move
-            });
+            self.ttable_store(
+                g,
+                depth,
+                alpha,
+                beta,
+                best_score_this_position,
+                critical_move,
+            );
             return alpha;
         }
 
@@ -170,7 +170,8 @@ impl PVSearch {
                     )
                     .step_back();
             }
-            #[allow(unused_must_use)] {
+            #[allow(unused_must_use)]
+            {
                 g.undo();
             }
             if score >= best_score_this_position {
@@ -185,20 +186,14 @@ impl PVSearch {
             }
         }
 
-        let upper_bound = match best_score_this_position < beta {
-            true => best_score_this_position,
-            false => Eval::MAX,
-        };
-        let lower_bound = match alpha < best_score_this_position {
-            true => best_score_this_position,
-            false => Eval::MIN,
-        };
-        self.ttable.store(*g.get_board(), EvalData {
-            depth: depth,
-            lower_bound: lower_bound,
-            upper_bound: upper_bound,
-            critical_move: critical_move
-        });
+        self.ttable_store(
+            g,
+            depth,
+            alpha,
+            beta,
+            best_score_this_position,
+            critical_move,
+        );
         return alpha;
     }
 
@@ -222,6 +217,15 @@ impl PVSearch {
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
         let leaf_evaluation = (self.evaluator)(g, &moves, mgen);
+        if leaf_evaluation == Eval(650) {
+            println!("{}", g);
+        }
+        // (1 - 2 * us) will cause the evaluation to be positive for
+        // whichever player is moving. This will cascade up the Negamax
+        // inversions to make the final result at the top correct.
+        // This step must also be done at the top level so that positions
+        // with Black to move are evaluated as negative when faced
+        // outwardly.
         let mut score = leaf_evaluation * (1 - 2 * player as i32);
         let mut alpha = alpha_in;
         let beta = beta_in;
@@ -248,11 +252,12 @@ impl PVSearch {
                     -alpha.step_forward(),
                 )
                 .step_back();
-            #[allow(unused_must_use)] {
+            #[allow(unused_must_use)]
+            {
                 g.undo();
             }
 
-            alpha = max(alpha, score.step_back());
+            alpha = max(alpha, score);
             if alpha >= beta {
                 // Beta cutoff, we have found a better line somewhere else
                 return alpha;
@@ -285,7 +290,8 @@ impl PVSearch {
                     )
                     .step_back();
             }
-            #[allow(unused_must_use)] {
+            #[allow(unused_must_use)]
+            {
                 g.undo();
             }
             alpha = max(alpha, score);
@@ -302,6 +308,40 @@ impl PVSearch {
     ///
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
+    }
+
+    ///
+    /// Store data in the transposition table.
+    /// `score` is the best score of the position as evaluated, while `alpha`
+    /// and `beta` are the upper and lower bounds on the overall position due
+    /// to alpha-beta pruning.
+    ///
+    fn ttable_store(
+        &mut self,
+        g: &Game,
+        depth: i8,
+        alpha: Eval,
+        beta: Eval,
+        score: Eval,
+        critical_move: Move,
+    ) {
+        let upper_bound = match score < beta {
+            true => score,
+            false => Eval::MAX,
+        };
+        let lower_bound = match alpha < score {
+            true => score,
+            false => Eval::MIN,
+        };
+        self.ttable.store(
+            *g.get_board(),
+            EvalData {
+                depth: depth,
+                lower_bound: lower_bound,
+                upper_bound: upper_bound,
+                critical_move: critical_move,
+            },
+        );
     }
 }
 
@@ -374,6 +414,8 @@ pub mod tests {
     use super::*;
     use crate::base::fens::*;
     use crate::base::moves::Move;
+    use crate::base::square::*;
+    use crate::base::PieceType;
     use std::collections::HashMap;
 
     #[test]
@@ -401,7 +443,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
-        e.get_evals(&mut g, &mgen);
+        assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(D1, F3, PieceType::NO_TYPE));
     }
 
     #[test]
@@ -429,9 +471,12 @@ pub mod tests {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.set_depth(5);
+        e.set_depth(8);
 
-        e.get_evals(&mut g, &mgen);
+        assert_eq!(
+            e.get_best_move(&mut g, &mgen),
+            Move::new(F2, F7, PieceType::NO_TYPE)
+        );
     }
 
     ///

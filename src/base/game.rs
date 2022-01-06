@@ -179,17 +179,17 @@ impl Game {
     /// drawn or the game is over.
     ///
     pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
-        if self.is_drawn_historically() {
+        if self.is_drawn_historically() || !mgen.has_moves(self.get_board()) {
             return Vec::new();
         }
-        return mgen.get_moves(&self.get_board());
+        return mgen.get_moves(self.get_board());
     }
 
     pub fn get_loud_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
         if self.is_drawn_historically() {
             return Vec::new();
         }
-        return mgen.get_loud_moves(&self.get_board());
+        return mgen.get_loud_moves(self.get_board());
     }
 }
 
