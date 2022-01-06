@@ -216,10 +216,7 @@ impl PVSearch {
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = (self.evaluator)(g, &moves, mgen);
-        if leaf_evaluation == Eval(650) {
-            println!("{}", g);
-        }
+        let leaf_evaluation = (self.evaluator)(g, mgen);
         // (1 - 2 * us) will cause the evaluation to be positive for
         // whichever player is moving. This will cascade up the Negamax
         // inversions to make the final result at the top correct.
@@ -444,6 +441,7 @@ pub mod tests {
         e.set_depth(6); // this prevents taking too long on searches
 
         assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(D1, F3, PieceType::NO_TYPE));
+
     }
 
     #[test]

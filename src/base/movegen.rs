@@ -240,19 +240,17 @@ impl MoveGenerator {
     ///
     fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = pawn_start_rank(opposite_color(color));
+
+        let pawns = board.get_type_and_color(PieceType::PAWN, color);
+        let promoting_pawns = pawns & about_to_promote_bb;
+        let non_promoting_pawns = pawns ^ promoting_pawns;
         // Number of start squares
-        let num_promotion_from_squares = (board.get_type_and_color(PieceType::PAWN, color)
-            & about_to_promote_bb)
-            .0
-            .count_ones() as usize;
+        let num_promotion_from_squares = promoting_pawns
+            .0.count_ones() as usize;
         let mut normal_bitboards = Vec::with_capacity(
             board.get_color_occupancy(color).0.count_ones() as usize - num_promotion_from_squares,
         );
         let mut promotion_bitboards = Vec::with_capacity(num_promotion_from_squares);
-
-        let pawns = board.get_type_and_color(PieceType::PAWN, color);
-        let non_promoting_pawns = pawns & !about_to_promote_bb;
-        let promoting_pawns = pawns & about_to_promote_bb;
 
         for sq in non_promoting_pawns {
             normal_bitboards.push((sq, self.pawn_moves(board, sq)));
@@ -296,19 +294,17 @@ impl MoveGenerator {
         let opponent = opposite_color(player);
         let opponents_bb = board.get_color_occupancy(opponent);
         let about_to_promote_bb = pawn_start_rank(opponent);
+        let pawns = board.get_type_and_color(PieceType::PAWN, player);
+        let non_promoting_pawns = pawns & !about_to_promote_bb;
+        let promoting_pawns = pawns & about_to_promote_bb;
         // Number of start squares
-        let num_promotion_from_squares = (board.get_type_and_color(PieceType::PAWN, player)
-            & about_to_promote_bb)
-            .0
-            .count_ones() as usize;
+        let num_promotion_from_squares = promoting_pawns
+            .0.count_ones() as usize;
         let mut normal_bitboards = Vec::with_capacity(
             board.get_color_occupancy(player).0.count_ones() as usize - num_promotion_from_squares,
         );
         let mut promotion_bitboards = Vec::with_capacity(num_promotion_from_squares);
 
-        let pawns = board.get_type_and_color(PieceType::PAWN, player);
-        let non_promoting_pawns = pawns & !about_to_promote_bb;
-        let promoting_pawns = pawns & about_to_promote_bb;
 
         for sq in non_promoting_pawns {
             normal_bitboards.push((sq, self.pawn_captures(board, sq)));
@@ -616,6 +612,7 @@ fn get_knight_steps() -> Vec<Direction> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::base::fens::*;
     use crate::base::square::*;
@@ -760,6 +757,28 @@ mod tests {
     #[test]
     fn test_recapture_knight_loud_move() {
         loud_moves_helper("r2q1bkr/ppp3pp/2n5/3Np3/6Q1/8/PPPP1PPP/R1B1K2R b KQ - 0 10");
+    }
+
+    #[test]
+    ///
+    /// Test that a king can escape check without capturing the checker.
+    /// 
+    fn test_king_escape_without_capture() {
+        let b = Board::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let moves = mgen.get_moves(&b);
+        let expected_moves = vec![
+            Move::new(E6, D6, PieceType::NO_TYPE),
+            Move::new(E6, F7, PieceType::NO_TYPE),
+            Move::new(E6, E7, PieceType::NO_TYPE),
+            Move::new(F6, G4, PieceType::NO_TYPE),
+        ];
+        for m in moves.iter() {
+            assert!(expected_moves.contains(m));
+        }
+        for em in expected_moves.iter() {
+            assert!(moves.contains(em));
+        }
     }
 
     ///

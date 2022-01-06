@@ -364,4 +364,26 @@ mod tests {
         g.clear();
         assert_eq!(g, Game::default());
     }
+
+    #[test]
+    ///
+    /// Test that a king can escape check without capturing the checker.
+    /// 
+    fn test_king_escape_without_capture() {
+        let g = Game::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
+        let mgen = MoveGenerator::new();
+        let moves = g.get_moves(&mgen);
+        let expected_moves = vec![
+            Move::new(E6, D6, PieceType::NO_TYPE),
+            Move::new(E6, F7, PieceType::NO_TYPE),
+            Move::new(E6, E7, PieceType::NO_TYPE),
+            Move::new(F6, G4, PieceType::NO_TYPE),
+        ];
+        for m in moves.iter() {
+            assert!(expected_moves.contains(m));
+        }
+        for em in expected_moves.iter() {
+            assert!(moves.contains(em));
+        }
+    }
 }

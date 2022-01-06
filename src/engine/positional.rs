@@ -1,7 +1,6 @@
 use crate::base::constants::{BLACK, WHITE};
 use crate::base::piece::PieceType;
 use crate::base::Game;
-use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::base::Square;
 use crate::engine::greedy::greedy_evaluate;
@@ -37,9 +36,9 @@ const KNIGHT_VALUES: ValueTable = [
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, //rank 1
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, //rank 2
     0.0, 0.0, 0.15, 0.15, 0.15, 0.15, 0.0, 0.0, //rank 3
-    0.0, 0.15, 0.13, 0.14, 0.16, 0.17, 0.15, 0.0, //rank 4
-    0.0, 0.15, 0.15, 0.15, 0.15, 0.19, 0.15, 0.0, //rank 5
-    0.0, 0.0, 0.15, 0.15, 0.15, 0.15, 0.0, 0.0, //rank 6
+    0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.0, //rank 4
+    0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.0, //rank 5
+    0.0, 0.0, 0.18, 0.18, 0.18, 0.18, 0.0, 0.0, //rank 6
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, //rank 7
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, //rank 8
 ];
@@ -62,8 +61,8 @@ const DEFAULT_VALUES: ValueTable = [0.0; 64];
 ///
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///
-pub fn positional_evaluate(g: &mut Game, moves: &[Move], mgen: &MoveGenerator) -> Eval {
-    let starting_eval = greedy_evaluate(g, moves, mgen);
+pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
+    let starting_eval = greedy_evaluate(g, mgen);
     if starting_eval.is_mate() {
         return starting_eval;
     }
@@ -110,7 +109,6 @@ mod tests {
     fn test_equal_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
-        let moves = g.get_moves(&mgen);
-        assert_eq!(positional_evaluate(&mut g, &moves, &mgen), Eval(0));
+        assert_eq!(positional_evaluate(&mut g, &mgen), Eval(0));
     }
 }
