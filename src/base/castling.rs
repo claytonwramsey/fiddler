@@ -1,4 +1,4 @@
-use crate::base::constants::{Color, BLACK, WHITE};
+use crate::base::constants::Color;
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
@@ -22,35 +22,35 @@ impl CastleRights {
     pub const BLACK_RIGHTS: CastleRights = CastleRights(12);
 
     ///
-    /// Create a `CastleRights` for kingside castling on one side
+    /// Create a `CastleRights` for kingside castling on one side. `color` must 
+    /// be either `WHITE` or `BLACK`.
     ///
     #[inline]
     pub fn king_castle(color: Color) -> CastleRights {
-        match color {
-            WHITE => CastleRights(1),
-            BLACK => CastleRights(4),
-            _ => CastleRights(0),
-        }
+        // White = 0 --> 1
+        // Black = 1 --> 4
+        CastleRights((1 + color * 3) as u8)
     }
 
     ///
-    /// Create a `CastleRights` for queenside castling on one side
+    /// Create a `CastleRights` for queenside castling on one side. `color` 
+    /// must be either `WHITE` or `BLACK`.
     ///
     #[inline]
     pub fn queen_castle(color: Color) -> CastleRights {
-        match color {
-            WHITE => CastleRights(2),
-            BLACK => CastleRights(8),
-            _ => CastleRights(0),
-        }
+        // White = 0 --> 2
+        // Black = 1 --> 8
+        CastleRights((2 + color * 6) as u8)
     }
 
+    ///
+    /// Get the full rights for one color. `color` must be either `WHITE` or 
+    /// `BLACK`.
+    /// 
     pub fn color_rights(color: Color) -> CastleRights {
-        match color {
-            WHITE => CastleRights::WHITE_RIGHTS,
-            BLACK => CastleRights::BLACK_RIGHTS,
-            _ => CastleRights::NO_RIGHTS,
-        }
+        // White = 0 --> 3
+        // Black = 1 --> 12
+        CastleRights((3 + color * 9) as u8)
     }
 
     #[inline]
