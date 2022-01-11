@@ -14,7 +14,8 @@ use std::result::Result;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 ///
-/// A representation of a position. Does not handle the repetition or turn timer.
+/// A representation of a position. Does not handle the repetition or turn
+/// timer.
 ///
 pub struct Board {
     ///
@@ -47,6 +48,9 @@ pub struct Board {
 }
 
 impl Board {
+    ///
+    /// A "bad" board value which can be used as a debug value.
+    ///
     pub const BAD_BOARD: Board = Board {
         sides: [Bitboard::EMPTY, Bitboard::EMPTY],
         pieces: [
@@ -293,9 +297,8 @@ impl Board {
     /// Is the given move a capture in the current state of the board?
     ///
     pub fn is_move_capture(&self, m: Move) -> bool {
-        let opponents_bb = self.get_color_occupancy(
-            opposite_color(
-                self.color_at_square(m.from_square())));
+        let opponents_bb =
+            self.get_color_occupancy(opposite_color(self.color_at_square(m.from_square())));
 
         opponents_bb.contains(m.to_square())
             || (self.get_type(PieceType::PAWN).contains(m.from_square())

@@ -245,8 +245,7 @@ impl MoveGenerator {
         let promoting_pawns = pawns & about_to_promote_bb;
         let non_promoting_pawns = pawns ^ promoting_pawns;
         // Number of start squares
-        let num_promotion_from_squares = promoting_pawns
-            .0.count_ones() as usize;
+        let num_promotion_from_squares = promoting_pawns.0.count_ones() as usize;
         let mut normal_bitboards = Vec::with_capacity(
             board.get_color_occupancy(color).0.count_ones() as usize - num_promotion_from_squares,
         );
@@ -298,13 +297,11 @@ impl MoveGenerator {
         let non_promoting_pawns = pawns & !about_to_promote_bb;
         let promoting_pawns = pawns & about_to_promote_bb;
         // Number of start squares
-        let num_promotion_from_squares = promoting_pawns
-            .0.count_ones() as usize;
+        let num_promotion_from_squares = promoting_pawns.0.count_ones() as usize;
         let mut normal_bitboards = Vec::with_capacity(
             board.get_color_occupancy(player).0.count_ones() as usize - num_promotion_from_squares,
         );
         let mut promotion_bitboards = Vec::with_capacity(num_promotion_from_squares);
-
 
         for sq in non_promoting_pawns {
             normal_bitboards.push((sq, self.pawn_captures(board, sq)));
@@ -762,7 +759,7 @@ mod tests {
     #[test]
     ///
     /// Test that a king can escape check without capturing the checker.
-    /// 
+    ///
     fn test_king_escape_without_capture() {
         let b = Board::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
         let mgen = MoveGenerator::new();

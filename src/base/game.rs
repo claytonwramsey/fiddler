@@ -368,7 +368,7 @@ mod tests {
     #[test]
     ///
     /// Test that a king can escape check without capturing the checker.
-    /// 
+    ///
     fn test_king_escape_without_capture() {
         let g = Game::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
         let mgen = MoveGenerator::new();

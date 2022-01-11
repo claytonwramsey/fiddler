@@ -14,16 +14,19 @@ pub const RANK_NAMES: [&str; 8] = ["1", "2", "3", "4", "5", "6", "7", "8"];
 pub type Color = usize;
 
 ///
-/// Represents White as a player, and can be used to index a Board's color table.
+/// Represents White as a player, and can be used to index a Board's color
+/// table.
 ///
 pub const WHITE: Color = 0;
 
 ///
-/// Represents Black as a player, and can be used to index a Board's color table.
+/// Represents Black as a player, and can be used to index a Board's color
+/// table.
 ///
 pub const BLACK: Color = 1;
 
 ///
-/// A spare sentinel color that can be given when WHITE or BLACK are invalid/// colors.
+/// A spare sentinel color that can be given when WHITE or BLACK are invalid
+/// colors.
 ///
 pub const NO_COLOR: Color = 2;

@@ -86,13 +86,12 @@ impl PVSearch {
                 beta = min(beta, edata.upper_bound);
             }
         }
-        
+
         let mut moves = g.get_moves(mgen);
 
         if depth == 0 || moves.len() == 0 {
             return self.quiesce(depth, g, mgen, alpha_in, beta_in);
         }
-
 
         // Sort moves so that the most promising move is evaluated first
         let killer_index = (self.depth - depth) as usize;
@@ -440,8 +439,10 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
-        assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(D1, F3, PieceType::NO_TYPE));
-
+        assert_eq!(
+            e.get_best_move(&mut g, &mgen),
+            Move::new(D1, F3, PieceType::NO_TYPE)
+        );
     }
 
     #[test]

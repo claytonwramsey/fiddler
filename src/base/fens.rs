@@ -94,7 +94,8 @@ pub const ROOK_HANGING_FEN: &'static str =
     "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5";
 
 ///
-/// A FEN where the only legal moves are non-capturing king moves and one 
+/// A FEN where the only legal moves are non-capturing king moves and one
 /// knight block.
-/// 
-pub const KING_MUST_ESCAPE_FEN: &'static str = "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10";
+///
+pub const KING_MUST_ESCAPE_FEN: &'static str =
+    "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10";

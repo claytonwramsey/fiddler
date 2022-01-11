@@ -12,17 +12,17 @@ use crabchess::engine::Engine;
 #[allow(unused_imports)]
 use crabchess::cli;
 fn main() {
-    let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
+    /*let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
     let mgen = MoveGenerator::new();
     let mut e = PVSearch::default();
     e.set_depth(6);
 
     let x = e.get_evals(&mut g, &mgen);
-    println!("{:?}", x);
+    println!("{:?}", x);*/
 
-    /*println!("running!");
+    println!("running!");
     let mut app = cli::CrabchessApp::default();
     if let Err(_) = app.run() {
         println!("app failed!");
-    }*/
+    }
 }
