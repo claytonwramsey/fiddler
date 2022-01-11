@@ -245,6 +245,7 @@ impl<'a> CrabchessApp<'a> {
 
         //perform engine move
         let m = self.engine.get_best_move(&mut self.game, &self.mgen);
+        println!("the engine played {}", algebraic_from_move(m, self.game.get_board(), &self.mgen));
         self.game.make_move(m);
 
         Ok(())
