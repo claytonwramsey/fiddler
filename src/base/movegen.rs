@@ -611,7 +611,7 @@ fn get_knight_steps() -> Vec<Direction> {
 mod tests {
 
     use super::*;
-    use crate::base::fens::*;
+    use crate::fens::*;
     use crate::base::square::*;
 
     #[test]

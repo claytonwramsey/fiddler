@@ -408,7 +408,7 @@ impl Engine for PVSearch {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::base::fens::*;
+    use crate::fens::*;
     use crate::base::moves::Move;
     use crate::base::square::*;
     use crate::base::PieceType;

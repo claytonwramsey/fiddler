@@ -602,7 +602,7 @@ impl Default for Board {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::base::fens;
+    use crate::fens;
     use crate::base::movegen::MoveGenerator;
     use crate::base::square::*;
 

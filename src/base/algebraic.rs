@@ -120,7 +120,7 @@ pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<M
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::fens::*;
+    use crate::fens::*;
     use crate::base::square::*;
     #[test]
     ///
