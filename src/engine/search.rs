@@ -9,6 +9,8 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
+const MAX_TRANSPOSITION_DEPTH: i8 = 4;
+
 ///
 /// A chess engine which uses Principal Variation Search.
 ///
@@ -70,20 +72,21 @@ impl PVSearch {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut stored_move = Move::BAD_MOVE;
-        if let Some(edata) = self.ttable[g.get_board()] {
-            self.num_transpositions += 1;
-            stored_move = edata.critical_move;
-            // this was a deeper search on the position
-            if false {
-                //edata.depth == depth {
-                if edata.lower_bound >= beta_in {
-                    return edata.lower_bound;
+        if depth >= MAX_TRANSPOSITION_DEPTH {
+            if let Some(edata) = self.ttable[g.get_board()] {
+                self.num_transpositions += 1;
+                stored_move = edata.critical_move;
+                // this was a deeper search on the position
+                if edata.depth >= depth {
+                    if edata.lower_bound >= beta_in {
+                        return edata.lower_bound;
+                    }
+                    if edata.upper_bound <= alpha_in {
+                        return edata.upper_bound;
+                    }
+                    alpha = max(alpha, edata.lower_bound);
+                    beta = min(beta, edata.upper_bound);
                 }
-                if edata.upper_bound <= alpha_in {
-                    return edata.upper_bound;
-                }
-                alpha = max(alpha, edata.lower_bound);
-                beta = min(beta, edata.upper_bound);
             }
         }
 
@@ -132,14 +135,16 @@ impl PVSearch {
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
             self.killer_moves[killer_index] = critical_move;
-            self.ttable_store(
-                g,
-                depth,
-                alpha,
-                beta,
-                best_score_this_position,
-                critical_move,
-            );
+            if depth >= MAX_TRANSPOSITION_DEPTH {
+                self.ttable_store(
+                    g,
+                    depth,
+                    alpha,
+                    beta,
+                    best_score_this_position,
+                    critical_move,
+                );
+            }
             return alpha;
         }
 
@@ -185,14 +190,16 @@ impl PVSearch {
             }
         }
 
-        self.ttable_store(
-            g,
-            depth,
-            alpha,
-            beta,
-            best_score_this_position,
-            critical_move,
-        );
+        if depth >= MAX_TRANSPOSITION_DEPTH {
+            self.ttable_store(
+                g,
+                depth,
+                alpha,
+                beta,
+                best_score_this_position,
+                critical_move,
+            );
+        }
         return alpha;
     }
 
@@ -370,8 +377,13 @@ impl Engine for PVSearch {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let eval = self.pvs(self.depth, g, mgen, Eval::MIN, Eval::MAX)
+        let iter_min = 1;
+        
+        let mut eval = Eval(0);
+        for iter_depth in iter_min..=self.depth {
+            eval = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX)
             * (1 - 2 * g.get_board().player_to_move as i32);
+        }
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         println!(
