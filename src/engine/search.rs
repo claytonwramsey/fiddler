@@ -9,7 +9,7 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
-const MAX_TRANSPOSITION_DEPTH: i8 = 4;
+const MAX_TRANSPOSITION_DEPTH: i8 = 11;
 
 ///
 /// A chess engine which uses Principal Variation Search.
@@ -72,7 +72,7 @@ impl PVSearch {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut stored_move = Move::BAD_MOVE;
-        if depth >= MAX_TRANSPOSITION_DEPTH {
+        if depth + MAX_TRANSPOSITION_DEPTH >= self.depth {
             if let Some(edata) = self.ttable[g.get_board()] {
                 self.num_transpositions += 1;
                 stored_move = edata.critical_move;
@@ -193,7 +193,7 @@ impl PVSearch {
             }
         }
 
-        if depth >= MAX_TRANSPOSITION_DEPTH {
+        if depth + MAX_TRANSPOSITION_DEPTH >= self.depth {
             self.ttable_store(
                 g,
                 depth,
@@ -490,7 +490,7 @@ pub mod tests {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();
-        e.set_depth(7);
+        e.set_depth(8);
 
         e.get_best_move(&mut g, &mgen);
     }
