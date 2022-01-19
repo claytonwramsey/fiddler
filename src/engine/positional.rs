@@ -103,12 +103,29 @@ pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::Game;
+    use crate::base::{Game, Move};
+    use crate::base::square::*;
 
     #[test]
+    ///
+    /// Test that at the start of the game, the positional value of all the 
+    /// pieces is equal.
+    /// 
     fn test_equal_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         assert_eq!(positional_evaluate(&mut g, &mgen), Eval(0));
+    }
+
+    #[test]
+    ///
+    /// Test that if White plays F3, the positional value of the position is 
+    /// better for Black.
+    /// 
+    fn test_f3_bad() {
+        let mut g = Game::default();
+        let mgen = MoveGenerator::new();
+        g.make_move(Move::new(F2, F3, PieceType::NO_TYPE));
+        assert!(positional_evaluate(&mut g, &mgen) < Eval(0));
     }
 }
