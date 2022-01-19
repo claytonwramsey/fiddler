@@ -61,7 +61,7 @@ impl PVSearch {
         mgen: &MoveGenerator,
         alpha_in: Eval,
         beta_in: Eval,
-    ) -> Eval {
+    ) -> (Move, Eval) {
         self.num_nodes_evaluated += 1;
 
         // Lower bound on evaluation.
@@ -79,10 +79,10 @@ impl PVSearch {
                 // this was a deeper search on the position
                 if edata.depth >= depth {
                     if edata.lower_bound >= beta_in {
-                        return edata.lower_bound;
+                        return (stored_move, edata.lower_bound);
                     }
                     if edata.upper_bound <= alpha_in {
-                        return edata.upper_bound;
+                        return (stored_move, edata.upper_bound);
                     }
                     alpha = max(alpha, edata.lower_bound);
                     beta = min(beta, edata.upper_bound);
@@ -124,7 +124,7 @@ impl PVSearch {
                 -beta.step_forward(),
                 -alpha.step_forward(),
             )
-            .step_back();
+            .1.step_back();
         #[allow(unused_must_use)]
         {
             g.undo();
@@ -135,7 +135,7 @@ impl PVSearch {
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
             self.killer_moves[killer_index] = critical_move;
-            if depth >= MAX_TRANSPOSITION_DEPTH {
+            if depth + MAX_TRANSPOSITION_DEPTH >= self.depth {
                 self.ttable_store(
                     g,
                     depth,
@@ -145,7 +145,7 @@ impl PVSearch {
                     critical_move,
                 );
             }
-            return alpha;
+            return (critical_move, alpha);
         }
 
         for m in moves_iter {
@@ -159,7 +159,7 @@ impl PVSearch {
                     -alpha.step_forward() - Eval(1),
                     -alpha.step_forward(),
                 )
-                .step_back();
+                .1.step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
@@ -172,13 +172,13 @@ impl PVSearch {
                         -beta.step_forward(),
                         -score.step_forward(),
                     )
-                    .step_back();
+                    .1.step_back();
             }
             #[allow(unused_must_use)]
             {
                 g.undo();
             }
-            if score >= best_score_this_position {
+            if score > best_score_this_position {
                 critical_move = m;
                 best_score_this_position = score;
                 alpha = max(score, alpha);
@@ -200,7 +200,7 @@ impl PVSearch {
                 critical_move,
             );
         }
-        return alpha;
+        return (critical_move, alpha);
     }
 
     ///
@@ -214,7 +214,7 @@ impl PVSearch {
         mgen: &MoveGenerator,
         alpha_in: Eval,
         beta_in: Eval,
-    ) -> Eval {
+    ) -> (Move, Eval) {
         self.num_nodes_evaluated += 1;
 
         let player = g.get_board().player_to_move;
@@ -237,15 +237,15 @@ impl PVSearch {
         if alpha >= beta {
             // beta cutoff, this line would not be selected because there is a
             // better option somewhere else
-            return alpha;
+            return (Move::BAD_MOVE, beta);
         }
 
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
         let mut moves_iter = moves.into_iter();
-
+        let mut critical_move = Move::BAD_MOVE;
         // we must wrap with an if in case there are no captures
-        if let Some(first_move) = moves_iter.next() {
-            g.make_move(first_move);
+        if let Some(critical_move) = moves_iter.next() {
+            g.make_move(critical_move);
             score = -self
                 .quiesce(
                     depth - 1,
@@ -254,7 +254,7 @@ impl PVSearch {
                     -beta.step_forward(),
                     -alpha.step_forward(),
                 )
-                .step_back();
+                .1.step_back();
             #[allow(unused_must_use)]
             {
                 g.undo();
@@ -263,7 +263,7 @@ impl PVSearch {
             alpha = max(alpha, score);
             if alpha >= beta {
                 // Beta cutoff, we have found a better line somewhere else
-                return alpha;
+                return (critical_move, alpha);
             }
         }
 
@@ -278,7 +278,7 @@ impl PVSearch {
                     -alpha.step_forward() - Eval(1),
                     -alpha.step_forward(),
                 )
-                .step_back();
+                .1.step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
@@ -291,7 +291,8 @@ impl PVSearch {
                         -beta.step_forward(),
                         -score.step_forward(),
                     )
-                    .step_back();
+                    .1.step_back();
+                critical_move = m;
             }
             #[allow(unused_must_use)]
             {
@@ -303,7 +304,7 @@ impl PVSearch {
                 break;
             }
         }
-        return alpha;
+        return (critical_move, alpha);
     }
 
     ///
@@ -381,7 +382,7 @@ impl Engine for PVSearch {
         
         let mut eval = Eval(0);
         for iter_depth in iter_min..=self.depth {
-            eval = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX)
+            eval = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX).1
             * (1 - 2 * g.get_board().player_to_move as i32);
         }
         let toc = Instant::now();
@@ -415,6 +416,36 @@ impl Engine for PVSearch {
         }
         return evals;
     }
+
+    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Move {
+        self.num_nodes_evaluated = 0;
+        self.num_transpositions = 0;
+        let tic = Instant::now();
+        let iter_min = 1;
+
+        let mut best_move = Move::BAD_MOVE;
+        let mut eval;
+        let mut eval_uncalibrated;
+        for iter_depth in iter_min..=self.depth {
+            let result = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX);
+            best_move = result.0;
+            eval_uncalibrated = result.1;
+            eval = eval_uncalibrated * (1 - 2 * g.get_board().player_to_move as i32);
+            println!("depth {} gives {}: {}", iter_depth, algebraic_from_move(best_move, &g.get_board(), &mgen), eval);
+        }
+        let toc = Instant::now();
+        let nsecs = (toc - tic).as_secs_f64();
+        // Note that the print statements in iterative deepening take a 
+        // significant amount of time.
+        println!(
+            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions",
+            self.num_nodes_evaluated,
+            nsecs,
+            self.num_nodes_evaluated as f64 / nsecs,
+            self.num_transpositions,
+        );
+        return best_move;
+    }
 }
 
 #[cfg(test)]
@@ -438,6 +469,20 @@ pub mod tests {
 
         println!("moves with evals are:");
         e.get_evals(&mut g, &mgen);
+    }
+
+    #[test]
+    ///
+    /// Try finding the best starting move in the game.
+    /// 
+    pub fn test_get_starting_move() {
+        
+        let mut g = Game::default();
+        let mgen = MoveGenerator::new();
+        let mut e = PVSearch::default();
+        e.set_depth(7);
+
+        e.get_best_move(&mut g, &mgen);
     }
 
     #[test]
