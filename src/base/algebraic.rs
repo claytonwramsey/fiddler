@@ -120,8 +120,8 @@ pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<M
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fens::*;
     use crate::base::square::*;
+    use crate::fens::*;
     #[test]
     ///
     /// Test that playing e4 can be successfully converted to its algebraic

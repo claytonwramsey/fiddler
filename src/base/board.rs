@@ -602,9 +602,9 @@ impl Default for Board {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::fens;
     use crate::base::movegen::MoveGenerator;
     use crate::base::square::*;
+    use crate::fens;
 
     ///
     /// A board with the white king on A1 and the black king on H8.

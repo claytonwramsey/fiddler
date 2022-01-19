@@ -124,7 +124,8 @@ impl PVSearch {
                 -beta.step_forward(),
                 -alpha.step_forward(),
             )
-            .1.step_back();
+            .1
+            .step_back();
         #[allow(unused_must_use)]
         {
             g.undo();
@@ -159,7 +160,8 @@ impl PVSearch {
                     -alpha.step_forward() - Eval(1),
                     -alpha.step_forward(),
                 )
-                .1.step_back();
+                .1
+                .step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
@@ -172,7 +174,8 @@ impl PVSearch {
                         -beta.step_forward(),
                         -score.step_forward(),
                     )
-                    .1.step_back();
+                    .1
+                    .step_back();
             }
             #[allow(unused_must_use)]
             {
@@ -254,7 +257,8 @@ impl PVSearch {
                     -beta.step_forward(),
                     -alpha.step_forward(),
                 )
-                .1.step_back();
+                .1
+                .step_back();
             #[allow(unused_must_use)]
             {
                 g.undo();
@@ -278,7 +282,8 @@ impl PVSearch {
                     -alpha.step_forward() - Eval(1),
                     -alpha.step_forward(),
                 )
-                .1.step_back();
+                .1
+                .step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
@@ -291,7 +296,8 @@ impl PVSearch {
                         -beta.step_forward(),
                         -score.step_forward(),
                     )
-                    .1.step_back();
+                    .1
+                    .step_back();
                 critical_move = m;
             }
             #[allow(unused_must_use)]
@@ -379,11 +385,11 @@ impl Engine for PVSearch {
         self.num_transpositions = 0;
         let tic = Instant::now();
         let iter_min = 1;
-        
+
         let mut eval = Eval(0);
         for iter_depth in iter_min..=self.depth {
             eval = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX).1
-            * (1 - 2 * g.get_board().player_to_move as i32);
+                * (1 - 2 * g.get_board().player_to_move as i32);
         }
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
@@ -431,11 +437,16 @@ impl Engine for PVSearch {
             best_move = result.0;
             eval_uncalibrated = result.1;
             eval = eval_uncalibrated * (1 - 2 * g.get_board().player_to_move as i32);
-            println!("depth {} gives {}: {}", iter_depth, algebraic_from_move(best_move, &g.get_board(), &mgen), eval);
+            println!(
+                "depth {} gives {}: {}",
+                iter_depth,
+                algebraic_from_move(best_move, &g.get_board(), &mgen),
+                eval
+            );
         }
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
-        // Note that the print statements in iterative deepening take a 
+        // Note that the print statements in iterative deepening take a
         // significant amount of time.
         println!(
             "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions",
@@ -451,10 +462,10 @@ impl Engine for PVSearch {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::fens::*;
     use crate::base::moves::Move;
     use crate::base::square::*;
     use crate::base::PieceType;
+    use crate::fens::*;
     use std::collections::HashMap;
 
     #[test]
@@ -474,9 +485,8 @@ pub mod tests {
     #[test]
     ///
     /// Try finding the best starting move in the game.
-    /// 
+    ///
     pub fn test_get_starting_move() {
-        
         let mut g = Game::default();
         let mgen = MoveGenerator::new();
         let mut e = PVSearch::default();

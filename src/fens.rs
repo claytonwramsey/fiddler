@@ -1,9 +1,9 @@
-
 #[allow(unused)]
 ///
 /// The FEN of the official starting position for any chess game.
 ///
-pub const BOARD_START_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+pub const BOARD_START_FEN: &'static str =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 #[allow(unused)]
 ///
