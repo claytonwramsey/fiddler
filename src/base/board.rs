@@ -208,23 +208,36 @@ impl Board {
     /// Get the squares occupied by pieces.
     ///
     pub fn get_occupancy(&self) -> Bitboard {
-        self.sides[WHITE] | self.sides[BLACK]
+        // This gets called so often that unchecked getting is necessary.
+        unsafe { 
+            *self.sides.get_unchecked(WHITE) | *self.sides.get_unchecked(BLACK)
+        }
     }
 
     #[inline]
     ///
-    /// Get the squares occupied by pieces of a given color.
+    /// Get the squares occupied by pieces of a given color. `color` must be 
+    /// either `WHITE` or `BLACK`.
     ///
     pub fn get_color_occupancy(&self, color: Color) -> Bitboard {
-        self.sides[color as usize]
+        // This gets called so often that unchecked lookup is necessary for 
+        // performance.
+        unsafe {
+            *self.sides.get_unchecked(color)
+        }
     }
 
     #[inline]
     ///
-    /// Get the squares occupied by pieces of a given type.
+    /// Get the squares occupied by pieces of a given type. `pt` must be the 
+    /// type of a valid piece (i.e. pawn, knight, rook, bishop, queen, or king).
     ///
     pub fn get_type(&self, pt: PieceType) -> Bitboard {
-        self.pieces[pt.0 as usize]
+        // This gets called so often that unchecked lookup is necessary for 
+        // performance.
+        unsafe {
+            *self.pieces.get_unchecked(pt.0 as usize)
+        }
     }
 
     #[inline]
