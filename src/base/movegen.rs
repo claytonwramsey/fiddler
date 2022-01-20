@@ -181,9 +181,6 @@ impl MoveGenerator {
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
         let player = board.color_at_square(m.from_square());
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
-        /*if player_king_bb == Bitboard::EMPTY {
-            panic!("king not found!");
-        }*/
         let is_king_move = player_king_bb.contains(m.from_square());
         // Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
@@ -533,7 +530,8 @@ impl MoveGenerator {
 }
 
 ///
-/// Get the step attacks that could be made by moving in `dirs` from each point/// in the square. Exclude the steps that travel more than `max_dist` (this
+/// Get the step attacks that could be made by moving in `dirs` from each point
+/// in the square. Exclude the steps that travel more than `max_dist` (this
 /// prevents overflow around the edges of the board).
 ///
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {

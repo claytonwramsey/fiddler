@@ -531,7 +531,7 @@ pub mod tests {
 
     #[test]
     ///
-    /// A test for a puzzle made by Ian.
+    /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
     ///
     fn test_my_special_puzzle() {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
