@@ -335,13 +335,20 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 
 ///
 /// Get the attacks a square has given a magic lookup table and the current
-/// occupancy.
+/// occupancy. `sq` must be a valid square.
 ///
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
+    // In defense of the unsafe blocks below: `sq` is a valid square, so 
+    // accessing it by array lookup is OK. Additionally, we can trust that the 
+    // key was masked correctly in `compute_magic_key` as it was shifted out 
+    // properly. The speed benefit is extremely important here, as getting 
+    // magic attacks will be called many tens of millions of times per second.
     let idx = sq.0 as usize;
-    let masked_occupancy = occupancy & table[idx].mask;
-    let key = compute_magic_key(masked_occupancy, table[idx].magic, table[idx].shift);
-    return table[idx].attacks[key];
+    let magic_data = unsafe {table.get_unchecked(idx)};
+    let masked_occupancy = occupancy & magic_data.mask;
+    let key = compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
+
+    unsafe {*magic_data.attacks.get_unchecked(key)}
 }
 
 pub fn get_rook_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
