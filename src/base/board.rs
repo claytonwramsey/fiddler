@@ -222,8 +222,8 @@ impl Board {
 
     #[inline]
     ///
-    /// Get the squares occupied by pieces of a given type and color. The type 
-    /// must be a valid piece type, and the color must be either `WHITE` or 
+    /// Get the squares occupied by pieces of a given type and color. The type
+    /// must be a valid piece type, and the color must be either `WHITE` or
     /// `BLACK`.
     ///
     pub fn get_type_and_color(&self, pt: PieceType, color: Color) -> Bitboard {

@@ -4,8 +4,8 @@ use std::iter::Iterator;
 use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
 
 ///
-/// a bitboard to express positions/// uses standard form, so H8G8F8 (...)
-/// C1B1A1.
+/// A bitboard to express sets of `Square`s.
+/// uses standard form, so from MSB to LSB, the squares are H8G8F8 (...) C1B1A1.
 ///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(pub u64);

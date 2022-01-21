@@ -1,5 +1,6 @@
 use crate::base::constants::{BLACK, WHITE};
 use crate::base::piece::PieceType;
+use crate::base::Bitboard;
 use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::Square;
@@ -59,6 +60,11 @@ const BISHOP_VALUES: ValueTable = [
 const DEFAULT_VALUES: ValueTable = [0.0; 64];
 
 ///
+/// The value of having an opponent's pawn doubled.
+///
+const DOUBLED_PAWN_VALUE: Eval = Eval(100);
+
+///
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
@@ -80,6 +86,25 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
             let alt_sq = Square::new(7 - sq.rank(), sq.file());
             positional_eval -= value_at_square(pt, alt_sq);
         }
+    }
+
+    // Add losses due to doubled pawns
+    let white_pawns = b.get_type_and_color(PieceType::PAWN, WHITE);
+    let black_pawns = b.get_type_and_color(PieceType::PAWN, BLACK);
+    for col in 0..8 {
+        // all ones on the A column, shifted left by the col
+        let col_mask = Bitboard(0x0101010101010101) << col;
+        let num_black_doubled_pawns = match (black_pawns & col_mask).0.count_ones() {
+            0 => 0,
+            x => x - 1,
+        };
+        let num_white_doubled_pawns = match (white_pawns & col_mask).0.count_ones() {
+            0 => 0,
+            x => x - 1,
+        };
+
+        positional_eval += DOUBLED_PAWN_VALUE * num_black_doubled_pawns;
+        positional_eval -= DOUBLED_PAWN_VALUE * num_white_doubled_pawns;
     }
 
     return starting_eval + positional_eval;
