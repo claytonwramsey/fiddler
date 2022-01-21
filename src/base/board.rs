@@ -52,15 +52,8 @@ impl Board {
     /// A "bad" board value which can be used as a debug value.
     ///
     pub const BAD_BOARD: Board = Board {
-        sides: [Bitboard::EMPTY, Bitboard::EMPTY],
-        pieces: [
-            Bitboard::EMPTY,
-            Bitboard::EMPTY,
-            Bitboard::EMPTY,
-            Bitboard::EMPTY,
-            Bitboard::EMPTY,
-            Bitboard::EMPTY,
-        ],
+        sides: [Bitboard::EMPTY; 2],
+        pieces: [Bitboard::EMPTY; 6],
         en_passant_square: BAD_SQUARE,
         player_to_move: WHITE,
         castle_rights: CastleRights::NO_RIGHTS,
@@ -71,15 +64,8 @@ impl Board {
     ///
     pub fn empty() -> Board {
         let mut board = Board {
-            sides: [Bitboard::EMPTY, Bitboard::EMPTY],
-            pieces: [
-                Bitboard::EMPTY,
-                Bitboard::EMPTY,
-                Bitboard::EMPTY,
-                Bitboard::EMPTY,
-                Bitboard::EMPTY,
-                Bitboard::EMPTY,
-            ],
+            sides: [Bitboard::EMPTY; 2],
+            pieces: [Bitboard::EMPTY; 6],
             en_passant_square: BAD_SQUARE,
             player_to_move: WHITE,
             castle_rights: CastleRights::NO_RIGHTS,
@@ -236,7 +222,9 @@ impl Board {
 
     #[inline]
     ///
-    /// Get the squares occupied by pieces of a given type and color.
+    /// Get the squares occupied by pieces of a given type and color. The type 
+    /// must be a valid piece type, and the color must be either `WHITE` or 
+    /// `BLACK`.
     ///
     pub fn get_type_and_color(&self, pt: PieceType, color: Color) -> Bitboard {
         self.get_type(pt) & self.get_color_occupancy(color)
