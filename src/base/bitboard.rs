@@ -1,7 +1,7 @@
 use crate::base::Square;
 use std::fmt::{Display, Formatter, Result};
 use std::iter::Iterator;
-use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, Shr};
+use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr};
 
 ///
 /// A bitboard to express sets of `Square`s.
@@ -90,6 +90,14 @@ impl Shl<i32> for Bitboard {
     #[inline]
     fn shl(self, rhs: i32) -> Self::Output {
         Bitboard(self.0 << rhs)
+    }
+}
+
+impl ShlAssign<i32> for Bitboard {
+    
+    #[inline]
+    fn shl_assign(&mut self, rhs: i32) {
+        self.0 <<= rhs;
     }
 }
 

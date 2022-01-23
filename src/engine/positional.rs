@@ -76,7 +76,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut positional_eval = Eval(0);
 
     let b = g.get_board();
-    for pt in PieceType::ALL_TYPES {
+    for pt in [PieceType::PAWN, PieceType::BISHOP, PieceType::KNIGHT, PieceType::KING] {
         for sq in b.get_type_and_color(pt, WHITE) {
             positional_eval += value_at_square(pt, sq);
         }
@@ -89,22 +89,27 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     }
 
     // Add losses due to doubled pawns
-    let white_pawns = b.get_type_and_color(PieceType::PAWN, WHITE);
-    let black_pawns = b.get_type_and_color(PieceType::PAWN, BLACK);
-    for col in 0..8 {
+    let white_occupancy = b.get_color_occupancy(WHITE);
+    let black_occupancy = b.get_color_occupancy(BLACK);
+    let pawns = b.get_type(PieceType::PAWN);
+    let mut col_mask = Bitboard(0x0101010101010101);
+    for _ in 0..8 {
+        let col_pawns = pawns & col_mask;
+
         // all ones on the A column, shifted left by the col
-        let col_mask = Bitboard(0x0101010101010101) << col;
-        let num_black_doubled_pawns = match (black_pawns & col_mask).0.count_ones() {
+        let num_black_doubled_pawns = match (black_occupancy & col_pawns).0.count_ones() {
             0 => 0,
             x => x - 1,
         };
-        let num_white_doubled_pawns = match (white_pawns & col_mask).0.count_ones() {
+        let num_white_doubled_pawns = match (white_occupancy & col_pawns).0.count_ones() {
             0 => 0,
             x => x - 1,
         };
 
         positional_eval += DOUBLED_PAWN_VALUE * num_black_doubled_pawns;
         positional_eval -= DOUBLED_PAWN_VALUE * num_white_doubled_pawns;
+
+        col_mask <<= 1;
     }
 
     return starting_eval + positional_eval;

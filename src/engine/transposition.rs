@@ -99,11 +99,15 @@ impl TTable {
         key.hash(&mut hasher);
         let hash = hasher.finish();
         let index = hash as usize % self.entries.len();
-        self.entries[index] = TTableEntry {
-            hash: hash,
-            key: key,
-            data: Some(value),
-        };
+        unsafe {
+            // We trust that this will not lead to an out of bounds as the 
+            // index has been modulo'd by the length of the entry table.
+            *self.entries.get_unchecked_mut(index) = TTableEntry {
+                hash: hash,
+                key: key,
+                data: Some(value),
+            };
+        }
     }
 }
 
@@ -121,7 +125,11 @@ impl Index<&Board> for TTable {
         key.hash(&mut hasher);
         let key_hash = hasher.finish();
         let index = key_hash as usize % self.entries.len();
-        let entry = &self.entries[index];
+        let entry = unsafe {
+            // We trust that this will not lead to a memory error because index 
+            // was modulo'd by the length of entries.
+            &self.entries.get_unchecked(index)
+        };
 
         // First, compare hashes to "fast-track" checking if these
         // positions are truly equal.
