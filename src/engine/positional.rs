@@ -90,14 +90,13 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 
     // Add losses due to doubled pawns
     let white_occupancy = b.get_color_occupancy(WHITE);
-    let black_occupancy = b.get_color_occupancy(BLACK);
     let pawns = b.get_type(PieceType::PAWN);
     let mut col_mask = Bitboard(0x0101010101010101);
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
 
         // all ones on the A column, shifted left by the col
-        let num_black_doubled_pawns = match (black_occupancy & col_pawns).0.count_ones() {
+        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).0.count_ones() {
             0 => 0,
             x => x - 1,
         };
@@ -116,6 +115,10 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 }
 
 #[inline]
+///
+/// Get the positional value of a piece at a square.
+/// Requires that the square be a valid square.
+/// 
 pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
     let val_table = match pt {
         PieceType::PAWN => &PAWN_VALUES,
@@ -127,7 +130,9 @@ pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
         _ => &DEFAULT_VALUES,
     };
 
-    Eval::pawns(val_table[sq.0 as usize])
+    Eval::pawns(unsafe {
+        *val_table.get_unchecked(sq.0 as usize)
+    })
 }
 
 #[cfg(test)]
