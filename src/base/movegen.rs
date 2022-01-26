@@ -305,10 +305,10 @@ impl MoveGenerator {
         let mut promotion_bitboards = Vec::with_capacity(num_promotion_from_squares);
 
         for sq in non_promoting_pawns {
-            normal_bitboards.push((sq, self.pawn_captures(board, sq)));
+            normal_bitboards.push((sq, self.pawn_captures(board, sq, board.player_to_move)));
         }
         for sq in promoting_pawns {
-            promotion_bitboards.push((sq, self.pawn_captures(board, sq)));
+            promotion_bitboards.push((sq, self.pawn_captures(board, sq, board.player_to_move)));
         }
 
         //iterate through all the pieces of this color and enumerate their moves
@@ -355,40 +355,32 @@ impl MoveGenerator {
             println!("{}", board);
         }*/
         let mut attackers = Bitboard::EMPTY;
+        let color_bb = board.get_color_occupancy(color);
         // Check for pawn attacks
-        let attackee_pawn_dir = pawn_direction(opposite_color(color));
-        let left_pawn_sight = sq + attackee_pawn_dir + Direction::WEST;
-        let right_pawn_sight = sq + attackee_pawn_dir + Direction::EAST;
-        let mut pawn_vision = Bitboard::EMPTY;
-        if left_pawn_sight.chebyshev_to(sq) <= 2 {
-            pawn_vision |= Bitboard::from(left_pawn_sight);
-        }
-        if right_pawn_sight.chebyshev_to(sq) <= 2 {
-            pawn_vision |= Bitboard::from(right_pawn_sight);
-        }
-        attackers |= pawn_vision & board.get_type_and_color(PieceType::PAWN, color);
+        let pawn_vision = self.pawn_captures(board, sq, opposite_color(color));
+        attackers |= pawn_vision & board.get_type(PieceType::PAWN);
 
         // Check for knight attacks
         let knight_vision = self.knight_moves[sq.0 as usize];
-        attackers |= knight_vision & board.get_type_and_color(PieceType::KNIGHT, color);
+        attackers |= knight_vision & board.get_type(PieceType::KNIGHT);
 
-        let enemy_queen_bb = board.get_type_and_color(PieceType::QUEEN, color);
+        let queens_bb = board.get_type_and_color(PieceType::QUEEN, color);
 
         // Check for rook/horizontal queen attacks
         let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
         attackers |=
-            rook_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::ROOK, color));
+            rook_vision & (queens_bb | board.get_type(PieceType::ROOK));
 
         // Check for bishop/diagonal queen attacks
         let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
         attackers |=
-            bishop_vision & (enemy_queen_bb | board.get_type_and_color(PieceType::BISHOP, color));
+            bishop_vision & (queens_bb | board.get_type(PieceType::BISHOP));
 
         // Check for king attacks
         let king_vision = self.king_moves[sq.0 as usize];
-        attackers |= king_vision & board.get_type_and_color(PieceType::KING, color);
+        attackers |= king_vision & board.get_type(PieceType::KING);
 
-        return attackers;
+        return attackers & color_bb;
     }
 
     #[inline]
@@ -475,22 +467,23 @@ impl MoveGenerator {
                 target_squares |= Bitboard::from(sq + 2 * dir);
             }
         }
-        target_squares |= self.pawn_captures(board, sq);
+        target_squares |= self.pawn_captures(board, sq, board.color_at_square(sq));
         target_squares &= !board.get_color_occupancy(player_color);
         return target_squares;
     }
 
     ///
-    /// Get the captures a pawn can make in the current position.
+    /// Get the captures a pawn can make in the current position. The given 
+    /// color is the color that a pawn would be to generate the captures from 
+    /// this square.
     ///
-    fn pawn_captures(&self, board: &Board, sq: Square) -> Bitboard {
-        let mover_color = board.color_at_square(sq);
-        let mut capture_mask = board.get_color_occupancy(opposite_color(mover_color));
+    fn pawn_captures(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
+        let mut capture_mask = board.get_color_occupancy(opposite_color(color));
         if board.en_passant_square != BAD_SQUARE {
             capture_mask |= Bitboard::from(board.en_passant_square);
         }
 
-        self.pawn_attacks[mover_color][sq.0 as usize] & capture_mask
+        self.pawn_attacks[color][sq.0 as usize] & capture_mask
     }
 
     #[inline]
