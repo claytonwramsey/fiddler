@@ -179,7 +179,7 @@ impl Game {
     /// drawn or the game is over.
     ///
     pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
-        if self.is_drawn_historically() || !mgen.has_moves(self.get_board()) {
+        if self.is_drawn_historically() {
             return Vec::new();
         }
         return mgen.get_moves(self.get_board());
