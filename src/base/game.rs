@@ -317,7 +317,7 @@ mod tests {
         let mgen = MoveGenerator::new();
         let moves = mgen.get_moves(g.get_board());
         for m in moves {
-            println!("{}", m);
+            println!("{m}");
         }
         assert!(!mgen.has_moves(g.get_board()));
         assert!(g.is_game_over(&mgen));
@@ -330,7 +330,7 @@ mod tests {
         let moves = mgen.get_moves(g.get_board());
         println!("moves: ");
         for m in moves {
-            println!("{}", m);
+            println!("{m}");
         }
         assert!(!mgen.has_moves(g.get_board()));
         assert!(g.is_game_over(&mgen));
@@ -348,7 +348,7 @@ mod tests {
         assert!(g.get_moves(&mgen).contains(&m));
         g.make_move(m);
         for m2 in g.get_moves(&mgen) {
-            println!("{}", m2);
+            println!("{m2}");
         }
         assert!(g.is_game_over(&mgen));
     }

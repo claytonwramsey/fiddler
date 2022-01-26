@@ -14,7 +14,7 @@ fn main() {
         Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap();
     let mgen = MoveGenerator::new();
     let mut e = PVSearch::default();
-    e.set_depth(8);
+    e.set_depth(7);
 
     let m = e.get_best_move(&mut g, &mgen);
     println!("{:?}", m);*/

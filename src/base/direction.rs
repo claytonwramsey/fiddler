@@ -3,7 +3,7 @@ use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 ///
-/// A difference between two squares. Directions form a vector field, which 
+/// A difference between two squares. Directions form a vector field, which
 /// allows us to define subtraction between squares. Internally, they use the
 /// same representation as a Square but with a signed integer.
 ///

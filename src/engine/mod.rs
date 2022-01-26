@@ -98,7 +98,7 @@ pub trait Engine {
             //this should never fail since we just made a move, but who knows?
             g.undo().unwrap();
             evals.insert(m, ev);
-            println!("{}: {}", algebraic_from_move(m, g.get_board(), mgen), ev);
+            println!("{}: {ev}", algebraic_from_move(m, g.get_board(), mgen));
         }
         return evals;
     }

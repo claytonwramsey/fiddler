@@ -144,7 +144,7 @@ mod tests {
         let mgen = MoveGenerator::new();
         let m = Move::new(B6, B8, PieceType::NO_TYPE);
 
-        println!("{}", b);
+        println!("{b}");
         assert_eq!(String::from("Rb8#"), algebraic_from_move(m, &b, &mgen));
     }
 
@@ -159,7 +159,7 @@ mod tests {
 
         let moves = mgen.get_moves(&b);
         for m in moves.iter() {
-            println!("{} ", m);
+            println!("{m} ");
         }
 
         assert_eq!(algebraic_from_move(m, &b, &mgen), String::from("exf5"));
@@ -190,7 +190,7 @@ mod tests {
 
         let moves = mgen.get_moves(&b);
         for m in moves.iter() {
-            println!("{} ", m);
+            println!("{m} ");
         }
 
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));

@@ -551,7 +551,7 @@ impl Display for Board {
                 let pt = self.type_at_square(current_square);
 
                 match self.color_at_square(current_square) {
-                    WHITE => write!(f, "{}", pt)?,
+                    WHITE => write!(f, "{pt}")?,
                     BLACK => write!(f, "{}", pt.get_code().to_lowercase())?,
                     _ => write!(f, " ")?,
                 };
@@ -633,7 +633,7 @@ pub mod tests {
                 assert_eq!(b, TWO_KINGS_BOARD);
             }
             Err(e) => {
-                println!("{}", e);
+                println!("{e}");
                 assert!(false);
             }
         };

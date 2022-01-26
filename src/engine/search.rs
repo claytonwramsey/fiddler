@@ -418,7 +418,7 @@ impl Engine for PVSearch {
             } else {
                 println!("somehow, undoing failed on a game");
             }
-            println!("{}: {}", algebraic_from_move(m, g.get_board(), mgen), ev);
+            println!("{}: {ev}", algebraic_from_move(m, g.get_board(), mgen));
         }
         return evals;
     }
@@ -438,10 +438,8 @@ impl Engine for PVSearch {
             eval_uncalibrated = result.1;
             eval = eval_uncalibrated * (1 - 2 * g.get_board().player_to_move as i32);
             println!(
-                "depth {} gives {}: {}",
-                iter_depth,
-                algebraic_from_move(best_move, &g.get_board(), &mgen),
-                eval
+                "depth {iter_depth} gives {}: {eval}",
+                algebraic_from_move(best_move, &g.get_board(), &mgen)
             );
         }
         let toc = Instant::now();
@@ -564,7 +562,7 @@ pub mod tests {
     ///
     fn print_move_map(map: &HashMap<Move, Eval>) {
         for (m, eval) in map {
-            println!("{}:{}", m, eval);
+            println!("{m}:{eval}");
         }
     }
 }

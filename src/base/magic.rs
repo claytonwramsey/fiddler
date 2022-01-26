@@ -324,10 +324,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             } else if table[i].attacks[key] != attack {
                 //This should never happen, since we should expect our loads to
                 //always succeed.
-                println!(
-                    "ERROR! Hashing collision on table index {} with occupancy {}",
-                    i, occupancy
-                );
+                println!("ERROR! Hashing collision on table index {i} with occupancy {occupancy}");
             }
         }
     }
@@ -428,16 +425,13 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
                 );*/
 
                 //use this print to generate a list of magics
-                println!("\t{}, //{}", magic, sq);
+                println!("\t{magic}, //{sq}");
                 table[i].magic = magic;
                 break;
             }
         }
         if !found_magic {
-            println!(
-                "FAILED to find magic on square {}. is rook? {}",
-                sq, is_rook
-            );
+            println!("FAILED to find magic on square {sq}. is rook? {is_rook}");
         } else {
             // found a magic, populate the attack vector
             table[i]

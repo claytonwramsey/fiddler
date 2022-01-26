@@ -74,11 +74,11 @@ impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Command::Quit => write!(f, "quit"),
-            Command::EchoError(s) => write!(f, "echo error {}", s),
-            Command::EngineSelect(s) => write!(f, "select engine {}", s),
-            Command::PlayMove(m) => write!(f, "play move {}", m),
-            Command::LoadFen(s) => write!(f, "load fen {}", s),
-            Command::Undo(n) => write!(f, "undo {}", n),
+            Command::EchoError(s) => write!(f, "echo error {s}"),
+            Command::EngineSelect(s) => write!(f, "select engine {s}"),
+            Command::PlayMove(m) => write!(f, "play move {m}"),
+            Command::LoadFen(s) => write!(f, "load fen {s}"),
+            Command::Undo(n) => write!(f, "undo {n}"),
             _ => write!(f, "undisplayable command"),
         }
     }
@@ -94,16 +94,16 @@ impl<'a> CrabchessApp<'a> {
     pub fn run(&mut self) -> std::io::Result<()> {
         let mut has_quit = false;
         while !has_quit {
-            println!("{}", self.game.get_board());
-            println!("Type out a move or enter a command.");
+            let board = self.game.get_board();
+            writeln!(self.output_stream, "{board}")?;
+            writeln!(self.output_stream, "Type out a move or enter a command.")?;
             let mut user_input = String::new();
             let mut buf_reader = io::BufReader::new(&mut self.input_stream);
 
             if let Err(e) = buf_reader.read_line(&mut user_input) {
                 writeln!(
                     self.output_stream,
-                    "failed to read off of input stream with error {}",
-                    e
+                    "failed to read off of input stream with error {e}"
                 )?;
             };
 
@@ -125,8 +125,7 @@ impl<'a> CrabchessApp<'a> {
             if let Err(s) = execution_result {
                 writeln!(
                     self.output_stream,
-                    "an error occurred while executing the command: {}",
-                    s
+                    "an error occurred while executing the command: {s}"
                 )?;
             }
         }
@@ -200,11 +199,9 @@ impl<'a> CrabchessApp<'a> {
             Command::Undo(n) => self.game.undo_n(n),
             Command::EngineSelect(s) => self.select_engine(s),
             _ => {
-                if let Err(_) = writeln!(
-                    self.output_stream,
-                    "the command type `{}` is unsupported",
-                    c
-                ) {
+                if let Err(_) =
+                    writeln!(self.output_stream, "the command type `{c}` is unsupported")
+                {
                     return Err("write failed");
                 }
                 Ok(())
@@ -216,7 +213,7 @@ impl<'a> CrabchessApp<'a> {
     /// Echo out an error string to the user.
     ///
     fn echo_error(&mut self, s: &str) -> CommandResult {
-        if let Err(_) = writeln!(self.output_stream, "error: {}", s) {
+        if let Err(_) = writeln!(self.output_stream, "error: {s}") {
             return Err("failed to write error to output stream");
         }
         Ok(())

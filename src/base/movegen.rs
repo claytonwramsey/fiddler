@@ -352,7 +352,7 @@ impl MoveGenerator {
     ) -> Bitboard {
         /*if sq.0 == 64 {
             println!("found an error board!");
-            println!("{}", board);
+            println!("{board}");
         }*/
         let mut attackers = Bitboard::EMPTY;
         let color_bb = board.get_color_occupancy(color);
@@ -368,13 +368,11 @@ impl MoveGenerator {
 
         // Check for rook/horizontal queen attacks
         let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
-        attackers |=
-            rook_vision & (queens_bb | board.get_type(PieceType::ROOK));
+        attackers |= rook_vision & (queens_bb | board.get_type(PieceType::ROOK));
 
         // Check for bishop/diagonal queen attacks
         let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
-        attackers |=
-            bishop_vision & (queens_bb | board.get_type(PieceType::BISHOP));
+        attackers |= bishop_vision & (queens_bb | board.get_type(PieceType::BISHOP));
 
         // Check for king attacks
         let king_vision = self.king_moves[sq.0 as usize];
@@ -473,8 +471,8 @@ impl MoveGenerator {
     }
 
     ///
-    /// Get the captures a pawn can make in the current position. The given 
-    /// color is the color that a pawn would be to generate the captures from 
+    /// Get the captures a pawn can make in the current position. The given
+    /// color is the color that a pawn would be to generate the captures from
     /// this square.
     ///
     fn pawn_captures(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
@@ -605,7 +603,7 @@ mod tests {
         let moves = mg.get_moves(&Board::default());
         print!("{{");
         for m in moves.iter() {
-            print!("{}, ", m);
+            print!("{m}, ");
         }
         print!("}}");
     }
@@ -621,7 +619,7 @@ mod tests {
         let b = Board::from_fen(FRIED_LIVER_FEN).unwrap();
         let pms = mg.get_pseudolegal_moves(&b, crate::base::constants::WHITE);
         for m2 in pms.iter() {
-            println!("{}", m2);
+            println!("{m2}");
         }
         assert!(pms.contains(&m));
         let moves = mg.get_moves(&b);
@@ -652,13 +650,13 @@ mod tests {
         let moves = mgen.get_moves(&b);
 
         for m2 in moves.iter() {
-            println!("{}", m2);
+            println!("{m2}");
         }
 
         println!("---");
 
         for lm in mgen.get_loud_moves(&b).iter() {
-            println!("{}", lm);
+            println!("{lm}");
         }
     }
 
@@ -756,7 +754,7 @@ mod tests {
             Move::new(F6, G4, PieceType::NO_TYPE),
         ];
         for m in moves.iter() {
-            println!("{}", m);
+            println!("{m}");
             assert!(expected_moves.contains(m));
         }
         for em in expected_moves.iter() {
@@ -776,7 +774,7 @@ mod tests {
         let loud_moves = mgen.get_loud_moves(&b);
 
         for loud_move in loud_moves.iter() {
-            println!("{}", loud_move);
+            println!("{loud_move}");
             assert!(moves.contains(&loud_move));
             assert!(b.is_move_capture(*loud_move));
         }
