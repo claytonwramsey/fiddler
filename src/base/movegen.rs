@@ -1,7 +1,7 @@
 use crate::base::constants::{Color, BLACK};
 use crate::base::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::base::moves::Move;
-use crate::base::square::Square;
+use crate::base::square::{Square, BAD_SQUARE};
 use crate::base::util::{opposite_color, pawn_direction, pawn_start_rank};
 use crate::base::Bitboard;
 use crate::base::Board;
@@ -20,9 +20,10 @@ pub struct MoveGenerator {
     #[allow(unused)]
     ///
     /// A bitboard of all the squares which a pawn on the given square can
-    /// attack.
+    /// attack. The first index is for White's pawn attacks, the second is for
+    /// Black's.
     ///
-    pawn_attacks: [Bitboard; 64], //for now unused, will be used later
+    pawn_attacks: [[Bitboard; 64]; 2],
     ///
     /// A bitboard of all the squares a king can move to if his position is the
     /// index in the list.
@@ -42,7 +43,10 @@ impl MoveGenerator {
     pub fn new() -> MoveGenerator {
         MoveGenerator {
             mtable: MagicTable::load(),
-            pawn_attacks: create_step_attacks(&vec![Direction::NORTHEAST, Direction::NORTHWEST], 1),
+            pawn_attacks: [
+                create_step_attacks(&vec![Direction::NORTHEAST, Direction::NORTHWEST], 1),
+                create_step_attacks(&vec![Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
+            ],
             king_moves: create_step_attacks(&get_king_steps(), 1),
             knight_moves: create_step_attacks(&get_knight_steps(), 2),
         }
@@ -480,23 +484,13 @@ impl MoveGenerator {
     /// Get the captures a pawn can make in the current position.
     ///
     fn pawn_captures(&self, board: &Board, sq: Square) -> Bitboard {
-        let opponents = board.get_color_occupancy(opposite_color(board.player_to_move));
-        let dir = pawn_direction(board.color_at_square(sq));
-        let capture_sqs = [sq + dir + Direction::EAST, sq + dir + Direction::WEST];
-        let mut target_squares = Bitboard::EMPTY;
-        //captures
-        for capture_sq in capture_sqs {
-            if capture_sq.is_inbounds() && capture_sq.chebyshev_to(sq) < 3 {
-                if capture_sq == board.en_passant_square {
-                    target_squares |= Bitboard::from(capture_sq);
-                    continue;
-                }
-                let capture_bb = Bitboard::from(capture_sq);
-                target_squares |= capture_bb & opponents;
-            }
+        let mover_color = board.color_at_square(sq);
+        let mut capture_mask = board.get_color_occupancy(opposite_color(mover_color));
+        if board.en_passant_square != BAD_SQUARE {
+            capture_mask |= Bitboard::from(board.en_passant_square);
         }
 
-        target_squares
+        self.pawn_attacks[mover_color][sq.0 as usize] & capture_mask
     }
 
     #[inline]
@@ -769,6 +763,7 @@ mod tests {
             Move::new(F6, G4, PieceType::NO_TYPE),
         ];
         for m in moves.iter() {
+            println!("{}", m);
             assert!(expected_moves.contains(m));
         }
         for em in expected_moves.iter() {
