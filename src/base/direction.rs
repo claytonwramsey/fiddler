@@ -1,9 +1,11 @@
 use crate::base::Square;
 use std::ops::{Add, Mul, Neg, Sub};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 ///
-/// A difference between two squares. Directions form a vector field, which/// allows us to define subtraction between squares. Internally, they use the/// same representation as a Square but with a signed integer.
+/// A difference between two squares. Directions form a vector field, which 
+/// allows us to define subtraction between squares. Internally, they use the
+/// same representation as a Square but with a signed integer.
 ///
 pub struct Direction(pub i8);
 
@@ -108,13 +110,6 @@ impl Sub<Direction> for Direction {
         Direction(self.0 - rhs.0)
     }
 }
-
-impl PartialEq for Direction {
-    fn eq(&self, rhs: &Direction) -> bool {
-        return self.0 == rhs.0;
-    }
-}
-impl Eq for Direction {}
 
 #[cfg(test)]
 mod tests {
