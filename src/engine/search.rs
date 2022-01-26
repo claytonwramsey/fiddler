@@ -384,7 +384,7 @@ impl Engine for PVSearch {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let iter_min = 5;
+        let iter_min = min(5, self.depth);
 
         let mut eval = Eval(0);
         for iter_depth in iter_min..=self.depth {
@@ -427,7 +427,7 @@ impl Engine for PVSearch {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let iter_min = 5;
+        let iter_min = min(5, self.depth);
 
         let mut best_move = Move::BAD_MOVE;
         let mut eval;

@@ -235,10 +235,9 @@ impl Board {
     /// Returns NO_TYPE if there are no pieces occupying the square.
     ///
     pub fn type_at_square(&self, sq: Square) -> PieceType {
-        let sq_bb = Bitboard::from(sq);
-        for i in 0..PieceType::NUM_TYPES {
-            if (self.pieces[i] & sq_bb) != Bitboard::EMPTY {
-                return PieceType(i as u8);
+        for pt in PieceType::ALL_TYPES {
+            if self.get_type(pt).contains(sq) {
+                return pt;
             }
         }
         return PieceType::NO_TYPE;

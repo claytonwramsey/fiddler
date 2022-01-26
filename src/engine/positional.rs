@@ -76,7 +76,12 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut positional_eval = Eval(0);
 
     let b = g.get_board();
-    for pt in [PieceType::PAWN, PieceType::BISHOP, PieceType::KNIGHT, PieceType::KING] {
+    for pt in [
+        PieceType::PAWN,
+        PieceType::BISHOP,
+        PieceType::KNIGHT,
+        PieceType::KING,
+    ] {
         for sq in b.get_type_and_color(pt, WHITE) {
             positional_eval += value_at_square(pt, sq);
         }
@@ -118,7 +123,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 ///
 /// Get the positional value of a piece at a square.
 /// Requires that the square be a valid square.
-/// 
+///
 pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
     let val_table = match pt {
         PieceType::PAWN => &PAWN_VALUES,
@@ -130,9 +135,7 @@ pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
         _ => &DEFAULT_VALUES,
     };
 
-    Eval::pawns(unsafe {
-        *val_table.get_unchecked(sq.0 as usize)
-    })
+    Eval::pawns(unsafe { *val_table.get_unchecked(sq.0 as usize) })
 }
 
 #[cfg(test)]
