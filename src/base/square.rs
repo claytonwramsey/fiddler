@@ -3,7 +3,7 @@ use crate::base::Bitboard;
 use crate::base::Direction;
 
 use std::cmp::max;
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Sub};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -59,6 +59,26 @@ impl Square {
         let filediff = ((rhs.file() as i16) - (self.file() as i16)).abs();
         return max(rankdiff, filediff) as u8;
     }
+
+    ///
+    /// Convert an algebraic string (such as 'e7') to a square.
+    /// To get an `Ok` result, the string must be two characters.
+    /// The file must be in lowercase.
+    ///
+    pub fn from_algebraic(s: &str) -> Result<Square, &'static str> {
+        if s.len() != 2 {
+            return Err("square name must be 2 characters");
+        }
+        let (ep_file, _) = match "abcdefgh".match_indices(s.chars().nth(0).unwrap()).next() {
+            Some(d) => d,
+            None => return Err("illegal file for square"),
+        };
+        let ep_rank = match s.chars().nth(1).unwrap().to_digit(10) {
+            Some(n) => n as usize,
+            None => return Err("expected number for square rank"),
+        };
+        Ok(Square::new(ep_rank - 1, ep_file))
+    }
 }
 
 impl Add<Direction> for Square {
@@ -79,7 +99,7 @@ impl AddAssign<Direction> for Square {
 
 impl Display for Square {
     #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", FILE_NAMES[self.file()], RANK_NAMES[self.rank()])
     }
 }
