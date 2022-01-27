@@ -90,13 +90,15 @@ impl Board {
             if (r, c) == (0, 8) {
                 break;
             }
-            let chr = fen_chrs.next().unwrap_or('!');
-            //illegal character or reached end of fen string
-            if chr == '!' {
-                return Err("reached end of FEN string before completing the board");
-            }
+            let chr = match fen_chrs.next() {
+                Some(chr) => chr,
+                None => return Err("reached end of FEN before board was fully parsed"),
+            };
             let is_white = chr.is_uppercase();
-            let pt = PieceType::from_code(chr.to_uppercase().next().unwrap_or('_'));
+            let pt = match chr.to_uppercase().next() {
+                Some(c) => PieceType::from_code(c),
+                None => PieceType::NO_TYPE,
+            };
             let color = match is_white {
                 true => WHITE,
                 false => BLACK,
@@ -111,24 +113,25 @@ impl Board {
                 c = 0;
             } else {
                 //number stating number of blank spaces in this row
-                let num_blanks = chr.to_digit(10).unwrap_or(0);
-                if num_blanks == 0 {
-                    //we were unable to get the number of blanks
-                    return Err("could not parse FEN character");
-                } else {
-                    //advance the square under review by the number of blanks
-                    c += num_blanks as usize;
-                }
+                let num_blanks = match chr.to_digit(10) {
+                    Some(num) => num,
+                    None => return Err("expected number of blanks"),
+                };
+                //advance the square under review by the number of blanks
+                c += num_blanks as usize;
             }
         }
 
         //now a space
-        if fen_chrs.next().unwrap_or('!') != ' ' {
+        if fen_chrs.next() != Some(' ') {
             return Err("expected space after board array section of FEN");
-        }
+        };
 
         //now compute player to move
-        let player_to_move_chr = fen_chrs.next().unwrap_or('!');
+        let player_to_move_chr = match fen_chrs.next() {
+            Some(c) => c,
+            None => return Err("reached end of string while parsing for player to move"),
+        };
         board.player_to_move = match player_to_move_chr {
             'w' => WHITE,
             'b' => BLACK,
@@ -136,12 +139,15 @@ impl Board {
         };
 
         //now a space
-        if fen_chrs.next().unwrap_or('!') != ' ' {
+        if fen_chrs.next() != Some(' ') {
             return Err("expected space after player to move section of FEN");
         }
 
         //determine castle rights
-        let mut castle_chr = fen_chrs.next().unwrap_or('!');
+        let mut castle_chr = match fen_chrs.next() {
+            Some(c) => c,
+            None => return Err("reached end of string while parsing castle rights"),
+        };
         while castle_chr != ' ' {
             //this may accept some technically illegal FENS, but that's ok
             //note: hash was not updated, so will need to be rewritten by the
@@ -154,32 +160,36 @@ impl Board {
                 '-' => CastleRights::NO_RIGHTS,
                 _ => return Err("unrecognized castle rights character"),
             };
-            castle_chr = fen_chrs.next().unwrap_or('!');
+            castle_chr = match fen_chrs.next() {
+                Some(c) => c,
+                None => return Err("reached end of string while parsing castle rights"),
+            };
         }
 
         //castle rights searching ate the space, so no need to check for it
 
         //en passant square
-        let ep_file_chr = fen_chrs.next().unwrap_or('!');
-        if ep_file_chr == '!' {
-            return Err("illegal character in en passant square");
-        }
+        let ep_file_chr = match fen_chrs.next() {
+            Some(c) => c,
+            None => return Err("illegal character in en passant square"),
+        };
         if ep_file_chr != '-' {
             if !"abcdefgh".contains(ep_file_chr) {
                 return Err("illegal file for en passant square");
             }
             //99 is just a dummy err value
-            let (ep_file, _) = "abcdefgh"
-                .match_indices(ep_file_chr)
-                .next()
-                .unwrap_or((99, "!"));
-            if ep_file != 99 {
-                let ep_rank = fen_chrs.next().unwrap_or('!').to_digit(10).unwrap_or(99) as usize;
-                if ep_rank == 99 {
-                    return Err("illegal rank for en passant square");
-                }
-                board.en_passant_square = Square::new(ep_rank - 1, ep_file);
-            }
+            let (ep_file, _) = match "abcdefgh".match_indices(ep_file_chr).next() {
+                Some(d) => d,
+                None => return Err("illegal file for en passant square"),
+            };
+            let ep_rank = match fen_chrs.next() {
+                Some(c) => match c.to_digit(10) {
+                    Some(n) => n as usize,
+                    None => return Err("expected number for en passant square rank"),
+                },
+                None => return Err("reached end of string while parsing en passant rank"),
+            };
+            board.en_passant_square = Square::new(ep_rank - 1, ep_file);
         }
         board.recompute_hash();
         if !(board.is_valid()) {
