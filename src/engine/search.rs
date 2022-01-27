@@ -92,7 +92,7 @@ impl PVSearch {
 
         let mut moves = g.get_moves(mgen);
 
-        if depth == 0 || moves.len() == 0 {
+        if depth == 0 || moves.is_empty() {
             return self.quiesce(depth, g, mgen, alpha_in, beta_in);
         }
 
@@ -203,7 +203,8 @@ impl PVSearch {
                 critical_move,
             );
         }
-        return (critical_move, alpha);
+
+        (critical_move, alpha)
     }
 
     ///
@@ -310,7 +311,8 @@ impl PVSearch {
                 break;
             }
         }
-        return (critical_move, alpha);
+
+        (critical_move, alpha)
     }
 
     ///
@@ -346,10 +348,10 @@ impl PVSearch {
         self.ttable.store(
             *g.get_board(),
             EvalData {
-                depth: depth,
-                lower_bound: lower_bound,
-                upper_bound: upper_bound,
-                critical_move: critical_move,
+                depth,
+                lower_bound,
+                upper_bound,
+                critical_move,
             },
         );
     }
@@ -400,7 +402,8 @@ impl Engine for PVSearch {
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
         );
-        return eval;
+
+        eval
     }
 
     fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
@@ -413,14 +416,15 @@ impl Engine for PVSearch {
             let ev = self.evaluate(g, mgen);
 
             //this should never fail since we just made a move, but who knows?
-            if let Ok(_) = g.undo() {
+            if g.undo().is_ok() {
                 evals.insert(m, ev);
             } else {
                 println!("somehow, undoing failed on a game");
             }
             println!("{}: {ev}", algebraic_from_move(m, g.get_board(), mgen));
         }
-        return evals;
+
+        evals
     }
 
     fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Move {
@@ -439,7 +443,7 @@ impl Engine for PVSearch {
             eval = eval_uncalibrated * (1 - 2 * g.get_board().player_to_move as i32);
             println!(
                 "depth {iter_depth} gives {}: {eval}",
-                algebraic_from_move(best_move, &g.get_board(), &mgen)
+                algebraic_from_move(best_move, g.get_board(), mgen)
             );
         }
         let toc = Instant::now();
@@ -453,7 +457,8 @@ impl Engine for PVSearch {
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
         );
-        return best_move;
+
+        best_move
     }
 }
 
@@ -472,7 +477,7 @@ pub mod tests {
     ///
     pub fn test_eval_start() {
         let mut g = Game::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(5); // this prevents taking too long on searches
 
@@ -486,7 +491,7 @@ pub mod tests {
     ///
     pub fn test_get_starting_move() {
         let mut g = Game::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(8);
 
@@ -500,7 +505,7 @@ pub mod tests {
     ///
     fn test_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
@@ -533,7 +538,7 @@ pub mod tests {
     ///
     fn test_my_special_puzzle() {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(8);
 
@@ -549,7 +554,7 @@ pub mod tests {
     ///
     fn test_eval_helper(fen: &str, eval: Eval, depth: usize) {
         let mut g = Game::from_fen(fen).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(depth);
 

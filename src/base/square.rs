@@ -31,7 +31,7 @@ impl Square {
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
     ///
     pub fn rank(self) -> usize {
-        return ((self.0 >> 3u8) & 7u8) as usize;
+        ((self.0 >> 3u8) & 7u8) as usize
     }
 
     #[inline]
@@ -39,7 +39,7 @@ impl Square {
     /// Get the integer representing the file (0 -> A, ...) of this square.
     ///
     pub fn file(self) -> usize {
-        return (self.0 & 7u8) as usize;
+        (self.0 & 7u8) as usize
     }
 
     #[inline]
@@ -57,7 +57,8 @@ impl Square {
     pub fn chebyshev_to(self, rhs: Square) -> u8 {
         let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
         let filediff = ((rhs.file() as i16) - (self.file() as i16)).abs();
-        return max(rankdiff, filediff) as u8;
+
+        max(rankdiff, filediff) as u8
     }
 
     ///
@@ -69,11 +70,12 @@ impl Square {
         if s.len() != 2 {
             return Err("square name must be 2 characters");
         }
-        let (ep_file, _) = match "abcdefgh".match_indices(s.chars().nth(0).unwrap()).next() {
+        let mut chars = s.chars();
+        let (ep_file, _) = match "abcdefgh".match_indices(chars.next().unwrap()).next() {
             Some(d) => d,
             None => return Err("illegal file for square"),
         };
-        let ep_rank = match s.chars().nth(1).unwrap().to_digit(10) {
+        let ep_rank = match chars.next().unwrap().to_digit(10) {
             Some(n) => n as usize,
             None => return Err("expected number for square rank"),
         };
@@ -85,8 +87,7 @@ impl Add<Direction> for Square {
     type Output = Square;
     #[inline]
     fn add(self, rhs: Direction) -> Self::Output {
-        let new_square: i8 = (self.0 as i8) + rhs.0;
-        return Square(new_square as u8);
+        Square(((self.0 as i8) + rhs.0) as u8)
     }
 }
 
@@ -121,30 +122,30 @@ impl From<Bitboard> for Square {
         /*if bb.0.count_ones() != 1 {
             return BAD_SQUARE;
         }*/
-        return Square(bb.0.trailing_zeros() as u8);
+        Square(bb.0.trailing_zeros() as u8)
     }
 }
 
 #[allow(dead_code)]
-pub const A1: Square = Square(00);
+pub const A1: Square = Square(0);
 #[allow(dead_code)]
-pub const B1: Square = Square(01);
+pub const B1: Square = Square(1);
 #[allow(dead_code)]
-pub const C1: Square = Square(02);
+pub const C1: Square = Square(2);
 #[allow(dead_code)]
-pub const D1: Square = Square(03);
+pub const D1: Square = Square(3);
 #[allow(dead_code)]
-pub const E1: Square = Square(04);
+pub const E1: Square = Square(4);
 #[allow(dead_code)]
-pub const F1: Square = Square(05);
+pub const F1: Square = Square(5);
 #[allow(dead_code)]
-pub const G1: Square = Square(06);
+pub const G1: Square = Square(6);
 #[allow(dead_code)]
-pub const H1: Square = Square(07);
+pub const H1: Square = Square(7);
 #[allow(dead_code)]
-pub const A2: Square = Square(08);
+pub const A2: Square = Square(8);
 #[allow(dead_code)]
-pub const B2: Square = Square(09);
+pub const B2: Square = Square(9);
 #[allow(dead_code)]
 pub const C2: Square = Square(10);
 #[allow(dead_code)]

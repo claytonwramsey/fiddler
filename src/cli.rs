@@ -143,12 +143,13 @@ impl<'a> CrabchessApp<'a> {
             return Err("no token given");
         }
         let command_block = first_token.unwrap();
-        if command_block.starts_with("/") {
+        if command_block.starts_with('/') {
             let command_name = command_block.get(1..);
             if command_name == None {
                 return Err("no command specified");
             }
-            let command = match command_name.unwrap() {
+
+            match command_name.unwrap() {
                 "q" | "quit" => Ok(Command::Quit),
                 "e" | "engine" => {
                     let engine_opt = String::from(s[command_block.len()..].trim());
@@ -175,8 +176,7 @@ impl<'a> CrabchessApp<'a> {
                 }
                 "list" => Ok(Command::ListMoves),
                 _ => Err("unrecognized command"),
-            };
-            return command;
+            }
         } else {
             //this is a move
             let move_token = first_token;
@@ -199,9 +199,7 @@ impl<'a> CrabchessApp<'a> {
             Command::Undo(n) => self.game.undo_n(n),
             Command::EngineSelect(s) => self.select_engine(s),
             _ => {
-                if let Err(_) =
-                    writeln!(self.output_stream, "the command type `{c}` is unsupported")
-                {
+                if writeln!(self.output_stream, "the command type `{c}` is unsupported").is_err() {
                     return Err("write failed");
                 }
                 Ok(())
@@ -213,7 +211,7 @@ impl<'a> CrabchessApp<'a> {
     /// Echo out an error string to the user.
     ///
     fn echo_error(&mut self, s: &str) -> CommandResult {
-        if let Err(_) = writeln!(self.output_stream, "error: {s}") {
+        if writeln!(self.output_stream, "error: {s}").is_err() {
             return Err("failed to write error to output stream");
         }
         Ok(())
@@ -257,11 +255,13 @@ impl<'a> CrabchessApp<'a> {
     fn list_moves(&mut self) -> CommandResult {
         let moves = self.mgen.get_moves(self.game.get_board());
         for m in moves.iter() {
-            if let Err(_) = writeln!(
+            if writeln!(
                 self.output_stream,
                 "{}",
                 algebraic_from_move(*m, self.game.get_board(), &self.mgen)
-            ) {
+            )
+            .is_err()
+            {
                 return Err("failed to write move list");
             }
         }
@@ -288,7 +288,7 @@ impl<'a> Default for CrabchessApp<'a> {
     fn default() -> CrabchessApp<'a> {
         CrabchessApp {
             game: Game::default(),
-            mgen: MoveGenerator::new(),
+            mgen: MoveGenerator::default(),
             engine: Box::new(PVSearch::default()),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),

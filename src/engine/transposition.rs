@@ -103,8 +103,8 @@ impl TTable {
             // We trust that this will not lead to an out of bounds as the
             // index has been modulo'd by the length of the entry table.
             *self.entries.get_unchecked_mut(index) = TTableEntry {
-                hash: hash,
-                key: key,
+                hash,
+                key,
                 data: Some(value),
             };
         }

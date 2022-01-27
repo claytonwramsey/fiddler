@@ -116,7 +116,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         col_mask <<= 1;
     }
 
-    return starting_eval + positional_eval;
+    starting_eval + positional_eval
 }
 
 #[inline]
@@ -151,7 +151,7 @@ mod tests {
     ///
     fn test_equal_start() {
         let mut g = Game::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         assert_eq!(positional_evaluate(&mut g, &mgen), Eval(0));
     }
 
@@ -162,7 +162,7 @@ mod tests {
     ///
     fn test_f3_bad() {
         let mut g = Game::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         g.make_move(Move::new(F2, F3, PieceType::NO_TYPE));
         assert!(positional_evaluate(&mut g, &mgen) < Eval(0));
     }

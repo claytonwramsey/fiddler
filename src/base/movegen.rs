@@ -37,21 +37,6 @@ pub struct MoveGenerator {
 }
 
 impl MoveGenerator {
-    ///
-    /// Load up a new MoveGenerator.
-    ///
-    pub fn new() -> MoveGenerator {
-        MoveGenerator {
-            mtable: MagicTable::load(),
-            pawn_attacks: [
-                create_step_attacks(&vec![Direction::NORTHEAST, Direction::NORTHWEST], 1),
-                create_step_attacks(&vec![Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
-            ],
-            king_moves: create_step_attacks(&get_king_steps(), 1),
-            knight_moves: create_step_attacks(&get_knight_steps(), 2),
-        }
-    }
-
     #[inline]
     ///
     /// Get all the legal moves on a board.
@@ -145,7 +130,7 @@ impl MoveGenerator {
             }
         }
 
-        return false;
+        false
     }
 
     ///
@@ -175,7 +160,7 @@ impl MoveGenerator {
             }
         }
 
-        return true;
+        true
     }
 
     ///
@@ -215,7 +200,7 @@ impl MoveGenerator {
             self.square_attackers_with_occupancy(board, king_square, opponent, occupancy);
 
         //attackers which we will capture are not a threat
-        return (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY;
+        (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY
     }
 
     #[inline]
@@ -223,7 +208,7 @@ impl MoveGenerator {
     /// In a given board state, is a square attacked by the given color?
     ///
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
-        return self.get_square_attackers(board, sq, color) != Bitboard::EMPTY;
+        self.get_square_attackers(board, sq, color) != Bitboard::EMPTY
     }
 
     #[inline]
@@ -283,7 +268,7 @@ impl MoveGenerator {
             }
         }
 
-        return moves;
+        moves
     }
 
     ///
@@ -336,7 +321,7 @@ impl MoveGenerator {
             }
         }
 
-        return moves;
+        moves
     }
 
     ///
@@ -378,7 +363,7 @@ impl MoveGenerator {
         let king_vision = self.king_moves[sq.0 as usize];
         attackers |= king_vision & board.get_type(PieceType::KING);
 
-        return attackers & color_bb;
+        attackers & color_bb
     }
 
     #[inline]
@@ -443,7 +428,8 @@ impl MoveGenerator {
         if can_queenside_castle {
             moves |= Bitboard::from(Square::new(sq.rank(), 2));
         }
-        return moves;
+
+        moves
     }
 
     ///
@@ -467,7 +453,8 @@ impl MoveGenerator {
         }
         target_squares |= self.pawn_captures(board, sq, board.color_at_square(sq));
         target_squares &= !board.get_color_occupancy(player_color);
-        return target_squares;
+
+        target_squares
     }
 
     ///
@@ -514,6 +501,20 @@ impl MoveGenerator {
     }
 }
 
+impl Default for MoveGenerator {
+    fn default() -> MoveGenerator {
+        MoveGenerator {
+            mtable: MagicTable::load(),
+            pawn_attacks: [
+                create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
+                create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
+            ],
+            king_moves: create_step_attacks(&get_king_steps(), 1),
+            knight_moves: create_step_attacks(&get_knight_steps(), 2),
+        }
+    }
+}
+
 ///
 /// Get the step attacks that could be made by moving in `dirs` from each point
 /// in the square. Exclude the steps that travel more than `max_dist` (this
@@ -521,16 +522,17 @@ impl MoveGenerator {
 ///
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard(0); 64];
-    for i in 0..64usize {
+    for (i, item) in attacks.iter_mut().enumerate() {
         for dir in dirs {
             let start_sq = Square(i as u8);
             let target_sq = start_sq + *dir;
             if target_sq.chebyshev_to(start_sq) <= max_dist {
-                attacks[i] |= Bitboard::from(target_sq);
+                *item |= Bitboard::from(target_sq);
             }
         }
     }
-    return attacks;
+
+    attacks
 }
 
 #[inline]
@@ -599,7 +601,7 @@ mod tests {
 
     #[test]
     fn test_opening_moveset() {
-        let mg = MoveGenerator::new();
+        let mg = MoveGenerator::default();
         let moves = mg.get_moves(&Board::default());
         print!("{{");
         for m in moves.iter() {
@@ -614,7 +616,7 @@ mod tests {
     /// opening.
     ///
     fn test_best_queen_fried_liver() {
-        let mg = MoveGenerator::new();
+        let mg = MoveGenerator::default();
         let m = Move::new(D1, F3, PieceType::NO_TYPE);
         let b = Board::from_fen(FRIED_LIVER_FEN).unwrap();
         let pms = mg.get_pseudolegal_moves(&b, crate::base::constants::WHITE);
@@ -632,7 +634,7 @@ mod tests {
     ///
     fn test_pawn_capture_generated() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let m = Move::new(E4, F5, PieceType::NO_TYPE);
 
         assert!(mgen.get_moves(&b).contains(&m));
@@ -644,7 +646,7 @@ mod tests {
     /// The pawn is checking the king. Is move enumeration correct?
     ///
     fn test_enumerate_pawn_checking_king() {
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let b = Board::from_fen(PAWN_CHECKING_KING_FEN).unwrap();
 
         let moves = mgen.get_moves(&b);
@@ -666,10 +668,10 @@ mod tests {
     ///
     fn test_white_mated_has_no_moves() {
         let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         assert!(!mgen.has_moves(&b));
-        assert!(mgen.get_moves(&b).len() == 0);
-        assert!(mgen.get_loud_moves(&b).len() == 0);
+        assert!(mgen.get_moves(&b).is_empty());
+        assert!(mgen.get_loud_moves(&b).is_empty());
     }
 
     #[test]
@@ -678,7 +680,7 @@ mod tests {
     ///
     fn test_king_has_only_one_move() {
         let b = Board::from_fen(KING_HAS_ONE_MOVE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         assert!(mgen.has_moves(&b));
         assert!(mgen.get_moves(&b).len() == 1);
     }
@@ -689,7 +691,7 @@ mod tests {
     ///
     fn test_queenside_castle() {
         let b = Board::from_fen(BLACK_QUEENSIDE_CASTLE_READY_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         assert!(mgen
             .get_moves(&b)
             .contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
@@ -745,7 +747,7 @@ mod tests {
     ///
     fn test_king_escape_without_capture() {
         let b = Board::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let moves = mgen.get_moves(&b);
         let expected_moves = vec![
             Move::new(E6, D6, PieceType::NO_TYPE),
@@ -768,7 +770,7 @@ mod tests {
     ///
     fn loud_moves_helper(fen: &str) {
         let b = Board::from_fen(fen).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
 
         let moves = mgen.get_moves(&b);
         let loud_moves = mgen.get_loud_moves(&b);

@@ -12,7 +12,7 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::result::Result;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug)]
 ///
 /// A representation of a position. Does not handle the repetition or turn
 /// timer.
@@ -72,7 +72,7 @@ impl Board {
             hash: 0,
         };
         board.recompute_hash();
-        return board;
+        board
     }
 
     ///
@@ -196,7 +196,7 @@ impl Board {
             return Err("board state after loading was illegal");
         }
         //Ignore move clocks
-        return Ok(board);
+        Ok(board)
     }
 
     #[inline]
@@ -250,7 +250,7 @@ impl Board {
                 return pt;
             }
         }
-        return PieceType::NO_TYPE;
+        PieceType::NO_TYPE
     }
 
     #[inline]
@@ -267,7 +267,7 @@ impl Board {
         if self.sides[WHITE] & bb != Bitboard::EMPTY {
             return WHITE;
         }
-        return NO_COLOR;
+        NO_COLOR
     }
 
     #[inline]
@@ -340,7 +340,7 @@ impl Board {
         }
 
         //TODO check if castle rights are legal
-        return true;
+        true
     }
 
     ///
@@ -542,7 +542,7 @@ impl Board {
         }
         hash ^= zobrist::get_ep_key(self.en_passant_square);
         hash ^= zobrist::get_player_to_move_key(self.player_to_move);
-        return hash;
+        hash
     }
 }
 
@@ -566,7 +566,7 @@ impl Display for Board {
                     _ => write!(f, " ")?,
                 };
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -577,6 +577,18 @@ impl Hash for Board {
         self.hash.hash(state);
     }
 }
+
+impl PartialEq for Board {
+    fn eq(&self, other: &Board) -> bool {
+        self.sides == other.sides
+            && self.pieces == other.pieces
+            && self.en_passant_square == other.en_passant_square
+            && self.player_to_move == other.player_to_move
+            && self.castle_rights == other.castle_rights
+    }
+}
+
+impl Eq for Board {}
 
 impl Default for Board {
     fn default() -> Board {
@@ -599,7 +611,7 @@ impl Default for Board {
             hash: 0,
         };
         board.recompute_hash();
-        return board;
+        board
     }
 }
 
@@ -714,7 +726,7 @@ pub mod tests {
     ///
     fn test_no_castle_after_capture() {
         let m = Move::new(B2, H8, PieceType::NO_TYPE);
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         test_fen_helper(fens::ROOK_HANGING_FEN, m);
         let mut b = Board::from_fen(fens::ROOK_HANGING_FEN).unwrap();
         b.make_move(m);
@@ -739,7 +751,7 @@ pub mod tests {
     /// and will fail assertions if the board's state was not changed correctly.
     ///
     pub fn test_move_helper(board: Board, m: Move) {
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
 
         //new_board will be mutated to reflect the move
         let mut new_board = board;

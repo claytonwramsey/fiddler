@@ -73,14 +73,13 @@ pub trait Engine {
                     best_eval = *eval;
                     best_move = *m;
                 }
-            } else {
-                if best_eval > *eval {
-                    best_eval = *eval;
-                    best_move = *m;
-                }
+            } else if best_eval > *eval {
+                best_eval = *eval;
+                best_move = *m;
             }
         }
-        return best_move;
+
+        best_move
     }
 
     ///
@@ -100,7 +99,8 @@ pub trait Engine {
             evals.insert(m, ev);
             println!("{}: {ev}", algebraic_from_move(m, g.get_board(), mgen));
         }
-        return evals;
+
+        evals
     }
 }
 

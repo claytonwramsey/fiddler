@@ -90,9 +90,9 @@ impl Game {
 
         if mgen.get_moves(&prev_board).contains(&m) {
             self.make_move(m);
-            return Ok(());
+            Ok(())
         } else {
-            return Err("illegal move given!");
+            Err("illegal move given!")
         }
     }
 
@@ -112,7 +112,7 @@ impl Game {
         };
         let num_reps = self.repetitions.entry(state_removed).or_insert(1);
         *num_reps -= 1;
-        if *num_reps <= 0 {
+        if *num_reps == 0 {
             self.repetitions.remove(&state_removed);
         }
 
@@ -155,8 +155,8 @@ impl Game {
         if mgen.has_moves(self.get_board()) {
             return false;
         }
-        //TODO return true in case of draw by repetion or timeout
-        return true;
+
+        true
     }
 
     ///
@@ -171,7 +171,7 @@ impl Game {
         }
 
         // TODO 50 move rule
-        return false;
+        false
     }
 
     ///
@@ -182,14 +182,16 @@ impl Game {
         if self.is_drawn_historically() {
             return Vec::new();
         }
-        return mgen.get_moves(self.get_board());
+
+        mgen.get_moves(self.get_board())
     }
 
     pub fn get_loud_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
         if self.is_drawn_historically() {
             return Vec::new();
         }
-        return mgen.get_loud_moves(self.get_board());
+
+        mgen.get_loud_moves(self.get_board())
     }
 }
 
@@ -208,7 +210,11 @@ impl Display for Game {
         for i in 0..self.moves.len() {
             let b = self.history[i];
             let m = self.moves[i];
-            write!(f, "{} ", algebraic_from_move(m, &b, &MoveGenerator::new()))?;
+            write!(
+                f,
+                "{} ",
+                algebraic_from_move(m, &b, &MoveGenerator::default())
+            )?;
         }
 
         Ok(())
@@ -314,7 +320,7 @@ mod tests {
     ///
     fn test_is_mate_over() {
         let g = Game::from_fen(SCHOLARS_MATE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let moves = mgen.get_moves(g.get_board());
         for m in moves {
             println!("{m}");
@@ -326,7 +332,7 @@ mod tests {
     #[test]
     fn test_is_mate_over_2() {
         let g: Game = Game::from_fen(WHITE_MATED_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let moves = mgen.get_moves(g.get_board());
         println!("moves: ");
         for m in moves {
@@ -342,7 +348,7 @@ mod tests {
     ///
     fn test_mate_in_1() {
         let mut g = Game::from_fen(MATE_IN_1_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
 
         let m = Move::new(B6, B8, PieceType::NO_TYPE);
         assert!(g.get_moves(&mgen).contains(&m));
@@ -371,7 +377,7 @@ mod tests {
     ///
     fn test_king_escape_without_capture() {
         let g = Game::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let moves = g.get_moves(&mgen);
         let expected_moves = vec![
             Move::new(E6, D6, PieceType::NO_TYPE),

@@ -12,7 +12,7 @@ use crabchess::cli;
 fn main() {
     /*let mut g =
         Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap();
-    let mgen = MoveGenerator::new();
+    let mgen = MoveGenerator::default();
     let mut e = PVSearch::default();
     e.set_depth(7);
 
@@ -21,7 +21,7 @@ fn main() {
 
     println!("running!");
     let mut app = cli::CrabchessApp::default();
-    if let Err(_) = app.run() {
+    if app.run().is_err() {
         println!("app failed!");
     }
 }

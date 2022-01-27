@@ -253,6 +253,12 @@ impl MagicTable {
     }
 }
 
+impl Default for MagicTable {
+    fn default() -> MagicTable {
+        MagicTable::new()
+    }
+}
+
 ///
 /// A structure containing all the information needed to generate moves for a/// rook or bishop.
 ///
@@ -288,6 +294,12 @@ impl Magic {
             attacks: Vec::new(),
             shift: 0,
         }
+    }
+}
+
+impl Default for Magic {
+    fn default() -> Magic {
+        Magic::new()
     }
 }
 
@@ -462,7 +474,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 
     //in the col mask or row mask, but not the piece to move
     //xor operation will remove the square the piece is on
-    return (row_mask ^ col_mask) & !Bitboard::from(sq);
+    (row_mask ^ col_mask) & !Bitboard::from(sq)
 }
 
 ///
@@ -482,7 +494,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
     let anti_rshift = anti_diag & (-anti_diag >> 31);
     let anti_diag_mask = (ANTI_DIAG >> anti_rshift) << anti_lshift;
 
-    return (main_diag_mask ^ anti_diag_mask) & !RING_MASK;
+    (main_diag_mask ^ anti_diag_mask) & !RING_MASK
 }
 
 ///
@@ -511,7 +523,8 @@ fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
             result |= occupier;
         }
     }
-    return result;
+
+    result
 }
 
 fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) -> Bitboard {
@@ -529,7 +542,8 @@ fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) ->
             }
         }
     }
-    return result;
+
+    result
 }
 
 ///
@@ -542,7 +556,8 @@ fn is_valid_step(sq: Square, dir: Direction) -> bool {
     if sq.chebyshev_to(sq + dir) > 1 {
         return false;
     }
-    return true;
+
+    true
 }
 
 #[inline]
@@ -554,7 +569,8 @@ fn random_sparse_bitboard() -> Bitboard {
     for _ in 0..2 {
         result &= Bitboard(thread_rng().gen::<u64>());
     }
-    return result;
+
+    result
 }
 
 #[cfg(test)]

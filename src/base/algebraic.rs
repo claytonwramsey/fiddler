@@ -99,7 +99,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         }
     }
 
-    return s;
+    s
 }
 
 ///
@@ -107,14 +107,10 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
 /// played. Will return Err if the string is invalid.
 ///
 pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<Move, &'static str> {
-    let moves = mgen.get_moves(b);
-    for m in moves {
-        let algebraic_str = algebraic_from_move(m, b, mgen);
-        if algebraic_str.as_str() == s {
-            return Ok(m);
-        }
-    }
-    return Err("not a legal algebraic move");
+    mgen.get_moves(b)
+        .into_iter()
+        .find(|m| algebraic_from_move(*m, b, mgen).as_str() == s)
+        .ok_or("not a legal algebraic move")
 }
 
 #[cfg(test)]
@@ -129,7 +125,7 @@ mod tests {
     ///
     fn test_e4_to_algebraic() {
         let b = Board::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let m = Move::new(E2, E4, PieceType::NO_TYPE);
 
         assert_eq!(String::from("e4"), algebraic_from_move(m, &b, &mgen));
@@ -141,7 +137,7 @@ mod tests {
     ///
     fn test_mate() {
         let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let m = Move::new(B6, B8, PieceType::NO_TYPE);
 
         println!("{b}");
@@ -154,7 +150,7 @@ mod tests {
     ///
     fn test_algebraic_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let m = Move::new(E4, F5, PieceType::NO_TYPE);
 
         let moves = mgen.get_moves(&b);
@@ -171,7 +167,7 @@ mod tests {
     ///
     fn test_move_from_e4() {
         let b = Board::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let m = Move::new(E2, E4, PieceType::NO_TYPE);
         let s = "e4";
 
@@ -184,7 +180,7 @@ mod tests {
     ///
     fn test_move_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let m = Move::new(E4, F5, PieceType::NO_TYPE);
         let s = "exf5";
 
@@ -202,7 +198,7 @@ mod tests {
     ///
     fn test_bad_algebraic() {
         let b = Board::default();
-        let mgen = MoveGenerator::new();
+        let mgen = MoveGenerator::default();
         let s = "garbage";
 
         assert!(move_from_algebraic(s, &b, &mgen).is_err());

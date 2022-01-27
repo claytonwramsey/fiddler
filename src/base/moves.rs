@@ -27,8 +27,8 @@ impl Move {
         let from_square_bits = from_square.0 as u16;
         let to_square_bits = (to_square.0 as u16) << 6;
         let promote_type_bits = (promote_type.0 as u16) << 12;
-        let my_value = from_square_bits | to_square_bits | promote_type_bits;
-        return Move(my_value);
+
+        Move(from_square_bits | to_square_bits | promote_type_bits)
     }
 
     #[inline]

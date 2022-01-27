@@ -21,5 +21,5 @@ pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
     //Worst case, we lose the piece we moved
     let worst_case_material = best_case_material - greedy::piece_value(mover_type);
 
-    return positional_delta + max(worst_case_material, Eval(0));
+    positional_delta + max(worst_case_material, Eval(0))
 }

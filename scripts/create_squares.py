@@ -11,5 +11,5 @@ for i in range(64):
     rank_index = i // 8
     square_name = FILE_NAMES[file_index] + RANK_NAMES[rank_index]
     print("#[allow(dead_code)]")
-    line = f"pub const {square_name}: Square = Square({i:02});"
+    line = f"pub const {square_name}: Square = Square({i});"
     print(line)
