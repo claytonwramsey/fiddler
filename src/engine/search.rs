@@ -9,7 +9,7 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
-const MAX_TRANSPOSITION_DEPTH: i8 = 11;
+const MAX_TRANSPOSITION_DEPTH: i8 = 5;
 
 ///
 /// A chess engine which uses Principal Variation Search.

@@ -120,7 +120,7 @@ pub enum GoOption<'a> {
     ///
     /// Inform the engine that there are the given number of moves remaining 
     /// until the next time control. If `WhiteTime` and `BlackTime` are not 
-    /// given, this means the current game is sudden depth.
+    /// given, this means the current game is sudden death.
     /// 
     MovesToGo(u8),
     ///
@@ -168,6 +168,7 @@ pub enum UciMessage<'a> {
     ///
     /// Request that the GUI display an option to the user.
     /// Not to be confused with the standard `Option`.
+    /// 
     Option,
     UciOk,
     ReadyOk,
