@@ -46,6 +46,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         for other_move in other_moves {
             if other_move != m
                 && other_move.to_square() == m.to_square()
+                && other_move.from_square() != m.from_square()
                 && b.type_at_square(other_move.from_square()) == mover_type
             {
                 is_unclear = true;
@@ -190,6 +191,18 @@ mod tests {
         }
 
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
+    }
+
+    #[test]
+    ///
+    /// Test that promotions are displayed correctly.
+    ///
+    fn test_promotion() {
+        let b = Board::from_fen(WHITE_READY_TO_PROMOTE_FEN).unwrap();
+        let mgen = MoveGenerator::default();
+        let m = Move::new(F7, F8, PieceType::QUEEN);
+        let s = "f8=Q";
+        assert_eq!(algebraic_from_move(m, &b, &mgen), s);
     }
 
     #[test]

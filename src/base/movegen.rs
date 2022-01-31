@@ -700,11 +700,13 @@ mod tests {
     #[test]
     ///
     /// Test that Black cannot castle because there is a knight in the way.
-    /// 
+    ///
     fn test_no_queenside_castle_through_knight() {
         let b = Board::from_fen(KNIGHT_PREVENTS_LONG_CASTLE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        assert!(!mgen.get_moves(&b).contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
+        assert!(!mgen
+            .get_moves(&b)
+            .contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
     }
 
     #[test]
