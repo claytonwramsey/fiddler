@@ -1,5 +1,4 @@
 use crate::base::constants;
-use crate::base::util::opposite_color;
 use crate::base::Board;
 use crate::base::Move;
 use crate::base::MoveGenerator;
@@ -89,8 +88,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     // Determine if the move was a check or a mate.
     let mut bcopy = *b;
     let player_color = b.player_to_move;
-    let enemy_king_sq =
-        Square::from(b.get_type_and_color(PieceType::KING, opposite_color(player_color)));
+    let enemy_king_sq = Square::from(b.get_type_and_color(PieceType::KING, !player_color));
     bcopy.make_move(m);
     if mgen.is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
         if mgen.get_moves(&bcopy).is_empty() {

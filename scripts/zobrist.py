@@ -31,4 +31,4 @@ for i in range(8):
 print("];")
 
 #Black to move key
-print(f"const BLACK_TO_MOVE_KEY: u64 = {rand.getrandbits(64)};")
+print(f"const BLACKTO_MOVE_KEY: u64 = {rand.getrandbits(64)};")

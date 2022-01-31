@@ -1,5 +1,5 @@
-use crate::base::constants::{Color, WHITE};
 use crate::base::square::{Square, BAD_SQUARE};
+use crate::base::Color;
 use crate::base::PieceType;
 
 #[inline]
@@ -9,7 +9,7 @@ use crate::base::PieceType;
 pub fn get_square_key(sq: Square, pt: PieceType, color: Color) -> u64 {
     match pt {
         PieceType::NO_TYPE => 0,
-        _ => SQUARE_KEYS[sq.0 as usize][pt.0 as usize][color],
+        _ => SQUARE_KEYS[sq.0 as usize][pt.0 as usize][color as usize],
     }
 }
 
@@ -38,8 +38,8 @@ pub fn get_ep_key(ep_square: Square) -> u64 {
 ///
 pub fn get_player_to_move_key(player_to_move: Color) -> u64 {
     match player_to_move {
-        WHITE => 0,
-        _ => BLACK_TO_MOVE_KEY,
+        Color::White => 0,
+        _ => BLACKTO_MOVE_KEY,
     }
 }
 
@@ -573,4 +573,4 @@ const EP_KEYS: [u64; 8] = [
     15226297474735306250,
     12936367968696784083,
 ];
-pub const BLACK_TO_MOVE_KEY: u64 = 11183034114380226606;
+pub const BLACKTO_MOVE_KEY: u64 = 11183034114380226606;

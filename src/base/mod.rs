@@ -64,3 +64,9 @@ mod zobrist;
 /// converting algebraic notation strings to `Move`s.
 ///
 pub mod algebraic;
+
+///
+/// A module for the representation of players and their colors.
+///
+pub mod color;
+pub use crate::base::color::Color;

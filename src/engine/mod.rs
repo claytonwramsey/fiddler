@@ -1,5 +1,5 @@
 use crate::base::algebraic::algebraic_from_move;
-use crate::base::constants::WHITE;
+use crate::base::Color;
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
@@ -64,11 +64,11 @@ pub trait Engine {
         let evals = self.get_evals(g, mgen);
         let mut best_move = Move::BAD_MOVE;
         let mut best_eval = match player {
-            WHITE => Eval::MIN,
+            Color::White => Eval::MIN,
             _ => Eval::MAX,
         };
         for (m, eval) in evals.iter() {
-            if g.get_board().player_to_move == WHITE {
+            if g.get_board().player_to_move == Color::White {
                 if best_eval < *eval {
                     best_eval = *eval;
                     best_move = *m;

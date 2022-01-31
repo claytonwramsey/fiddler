@@ -1,5 +1,4 @@
-use crate::base::constants::{BLACK, WHITE};
-use crate::base::util::opposite_color;
+use crate::base::Color;
 use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::PieceType;
@@ -30,19 +29,18 @@ pub fn greedy_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let king_sq = Square::from(b.get_type_and_color(PieceType::KING, player));
 
     if g.is_game_over(mgen) {
-        if mgen.is_square_attacked_by(b, king_sq, opposite_color(player)) {
+        if mgen.is_square_attacked_by(b, king_sq, !player) {
             return match b.player_to_move {
-                WHITE => Eval::BLACK_MATE,
-                BLACK => Eval::WHITE_MATE,
-                _ => Eval(0),
+                Color::White => Eval::BLACK_MATE,
+                Color::Black => Eval::WHITE_MATE,
             };
         }
         return Eval(0);
     }
 
     for pt in PieceType::ALL_TYPES {
-        eval += piece_value(pt) * b.get_type_and_color(pt, WHITE).0.count_ones();
-        eval -= piece_value(pt) * b.get_type_and_color(pt, BLACK).0.count_ones();
+        eval += piece_value(pt) * b.get_type_and_color(pt, Color::White).0.count_ones();
+        eval -= piece_value(pt) * b.get_type_and_color(pt, Color::Black).0.count_ones();
     }
 
     eval

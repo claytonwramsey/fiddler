@@ -1,6 +1,6 @@
-use crate::base::constants::{BLACK, WHITE};
 use crate::base::piece::PieceType;
 use crate::base::Bitboard;
+use crate::base::Color;
 use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::Square;
@@ -82,10 +82,10 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         PieceType::KNIGHT,
         PieceType::KING,
     ] {
-        for sq in b.get_type_and_color(pt, WHITE) {
+        for sq in b.get_type_and_color(pt, Color::White) {
             positional_eval += value_at_square(pt, sq);
         }
-        for sq in b.get_type_and_color(pt, BLACK) {
+        for sq in b.get_type_and_color(pt, Color::Black) {
             //Invert the square that Black is on, since positional values are
             //flipped (as pawns move the other way, etc)
             let alt_sq = Square::new(7 - sq.rank(), sq.file());
@@ -94,7 +94,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     }
 
     // Add losses due to doubled pawns
-    let white_occupancy = b.get_color_occupancy(WHITE);
+    let white_occupancy = b.get_color_occupancy(Color::White);
     let pawns = b.get_type(PieceType::PAWN);
     let mut col_mask = Bitboard(0x0101010101010101);
     for _ in 0..8 {

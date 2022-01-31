@@ -1,10 +1,10 @@
-use crate::base::constants::{Color, BLACK, NO_COLOR, WHITE};
 use crate::base::piece::PieceType;
 use crate::base::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
-use crate::base::util::{opposite_color, pawn_promote_rank};
+use crate::base::util::pawn_promote_rank;
 use crate::base::zobrist;
 use crate::base::Bitboard;
 use crate::base::CastleRights;
+use crate::base::Color;
 use crate::base::Move;
 
 use std::default::Default;
@@ -28,7 +28,7 @@ pub struct Board {
     ///
     pub pieces: [Bitboard; PieceType::NUM_TYPES],
     ///
-    /// The color of the player to move. Should always be `BLACK` or `WHITE`.
+    /// The color of the player to move. Should always be `Color::Black` or `Color::White`.
     ///
     pub player_to_move: Color,
     ///
@@ -55,7 +55,7 @@ impl Board {
         sides: [Bitboard::EMPTY; 2],
         pieces: [Bitboard::EMPTY; 6],
         en_passant_square: BAD_SQUARE,
-        player_to_move: WHITE,
+        player_to_move: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 0,
     };
@@ -67,7 +67,7 @@ impl Board {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],
             en_passant_square: BAD_SQUARE,
-            player_to_move: WHITE,
+            player_to_move: Color::White,
             castle_rights: CastleRights::NO_RIGHTS,
             hash: 0,
         };
@@ -100,8 +100,8 @@ impl Board {
                 None => PieceType::NO_TYPE,
             };
             let color = match is_white {
-                true => WHITE,
-                false => BLACK,
+                true => Color::White,
+                false => Color::Black,
             };
             if pt != PieceType::NO_TYPE {
                 //character is a piece type
@@ -133,8 +133,8 @@ impl Board {
             None => return Err("reached end of string while parsing for player to move"),
         };
         board.player_to_move = match player_to_move_chr {
-            'w' => WHITE,
-            'b' => BLACK,
+            'w' => Color::White,
+            'b' => Color::Black,
             _ => return Err("unrecognized player to move"),
         };
 
@@ -153,10 +153,10 @@ impl Board {
             //note: hash was not updated, so will need to be rewritten by the
             //end of the function.
             board.castle_rights |= match castle_chr {
-                'K' => CastleRights::king_castle(WHITE),
-                'Q' => CastleRights::queen_castle(WHITE),
-                'k' => CastleRights::king_castle(BLACK),
-                'q' => CastleRights::queen_castle(BLACK),
+                'K' => CastleRights::king_castle(Color::White),
+                'Q' => CastleRights::queen_castle(Color::White),
+                'k' => CastleRights::king_castle(Color::Black),
+                'q' => CastleRights::queen_castle(Color::Black),
                 '-' => CastleRights::NO_RIGHTS,
                 _ => return Err("unrecognized castle rights character"),
             };
@@ -205,18 +205,19 @@ impl Board {
     ///
     pub fn get_occupancy(&self) -> Bitboard {
         // This gets called so often that unchecked getting is necessary.
-        unsafe { *self.sides.get_unchecked(WHITE) | *self.sides.get_unchecked(BLACK) }
+        self.get_color_occupancy(Color::White) | self.get_color_occupancy(Color::Black)
     }
 
     #[inline]
     ///
     /// Get the squares occupied by pieces of a given color. `color` must be
-    /// either `WHITE` or `BLACK`.
+    /// either `Color::White` or `Color::Black`.
     ///
     pub fn get_color_occupancy(&self, color: Color) -> Bitboard {
         // This gets called so often that unchecked lookup is necessary for
-        // performance.
-        unsafe { *self.sides.get_unchecked(color) }
+        // performance. Because `Color` can only be 0 or 1, this will never
+        // result in a fault.
+        unsafe { *self.sides.get_unchecked(color as usize) }
     }
 
     #[inline]
@@ -233,8 +234,8 @@ impl Board {
     #[inline]
     ///
     /// Get the squares occupied by pieces of a given type and color. The type
-    /// must be a valid piece type, and the color must be either `WHITE` or
-    /// `BLACK`.
+    /// must be a valid piece type, and the color must be either `Color::White` or
+    /// `Color::Black`.
     ///
     pub fn get_type_and_color(&self, pt: PieceType, color: Color) -> Bitboard {
         self.get_type(pt) & self.get_color_occupancy(color)
@@ -259,15 +260,15 @@ impl Board {
     /// Returns NO_COLOR if there are
     /// no pieces occupying the square.
     ///
-    pub fn color_at_square(&self, sq: Square) -> Color {
+    pub fn color_at_square(&self, sq: Square) -> Option<Color> {
         let bb = Bitboard::from(sq);
-        if self.sides[BLACK] & bb != Bitboard::EMPTY {
-            return BLACK;
+        if self.sides[Color::Black as usize] & bb != Bitboard::EMPTY {
+            return Some(Color::Black);
         }
-        if self.sides[WHITE] & bb != Bitboard::EMPTY {
-            return WHITE;
+        if self.sides[Color::White as usize] & bb != Bitboard::EMPTY {
+            return Some(Color::White);
         }
-        NO_COLOR
+        None
     }
 
     #[inline]
@@ -302,7 +303,7 @@ impl Board {
     ///
     pub fn is_move_capture(&self, m: Move) -> bool {
         let opponents_bb =
-            self.get_color_occupancy(opposite_color(self.color_at_square(m.from_square())));
+            self.get_color_occupancy(!self.color_at_square(m.from_square()).unwrap());
 
         opponents_bb.contains(m.to_square())
             || (self.get_type(PieceType::PAWN).contains(m.from_square())
@@ -414,27 +415,27 @@ impl Board {
             //don't need to check if it's a rook because moving from this square
             //would mean you didn't have the right anyway
             rights_to_remove = match from_sq {
-                A1 => CastleRights::queen_castle(WHITE),
-                H1 => CastleRights::king_castle(WHITE),
-                A8 => CastleRights::queen_castle(BLACK),
-                H8 => CastleRights::king_castle(BLACK),
+                A1 => CastleRights::queen_castle(Color::White),
+                H1 => CastleRights::king_castle(Color::White),
+                A8 => CastleRights::queen_castle(Color::Black),
+                H8 => CastleRights::king_castle(Color::Black),
                 _ => CastleRights::NO_RIGHTS,
             };
 
             // capturing a rook also removes rights
             rights_to_remove |= match to_sq {
-                A1 => CastleRights::queen_castle(WHITE),
-                H1 => CastleRights::king_castle(WHITE),
-                A8 => CastleRights::queen_castle(BLACK),
-                H8 => CastleRights::king_castle(BLACK),
+                A1 => CastleRights::queen_castle(Color::White),
+                H1 => CastleRights::king_castle(Color::White),
+                A8 => CastleRights::queen_castle(Color::Black),
+                H8 => CastleRights::king_castle(Color::Black),
                 _ => CastleRights::NO_RIGHTS,
             }
         }
         self.remove_castle_rights(rights_to_remove);
 
         /* Updating player to move */
-        self.player_to_move = opposite_color(self.player_to_move);
-        self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+        self.player_to_move = !self.player_to_move;
+        self.hash ^= zobrist::BLACKTO_MOVE_KEY;
     }
 
     ///
@@ -461,14 +462,18 @@ impl Board {
     fn remove_piece(&mut self, sq: Square) {
         //Remove the hash from the piece that was there before
         //(no-op if it was empty)
-        self.hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
+
+        self.hash ^= match self.color_at_square(sq) {
+            Some(c) => zobrist::get_square_key(sq, self.type_at_square(sq), c),
+            None => 0,
+        };
         let mask = !Bitboard::from(sq);
 
         for i in 0..PieceType::NUM_TYPES {
             self.pieces[i] &= mask;
         }
-        self.sides[BLACK] &= mask;
-        self.sides[WHITE] &= mask;
+        self.sides[Color::Black as usize] &= mask;
+        self.sides[Color::White as usize] &= mask;
     }
 
     ///
@@ -482,7 +487,7 @@ impl Board {
         //empty)
         let mask = Bitboard::from(sq);
         self.pieces[pt.0 as usize] |= mask;
-        self.sides[color] |= mask;
+        self.sides[color as usize] |= mask;
         //Update the hash with the result of our addition
         self.hash ^= zobrist::get_square_key(sq, pt, color);
     }
@@ -533,7 +538,10 @@ impl Board {
         let mut hash = 0;
         for i in 0..64 {
             let sq = Square(i);
-            hash ^= zobrist::get_square_key(sq, self.type_at_square(sq), self.color_at_square(sq));
+            hash ^= match self.color_at_square(sq) {
+                Some(c) => zobrist::get_square_key(sq, self.type_at_square(sq), c),
+                None => 0,
+            };
         }
         for i in 0..4 {
             if 1 << i & self.castle_rights.0 != 0 {
@@ -561,9 +569,9 @@ impl Display for Board {
                 let pt = self.type_at_square(current_square);
 
                 match self.color_at_square(current_square) {
-                    WHITE => write!(f, "{pt}")?,
-                    BLACK => write!(f, "{}", pt.get_code().to_lowercase())?,
-                    _ => write!(f, " ")?,
+                    Some(Color::White) => write!(f, "{pt}")?,
+                    Some(Color::Black) => write!(f, "{}", pt.get_code().to_lowercase())?,
+                    None => write!(f, " ")?,
                 };
             }
             writeln!(f)?;
@@ -606,7 +614,7 @@ impl Default for Board {
                 Bitboard(0x1000000000000010), //king
             ],
             en_passant_square: BAD_SQUARE,
-            player_to_move: WHITE,
+            player_to_move: Color::White,
             castle_rights: CastleRights::ALL_RIGHTS,
             hash: 0,
         };
@@ -639,7 +647,7 @@ pub mod tests {
             Bitboard(0x8000000000000001), //king
         ],
         en_passant_square: BAD_SQUARE,
-        player_to_move: WHITE,
+        player_to_move: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 3483926298739092744,
     };
@@ -768,7 +776,7 @@ pub mod tests {
     /// old_board`. Fails assertion if this is not the case.
     ///
     pub fn test_move_result_helper(old_board: Board, new_board: Board, m: Move) {
-        let mover_color = old_board.color_at_square(m.from_square());
+        let mover_color = old_board.color_at_square(m.from_square()).unwrap();
         let mover_type = old_board.type_at_square(m.from_square());
         let is_en_passant = old_board.is_move_en_passant(m);
         let is_castle = old_board.is_move_castle(m);
@@ -781,13 +789,13 @@ pub mod tests {
         } else {
             assert_eq!(new_board.type_at_square(m.to_square()), mover_type);
         }
-        assert_eq!(new_board.color_at_square(m.to_square()), mover_color);
+        assert_eq!(new_board.color_at_square(m.to_square()), Some(mover_color));
 
         assert_eq!(
             new_board.type_at_square(m.from_square()),
             PieceType::NO_TYPE
         );
-        assert_eq!(new_board.color_at_square(m.from_square()), NO_COLOR);
+        assert_eq!(new_board.color_at_square(m.from_square()), None);
 
         //Check en passant worked correctly
         if is_en_passant {
@@ -797,7 +805,7 @@ pub mod tests {
             );
             assert_eq!(
                 new_board.color_at_square(old_board.en_passant_square),
-                old_board.player_to_move
+                Some(old_board.player_to_move)
             );
         }
 
@@ -817,12 +825,12 @@ pub mod tests {
             let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file);
 
             assert_eq!(new_board.type_at_square(rook_start_sq), PieceType::NO_TYPE);
-            assert_eq!(new_board.color_at_square(rook_start_sq), NO_COLOR);
+            assert_eq!(new_board.color_at_square(rook_start_sq), None);
 
             assert_eq!(new_board.type_at_square(rook_end_sq), PieceType::ROOK);
             assert_eq!(
                 new_board.color_at_square(rook_end_sq),
-                old_board.player_to_move
+                Some(old_board.player_to_move)
             );
 
             assert!(!new_board
@@ -836,19 +844,35 @@ pub mod tests {
         // Check castling rights were removed correctly
         if mover_type == PieceType::ROOK {
             match m.from_square() {
-                A1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(WHITE)),
-                A8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(WHITE)),
-                H1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(BLACK)),
-                H8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(BLACK)),
+                A1 => assert!(!new_board
+                    .castle_rights
+                    .is_queenside_castle_legal(Color::White)),
+                A8 => assert!(!new_board
+                    .castle_rights
+                    .is_kingside_castle_legal(Color::White)),
+                H1 => assert!(!new_board
+                    .castle_rights
+                    .is_queenside_castle_legal(Color::Black)),
+                H8 => assert!(!new_board
+                    .castle_rights
+                    .is_kingside_castle_legal(Color::Black)),
                 _ => {}
             };
         }
 
         match m.to_square() {
-            A1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(WHITE)),
-            A8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(WHITE)),
-            H1 => assert!(!new_board.castle_rights.is_queenside_castle_legal(BLACK)),
-            H8 => assert!(!new_board.castle_rights.is_kingside_castle_legal(BLACK)),
+            A1 => assert!(!new_board
+                .castle_rights
+                .is_queenside_castle_legal(Color::White)),
+            A8 => assert!(!new_board
+                .castle_rights
+                .is_kingside_castle_legal(Color::White)),
+            H1 => assert!(!new_board
+                .castle_rights
+                .is_queenside_castle_legal(Color::Black)),
+            H8 => assert!(!new_board
+                .castle_rights
+                .is_kingside_castle_legal(Color::Black)),
             _ => {}
         };
     }

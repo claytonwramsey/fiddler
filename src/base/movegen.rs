@@ -1,10 +1,10 @@
-use crate::base::constants::{Color, BLACK};
 use crate::base::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::base::moves::Move;
 use crate::base::square::{Square, BAD_SQUARE};
-use crate::base::util::{opposite_color, pawn_direction, pawn_start_rank};
+use crate::base::util::{pawn_direction, pawn_start_rank};
 use crate::base::Bitboard;
 use crate::base::Board;
+use crate::base::Color;
 use crate::base::Direction;
 use crate::base::PieceType;
 
@@ -64,7 +64,7 @@ impl MoveGenerator {
     ///
     pub fn has_moves(&self, board: &Board) -> bool {
         let player = board.player_to_move;
-        let opponent = opposite_color(player);
+        let opponent = !player;
         let king_square = Square::from(board.get_type_and_color(PieceType::KING, player));
         /*if king_square == crate::base::square::BAD_SQUARE {
             // no king found
@@ -150,11 +150,7 @@ impl MoveGenerator {
             }
             for file in king_passthru_min..king_passthru_max {
                 let target_sq = Square::new(m.from_square().rank(), file);
-                if self.is_square_attacked_by(
-                    board,
-                    target_sq,
-                    opposite_color(board.player_to_move),
-                ) {
+                if self.is_square_attacked_by(board, target_sq, !board.player_to_move) {
                     return false;
                 }
             }
@@ -168,12 +164,12 @@ impl MoveGenerator {
     /// self-check?
     ///
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
-        let player = board.color_at_square(m.from_square());
+        let player = board.color_at_square(m.from_square()).unwrap();
         let player_king_bb = board.get_type_and_color(PieceType::KING, player);
         let is_king_move = player_king_bb.contains(m.from_square());
         // Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
-        let opponent = opposite_color(player);
+        let opponent = !player;
 
         if is_king_move {
             if self.is_square_attacked_by(board, m.to_square(), opponent) {
@@ -225,7 +221,7 @@ impl MoveGenerator {
     /// able to make if it were their turn to move.
     ///
     fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
-        let about_to_promote_bb = pawn_start_rank(opposite_color(color));
+        let about_to_promote_bb = pawn_start_rank(!color);
 
         let pawns = board.get_type_and_color(PieceType::PAWN, color);
         let promoting_pawns = pawns & about_to_promote_bb;
@@ -276,7 +272,7 @@ impl MoveGenerator {
     ///
     fn get_pseudolegal_loud_moves(&self, board: &Board) -> Vec<Move> {
         let player = board.player_to_move;
-        let opponent = opposite_color(player);
+        let opponent = !player;
         let opponents_bb = board.get_color_occupancy(opponent);
         let about_to_promote_bb = pawn_start_rank(opponent);
         let pawns = board.get_type_and_color(PieceType::PAWN, player);
@@ -342,7 +338,7 @@ impl MoveGenerator {
         let mut attackers = Bitboard::EMPTY;
         let color_bb = board.get_color_occupancy(color);
         // Check for pawn attacks
-        let pawn_vision = self.pawn_captures(board, sq, opposite_color(color));
+        let pawn_vision = self.pawn_captures(board, sq, !color);
         attackers |= pawn_vision & board.get_type(PieceType::PAWN);
 
         // Check for knight attacks
@@ -390,7 +386,8 @@ impl MoveGenerator {
     /// this position. Also, haha bob seger.
     ///
     fn knight_moves(&self, board: &Board, sq: Square) -> Bitboard {
-        self.knight_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq))
+        self.knight_moves[sq.0 as usize]
+            & !board.get_color_occupancy(board.color_at_square(sq).unwrap())
     }
 
     #[inline]
@@ -400,16 +397,16 @@ impl MoveGenerator {
     /// check.
     ///
     fn king_moves(&self, board: &Board, sq: Square) -> Bitboard {
-        let mut moves =
-            self.king_moves[sq.0 as usize] & !board.get_color_occupancy(board.color_at_square(sq));
+        let mut moves = self.king_moves[sq.0 as usize]
+            & !board.get_color_occupancy(board.color_at_square(sq).unwrap());
 
         //castling
         let kingside_castle_passthrough_sqs = match board.player_to_move {
-            BLACK => Bitboard(0x6000000000000000),
+            Color::Black => Bitboard(0x6000000000000000),
             _ => Bitboard(0x0000000000000060),
         };
         let queenside_castle_passthrough_sqs = match board.player_to_move {
-            BLACK => Bitboard(0x0E00000000000000),
+            Color::Black => Bitboard(0x0E00000000000000),
             _ => Bitboard(0x000000000000000E),
         };
 
@@ -437,7 +434,7 @@ impl MoveGenerator {
     /// position.
     ///
     fn pawn_moves(&self, board: &Board, sq: Square) -> Bitboard {
-        let player_color = board.color_at_square(sq);
+        let player_color = board.color_at_square(sq).unwrap();
         let dir = pawn_direction(player_color);
         let start_rank = pawn_start_rank(player_color);
         let from_bb = Bitboard::from(sq);
@@ -451,7 +448,7 @@ impl MoveGenerator {
                 target_squares |= Bitboard::from(sq + 2 * dir);
             }
         }
-        target_squares |= self.pawn_captures(board, sq, board.color_at_square(sq));
+        target_squares |= self.pawn_captures(board, sq, board.color_at_square(sq).unwrap());
         target_squares &= !board.get_color_occupancy(player_color);
 
         target_squares
@@ -463,12 +460,12 @@ impl MoveGenerator {
     /// this square.
     ///
     fn pawn_captures(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        let mut capture_mask = board.get_color_occupancy(opposite_color(color));
+        let mut capture_mask = board.get_color_occupancy(!color);
         if board.en_passant_square != BAD_SQUARE {
             capture_mask |= Bitboard::from(board.en_passant_square);
         }
 
-        self.pawn_attacks[color][sq.0 as usize] & capture_mask
+        self.pawn_attacks[color as usize][sq.0 as usize] & capture_mask
     }
 
     #[inline]
@@ -478,7 +475,7 @@ impl MoveGenerator {
     ///
     fn bishop_moves(&self, board: &Board, sq: Square) -> Bitboard {
         get_bishop_attacks(board.get_occupancy(), sq, &self.mtable)
-            & !board.get_color_occupancy(board.color_at_square(sq))
+            & !board.get_color_occupancy(board.color_at_square(sq).unwrap())
     }
 
     #[inline]
@@ -488,7 +485,7 @@ impl MoveGenerator {
     ///
     fn rook_moves(&self, board: &Board, sq: Square) -> Bitboard {
         get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
-            & !board.get_color_occupancy(board.color_at_square(sq))
+            & !board.get_color_occupancy(board.color_at_square(sq).unwrap())
     }
 
     #[inline]
@@ -619,7 +616,7 @@ mod tests {
         let mg = MoveGenerator::default();
         let m = Move::new(D1, F3, PieceType::NO_TYPE);
         let b = Board::from_fen(FRIED_LIVER_FEN).unwrap();
-        let pms = mg.get_pseudolegal_moves(&b, crate::base::constants::WHITE);
+        let pms = mg.get_pseudolegal_moves(&b, crate::base::Color::White);
         for m2 in pms.iter() {
             println!("{m2}");
         }
@@ -690,7 +687,7 @@ mod tests {
     /// Test that queenside castling actually works.
     ///
     fn test_queenside_castle() {
-        let b = Board::from_fen(BLACK_QUEENSIDE_CASTLE_READY_FEN).unwrap();
+        let b = Board::from_fen(BLACKQUEENSIDE_CASTLE_READY_FEN).unwrap();
         let mgen = MoveGenerator::default();
         assert!(mgen
             .get_moves(&b)
