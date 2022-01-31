@@ -114,3 +114,10 @@ pub const ROOK_HANGING_FEN: &str =
 ///
 pub const KING_MUST_ESCAPE_FEN: &str =
     "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10";
+
+#[allow(unused)]
+///
+/// A FEN where Black cannot play O-O-O on this move because the knight is in 
+/// the way.
+/// 
+pub const KNIGHT_PREVENTS_LONG_CASTLE_FEN: &str = "rn2kbnr/ppp1pppp/3q4/3p4/6b1/8/PPPPPPPP/RNBQKBNR b KQkq - 5 4";

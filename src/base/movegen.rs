@@ -409,8 +409,8 @@ impl MoveGenerator {
             _ => Bitboard(0x0000000000000060),
         };
         let queenside_castle_passthrough_sqs = match board.player_to_move {
-            BLACK => Bitboard(0x0C00000000000000),
-            _ => Bitboard(0x000000000000000C),
+            BLACK => Bitboard(0x0E00000000000000),
+            _ => Bitboard(0x000000000000000E),
         };
 
         let can_kingside_castle = board
@@ -695,6 +695,16 @@ mod tests {
         assert!(mgen
             .get_moves(&b)
             .contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
+    }
+
+    #[test]
+    ///
+    /// Test that Black cannot castle because there is a knight in the way.
+    /// 
+    fn test_no_queenside_castle_through_knight() {
+        let b = Board::from_fen(KNIGHT_PREVENTS_LONG_CASTLE_FEN).unwrap();
+        let mgen = MoveGenerator::default();
+        assert!(!mgen.get_moves(&b).contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
     }
 
     #[test]
