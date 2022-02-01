@@ -1,7 +1,6 @@
 use crate::base::magic::{get_bishop_attacks, get_rook_attacks, MagicTable};
 use crate::base::moves::Move;
 use crate::base::square::{Square, BAD_SQUARE};
-use crate::base::util::{pawn_direction, pawn_start_rank};
 use crate::base::Bitboard;
 use crate::base::Board;
 use crate::base::Color;
@@ -221,7 +220,7 @@ impl MoveGenerator {
     /// able to make if it were their turn to move.
     ///
     fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
-        let about_to_promote_bb = pawn_start_rank(!color);
+        let about_to_promote_bb = (!color).pawn_start_rank();
 
         let pawns = board.get_type_and_color(Piece::Pawn, color);
         let promoting_pawns = pawns & about_to_promote_bb;
@@ -274,7 +273,7 @@ impl MoveGenerator {
         let player = board.player_to_move;
         let opponent = !player;
         let opponents_bb = board.get_color_occupancy(opponent);
-        let about_to_promote_bb = pawn_start_rank(opponent);
+        let about_to_promote_bb = opponent.pawn_start_rank();
         let pawns = board.get_type_and_color(Piece::Pawn, player);
         let non_promoting_pawns = pawns & !about_to_promote_bb;
         let promoting_pawns = pawns & about_to_promote_bb;
@@ -331,10 +330,6 @@ impl MoveGenerator {
         color: Color,
         occupancy: Bitboard,
     ) -> Bitboard {
-        /*if sq.0 == 64 {
-            println!("found an error board!");
-            println!("{board}");
-        }*/
         let mut attackers = Bitboard::EMPTY;
         let color_bb = board.get_color_occupancy(color);
         // Check for pawn attacks
@@ -433,8 +428,8 @@ impl MoveGenerator {
     ///
     fn pawn_moves(&self, board: &Board, sq: Square) -> Bitboard {
         let player_color = board.color_at_square(sq).unwrap();
-        let dir = pawn_direction(player_color);
-        let start_rank = pawn_start_rank(player_color);
+        let dir = player_color.pawn_direction();
+        let start_rank = player_color.pawn_start_rank();
         let from_bb = Bitboard::from(sq);
         let occupancy = board.get_occupancy();
         let mut target_squares = Bitboard::EMPTY;
@@ -631,7 +626,9 @@ mod tests {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
         let m = Move::new(E4, F5, None);
-
+        for m in mgen.get_moves(&b) {
+            println!("{}", m);
+        }
         assert!(mgen.get_moves(&b).contains(&m));
         assert!(mgen.get_loud_moves(&b).contains(&m));
     }
@@ -765,6 +762,17 @@ mod tests {
         for em in expected_moves.iter() {
             assert!(moves.contains(em));
         }
+    }
+
+    #[test]
+    ///
+    /// Test that Black can promote a piece (on e1).
+    /// 
+    fn test_black_can_promote() {
+        let b = Board::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1").unwrap();
+        let mgen = MoveGenerator::default();
+        let moves = mgen.get_moves(&b);
+        assert!(moves.contains(&Move::promoting(E2, E1, Piece::Queen)));
     }
 
     ///

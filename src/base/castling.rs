@@ -22,32 +22,29 @@ impl CastleRights {
     pub const BLACKRIGHTS: CastleRights = CastleRights(12);
 
     ///
-    /// Create a `CastleRights` for kingside castling on one side. `color` must
-    /// be either `Color::White` or `Color::Black`.
+    /// Create a `CastleRights` for kingside castling on one side. 
     ///
     #[inline]
-    pub fn king_castle(color: Color) -> CastleRights {
+    pub const fn king_castle(color: Color) -> CastleRights {
         // White = 0 --> 1
         // Black = 1 --> 4
         CastleRights((1 + (color as usize) * 3) as u8)
     }
 
     ///
-    /// Create a `CastleRights` for queenside castling on one side. `color`
-    /// must be either `Color::White` or `Color::Black`.
+    /// Create a `CastleRights` for queenside castling on one side. 
     ///
     #[inline]
-    pub fn queen_castle(color: Color) -> CastleRights {
+    pub const fn queen_castle(color: Color) -> CastleRights {
         // White = 0 --> 2
         // Black = 1 --> 8
         CastleRights((2 + (color as usize) * 6) as u8)
     }
 
     ///
-    /// Get the full rights for one color. `color` must be either `Color::White` or
-    /// `Color::Black`.
+    /// Get the full rights for one color. 
     ///
-    pub fn color_rights(color: Color) -> CastleRights {
+    pub const fn color_rights(color: Color) -> CastleRights {
         // White = 0 --> 3
         // Black = 1 --> 12
         CastleRights((3 + (color as usize) * 9) as u8)

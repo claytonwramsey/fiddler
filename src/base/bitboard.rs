@@ -22,7 +22,7 @@ impl Bitboard {
     ///
     /// Determine whether a square of a bitboard is occupied.
     ///
-    pub fn contains(self, square: Square) -> bool {
+    pub const fn contains(self, square: Square) -> bool {
         self.0 & (1 << square.0) != 0
     }
 }

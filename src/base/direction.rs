@@ -51,27 +51,28 @@ impl Direction {
     ];
 
     #[inline]
-    #[allow(dead_code)]
     ///
     /// Create a new Direction based on how far it moves in rank and file.
     ///
-    fn new(rank_step: i8, file_step: i8) -> Direction {
+    pub const fn new(rank_step: i8, file_step: i8) -> Direction {
         Direction(rank_step + (file_step * 8))
     }
+
     #[inline]
     #[allow(dead_code)]
     ///
     /// Get the difference moved by a Direction in a file.
     ///
-    fn file_step(self) -> i8 {
+    const fn file_step(self) -> i8 {
         self.0 % 8
     }
+    
     #[inline]
     #[allow(dead_code)]
     ///
     /// Get the difference moved by a Direction in a rank.
     ///
-    fn rank_step(self) -> i8 {
+    const fn rank_step(self) -> i8 {
         self.0 / 8
     }
 }

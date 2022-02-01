@@ -22,7 +22,7 @@ impl Square {
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
     ///
-    pub fn new(rank: usize, file: usize) -> Square {
+    pub const fn new(rank: usize, file: usize) -> Square {
         Square((((rank & 7) << 3) | (file & 7)) as u8)
     }
 
@@ -30,7 +30,7 @@ impl Square {
     ///
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
     ///
-    pub fn rank(self) -> usize {
+    pub const fn rank(self) -> usize {
         ((self.0 >> 3u8) & 7u8) as usize
     }
 
@@ -38,7 +38,7 @@ impl Square {
     ///
     /// Get the integer representing the file (0 -> A, ...) of this square.
     ///
-    pub fn file(self) -> usize {
+    pub const fn file(self) -> usize {
         (self.0 & 7u8) as usize
     }
 
@@ -46,7 +46,7 @@ impl Square {
     ///
     /// Return false if this is an illegal (i.e. inaccessible) square.
     ///
-    pub fn is_inbounds(self) -> bool {
+    pub const fn is_inbounds(self) -> bool {
         self.0 < 64
     }
 

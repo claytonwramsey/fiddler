@@ -51,8 +51,6 @@ pub use crate::base::piece::Piece;
 pub mod square;
 pub use crate::base::square::Square;
 
-pub mod util;
-
 ///
 /// A module for storing the hashes of positions in a computationally efficient
 /// manner.

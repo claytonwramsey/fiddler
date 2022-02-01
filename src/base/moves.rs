@@ -29,7 +29,7 @@ impl Move {
     ///
     /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
     ///
-    pub fn new(from_square: Square, to_square: Square, promote_type: Option<Piece>) -> Move {
+    pub const fn new(from_square: Square, to_square: Square, promote_type: Option<Piece>) -> Move {
         let from_square_bits = from_square.0 as u16;
         let to_square_bits = (to_square.0 as u16) << 6;
         let promote_type_bits = match promote_type {
@@ -44,7 +44,7 @@ impl Move {
     ///
     /// Create a `Move` with no promotion type.
     ///
-    pub fn normal(from_square: Square, to_square: Square) -> Move {
+    pub const fn normal(from_square: Square, to_square: Square) -> Move {
         Move::new(from_square, to_square, None)
     }
 
@@ -52,7 +52,7 @@ impl Move {
     ///
     /// Create a `Move` with the given promotion type.
     ///
-    pub fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
+    pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
         Move::new(from_square, to_square, Some(promote_type))
     }
 
@@ -60,7 +60,7 @@ impl Move {
     ///
     /// Get the target square of this move.
     ///
-    pub fn to_square(self) -> Square {
+    pub const fn to_square(self) -> Square {
         Square(((self.0 >> 6) & 63u16) as u8)
     }
 
@@ -68,7 +68,7 @@ impl Move {
     ///
     /// Get the square that a piece moves from to execute this move.
     ///
-    pub fn from_square(self) -> Square {
+    pub const fn from_square(self) -> Square {
         Square((self.0 & 63u16) as u8)
     }
 
@@ -76,7 +76,7 @@ impl Move {
     ///
     /// Get the promotion type of this move.
     ///
-    pub fn promote_type(self) -> Option<Piece> {
+    pub const fn promote_type(self) -> Option<Piece> {
         let promote_bits = (self.0 >> 12) & 7u16;
         // Justification for the transmutation here:
         // We know that from the creation of a Move its promotion type must

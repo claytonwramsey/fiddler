@@ -1,6 +1,5 @@
 use crate::base::piece::Piece;
 use crate::base::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
-use crate::base::util::pawn_promote_rank;
 use crate::base::zobrist;
 use crate::base::Bitboard;
 use crate::base::CastleRights;
@@ -295,8 +294,7 @@ impl Board {
     pub fn is_move_promotion(&self, m: Move) -> bool {
         self.get_type_and_color(Piece::Pawn, self.player_to_move)
             .contains(m.from_square())
-            && Bitboard::from(m.to_square()) & pawn_promote_rank(self.player_to_move)
-                != Bitboard::EMPTY
+            && self.player_to_move.pawn_promote_rank().contains(m.to_square())
     }
 
     ///
