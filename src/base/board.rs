@@ -565,12 +565,13 @@ impl Display for Board {
             for c in 0..8 {
                 let i = 64 - (r + 1) * 8 + c;
                 let current_square = Square(i);
-                if let Some(p) = self.type_at_square(current_square) {
-                    match self.color_at_square(current_square) {
+                match self.type_at_square(current_square) {
+                    Some(p) => match self.color_at_square(current_square) {
                         Some(Color::White) => write!(f, "{p}")?,
                         Some(Color::Black) => write!(f, "{}", p.get_code().to_lowercase())?,
                         None => write!(f, " ")?,
-                    };
+                    },
+                    None => write!(f, " ")?,
                 }
             }
             writeln!(f)?;
