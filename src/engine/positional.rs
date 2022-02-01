@@ -1,4 +1,4 @@
-use crate::base::piece::PieceType;
+use crate::base::piece::Piece;
 use crate::base::Bitboard;
 use crate::base::Color;
 use crate::base::Game;
@@ -57,8 +57,6 @@ const BISHOP_VALUES: ValueTable = [
     0.1, 0.05, 0.0, 0.0, 0.0, 0.0, 0.05, 0.1, //rank 8
 ];
 
-const DEFAULT_VALUES: ValueTable = [0.0; 64];
-
 ///
 /// The value of having an opponent's pawn doubled.
 ///
@@ -76,12 +74,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut positional_eval = Eval(0);
 
     let b = g.get_board();
-    for pt in [
-        PieceType::PAWN,
-        PieceType::BISHOP,
-        PieceType::KNIGHT,
-        PieceType::KING,
-    ] {
+    for pt in [Piece::Pawn, Piece::Bishop, Piece::Knight, Piece::King] {
         for sq in b.get_type_and_color(pt, Color::White) {
             positional_eval += value_at_square(pt, sq);
         }
@@ -95,7 +88,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 
     // Add losses due to doubled pawns
     let white_occupancy = b.get_color_occupancy(Color::White);
-    let pawns = b.get_type(PieceType::PAWN);
+    let pawns = b.get_type(Piece::Pawn);
     let mut col_mask = Bitboard(0x0101010101010101);
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
@@ -124,15 +117,14 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 /// Get the positional value of a piece at a square.
 /// Requires that the square be a valid square.
 ///
-pub fn value_at_square(pt: PieceType, sq: Square) -> Eval {
+pub fn value_at_square(pt: Piece, sq: Square) -> Eval {
     let val_table = match pt {
-        PieceType::PAWN => &PAWN_VALUES,
-        PieceType::KNIGHT => &KNIGHT_VALUES,
-        PieceType::BISHOP => &BISHOP_VALUES,
-        PieceType::ROOK => &ROOK_VALUES,
-        PieceType::KING => &KING_VALUES,
-        PieceType::QUEEN => &QUEEN_VALUES,
-        _ => &DEFAULT_VALUES,
+        Piece::Pawn => &PAWN_VALUES,
+        Piece::Knight => &KNIGHT_VALUES,
+        Piece::Bishop => &BISHOP_VALUES,
+        Piece::Rook => &ROOK_VALUES,
+        Piece::King => &KING_VALUES,
+        Piece::Queen => &QUEEN_VALUES,
     };
 
     Eval::pawns(unsafe { *val_table.get_unchecked(sq.0 as usize) })
@@ -163,7 +155,7 @@ mod tests {
     fn test_f3_bad() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
-        g.make_move(Move::new(F2, F3, PieceType::NO_TYPE));
+        g.make_move(Move::normal(F2, F3));
         assert!(positional_evaluate(&mut g, &mgen) < Eval(0));
     }
 }

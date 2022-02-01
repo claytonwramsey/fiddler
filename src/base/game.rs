@@ -227,7 +227,6 @@ mod tests {
     use crate::base::board;
     use crate::base::moves::Move;
     use crate::base::square::*;
-    use crate::base::PieceType;
     use crate::fens::*;
 
     #[test]
@@ -237,9 +236,9 @@ mod tests {
     ///
     fn test_play_e4() {
         let mut g = Game::default();
-        let m = Move::new(E2, E4, PieceType::NO_TYPE);
+        let m = Move::new(E2, E4, None);
         let old_board = *g.get_board();
-        g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
+        g.make_move(Move::new(E2, E4, None));
         let new_board = g.get_board();
         board::tests::test_move_result_helper(old_board, *new_board, m);
     }
@@ -250,7 +249,7 @@ mod tests {
     ///
     fn test_undo_move() {
         let mut g = Game::default();
-        let m = Move::new(E2, E4, PieceType::NO_TYPE);
+        let m = Move::new(E2, E4, None);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(*g.get_board(), Board::default());
@@ -272,8 +271,8 @@ mod tests {
     ///
     fn test_undo_multiple_moves() {
         let mut g = Game::default();
-        let m0 = Move::new(E2, E4, PieceType::NO_TYPE);
-        let m1 = Move::new(E7, E5, PieceType::NO_TYPE);
+        let m0 = Move::new(E2, E4, None);
+        let m1 = Move::new(E7, E5, None);
         g.make_move(m0);
         g.make_move(m1);
         assert_eq!(g.undo_n(2), Ok(()));
@@ -287,7 +286,7 @@ mod tests {
     ///
     fn test_undo_equality() {
         let mut g = Game::default();
-        g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
+        g.make_move(Move::new(E2, E4, None));
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::default());
     }
@@ -298,7 +297,7 @@ mod tests {
     ///
     fn test_undo_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
-        let m = Move::new(D1, F3, PieceType::NO_TYPE);
+        let m = Move::new(D1, F3, None);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN).unwrap());
@@ -350,7 +349,7 @@ mod tests {
         let mut g = Game::from_fen(MATE_IN_1_FEN).unwrap();
         let mgen = MoveGenerator::default();
 
-        let m = Move::new(B6, B8, PieceType::NO_TYPE);
+        let m = Move::new(B6, B8, None);
         assert!(g.get_moves(&mgen).contains(&m));
         g.make_move(m);
         for m2 in g.get_moves(&mgen) {
@@ -366,7 +365,7 @@ mod tests {
     ///
     fn test_clear_board() {
         let mut g = Game::default();
-        g.make_move(Move::new(E2, E4, PieceType::NO_TYPE));
+        g.make_move(Move::new(E2, E4, None));
         g.clear();
         assert_eq!(g, Game::default());
     }
@@ -380,10 +379,10 @@ mod tests {
         let mgen = MoveGenerator::default();
         let moves = g.get_moves(&mgen);
         let expected_moves = vec![
-            Move::new(E6, D6, PieceType::NO_TYPE),
-            Move::new(E6, F7, PieceType::NO_TYPE),
-            Move::new(E6, E7, PieceType::NO_TYPE),
-            Move::new(F6, G4, PieceType::NO_TYPE),
+            Move::new(E6, D6, None),
+            Move::new(E6, F7, None),
+            Move::new(E6, E7, None),
+            Move::new(F6, G4, None),
         ];
         for m in moves.iter() {
             assert!(expected_moves.contains(m));

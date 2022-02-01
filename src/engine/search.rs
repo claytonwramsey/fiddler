@@ -467,7 +467,6 @@ pub mod tests {
     use super::*;
     use crate::base::moves::Move;
     use crate::base::square::*;
-    use crate::base::PieceType;
     use crate::fens::*;
     use std::collections::HashMap;
 
@@ -509,10 +508,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
-        assert_eq!(
-            e.get_best_move(&mut g, &mgen),
-            Move::new(D1, F3, PieceType::NO_TYPE)
-        );
+        assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(D1, F3, None));
     }
 
     #[test]
@@ -542,10 +538,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(8);
 
-        assert_eq!(
-            e.get_best_move(&mut g, &mgen),
-            Move::new(F2, F7, PieceType::NO_TYPE)
-        );
+        assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(F2, F7, None));
     }
 
     ///

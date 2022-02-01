@@ -2,12 +2,14 @@ use crate::base::constants;
 use crate::base::Board;
 use crate::base::Move;
 use crate::base::MoveGenerator;
-use crate::base::PieceType;
+use crate::base::Piece;
 use crate::base::Square;
 
 ///
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.
+/// # Panics
+/// if the move given is illegal or otherwise invalid.
 ///
 pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     //longest possible algebraic string would be something along the lines of
@@ -24,7 +26,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
             s += "O-O-O";
         }
     } else {
-        let mover_type = b.type_at_square(m.from_square());
+        let mover_type = b.type_at_square(m.from_square()).unwrap();
         let is_move_capture = b.is_move_capture(m);
         let other_moves = mgen.get_moves(b);
         let from_sq = m.from_square();
@@ -35,7 +37,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         let mut is_unclear_file = false;
 
         // Type of the piece moving
-        if mover_type != PieceType::PAWN {
+        if mover_type != Piece::Pawn {
             s += mover_type.get_code();
         } else if is_move_capture {
             is_unclear = true;
@@ -46,7 +48,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
             if other_move != m
                 && other_move.to_square() == m.to_square()
                 && other_move.from_square() != m.from_square()
-                && b.type_at_square(other_move.from_square()) == mover_type
+                && b.type_at_square(other_move.from_square()).unwrap() == mover_type
             {
                 is_unclear = true;
                 if other_move.from_square().rank() == from_sq.rank() {
@@ -78,17 +80,16 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         s += &m.to_square().to_string();
 
         // Add promote types
-        let promote_type = m.promote_type();
-        if promote_type != PieceType::NO_TYPE {
+        if let Some(p) = m.promote_type() {
             s += "=";
-            s += promote_type.get_code();
+            s += p.get_code();
         }
     }
 
     // Determine if the move was a check or a mate.
     let mut bcopy = *b;
     let player_color = b.player_to_move;
-    let enemy_king_sq = Square::from(b.get_type_and_color(PieceType::KING, !player_color));
+    let enemy_king_sq = Square::from(b.get_type_and_color(Piece::King, !player_color));
     bcopy.make_move(m);
     if mgen.is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
         if mgen.get_moves(&bcopy).is_empty() {
@@ -125,7 +126,7 @@ mod tests {
     fn test_e4_to_algebraic() {
         let b = Board::default();
         let mgen = MoveGenerator::default();
-        let m = Move::new(E2, E4, PieceType::NO_TYPE);
+        let m = Move::new(E2, E4, None);
 
         assert_eq!(String::from("e4"), algebraic_from_move(m, &b, &mgen));
     }
@@ -137,7 +138,7 @@ mod tests {
     fn test_mate() {
         let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let m = Move::new(B6, B8, PieceType::NO_TYPE);
+        let m = Move::new(B6, B8, None);
 
         println!("{b}");
         assert_eq!(String::from("Rb8#"), algebraic_from_move(m, &b, &mgen));
@@ -150,7 +151,7 @@ mod tests {
     fn test_algebraic_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let m = Move::new(E4, F5, PieceType::NO_TYPE);
+        let m = Move::new(E4, F5, None);
 
         let moves = mgen.get_moves(&b);
         for m in moves.iter() {
@@ -167,7 +168,7 @@ mod tests {
     fn test_move_from_e4() {
         let b = Board::default();
         let mgen = MoveGenerator::default();
-        let m = Move::new(E2, E4, PieceType::NO_TYPE);
+        let m = Move::new(E2, E4, None);
         let s = "e4";
 
         assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
@@ -180,7 +181,7 @@ mod tests {
     fn test_move_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let m = Move::new(E4, F5, PieceType::NO_TYPE);
+        let m = Move::new(E4, F5, None);
         let s = "exf5";
 
         let moves = mgen.get_moves(&b);
@@ -198,7 +199,7 @@ mod tests {
     fn test_promotion() {
         let b = Board::from_fen(WHITE_READY_TO_PROMOTE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let m = Move::new(F7, F8, PieceType::QUEEN);
+        let m = Move::new(F7, F8, Some(Piece::Queen));
         let s = "f8=Q";
         assert_eq!(algebraic_from_move(m, &b, &mgen), s);
     }

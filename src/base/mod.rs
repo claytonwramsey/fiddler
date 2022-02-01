@@ -46,7 +46,7 @@ pub mod movegen;
 pub use crate::base::movegen::MoveGenerator;
 
 pub mod piece;
-pub use crate::base::piece::PieceType;
+pub use crate::base::piece::Piece;
 
 pub mod square;
 pub use crate::base::square::Square;

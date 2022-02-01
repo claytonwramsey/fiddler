@@ -6,7 +6,7 @@ use crate::base::Bitboard;
 use crate::base::Board;
 use crate::base::Color;
 use crate::base::Direction;
-use crate::base::PieceType;
+use crate::base::Piece;
 
 #[derive(Clone, Debug)]
 ///
@@ -65,7 +65,7 @@ impl MoveGenerator {
     pub fn has_moves(&self, board: &Board) -> bool {
         let player = board.player_to_move;
         let opponent = !player;
-        let king_square = Square::from(board.get_type_and_color(PieceType::KING, player));
+        let king_square = Square::from(board.get_type_and_color(Piece::King, player));
         /*if king_square == crate::base::square::BAD_SQUARE {
             // no king found
             return false;
@@ -96,8 +96,8 @@ impl MoveGenerator {
             //only blocks can save us from checks
         } else {
             // examine king moves normally
-            for from_sq in board.get_type_and_color(PieceType::KING, player) {
-                let to_bb = self.sq_pseudolegal_moves(board, from_sq, PieceType::KING);
+            for from_sq in board.get_type_and_color(Piece::King, player) {
+                let to_bb = self.sq_pseudolegal_moves(board, from_sq, Piece::King);
                 move_vec.reserve(to_bb.0.count_ones() as usize);
 
                 // I would uses .drain() here normally, but that's not
@@ -111,7 +111,7 @@ impl MoveGenerator {
                 move_vec.clear();
             }
         }
-        for pt in PieceType::NON_KING_TYPES {
+        for pt in Piece::NON_KING_TYPES {
             // examine moves that other pieces can make
             for from_sq in board.get_type_and_color(pt, player) {
                 let to_bb = self.sq_pseudolegal_moves(board, from_sq, pt);
@@ -165,7 +165,7 @@ impl MoveGenerator {
     ///
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
         let player = board.color_at_square(m.from_square()).unwrap();
-        let player_king_bb = board.get_type_and_color(PieceType::KING, player);
+        let player_king_bb = board.get_type_and_color(Piece::King, player);
         let is_king_move = player_king_bb.contains(m.from_square());
         // Square where the king will be after this move ends.
         let mut king_square = Square::from(player_king_bb);
@@ -223,7 +223,7 @@ impl MoveGenerator {
     fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = pawn_start_rank(!color);
 
-        let pawns = board.get_type_and_color(PieceType::PAWN, color);
+        let pawns = board.get_type_and_color(Piece::Pawn, color);
         let promoting_pawns = pawns & about_to_promote_bb;
         let non_promoting_pawns = pawns ^ promoting_pawns;
         // Number of start squares
@@ -241,7 +241,7 @@ impl MoveGenerator {
         }
 
         //iterate through all the pieces of this color and enumerate their moves
-        for pt in PieceType::NON_PAWN_TYPES {
+        for pt in Piece::NON_PAWN_TYPES {
             let pieces_to_move = board.get_type_and_color(pt, color);
             for sq in pieces_to_move {
                 normal_bitboards.push((sq, self.sq_pseudolegal_moves(board, sq, pt)));
@@ -249,7 +249,7 @@ impl MoveGenerator {
         }
 
         let mut num_moves: u32 = normal_bitboards.iter().map(|x| x.1 .0.count_ones()).sum();
-        num_moves += (PieceType::NUM_PROMOTE_TYPES as u32)
+        num_moves += (Piece::NUM_PROMOTE_TYPES as u32)
             * promotion_bitboards
                 .iter()
                 .map(|x| x.1 .0.count_ones())
@@ -259,8 +259,8 @@ impl MoveGenerator {
             bitboard_to_moves(from_sq, bb, &mut moves);
         }
         for (from_sq, bb) in promotion_bitboards {
-            for promote_type in PieceType::PROMOTE_TYPES {
-                bitboard_to_promotions(from_sq, bb, promote_type, &mut moves);
+            for promote_type in Piece::PROMOTE_TYPES {
+                bitboard_to_promotions(from_sq, bb, Some(promote_type), &mut moves);
             }
         }
 
@@ -275,7 +275,7 @@ impl MoveGenerator {
         let opponent = !player;
         let opponents_bb = board.get_color_occupancy(opponent);
         let about_to_promote_bb = pawn_start_rank(opponent);
-        let pawns = board.get_type_and_color(PieceType::PAWN, player);
+        let pawns = board.get_type_and_color(Piece::Pawn, player);
         let non_promoting_pawns = pawns & !about_to_promote_bb;
         let promoting_pawns = pawns & about_to_promote_bb;
         // Number of start squares
@@ -293,7 +293,7 @@ impl MoveGenerator {
         }
 
         //iterate through all the pieces of this color and enumerate their moves
-        for pt in PieceType::NON_PAWN_TYPES {
+        for pt in Piece::NON_PAWN_TYPES {
             let pieces_to_move = board.get_type_and_color(pt, player);
             for sq in pieces_to_move {
                 normal_bitboards
@@ -302,7 +302,7 @@ impl MoveGenerator {
         }
 
         let mut num_moves: u32 = normal_bitboards.iter().map(|x| x.1 .0.count_ones()).sum();
-        num_moves += (PieceType::NUM_PROMOTE_TYPES as u32)
+        num_moves += (Piece::NUM_PROMOTE_TYPES as u32)
             * promotion_bitboards
                 .iter()
                 .map(|x| x.1 .0.count_ones())
@@ -312,8 +312,8 @@ impl MoveGenerator {
             bitboard_to_moves(from_sq, bb, &mut moves);
         }
         for (from_sq, bb) in promotion_bitboards {
-            for promote_type in PieceType::PROMOTE_TYPES {
-                bitboard_to_promotions(from_sq, bb, promote_type, &mut moves);
+            for promote_type in Piece::PROMOTE_TYPES {
+                bitboard_to_promotions(from_sq, bb, Some(promote_type), &mut moves);
             }
         }
 
@@ -339,25 +339,25 @@ impl MoveGenerator {
         let color_bb = board.get_color_occupancy(color);
         // Check for pawn attacks
         let pawn_vision = self.pawn_captures(board, sq, !color);
-        attackers |= pawn_vision & board.get_type(PieceType::PAWN);
+        attackers |= pawn_vision & board.get_type(Piece::Pawn);
 
         // Check for knight attacks
         let knight_vision = self.knight_moves[sq.0 as usize];
-        attackers |= knight_vision & board.get_type(PieceType::KNIGHT);
+        attackers |= knight_vision & board.get_type(Piece::Knight);
 
-        let queens_bb = board.get_type_and_color(PieceType::QUEEN, color);
+        let queens_bb = board.get_type_and_color(Piece::Queen, color);
 
         // Check for rook/horizontal queen attacks
         let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
-        attackers |= rook_vision & (queens_bb | board.get_type(PieceType::ROOK));
+        attackers |= rook_vision & (queens_bb | board.get_type(Piece::Rook));
 
         // Check for bishop/diagonal queen attacks
         let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
-        attackers |= bishop_vision & (queens_bb | board.get_type(PieceType::BISHOP));
+        attackers |= bishop_vision & (queens_bb | board.get_type(Piece::Bishop));
 
         // Check for king attacks
         let king_vision = self.king_moves[sq.0 as usize];
-        attackers |= king_vision & board.get_type(PieceType::KING);
+        attackers |= king_vision & board.get_type(Piece::King);
 
         attackers & color_bb
     }
@@ -367,16 +367,14 @@ impl MoveGenerator {
     /// Enumerate all the pseudolegal moves that can be made by a given piece
     /// type at the given position.
     ///
-    fn sq_pseudolegal_moves(&self, board: &Board, sq: Square, pt: PieceType) -> Bitboard {
+    fn sq_pseudolegal_moves(&self, board: &Board, sq: Square, pt: Piece) -> Bitboard {
         match pt {
-            PieceType::PAWN => self.pawn_moves(board, sq),
-            PieceType::KNIGHT => self.knight_moves(board, sq),
-            PieceType::KING => self.king_moves(board, sq),
-            PieceType::BISHOP => self.bishop_moves(board, sq),
-            PieceType::ROOK => self.rook_moves(board, sq),
-            PieceType::QUEEN => self.queen_moves(board, sq),
-            //bad type gets no moves
-            _ => Bitboard::EMPTY,
+            Piece::Pawn => self.pawn_moves(board, sq),
+            Piece::Knight => self.knight_moves(board, sq),
+            Piece::King => self.king_moves(board, sq),
+            Piece::Bishop => self.bishop_moves(board, sq),
+            Piece::Rook => self.rook_moves(board, sq),
+            Piece::Queen => self.queen_moves(board, sq),
         }
     }
 
@@ -402,12 +400,12 @@ impl MoveGenerator {
 
         //castling
         let kingside_castle_passthrough_sqs = match board.player_to_move {
+            Color::White => Bitboard(0x0000000000000060),
             Color::Black => Bitboard(0x6000000000000000),
-            _ => Bitboard(0x0000000000000060),
         };
         let queenside_castle_passthrough_sqs = match board.player_to_move {
+            Color::White => Bitboard(0x000000000000000E),
             Color::Black => Bitboard(0x0E00000000000000),
-            _ => Bitboard(0x000000000000000E),
         };
 
         let can_kingside_castle = board
@@ -448,7 +446,7 @@ impl MoveGenerator {
                 target_squares |= Bitboard::from(sq + 2 * dir);
             }
         }
-        target_squares |= self.pawn_captures(board, sq, board.color_at_square(sq).unwrap());
+        target_squares |= self.pawn_captures(board, sq, player_color);
         target_squares &= !board.get_color_occupancy(player_color);
 
         target_squares
@@ -538,7 +536,7 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
 /// this to a list of `Move`s with promotion type `NO_TYPE`.
 ///
 fn bitboard_to_moves(from_sq: Square, bb: Bitboard, target: &mut Vec<Move>) {
-    bitboard_to_promotions(from_sq, bb, PieceType::NO_TYPE, target);
+    bitboard_to_promotions(from_sq, bb, None, target);
 }
 
 ///
@@ -549,7 +547,7 @@ fn bitboard_to_moves(from_sq: Square, bb: Bitboard, target: &mut Vec<Move>) {
 fn bitboard_to_promotions(
     from_sq: Square,
     bb: Bitboard,
-    promote_type: PieceType,
+    promote_type: Option<Piece>,
     target: &mut Vec<Move>,
 ) {
     for to_sq in bb {
@@ -614,7 +612,7 @@ mod tests {
     ///
     fn test_best_queen_fried_liver() {
         let mg = MoveGenerator::default();
-        let m = Move::new(D1, F3, PieceType::NO_TYPE);
+        let m = Move::new(D1, F3, None);
         let b = Board::from_fen(FRIED_LIVER_FEN).unwrap();
         let pms = mg.get_pseudolegal_moves(&b, crate::base::Color::White);
         for m2 in pms.iter() {
@@ -632,7 +630,7 @@ mod tests {
     fn test_pawn_capture_generated() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let m = Move::new(E4, F5, PieceType::NO_TYPE);
+        let m = Move::new(E4, F5, None);
 
         assert!(mgen.get_moves(&b).contains(&m));
         assert!(mgen.get_loud_moves(&b).contains(&m));
@@ -689,9 +687,7 @@ mod tests {
     fn test_queenside_castle() {
         let b = Board::from_fen(BLACKQUEENSIDE_CASTLE_READY_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        assert!(mgen
-            .get_moves(&b)
-            .contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
+        assert!(mgen.get_moves(&b).contains(&Move::new(E8, C8, None)));
     }
 
     #[test]
@@ -701,9 +697,7 @@ mod tests {
     fn test_no_queenside_castle_through_knight() {
         let b = Board::from_fen(KNIGHT_PREVENTS_LONG_CASTLE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        assert!(!mgen
-            .get_moves(&b)
-            .contains(&Move::new(E8, C8, PieceType::NO_TYPE)));
+        assert!(!mgen.get_moves(&b).contains(&Move::new(E8, C8, None)));
     }
 
     #[test]
@@ -759,10 +753,10 @@ mod tests {
         let mgen = MoveGenerator::default();
         let moves = mgen.get_moves(&b);
         let expected_moves = vec![
-            Move::new(E6, D6, PieceType::NO_TYPE),
-            Move::new(E6, F7, PieceType::NO_TYPE),
-            Move::new(E6, E7, PieceType::NO_TYPE),
-            Move::new(F6, G4, PieceType::NO_TYPE),
+            Move::new(E6, D6, None),
+            Move::new(E6, F7, None),
+            Move::new(E6, E7, None),
+            Move::new(F6, G4, None),
         ];
         for m in moves.iter() {
             println!("{m}");

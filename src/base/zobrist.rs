@@ -1,15 +1,15 @@
 use crate::base::square::{Square, BAD_SQUARE};
 use crate::base::Color;
-use crate::base::PieceType;
+use crate::base::Piece;
 
 #[inline]
 ///
 /// Get the Zobrist key for a given key, type, and square.
 ///
-pub fn get_square_key(sq: Square, pt: PieceType, color: Color) -> u64 {
+pub fn get_square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
-        PieceType::NO_TYPE => 0,
-        _ => SQUARE_KEYS[sq.0 as usize][pt.0 as usize][color as usize],
+        None => 0,
+        Some(p) => SQUARE_KEYS[sq.0 as usize][p as usize][color as usize],
     }
 }
 
@@ -43,7 +43,7 @@ pub fn get_player_to_move_key(player_to_move: Color) -> u64 {
     }
 }
 
-const SQUARE_KEYS: [[[u64; 2]; PieceType::NUM_TYPES]; 64] = [
+const SQUARE_KEYS: [[[u64; 2]; Piece::NUM_TYPES]; 64] = [
     [
         [13515657874892102023, 15129553140981592645],
         [14809938836708178893, 15774518201988393282],

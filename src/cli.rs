@@ -300,7 +300,6 @@ impl<'a> Default for CrabchessApp<'a> {
 mod tests {
     use super::*;
     use crate::base::square::*;
-    use crate::base::PieceType;
 
     #[test]
     ///
@@ -320,7 +319,7 @@ mod tests {
 
         assert_eq!(
             app.parse_command(String::from("e4")),
-            Ok(Command::PlayMove(Move::new(E2, E4, PieceType::NO_TYPE)))
+            Ok(Command::PlayMove(Move::new(E2, E4, None)))
         );
     }
 
