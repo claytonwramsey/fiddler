@@ -128,7 +128,7 @@ impl Index<&Board> for TTable {
         let entry = unsafe {
             // We trust that this will not lead to a memory error because index
             // was modulo'd by the length of entries.
-            &self.entries.get_unchecked(index)
+            self.entries.get_unchecked(index)
         };
 
         // First, compare hashes to "fast-track" checking if these

@@ -183,7 +183,7 @@ impl Eval {
     /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined
     /// behavior.
     ///
-    pub fn step_back(&self) -> Eval {
+    pub const fn step_back(&self) -> Eval {
         Eval(self.0 - self.0 / (Eval::MATE_CUTOFF + 1))
     }
 
@@ -194,7 +194,7 @@ impl Eval {
     /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined
     /// behavior.
     ///
-    pub fn step_forward(&self) -> Eval {
+    pub const fn step_forward(&self) -> Eval {
         Eval(self.0 + self.0 / (Eval::MATE_CUTOFF + 1))
     }
 
@@ -202,7 +202,7 @@ impl Eval {
     ///
     /// Is this evaluation a mate (i.e. a non-normal evaluation)?
     ///
-    pub fn is_mate(&self) -> bool {
+    pub const fn is_mate(&self) -> bool {
         self.0 > Eval::MATE_CUTOFF || self.0 < -Eval::MATE_CUTOFF
     }
 }
