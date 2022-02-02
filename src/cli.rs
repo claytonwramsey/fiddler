@@ -2,12 +2,14 @@ use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
+use crate::engine::{TimeoutCondition, ElapsedTimeout, NoTimeout};
 use crate::engine::search::PVSearch;
 use crate::Engine;
 
 use std::fmt;
 use std::io;
 use std::io::BufRead;
+use std::time::Duration;
 
 ///
 /// A text-based application for running CrabChess.
@@ -33,6 +35,9 @@ pub struct CrabchessApp<'a> {
     /// The output stream to send messages to.
     ///
     output_stream: Box<dyn io::Write + 'a>,
+    ///
+    /// The condition on which 
+    timeout_condition: Box<dyn TimeoutCondition + 'a>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +73,15 @@ enum Command {
     /// List the available moves to the user.
     ///
     ListMoves,
+    ///
+    /// Request the engine play the next move.
+    /// 
+    EngineMove,
+    ///
+    /// Set the amount of time for which an engine can run. The number is the 
+    /// number of milliseconds on the timeout.
+    /// 
+    SetTimeout(u64),
 }
 
 impl fmt::Display for Command {
@@ -79,7 +93,10 @@ impl fmt::Display for Command {
             Command::PlayMove(m) => write!(f, "play move {m}"),
             Command::LoadFen(s) => write!(f, "load fen {s}"),
             Command::Undo(n) => write!(f, "undo {n}"),
-            _ => write!(f, "undisplayable command"),
+            Command::ListMoves => write!(f, "list moves"),
+            Command::EngineMove => write!(f, "play engine move"),
+            Command::SetTimeout(n) => 
+                write!(f, "set timeout {:.3}", *n as f32 / 1000f32),
         }
     }
 }
@@ -174,6 +191,17 @@ impl<'a> CrabchessApp<'a> {
                         },
                     }
                 }
+                "m" | "move" => Ok(Command::EngineMove),
+                "t" | "timeout" => {
+                    let n_msecs_token = token_iter.next();
+                    match n_msecs_token {
+                        None => Err("required number of milliseconds until timeout"),
+                        Some(t) => match t.parse::<u64>() {
+                            Ok(num) => Ok(Command::SetTimeout(num)),
+                            Err(_) => Err("no number given for timeout"),
+                        },
+                    }
+                }
                 "list" => Ok(Command::ListMoves),
                 _ => Err("unrecognized command"),
             }
@@ -198,6 +226,12 @@ impl<'a> CrabchessApp<'a> {
             Command::ListMoves => self.list_moves(),
             Command::Undo(n) => self.game.undo_n(n),
             Command::EngineSelect(s) => self.select_engine(s),
+            Command::EngineMove => self.play_engine_move(),
+            Command::SetTimeout(num) =>  {
+                println!("{num} milliseconds");
+                self.timeout_condition = Box::new(ElapsedTimeout::new(Duration::from_millis(num)));
+                Ok(())
+            },
             _ => {
                 if writeln!(self.output_stream, "the command type `{c}` is unsupported").is_err() {
                     return Err("write failed");
@@ -234,17 +268,8 @@ impl<'a> CrabchessApp<'a> {
     /// Attempt to play a move.
     ///
     fn try_move(&mut self, m: Move) -> CommandResult {
-        if let Err(e) = self.game.try_move(&self.mgen, m) {
-            return Err(e);
-        }
-
-        //perform engine move
-        let m = self.engine.get_best_move(&mut self.game, &self.mgen);
-        println!(
-            "the engine played {}",
-            algebraic_from_move(m, self.game.get_board(), &self.mgen)
-        );
-        self.game.make_move(m);
+        self.game.try_move(&self.mgen, m)?;
+        self.play_engine_move()?;
 
         Ok(())
     }
@@ -282,6 +307,21 @@ impl<'a> CrabchessApp<'a> {
             Err(_) => Err("could not parse engine selection"),
         }
     }
+
+    ///
+    /// Have the engine play a move.
+    /// 
+    fn play_engine_move(&mut self) -> CommandResult {
+        self.timeout_condition.start();
+        let m = self.engine.get_best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
+        println!(
+            "the engine played {}",
+            algebraic_from_move(m, self.game.get_board(), &self.mgen)
+        );
+        self.game.make_move(m);
+
+        Ok(())
+    }
 }
 
 impl<'a> Default for CrabchessApp<'a> {
@@ -292,6 +332,7 @@ impl<'a> Default for CrabchessApp<'a> {
             engine: Box::new(PVSearch::default()),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
+            timeout_condition: Box::new(NoTimeout),
         }
     }
 }

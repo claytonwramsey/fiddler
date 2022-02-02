@@ -9,6 +9,8 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
+use super::TimeoutCondition;
+
 const MAX_TRANSPOSITION_DEPTH: i8 = 5;
 
 ///
@@ -382,16 +384,17 @@ impl Engine for PVSearch {
     }
 
     #[inline]
-    fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval {
+    fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Eval {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
         let iter_min = min(5, self.depth);
-
+        let mut iter_depth = iter_min;
         let mut eval = Eval(0);
-        for iter_depth in iter_min..=self.depth {
+        while iter_depth <= self.depth && !timeout.is_over() {
             eval = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX).1
                 * (1 - 2 * g.get_board().player_to_move as i32);
+            iter_depth += 1;
         }
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
@@ -406,14 +409,14 @@ impl Engine for PVSearch {
         eval
     }
 
-    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
+    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> HashMap<Move, Eval> {
         let mut moves = g.get_moves(mgen);
         //negate because sort is ascending
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
         let mut evals = HashMap::new();
         for m in moves {
             g.make_move(m);
-            let ev = self.evaluate(g, mgen);
+            let ev = self.evaluate(g, mgen, timeout);
 
             //this should never fail since we just made a move, but who knows?
             if g.undo().is_ok() {
@@ -427,7 +430,7 @@ impl Engine for PVSearch {
         evals
     }
 
-    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Move {
+    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Move {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
@@ -436,7 +439,8 @@ impl Engine for PVSearch {
         let mut best_move = Move::BAD_MOVE;
         let mut eval;
         let mut eval_uncalibrated;
-        for iter_depth in iter_min..=self.depth {
+        let mut iter_depth = iter_min;
+        while iter_depth <= self.depth && !timeout.is_over() {
             let result = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX);
             best_move = result.0;
             eval_uncalibrated = result.1;
@@ -445,6 +449,7 @@ impl Engine for PVSearch {
                 "depth {iter_depth} gives {}: {eval}",
                 algebraic_from_move(best_move, g.get_board(), mgen)
             );
+            iter_depth += 1;
         }
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
@@ -467,6 +472,7 @@ pub mod tests {
     use super::*;
     use crate::base::moves::Move;
     use crate::base::square::*;
+    use crate::engine::NoTimeout;
     use crate::fens::*;
     use std::collections::HashMap;
 
@@ -481,7 +487,7 @@ pub mod tests {
         e.set_depth(5); // this prevents taking too long on searches
 
         println!("moves with evals are:");
-        e.get_evals(&mut g, &mgen);
+        e.get_evals(&mut g, &mgen, &NoTimeout);
     }
 
     #[test]
@@ -494,7 +500,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(8);
 
-        e.get_best_move(&mut g, &mgen);
+        e.get_best_move(&mut g, &mgen, &NoTimeout);
     }
 
     #[test]
@@ -508,7 +514,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
-        assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(D1, F3, None));
+        assert_eq!(e.get_best_move(&mut g, &mgen, &NoTimeout), Move::new(D1, F3, None));
     }
 
     #[test]
@@ -538,7 +544,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(8);
 
-        assert_eq!(e.get_best_move(&mut g, &mgen), Move::new(F2, F7, None));
+        assert_eq!(e.get_best_move(&mut g, &mgen, &NoTimeout), Move::new(F2, F7, None));
     }
 
     ///
@@ -551,7 +557,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(depth);
 
-        assert_eq!(e.evaluate(&mut g, &mgen), eval);
+        assert_eq!(e.evaluate(&mut g, &mgen, &NoTimeout), eval);
     }
 
     #[allow(unused)]

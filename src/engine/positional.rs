@@ -66,14 +66,26 @@ const DOUBLED_PAWN_VALUE: Eval = Eval(100);
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
-    let starting_eval = greedy_evaluate(g, mgen);
-    if starting_eval.is_mate() {
-        return starting_eval;
+
+    let b = g.get_board();
+    let player = b.player_to_move;
+    let king_sq = Square::from(b.get_type_and_color(Piece::King, player));
+
+    if g.is_game_over(mgen) {
+        if mgen.is_square_attacked_by(b, king_sq, !player) {
+            return match b.player_to_move {
+                Color::White => Eval::BLACK_MATE,
+                Color::Black => Eval::WHITE_MATE,
+            };
+        }
+        return Eval(0);
     }
+
+    let starting_eval = greedy_evaluate(g, mgen);
+    let b = g.get_board();
 
     let mut positional_eval = Eval(0);
 
-    let b = g.get_board();
     for pt in [Piece::Pawn, Piece::Bishop, Piece::Knight, Piece::King] {
         for sq in b.get_type_and_color(pt, Color::White) {
             positional_eval += value_at_square(pt, sq);

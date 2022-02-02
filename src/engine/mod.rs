@@ -7,6 +7,8 @@ use crate::base::MoveGenerator;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
+use std::time::Duration;
+use std::time::Instant;
 
 pub mod candidacy;
 pub mod greedy;
@@ -38,7 +40,7 @@ pub trait Engine {
     /// allow this method access to the ability to make and undo moves, but `g`
     /// should be the same before and after its use.
     ///
-    fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Eval;
+    fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Eval;
 
     ///
     /// Set the depth of the engine's search functionality. The exact effects
@@ -54,14 +56,14 @@ pub trait Engine {
     /// to make and undo moves, but `g` should be the same before and after its
     /// use.
     ///
-    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator) -> Move {
+    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Move {
         /*self.get_evals(g, mgen)
         .into_iter()
         .max_by(|a, b| a.1.cmp(&b.1))
         .map(|(k, _)| k)
         .unwrap_or(Move::BAD_MOVE)*/
         let player = g.get_board().player_to_move;
-        let evals = self.get_evals(g, mgen);
+        let evals = self.get_evals(g, mgen, timeout);
         let mut best_move = Move::BAD_MOVE;
         let mut best_eval = match player {
             Color::White => Eval::MIN,
@@ -87,12 +89,12 @@ pub trait Engine {
     /// mutable to allow this method access to the ability to make and undo
     /// moves, but `g` should be the same before and after its use.
     ///
-    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator) -> HashMap<Move, Eval> {
+    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> HashMap<Move, Eval> {
         let moves = g.get_moves(mgen);
         let mut evals = HashMap::new();
         for m in moves {
             g.make_move(m);
-            let ev = self.evaluate(g, mgen);
+            let ev = self.evaluate(g, mgen, timeout);
 
             //this should never fail since we just made a move, but who knows?
             g.undo().unwrap();
@@ -101,6 +103,54 @@ pub trait Engine {
         }
 
         evals
+    }
+}
+
+
+pub trait TimeoutCondition {
+    ///
+    /// Determine whether the timeout condition is over.
+    /// 
+    fn is_over(&self) -> bool;
+    ///
+    /// Start the timeout condition.
+    /// 
+    fn start(&mut self);
+}
+
+pub struct NoTimeout;
+
+impl TimeoutCondition for NoTimeout {
+    fn is_over(&self) -> bool {false}
+
+    fn start(&mut self) {}
+}
+
+pub struct ElapsedTimeout{
+    start: Instant,
+    duration: Duration
+}
+
+impl ElapsedTimeout {
+    #[allow(unused)]
+    ///
+    /// Create a new elapsed timeout with a default start of right now.
+    /// 
+    pub fn new(d: Duration) -> ElapsedTimeout {
+        ElapsedTimeout {
+            start: Instant::now(),
+            duration: d
+        }
+    }
+}
+
+impl TimeoutCondition for ElapsedTimeout {
+    fn is_over(&self) -> bool {
+        Instant::now() - self.duration > self.start
+    }
+
+    fn start(&mut self) {
+        self.start = Instant::now();
     }
 }
 
