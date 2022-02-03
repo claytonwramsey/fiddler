@@ -2,8 +2,8 @@ use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
-use crate::engine::{TimeoutCondition, ElapsedTimeout, NoTimeout};
 use crate::engine::search::PVSearch;
+use crate::engine::{ElapsedTimeout, NoTimeout, TimeoutCondition};
 use crate::Engine;
 
 use std::fmt;
@@ -36,7 +36,7 @@ pub struct CrabchessApp<'a> {
     ///
     output_stream: Box<dyn io::Write + 'a>,
     ///
-    /// The condition on which 
+    /// The condition on which
     timeout_condition: Box<dyn TimeoutCondition + 'a>,
 }
 
@@ -75,12 +75,12 @@ enum Command {
     ListMoves,
     ///
     /// Request the engine play the next move.
-    /// 
+    ///
     EngineMove,
     ///
-    /// Set the amount of time for which an engine can run. The number is the 
+    /// Set the amount of time for which an engine can run. The number is the
     /// number of milliseconds on the timeout.
-    /// 
+    ///
     SetTimeout(u64),
 }
 
@@ -95,8 +95,7 @@ impl fmt::Display for Command {
             Command::Undo(n) => write!(f, "undo {n}"),
             Command::ListMoves => write!(f, "list moves"),
             Command::EngineMove => write!(f, "play engine move"),
-            Command::SetTimeout(n) => 
-                write!(f, "set timeout {:.3}", *n as f32 / 1000f32),
+            Command::SetTimeout(n) => write!(f, "set timeout {:.3}", *n as f32 / 1000f32),
         }
     }
 }
@@ -227,11 +226,11 @@ impl<'a> CrabchessApp<'a> {
             Command::Undo(n) => self.game.undo_n(n),
             Command::EngineSelect(s) => self.select_engine(s),
             Command::EngineMove => self.play_engine_move(),
-            Command::SetTimeout(num) =>  {
+            Command::SetTimeout(num) => {
                 println!("{num} milliseconds");
                 self.timeout_condition = Box::new(ElapsedTimeout::new(Duration::from_millis(num)));
                 Ok(())
-            },
+            }
             _ => {
                 if writeln!(self.output_stream, "the command type `{c}` is unsupported").is_err() {
                     return Err("write failed");
@@ -310,10 +309,12 @@ impl<'a> CrabchessApp<'a> {
 
     ///
     /// Have the engine play a move.
-    /// 
+    ///
     fn play_engine_move(&mut self) -> CommandResult {
         self.timeout_condition.start();
-        let m = self.engine.get_best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
+        let m =
+            self.engine
+                .get_best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
         println!(
             "the engine played {}",
             algebraic_from_move(m, self.game.get_board(), &self.mgen)

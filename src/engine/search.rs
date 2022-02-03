@@ -384,7 +384,12 @@ impl Engine for PVSearch {
     }
 
     #[inline]
-    fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Eval {
+    fn evaluate(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        timeout: &dyn TimeoutCondition,
+    ) -> Eval {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
@@ -409,7 +414,12 @@ impl Engine for PVSearch {
         eval
     }
 
-    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> HashMap<Move, Eval> {
+    fn get_evals(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        timeout: &dyn TimeoutCondition,
+    ) -> HashMap<Move, Eval> {
         let mut moves = g.get_moves(mgen);
         //negate because sort is ascending
         moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
@@ -430,7 +440,12 @@ impl Engine for PVSearch {
         evals
     }
 
-    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Move {
+    fn get_best_move(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        timeout: &dyn TimeoutCondition,
+    ) -> Move {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
@@ -514,7 +529,10 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
-        assert_eq!(e.get_best_move(&mut g, &mgen, &NoTimeout), Move::new(D1, F3, None));
+        assert_eq!(
+            e.get_best_move(&mut g, &mgen, &NoTimeout),
+            Move::new(D1, F3, None)
+        );
     }
 
     #[test]
@@ -544,7 +562,10 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(8);
 
-        assert_eq!(e.get_best_move(&mut g, &mgen, &NoTimeout), Move::new(F2, F7, None));
+        assert_eq!(
+            e.get_best_move(&mut g, &mgen, &NoTimeout),
+            Move::new(F2, F7, None)
+        );
     }
 
     ///

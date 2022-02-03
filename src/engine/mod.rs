@@ -40,7 +40,12 @@ pub trait Engine {
     /// allow this method access to the ability to make and undo moves, but `g`
     /// should be the same before and after its use.
     ///
-    fn evaluate(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Eval;
+    fn evaluate(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        timeout: &dyn TimeoutCondition,
+    ) -> Eval;
 
     ///
     /// Set the depth of the engine's search functionality. The exact effects
@@ -56,7 +61,12 @@ pub trait Engine {
     /// to make and undo moves, but `g` should be the same before and after its
     /// use.
     ///
-    fn get_best_move(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> Move {
+    fn get_best_move(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        timeout: &dyn TimeoutCondition,
+    ) -> Move {
         /*self.get_evals(g, mgen)
         .into_iter()
         .max_by(|a, b| a.1.cmp(&b.1))
@@ -89,7 +99,12 @@ pub trait Engine {
     /// mutable to allow this method access to the ability to make and undo
     /// moves, but `g` should be the same before and after its use.
     ///
-    fn get_evals(&mut self, g: &mut Game, mgen: &MoveGenerator, timeout: &dyn TimeoutCondition) -> HashMap<Move, Eval> {
+    fn get_evals(
+        &mut self,
+        g: &mut Game,
+        mgen: &MoveGenerator,
+        timeout: &dyn TimeoutCondition,
+    ) -> HashMap<Move, Eval> {
         let moves = g.get_moves(mgen);
         let mut evals = HashMap::new();
         for m in moves {
@@ -106,40 +121,41 @@ pub trait Engine {
     }
 }
 
-
 pub trait TimeoutCondition {
     ///
     /// Determine whether the timeout condition is over.
-    /// 
+    ///
     fn is_over(&self) -> bool;
     ///
     /// Start the timeout condition.
-    /// 
+    ///
     fn start(&mut self);
 }
 
 pub struct NoTimeout;
 
 impl TimeoutCondition for NoTimeout {
-    fn is_over(&self) -> bool {false}
+    fn is_over(&self) -> bool {
+        false
+    }
 
     fn start(&mut self) {}
 }
 
-pub struct ElapsedTimeout{
+pub struct ElapsedTimeout {
     start: Instant,
-    duration: Duration
+    duration: Duration,
 }
 
 impl ElapsedTimeout {
     #[allow(unused)]
     ///
     /// Create a new elapsed timeout with a default start of right now.
-    /// 
+    ///
     pub fn new(d: Duration) -> ElapsedTimeout {
         ElapsedTimeout {
             start: Instant::now(),
-            duration: d
+            duration: d,
         }
     }
 }

@@ -767,7 +767,7 @@ mod tests {
     #[test]
     ///
     /// Test that Black can promote a piece (on e1).
-    /// 
+    ///
     fn test_black_can_promote() {
         let b = Board::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1").unwrap();
         let mgen = MoveGenerator::default();

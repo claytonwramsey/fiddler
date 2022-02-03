@@ -1,6 +1,6 @@
-use std::ops::Not;
-use crate::base::Direction;
 use crate::base::Bitboard;
+use crate::base::Direction;
+use std::ops::Not;
 
 #[repr(usize)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -12,7 +12,7 @@ pub enum Color {
 impl Color {
     #[inline]
     ///
-    /// Get the direction that a pawn of the given color normally moves. 
+    /// Get the direction that a pawn of the given color normally moves.
     ///
     pub const fn pawn_direction(&self) -> Direction {
         match self {
@@ -23,7 +23,7 @@ impl Color {
 
     #[inline]
     ///
-    /// Get the promotion rank of a given color. 
+    /// Get the promotion rank of a given color.
     ///
     pub const fn pawn_promote_rank(&self) -> Bitboard {
         match self {
@@ -34,9 +34,9 @@ impl Color {
 
     #[inline]
     ///
-    /// Get a `Bitboard` with 1's on the start rank of the pawn of the given 
-    /// color. 
-    /// 
+    /// Get a `Bitboard` with 1's on the start rank of the pawn of the given
+    /// color.
+    ///
     pub const fn pawn_start_rank(&self) -> Bitboard {
         match self {
             Color::White => Bitboard(0x000000000000FF00),

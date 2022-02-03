@@ -294,7 +294,10 @@ impl Board {
     pub fn is_move_promotion(&self, m: Move) -> bool {
         self.get_type_and_color(Piece::Pawn, self.player_to_move)
             .contains(m.from_square())
-            && self.player_to_move.pawn_promote_rank().contains(m.to_square())
+            && self
+                .player_to_move
+                .pawn_promote_rank()
+                .contains(m.to_square())
     }
 
     ///

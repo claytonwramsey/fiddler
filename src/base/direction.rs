@@ -66,7 +66,7 @@ impl Direction {
     const fn file_step(self) -> i8 {
         self.0 % 8
     }
-    
+
     #[inline]
     #[allow(dead_code)]
     ///

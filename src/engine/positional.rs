@@ -66,7 +66,6 @@ const DOUBLED_PAWN_VALUE: Eval = Eval(100);
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
-
     let b = g.get_board();
     let player = b.player_to_move;
     let king_sq = Square::from(b.get_type_and_color(Piece::King, player));
