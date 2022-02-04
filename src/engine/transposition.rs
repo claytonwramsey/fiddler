@@ -109,6 +109,21 @@ impl TTable {
             };
         }
     }
+
+    ///
+    /// Clear the transposition table. Will *not* lose any capacity.
+    ///
+    pub fn clear(&mut self) {
+        self.entries = self
+            .entries
+            .iter()
+            .map(|_| TTableEntry {
+                hash: BAD_HASH,
+                key: Board::BAD_BOARD,
+                data: None,
+            })
+            .collect();
+    }
 }
 
 impl Default for TTable {

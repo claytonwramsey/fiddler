@@ -328,6 +328,8 @@ impl PVSearch {
     ///
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
+        self.num_transpositions = 0;
+        self.ttable.clear();
     }
 
     ///
