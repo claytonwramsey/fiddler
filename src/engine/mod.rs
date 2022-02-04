@@ -6,7 +6,7 @@ use crate::base::MoveGenerator;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::time::Duration;
 use std::time::Instant;
 
@@ -305,6 +305,13 @@ impl Mul<i32> for Eval {
     #[inline]
     fn mul(self, rhs: i32) -> Self::Output {
         Eval(self.0 * rhs)
+    }
+}
+
+impl MulAssign<i32> for Eval {
+    #[inline]
+    fn mul_assign(&mut self, rhs: i32) {
+        self.0 *= rhs;
     }
 }
 

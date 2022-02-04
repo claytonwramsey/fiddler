@@ -65,10 +65,6 @@ impl MoveGenerator {
         let player = board.player_to_move;
         let opponent = !player;
         let king_square = Square::from(board.get_type_and_color(Piece::King, player));
-        /*if king_square == crate::base::square::BAD_SQUARE {
-            // no king found
-            return false;
-        }*/
         let king_attackers = self.get_square_attackers(board, king_square, opponent);
 
         // moves which can be generated from a given from-square
