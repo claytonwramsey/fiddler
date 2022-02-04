@@ -67,18 +67,15 @@ const DOUBLED_PAWN_VALUE: Eval = Eval(100);
 ///
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let b = g.get_board();
-    let player = b.player_to_move;
-    let king_sq = Square::from(b.get_type_and_color(Piece::King, player));
 
-    if g.is_game_over(mgen) {
-        if mgen.is_square_attacked_by(b, king_sq, !player) {
-            return match b.player_to_move {
-                Color::White => Eval::BLACK_MATE,
-                Color::Black => Eval::WHITE_MATE,
-            };
-        }
-        return Eval(0);
-    }
+    match g.is_game_over(mgen) {
+        (true, Some(_)) => return match b.player_to_move {
+            Color::Black => Eval::mate_in(0),
+            Color::White => -Eval::mate_in(0),
+        },
+        (true, None) => {return Eval(0);},
+        _ => {},
+    };
 
     let starting_eval = greedy_evaluate(g, mgen);
     let b = g.get_board();

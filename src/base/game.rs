@@ -1,6 +1,9 @@
+use crate::base::Color;
 use crate::base::Board;
 use crate::base::Move;
 use crate::base::MoveGenerator;
+use crate::base::Piece;
+use crate::base::Square;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -145,18 +148,25 @@ impl Game {
 
     ///
     /// In the current state, is the game complete (i.e. is there no way the
-    /// game can continue)?
+    /// game can continue)? The return type has the first type as whether the 
+    /// game is over, and the second is the player which has won if the game is 
+    /// over. It will be `None` for a draw.
     ///
-    pub fn is_game_over(&self, mgen: &MoveGenerator) -> bool {
+    pub fn is_game_over(&self, mgen: &MoveGenerator) -> (bool, Option<Color>) {
         if self.is_drawn_historically() {
-            return true;
+            return (true, None);
+        }
+        let b = self.get_board();
+
+        if mgen.has_moves(b) {
+            return (false, None);
         }
 
-        if mgen.has_moves(self.get_board()) {
-            return false;
+        let king_sq = Square::from(b.get_type_and_color(Piece::King, b.player_to_move));
+        match mgen.is_square_attacked_by(b, king_sq, !b.player_to_move) {
+            true => (true, Some(!b.player_to_move)),
+            false => (true, None,) // stalemate
         }
-
-        true
     }
 
     ///
@@ -325,7 +335,7 @@ mod tests {
             println!("{m}");
         }
         assert!(!mgen.has_moves(g.get_board()));
-        assert!(g.is_game_over(&mgen));
+        assert_eq!(g.is_game_over(&mgen), (true, Some(Color::White)));
     }
 
     #[test]
@@ -338,7 +348,7 @@ mod tests {
             println!("{m}");
         }
         assert!(!mgen.has_moves(g.get_board()));
-        assert!(g.is_game_over(&mgen));
+        assert_eq!(g.is_game_over(&mgen), (true, Some(Color::Black)));
     }
 
     #[test]
@@ -355,7 +365,7 @@ mod tests {
         for m2 in g.get_moves(&mgen) {
             println!("{m2}");
         }
-        assert!(g.is_game_over(&mgen));
+        assert_eq!(g.is_game_over(&mgen), (true, Some(Color::White)));
     }
 
     #[test]
