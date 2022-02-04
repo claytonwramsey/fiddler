@@ -1,5 +1,5 @@
-use crate::base::Color;
 use crate::base::Board;
+use crate::base::Color;
 use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::base::Piece;
@@ -148,8 +148,8 @@ impl Game {
 
     ///
     /// In the current state, is the game complete (i.e. is there no way the
-    /// game can continue)? The return type has the first type as whether the 
-    /// game is over, and the second is the player which has won if the game is 
+    /// game can continue)? The return type has the first type as whether the
+    /// game is over, and the second is the player which has won if the game is
     /// over. It will be `None` for a draw.
     ///
     pub fn is_game_over(&self, mgen: &MoveGenerator) -> (bool, Option<Color>) {
@@ -165,7 +165,7 @@ impl Game {
         let king_sq = Square::from(b.get_type_and_color(Piece::King, b.player_to_move));
         match mgen.is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
-            false => (true, None,) // stalemate
+            false => (true, None), // stalemate
         }
     }
 

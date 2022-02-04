@@ -69,12 +69,16 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let b = g.get_board();
 
     match g.is_game_over(mgen) {
-        (true, Some(_)) => return match b.player_to_move {
-            Color::Black => Eval::mate_in(0),
-            Color::White => -Eval::mate_in(0),
-        },
-        (true, None) => {return Eval(0);},
-        _ => {},
+        (true, Some(_)) => {
+            return match b.player_to_move {
+                Color::Black => Eval::mate_in(0),
+                Color::White => -Eval::mate_in(0),
+            }
+        }
+        (true, None) => {
+            return Eval(0);
+        }
+        _ => {}
     };
 
     let starting_eval = greedy_evaluate(g, mgen);

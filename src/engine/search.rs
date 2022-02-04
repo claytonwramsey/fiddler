@@ -66,6 +66,12 @@ impl PVSearch {
     ) -> (Move, Eval) {
         self.num_nodes_evaluated += 1;
 
+        if alpha_in >= Eval::mate_in(1) {
+            // we do not need to evaluate this position because we are
+            // guaranteed a mate which is as fast or faster elsewhere.
+            return (Move::BAD_MOVE, Eval::mate_in(1));
+        }
+
         // Lower bound on evaluation.
         let mut alpha = alpha_in;
         // Upper bound on evaluation.
