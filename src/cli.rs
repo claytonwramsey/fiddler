@@ -3,7 +3,7 @@ use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::engine::search::PVSearch;
-use crate::engine::{ElapsedTimeout, NoTimeout, TimeoutCondition};
+use crate::engine::{ElapsedTimeout, TimeoutCondition};
 use crate::Engine;
 
 use std::fmt;
@@ -333,7 +333,7 @@ impl<'a> Default for CrabchessApp<'a> {
             engine: Box::new(PVSearch::default()),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
-            timeout_condition: Box::new(NoTimeout),
+            timeout_condition: Box::new(ElapsedTimeout::new(Duration::from_secs(5))),
         }
     }
 }

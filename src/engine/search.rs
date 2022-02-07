@@ -89,8 +89,13 @@ impl PVSearch {
             if let Some(edata) = self.ttable[g.get_board()] {
                 self.num_transpositions += 1;
                 stored_move = edata.critical_move;
-                // this was a deeper search on the position
+                if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
+                    // searching deeper will not find us an escape from or a 
+                    // faster mate if the fill tree was searched
+                    return (stored_move, edata.lower_bound);
+                }
                 if edata.depth >= depth {
+                    // this was a deeper search on the position
                     if edata.lower_bound >= beta_in {
                         return (stored_move, edata.lower_bound);
                     }
@@ -409,7 +414,7 @@ impl Engine for PVSearch {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let iter_min = min(5, self.depth);
+        let iter_min = min(4, self.depth);
         let mut iter_depth = iter_min;
         let mut eval = Eval(0);
         let mut highest_successful_depth = 0;
@@ -478,7 +483,7 @@ impl Engine for PVSearch {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let tic = Instant::now();
-        let iter_min = min(5, self.depth);
+        let iter_min = min(4, self.depth);
 
         let mut best_move = Move::BAD_MOVE;
         let mut eval;
