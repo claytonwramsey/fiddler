@@ -418,6 +418,7 @@ impl Engine for PVSearch {
         let mut iter_depth = iter_min;
         let mut eval = Eval(0);
         let mut highest_successful_depth = 0;
+        let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
             let mut search_result = self.pvs(
                 iter_depth, 
@@ -431,6 +432,7 @@ impl Engine for PVSearch {
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
                 eval = search_result.1;
+                successful_nodes_evaluated = self.num_nodes_evaluated;
             }
             iter_depth += 1;
         }
@@ -442,7 +444,7 @@ impl Engine for PVSearch {
             nsecs,
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
-            branch_factor(highest_successful_depth, self.num_nodes_evaluated)
+            branch_factor(highest_successful_depth, successful_nodes_evaluated)
         );
 
         eval
@@ -490,10 +492,12 @@ impl Engine for PVSearch {
         let mut eval_uncalibrated;
         let mut iter_depth = iter_min;
         let mut highest_successful_depth = 0;
+        let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
             let result = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX, timeout);
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
+                successful_nodes_evaluated = self.num_nodes_evaluated;
                 best_move = result.0;
                 eval_uncalibrated = result.1;
                 eval = eval_uncalibrated * (1 - 2 * g.get_board().player_to_move as i32);
@@ -514,7 +518,7 @@ impl Engine for PVSearch {
             nsecs,
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
-            branch_factor(highest_successful_depth, self.num_nodes_evaluated),
+            branch_factor(highest_successful_depth, successful_nodes_evaluated),
         );
 
         best_move
