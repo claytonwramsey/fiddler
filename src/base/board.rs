@@ -431,7 +431,7 @@ impl Board {
 
         /* Updating player to move */
         self.player_to_move = !self.player_to_move;
-        self.hash ^= zobrist::BLACKTO_MOVE_KEY;
+        self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
     }
 
     ///
@@ -697,7 +697,7 @@ pub mod tests {
     #[test]
     ///
     /// Test that a board with an en passant square can be loaded from a FEN correctly.
-    /// 
+    ///
     fn test_load_en_passant() {
         let b = Board::from_fen(fens::EN_PASSANT_READY_FEN).unwrap();
         assert_eq!(b.en_passant_square, Some(Square::F6));

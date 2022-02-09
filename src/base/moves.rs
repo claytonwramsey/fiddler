@@ -132,10 +132,7 @@ mod tests {
     fn test_uci_move_normal() {
         let m = Move::from_uci("e2e4").unwrap();
         println!("{m}");
-        assert_eq!(
-            m,
-            Move::new(Square::E2, Square::E4, None)
-        );
+        assert_eq!(m, Move::new(Square::E2, Square::E4, None));
     }
 
     #[test]

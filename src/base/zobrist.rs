@@ -6,17 +6,24 @@ use crate::base::Square;
 ///
 /// Get the Zobrist key for a given key, type, and square.
 ///
-pub const fn get_square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
+pub fn get_square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
         None => 0,
-        Some(p) => SQUARE_KEYS[sq as usize][p as usize][color as usize],
+        // Because sq, p, and color are all enums with fixed ranges, we can
+        // perform an unchecekd get on these indices.
+        Some(p) => unsafe {
+            *SQUARE_KEYS
+                .get_unchecked(sq as usize)
+                .get_unchecked(p as usize)
+                .get_unchecked(color as usize)
+        },
     }
 }
 
 #[inline]
 ///
 /// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is
-/// for white queen castle, 2 is for black king castle, and 3 is for black 
+/// for white queen castle, 2 is for black king castle, and 3 is for black
 /// queen castle.
 ///
 pub const fn get_castle_key(right: u8) -> u64 {
@@ -27,10 +34,12 @@ pub const fn get_castle_key(right: u8) -> u64 {
 ///
 /// Get the Zobrist key of an en passant square.
 ///
-pub const fn get_ep_key(ep_square: Option<Square>) -> u64 {
+pub fn get_ep_key(ep_square: Option<Square>) -> u64 {
     match ep_square {
         None => 0,
-        Some(sq) => EP_KEYS[sq.file() as usize],
+        // Since the square is in the square enum, we can safely get this 
+        // without checking.
+        Some(sq) => unsafe {*EP_KEYS.get_unchecked(sq.file() as usize)},
     }
 }
 
@@ -41,7 +50,7 @@ pub const fn get_ep_key(ep_square: Option<Square>) -> u64 {
 pub const fn get_player_to_move_key(player_to_move: Color) -> u64 {
     match player_to_move {
         Color::White => 0,
-        _ => BLACKTO_MOVE_KEY,
+        Color::Black => BLACK_TO_MOVE_KEY,
     }
 }
 
@@ -580,4 +589,4 @@ const EP_KEYS: [u64; 8] = [
     15226297474735306250,
     12936367968696784083,
 ];
-pub const BLACKTO_MOVE_KEY: u64 = 11183034114380226606;
+pub const BLACK_TO_MOVE_KEY: u64 = 11183034114380226606;
