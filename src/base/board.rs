@@ -28,11 +28,11 @@ pub struct Board {
     ///
     pub pieces: [Bitboard; Piece::NUM_TYPES],
     ///
-    /// The color of the player to move. 
+    /// The color of the player to move.
     ///
     pub player_to_move: Color,
     ///
-    /// The square which can be moved to by a pawn in en passant. Will be 
+    /// The square which can be moved to by a pawn in en passant. Will be
     /// `None` when a pawn has not moved two squares in the previous move.
     ///
     pub en_passant_square: Option<Square>,

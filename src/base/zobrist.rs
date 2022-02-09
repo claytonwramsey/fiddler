@@ -37,9 +37,9 @@ pub const fn get_castle_key(right: u8) -> u64 {
 pub fn get_ep_key(ep_square: Option<Square>) -> u64 {
     match ep_square {
         None => 0,
-        // Since the square is in the square enum, we can safely get this 
+        // Since the square is in the square enum, we can safely get this
         // without checking.
-        Some(sq) => unsafe {*EP_KEYS.get_unchecked(sq.file() as usize)},
+        Some(sq) => unsafe { *EP_KEYS.get_unchecked(sq.file() as usize) },
     }
 }
 

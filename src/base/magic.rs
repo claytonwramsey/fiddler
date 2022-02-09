@@ -346,7 +346,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 
 ///
 /// Get the attacks a square has given a magic lookup table and the current
-/// occupancy. 
+/// occupancy.
 ///
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
     // In defense of the unsafe blocks below: `sq` is a valid square, so
@@ -363,18 +363,18 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard
 
 #[inline]
 ///
-/// Get the attacks that a rook on `sq` could make with the reference table 
+/// Get the attacks that a rook on `sq` could make with the reference table
 /// `mtable`.
-/// 
+///
 pub fn get_rook_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
     get_attacks(occupancy, sq, &mtable.rook_magic)
 }
 
 #[inline]
 ///
-/// Get the attacks that a bishop on `sq` could make with the reference table 
+/// Get the attacks that a bishop on `sq` could make with the reference table
 /// `mtable`.
-/// 
+///
 pub fn get_bishop_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
     get_attacks(occupancy, sq, &mtable.bishop_magic)
 }

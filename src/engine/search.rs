@@ -108,10 +108,17 @@ impl PVSearch {
             }
         }
 
+        if depth == 0 {
+            return self.quiesce(depth, g, mgen, alpha_in, beta_in);
+        }
+
         let mut moves = g.get_moves(mgen);
 
-        if depth == 0 || moves.is_empty() {
-            return self.quiesce(depth, g, mgen, alpha_in, beta_in);
+        if moves.is_empty() {
+            return (
+                Move::BAD_MOVE,
+                (self.evaluator)(g, mgen) * (1 - 2 * g.get_board().player_to_move as i32),
+            );
         }
 
         // Sort moves so that the most promising move is evaluated first

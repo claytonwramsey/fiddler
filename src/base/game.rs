@@ -20,8 +20,8 @@ pub struct Game {
     ///
     /// The last element in `history` is the current state of the board. The
     /// first element should be the starting position of the game, and in
-    /// between are sequential board states from the entire game. The right 
-    /// half of the tuple is the number of moves since a pawn-move or capture 
+    /// between are sequential board states from the entire game. The right
+    /// half of the tuple is the number of moves since a pawn-move or capture
     /// was made, and should start at 0.
     ///
     history: Vec<(Board, u8)>,
@@ -71,7 +71,9 @@ impl Game {
         let previous_state = self.history.last().unwrap();
         let mut newboard = previous_state.0;
 
-        let move_timeout = match newboard.get_occupancy().contains(m.to_square()) || newboard.get_type(Piece::Pawn).contains(m.from_square()) {
+        let move_timeout = match newboard.get_occupancy().contains(m.to_square())
+            || newboard.get_type(Piece::Pawn).contains(m.from_square())
+        {
             true => 0,
             false => previous_state.1 + 1,
         };
