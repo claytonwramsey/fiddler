@@ -20,9 +20,11 @@ pub struct Game {
     ///
     /// The last element in `history` is the current state of the board. The
     /// first element should be the starting position of the game, and in
-    /// between are sequential board states from the entire game.
+    /// between are sequential board states from the entire game. The right 
+    /// half of the tuple is the number of moves since a pawn-move or capture 
+    /// was made, and should start at 0.
     ///
-    history: Vec<Board>,
+    history: Vec<(Board, u8)>,
     ///
     /// `moves` is the list, in order, of all moves made in the game. They   
     /// should all be valid moves. The length of `moves` should always be one
@@ -34,14 +36,14 @@ pub struct Game {
     /// this game. It is used for three-move-rule draws.
     ///
     repetitions: HashMap<Board, u64>,
-    //TODO figure out how to implement fifty-move rule here.
 }
 
 impl Game {
     pub fn from_fen(fen: &str) -> Result<Game, &'static str> {
         let b = Board::from_fen(fen)?;
+        // TODO extract 50 move rule from the FEN
         Ok(Game {
-            history: vec![b],
+            history: vec![(b, 0)],
             moves: Vec::new(),
             repetitions: HashMap::from([(b, 1)]),
         })
@@ -53,7 +55,7 @@ impl Game {
     ///
     pub fn clear(&mut self) {
         self.history.truncate(1);
-        let start_board = self.history[0];
+        let start_board = self.history[0].0;
         self.moves.clear();
         self.repetitions.clear();
         //since we cleared this, or_insert will always be called
@@ -66,16 +68,18 @@ impl Game {
     /// be made from the default state of a `Board`.
     ///
     pub fn make_move(&mut self, m: Move) {
-        let mut newboard = match self.history.last() {
-            Some(b) => *b,
-            None => Board::default(),
-        };
+        let previous_state = self.history.last().unwrap();
+        let mut newboard = previous_state.0;
 
+        let move_timeout = match newboard.get_occupancy().contains(m.to_square()) || newboard.get_type(Piece::Pawn).contains(m.from_square()) {
+            true => 0,
+            false => previous_state.1 + 1,
+        };
         newboard.make_move(m);
 
         let num_reps = self.repetitions.entry(newboard).or_insert(0);
         *num_reps += 1;
-        self.history.push(newboard);
+        self.history.push((newboard, move_timeout));
         self.moves.push(m);
     }
 
@@ -87,8 +91,8 @@ impl Game {
     ///
     pub fn try_move(&mut self, mgen: &MoveGenerator, m: Move) -> Result<(), &'static str> {
         let prev_board = match self.history.last() {
-            Some(b) => *b,
-            None => Board::default(),
+            Some(b) => b.0,
+            None => return Err("no history available!"),
         };
 
         if mgen.get_moves(&prev_board).contains(&m) {
@@ -110,7 +114,7 @@ impl Game {
             None => return Err("no moves to remove"),
         };
         let state_removed = match self.history.pop() {
-            Some(b) => b,
+            Some(p) => p.0,
             None => return Err("no boards in history"),
         };
         let num_reps = self.repetitions.entry(state_removed).or_insert(1);
@@ -143,7 +147,7 @@ impl Game {
     /// correctly)
     ///
     pub fn get_board(&self) -> &Board {
-        self.history.last().unwrap()
+        &self.history.last().unwrap().0
     }
 
     ///
@@ -209,7 +213,7 @@ impl Game {
 impl Default for Game {
     fn default() -> Self {
         Game {
-            history: vec![Board::default()],
+            history: vec![(Board::default(), 0)],
             moves: Vec::new(),
             repetitions: HashMap::from([(Board::default(), 1)]),
         }
@@ -219,7 +223,7 @@ impl Default for Game {
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for i in 0..self.moves.len() {
-            let b = self.history[i];
+            let b = self.history[i].0;
             let m = self.moves[i];
             write!(
                 f,
