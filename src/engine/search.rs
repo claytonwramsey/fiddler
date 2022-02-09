@@ -49,6 +49,8 @@ pub struct PVSearch {
 }
 
 impl PVSearch {
+
+    #[allow(clippy::too_many_arguments)]
     ///
     /// Use Principal Variation Search to evaluate the given game to a depth.
     /// This search uses Negamax, which inverts at every step to save on
@@ -58,7 +60,8 @@ impl PVSearch {
     ///
     pub fn pvs(
         &mut self,
-        depth: i8,
+        depth_to_go: i8,
+        depth_so_far: i8,
         g: &mut Game,
         mgen: &MoveGenerator,
         alpha_in: Eval,
@@ -85,7 +88,7 @@ impl PVSearch {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut stored_move = Move::BAD_MOVE;
-        if depth + MAX_TRANSPOSITION_DEPTH >= self.depth {
+        if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
             if let Some(edata) = self.ttable[g.get_board()] {
                 self.num_transpositions += 1;
                 stored_move = edata.critical_move;
@@ -94,7 +97,7 @@ impl PVSearch {
                     // faster mate if the fill tree was searched
                     return (stored_move, edata.lower_bound);
                 }
-                if edata.depth >= depth {
+                if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
                     if edata.lower_bound >= beta_in {
                         return (stored_move, edata.lower_bound);
@@ -108,8 +111,8 @@ impl PVSearch {
             }
         }
 
-        if depth == 0 {
-            return self.quiesce(depth, g, mgen, alpha_in, beta_in);
+        if depth_to_go == 0 {
+            return self.quiesce(depth_to_go, depth_so_far, g, mgen, alpha_in, beta_in);
         }
 
         let mut moves = g.get_moves(mgen);
@@ -122,7 +125,7 @@ impl PVSearch {
         }
 
         // Sort moves so that the most promising move is evaluated first
-        let killer_index = (self.depth - depth) as usize;
+        let killer_index = depth_so_far as usize;
         let retrieved_killer_move = self.killer_moves[killer_index];
         moves.sort_by_cached_key(|m| {
             if *m == stored_move {
@@ -143,7 +146,8 @@ impl PVSearch {
         g.make_move(critical_move);
         let mut score = -self
             .pvs(
-                depth - 1,
+                depth_to_go - 1,
+                depth_so_far + 1,
                 g,
                 mgen,
                 -beta.step_forward(),
@@ -162,10 +166,10 @@ impl PVSearch {
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
             self.killer_moves[killer_index] = critical_move;
-            if depth + MAX_TRANSPOSITION_DEPTH >= self.depth {
+            if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
                 self.ttable_store(
                     g,
-                    depth,
+                    depth_to_go,
                     alpha,
                     beta,
                     best_score_this_position,
@@ -180,7 +184,8 @@ impl PVSearch {
             // zero-window search
             score = -self
                 .pvs(
-                    depth - 1,
+                    depth_to_go - 1,
+                    depth_so_far + 1,
                     g,
                     mgen,
                     -alpha.step_forward() - Eval(1),
@@ -195,7 +200,8 @@ impl PVSearch {
                 // can use as a lower bound in this search.
                 score = -self
                     .pvs(
-                        depth - 1,
+                        depth_to_go - 1,
+                        depth_so_far + 1,
                         g,
                         mgen,
                         -beta.step_forward(),
@@ -221,10 +227,10 @@ impl PVSearch {
             }
         }
 
-        if depth + MAX_TRANSPOSITION_DEPTH >= self.depth {
+        if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
             self.ttable_store(
                 g,
-                depth,
+                depth_to_go,
                 alpha,
                 beta,
                 best_score_this_position,
@@ -235,13 +241,17 @@ impl PVSearch {
         (critical_move, alpha)
     }
 
+    #[allow(clippy::too_many_arguments)]
     ///
     /// Use quiescent search (captures only) to evaluate a position as deep as
-    /// it needs to go.
+    /// it needs to go. The given `depth_to_go` does not alter the power of the 
+    /// search, but serves as a handy tool for the search to understand where 
+    /// it is.
     ///
     fn quiesce(
         &mut self,
-        depth: i8,
+        depth_to_go: i8,
+        depth_so_far: i8,
         g: &mut Game,
         mgen: &MoveGenerator,
         alpha_in: Eval,
@@ -280,7 +290,8 @@ impl PVSearch {
             g.make_move(critical_move);
             score = -self
                 .quiesce(
-                    depth - 1,
+                    depth_to_go - 1,
+                    depth_so_far + 1,
                     g,
                     mgen,
                     -beta.step_forward(),
@@ -305,7 +316,8 @@ impl PVSearch {
             // zero-window search
             score = -self
                 .quiesce(
-                    depth - 1,
+                    depth_to_go - 1,
+                    depth_so_far + 1,
                     g,
                     mgen,
                     -alpha.step_forward() - Eval(1),
@@ -319,7 +331,8 @@ impl PVSearch {
                 // can use as a lower bound in this search.
                 score = -self
                     .quiesce(
-                        depth - 1,
+                        depth_to_go - 1,
+                        depth_so_far + 1,
                         g,
                         mgen,
                         -beta.step_forward(),
@@ -427,7 +440,7 @@ impl Engine for PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let mut search_result = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX, timeout);
+            let mut search_result = self.pvs(iter_depth, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
             search_result.1 *= 1 - 2 * g.get_board().player_to_move as i32;
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
@@ -494,7 +507,7 @@ impl Engine for PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let result = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX, timeout);
+            let result = self.pvs(iter_depth, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
                 successful_nodes_evaluated = self.num_nodes_evaluated;
