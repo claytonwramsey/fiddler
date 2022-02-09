@@ -68,3 +68,8 @@ pub mod algebraic;
 ///
 pub mod color;
 pub use crate::base::color::Color;
+
+///
+/// A performance testing module to record the speed of move generation.
+///
+mod perft;

@@ -185,7 +185,8 @@ impl MoveGenerator {
 
         let mut squares_emptied = Bitboard::from(m.from_square());
         if board.is_move_en_passant(m) {
-            squares_emptied |= Bitboard::from(board.en_passant_square.unwrap());
+            squares_emptied |=
+                Bitboard::from(board.en_passant_square.unwrap() + opponent.pawn_direction());
         }
         let occupancy = (board.get_occupancy() & !squares_emptied) | Bitboard::from(m.to_square());
 
@@ -774,6 +775,18 @@ mod tests {
         let mgen = MoveGenerator::default();
         let moves = mgen.get_moves(&b);
         assert!(moves.contains(&Move::promoting(Square::E2, Square::E1, Piece::Queen)));
+    }
+
+    #[test]
+    ///
+    /// Test that a pawn cannot en passant if doing so would put the king in
+    /// check.
+    ///
+    fn test_en_passant_pinned() {
+        let b = Board::from_fen("8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2").unwrap();
+        let mgen = MoveGenerator::default();
+        let moves = mgen.get_moves(&b);
+        assert!(!moves.contains(&Move::normal(Square::F4, Square::E3)));
     }
 
     ///

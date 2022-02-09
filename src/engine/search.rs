@@ -49,7 +49,6 @@ pub struct PVSearch {
 }
 
 impl PVSearch {
-
     #[allow(clippy::too_many_arguments)]
     ///
     /// Use Principal Variation Search to evaluate the given game to a depth.
@@ -244,8 +243,8 @@ impl PVSearch {
     #[allow(clippy::too_many_arguments)]
     ///
     /// Use quiescent search (captures only) to evaluate a position as deep as
-    /// it needs to go. The given `depth_to_go` does not alter the power of the 
-    /// search, but serves as a handy tool for the search to understand where 
+    /// it needs to go. The given `depth_to_go` does not alter the power of the
+    /// search, but serves as a handy tool for the search to understand where
     /// it is.
     ///
     fn quiesce(
