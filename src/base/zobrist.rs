@@ -1,6 +1,6 @@
-use crate::base::square::{Square, BAD_SQUARE};
 use crate::base::Color;
 use crate::base::Piece;
+use crate::base::Square;
 
 #[inline]
 ///
@@ -9,13 +9,15 @@ use crate::base::Piece;
 pub const fn get_square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
         None => 0,
-        Some(p) => SQUARE_KEYS[sq.0 as usize][p as usize][color as usize],
+        Some(p) => SQUARE_KEYS[sq as usize][p as usize][color as usize],
     }
 }
 
 #[inline]
 ///
-/// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is/// for white queen castle, 2 is for black king castle, and 3 is for black queen/// castle.
+/// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is
+/// for white queen castle, 2 is for black king castle, and 3 is for black 
+/// queen castle.
 ///
 pub const fn get_castle_key(right: u8) -> u64 {
     CASTLE_KEYS[right as usize]
@@ -25,10 +27,10 @@ pub const fn get_castle_key(right: u8) -> u64 {
 ///
 /// Get the Zobrist key of an en passant square.
 ///
-pub const fn get_ep_key(ep_square: Square) -> u64 {
+pub const fn get_ep_key(ep_square: Option<Square>) -> u64 {
     match ep_square {
-        BAD_SQUARE => 0,
-        _ => EP_KEYS[ep_square.file() as usize],
+        None => 0,
+        Some(sq) => EP_KEYS[sq.file() as usize],
     }
 }
 
@@ -43,6 +45,11 @@ pub const fn get_player_to_move_key(player_to_move: Color) -> u64 {
     }
 }
 
+///
+/// A set of random keys which will reliably be the same.
+/// If one wanted, they could generate a new set of keys on every program run,
+/// but that seems inefficient.
+///
 const SQUARE_KEYS: [[[u64; 2]; Piece::NUM_TYPES]; 64] = [
     [
         [13515657874892102023, 15129553140981592645],

@@ -1,4 +1,5 @@
 use crate::base::Square;
+use std::convert::TryFrom;
 use std::fmt::{Display, Formatter, Result};
 use std::iter::Iterator;
 use std::ops::{
@@ -23,7 +24,7 @@ impl Bitboard {
     /// Determine whether a square of a bitboard is occupied.
     ///
     pub const fn contains(self, square: Square) -> bool {
-        self.0 & (1 << square.0) != 0
+        self.0 & (1 << square as u8) != 0
     }
 }
 
@@ -139,7 +140,7 @@ impl Mul for Bitboard {
 impl From<Square> for Bitboard {
     #[inline]
     fn from(sq: Square) -> Bitboard {
-        Bitboard(1 << sq.0)
+        Bitboard(1 << sq as u8)
     }
 }
 
@@ -155,13 +156,10 @@ impl Iterator for Bitboard {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Bitboard(0) => None,
-            _ => {
-                let sq = Square::from(*self);
-                self.0 &= !Bitboard::from(sq).0;
-                Some(sq)
-            }
-        }
+        let opt = Square::try_from(*self).ok();
+        if let Some(sq) = opt {
+            *self &= !Bitboard::from(sq);
+        };
+        opt
     }
 }

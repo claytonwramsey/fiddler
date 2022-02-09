@@ -90,7 +90,7 @@ impl PVSearch {
                 self.num_transpositions += 1;
                 stored_move = edata.critical_move;
                 if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
-                    // searching deeper will not find us an escape from or a 
+                    // searching deeper will not find us an escape from or a
                     // faster mate if the fill tree was searched
                     return (stored_move, edata.lower_bound);
                 }
@@ -420,14 +420,7 @@ impl Engine for PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let mut search_result = self.pvs(
-                iter_depth, 
-                g, 
-                mgen, 
-                Eval::MIN, 
-                Eval::MAX,
-                timeout
-            );
+            let mut search_result = self.pvs(iter_depth, g, mgen, Eval::MIN, Eval::MAX, timeout);
             search_result.1 *= 1 - 2 * g.get_board().player_to_move as i32;
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
@@ -583,7 +576,7 @@ pub mod tests {
 
         assert_eq!(
             e.get_best_move(&mut g, &mgen, &NoTimeout),
-            Move::new(D1, F3, None)
+            Move::normal(Square::D1, Square::F3)
         );
     }
 
@@ -616,7 +609,7 @@ pub mod tests {
 
         assert_eq!(
             e.get_best_move(&mut g, &mgen, &NoTimeout),
-            Move::new(F2, F7, None)
+            Move::normal(Square::F2, Square::F7)
         );
     }
 

@@ -5,6 +5,7 @@ use crate::base::Square;
 use rand::thread_rng;
 use rand::Rng;
 
+use std::convert::TryFrom;
 use std::mem::{transmute, MaybeUninit};
 use std::vec::Vec;
 
@@ -310,7 +311,7 @@ impl Default for Magic {
 fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
         //square of the piece making attacks
-        let sq = Square(i as u8);
+        let sq = Square::try_from(i as u8).unwrap();
         if is_rook {
             table[i].mask = get_rook_mask(sq);
             table[i].magic = SAVED_ROOK_MAGICS[i];
@@ -352,8 +353,7 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard
     // key was masked correctly in `compute_magic_key` as it was shifted out
     // properly. The speed benefit is extremely important here, as getting
     // magic attacks will be called many tens of millions of times per second.
-    let idx = sq.0 as usize;
-    let magic_data = unsafe { table.get_unchecked(idx) };
+    let magic_data = unsafe { table.get_unchecked(sq as usize) };
     let masked_occupancy = occupancy & magic_data.mask;
     let key = compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
 
@@ -383,7 +383,7 @@ fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
 fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
     for i in 0..64 {
         //square of the piece making attacks
-        let sq = Square(i as u8);
+        let sq = Square::try_from(i as u8).unwrap();
         if is_rook {
             table[i].mask = get_rook_mask(sq);
             table[i].shift = ROOK_SHIFTS[i];
@@ -462,7 +462,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 /// square that a rook would occupy to receive this mask.
 ///
 fn get_rook_mask(sq: Square) -> Bitboard {
-    let index = sq.0 as i8;
+    let index = sq as i8;
     //sequence of 1s down the same row as the piece to move, except on the
     //ends
     let row_mask = Bitboard(0x7E << (8 * (index / 8)));
@@ -483,7 +483,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 ///
 fn get_bishop_mask(sq: Square) -> Bitboard {
     //thank u chessprogramming wiki for this code
-    let i = sq.0 as i32;
+    let i = sq as i32;
     let main_diag = 8 * (i & 7) - (i as i32 & 56);
     let main_lshift = -main_diag & (main_diag >> 31);
     let main_rshift = main_diag & (-main_diag >> 31);
@@ -550,14 +550,7 @@ fn directional_attacks(sq: Square, dirs: [Direction; 4], occupancy: Bitboard) ->
 /// Return whether the following move is a single-step.
 ///
 fn is_valid_step(sq: Square, dir: Direction) -> bool {
-    if !(sq + dir).is_inbounds() {
-        return false;
-    }
-    if sq.chebyshev_to(sq + dir) > 1 {
-        return false;
-    }
-
-    true
+    sq.chebyshev_to(sq + dir) <= 1
 }
 
 #[inline]
@@ -576,30 +569,30 @@ fn random_sparse_bitboard() -> Bitboard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::square::*;
+    use crate::base::Square;
 
     #[test]
     fn test_rook_mask() {
         //println!("{:064b}", get_rook_mask(A1).0);
-        assert_eq!(get_rook_mask(A1), Bitboard(0x000101010101017E));
+        assert_eq!(get_rook_mask(Square::A1), Bitboard(0x000101010101017E));
 
         //println!("{:064b}", get_rook_mask(E1).0);
-        assert_eq!(get_rook_mask(E1), Bitboard(0x001010101010106E));
+        assert_eq!(get_rook_mask(Square::E1), Bitboard(0x001010101010106E));
 
         //println!("{:064b}", get_rook_mask(E5).0);
-        assert_eq!(get_rook_mask(E5), Bitboard(0x0010106E10101000));
+        assert_eq!(get_rook_mask(Square::E5), Bitboard(0x0010106E10101000));
     }
 
     #[test]
     fn test_bishop_mask() {
         //println!("{:064b}", get_bishop_mask(A1).0);
-        assert_eq!(get_bishop_mask(A1), Bitboard(0x0040201008040200));
+        assert_eq!(get_bishop_mask(Square::A1), Bitboard(0x0040201008040200));
 
         //println!("{:064b}", get_bishop_mask(E1).0);
-        assert_eq!(get_bishop_mask(E1), Bitboard(0x0000000002442800));
+        assert_eq!(get_bishop_mask(Square::E1), Bitboard(0x0000000002442800));
 
         //println!("{:064b}", get_bishop_mask(E5).0);
-        assert_eq!(get_bishop_mask(E5), Bitboard(0x0044280028440200));
+        assert_eq!(get_bishop_mask(Square::E5), Bitboard(0x0044280028440200));
     }
 
     #[test]
@@ -623,7 +616,7 @@ mod tests {
         //rook on A1 blocked by other pieces, so it only attacks its neighbors
         //likewise, but there are other pieces on the board to be masked out
         let occupancies = [Bitboard(0x103), Bitboard(0x1FC3)];
-        let squares = [A1, A1];
+        let squares = [Square::A1, Square::A1];
         let attacks = [Bitboard(0x102), Bitboard(0x102)];
         for i in 0..1 {
             let resulting_attack = get_rook_attacks(occupancies[i], squares[i], &mtable);
@@ -645,10 +638,10 @@ mod tests {
             Bitboard(0xFFFF00000000FFFF), //
         ];
         let squares = [
-            A1, //
-            A8, //
-            C1, //
-            F1, //
+            Square::A1, //
+            Square::A8, //
+            Square::C1, //
+            Square::F1, //
         ];
         let attacks = [
             Bitboard(0x0000000000000200), //
@@ -678,10 +671,10 @@ mod tests {
             Bitboard(0xFFFF00000000FFFF), //
         ];
         let squares = [
-            A1, //
-            A8, //
-            C1, //
-            F1, //
+            Square::A1, //
+            Square::A8, //
+            Square::C1, //
+            Square::F1, //
         ];
         let attacks = [
             Bitboard(0x0000000000000200), //

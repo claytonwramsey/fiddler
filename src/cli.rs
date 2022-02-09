@@ -341,7 +341,7 @@ impl<'a> Default for CrabchessApp<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::square::*;
+    use crate::base::Square;
 
     #[test]
     ///
@@ -361,7 +361,7 @@ mod tests {
 
         assert_eq!(
             app.parse_command(String::from("e4")),
-            Ok(Command::PlayMove(Move::new(E2, E4, None)))
+            Ok(Command::PlayMove(Move::new(Square::E2, Square::E4, None)))
         );
     }
 

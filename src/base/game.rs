@@ -1,3 +1,4 @@
+use crate::base::algebraic::algebraic_from_move;
 use crate::base::Board;
 use crate::base::Color;
 use crate::base::Move;
@@ -6,10 +7,9 @@ use crate::base::Piece;
 use crate::base::Square;
 
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
-
-use super::algebraic::algebraic_from_move;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 ///
@@ -162,7 +162,8 @@ impl Game {
             return (false, None);
         }
 
-        let king_sq = Square::from(b.get_type_and_color(Piece::King, b.player_to_move));
+        let king_sq =
+            Square::try_from(b.get_type_and_color(Piece::King, b.player_to_move)).unwrap();
         match mgen.is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate
@@ -236,7 +237,7 @@ mod tests {
     use super::*;
     use crate::base::board;
     use crate::base::moves::Move;
-    use crate::base::square::*;
+    use crate::base::Square;
     use crate::fens::*;
 
     #[test]
@@ -246,9 +247,9 @@ mod tests {
     ///
     fn test_play_e4() {
         let mut g = Game::default();
-        let m = Move::new(E2, E4, None);
+        let m = Move::normal(Square::E2, Square::E4);
         let old_board = *g.get_board();
-        g.make_move(Move::new(E2, E4, None));
+        g.make_move(Move::normal(Square::E2, Square::E4));
         let new_board = g.get_board();
         board::tests::test_move_result_helper(old_board, *new_board, m);
     }
@@ -259,7 +260,7 @@ mod tests {
     ///
     fn test_undo_move() {
         let mut g = Game::default();
-        let m = Move::new(E2, E4, None);
+        let m = Move::normal(Square::E2, Square::E4);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(*g.get_board(), Board::default());
@@ -281,8 +282,8 @@ mod tests {
     ///
     fn test_undo_multiple_moves() {
         let mut g = Game::default();
-        let m0 = Move::new(E2, E4, None);
-        let m1 = Move::new(E7, E5, None);
+        let m0 = Move::normal(Square::E2, Square::E4);
+        let m1 = Move::normal(Square::E7, Square::E5);
         g.make_move(m0);
         g.make_move(m1);
         assert_eq!(g.undo_n(2), Ok(()));
@@ -296,7 +297,7 @@ mod tests {
     ///
     fn test_undo_equality() {
         let mut g = Game::default();
-        g.make_move(Move::new(E2, E4, None));
+        g.make_move(Move::normal(Square::E2, Square::E4));
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::default());
     }
@@ -307,7 +308,7 @@ mod tests {
     ///
     fn test_undo_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
-        let m = Move::new(D1, F3, None);
+        let m = Move::normal(Square::D1, Square::F3);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN).unwrap());
@@ -359,7 +360,7 @@ mod tests {
         let mut g = Game::from_fen(MATE_IN_1_FEN).unwrap();
         let mgen = MoveGenerator::default();
 
-        let m = Move::new(B6, B8, None);
+        let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves(&mgen).contains(&m));
         g.make_move(m);
         for m2 in g.get_moves(&mgen) {
@@ -375,7 +376,7 @@ mod tests {
     ///
     fn test_clear_board() {
         let mut g = Game::default();
-        g.make_move(Move::new(E2, E4, None));
+        g.make_move(Move::normal(Square::E2, Square::E4));
         g.clear();
         assert_eq!(g, Game::default());
     }
@@ -389,10 +390,10 @@ mod tests {
         let mgen = MoveGenerator::default();
         let moves = g.get_moves(&mgen);
         let expected_moves = vec![
-            Move::new(E6, D6, None),
-            Move::new(E6, F7, None),
-            Move::new(E6, E7, None),
-            Move::new(F6, G4, None),
+            Move::normal(Square::E6, Square::D6),
+            Move::normal(Square::E6, Square::F7),
+            Move::normal(Square::E6, Square::E7),
+            Move::normal(Square::F6, Square::G4),
         ];
         for m in moves.iter() {
             assert!(expected_moves.contains(m));

@@ -133,4 +133,10 @@ mod tests {
         assert_eq!(Direction::NORTHEAST - Direction::EAST, Direction::NORTH);
         assert_eq!(Direction::EAST - Direction::EAST, Direction::NODIR);
     }
+
+    #[test]
+    fn test_direction_out_of_bounds() {
+        let bad_sq = Square::A1 + Direction::SOUTH;
+        println!("{}", bad_sq);
+    }
 }

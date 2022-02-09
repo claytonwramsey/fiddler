@@ -1,6 +1,9 @@
 use crate::base::square::Square;
 use crate::base::Piece;
-use std::fmt::{Display, Formatter};
+use std::{
+    convert::TryFrom,
+    fmt::{Display, Formatter},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 ///
@@ -30,8 +33,8 @@ impl Move {
     /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
     ///
     pub const fn new(from_square: Square, to_square: Square, promote_type: Option<Piece>) -> Move {
-        let from_square_bits = from_square.0 as u16;
-        let to_square_bits = (to_square.0 as u16) << 6;
+        let from_square_bits = from_square as u16;
+        let to_square_bits = (to_square as u16) << 6;
         let promote_type_bits = match promote_type {
             Some(p) => p as u16,
             None => Move::NO_PROMOTE,
@@ -60,16 +63,16 @@ impl Move {
     ///
     /// Get the target square of this move.
     ///
-    pub const fn to_square(self) -> Square {
-        Square(((self.0 >> 6) & 63u16) as u8)
+    pub fn to_square(self) -> Square {
+        Square::try_from(((self.0 >> 6) & 63u16) as u8).unwrap()
     }
 
     #[inline]
     ///
     /// Get the square that a piece moves from to execute this move.
     ///
-    pub const fn from_square(self) -> Square {
-        Square((self.0 & 63u16) as u8)
+    pub fn from_square(self) -> Square {
+        Square::try_from((self.0 & 63u16) as u8).unwrap()
     }
 
     #[inline]
@@ -124,18 +127,22 @@ impl Display for Move {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::square::*;
 
     #[test]
     fn test_uci_move_normal() {
-        assert_eq!(Move::from_uci("e2e4").unwrap(), Move::new(E2, E4, None));
+        let m = Move::from_uci("e2e4").unwrap();
+        println!("{m}");
+        assert_eq!(
+            m,
+            Move::new(Square::E2, Square::E4, None)
+        );
     }
 
     #[test]
     fn test_uci_move_promotion() {
         assert_eq!(
             Move::from_uci("b7b8q").unwrap(),
-            Move::new(B7, B8, Some(Piece::Queen)),
+            Move::new(Square::B7, Square::B8, Some(Piece::Queen)),
         );
     }
 }

@@ -3,9 +3,12 @@ use crate::base::Bitboard;
 use crate::base::Direction;
 
 use std::cmp::max;
+use std::convert::TryFrom;
 use std::fmt::{Display, Formatter};
+use std::mem::transmute;
 use std::ops::{Add, AddAssign, Sub};
 
+#[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 ///
 /// A single integer containing all the data to identify one square on a board.
@@ -14,7 +17,72 @@ use std::ops::{Add, AddAssign, Sub};
 /// * 3 bits for the rank
 /// * 3 bits for the file
 ///
-pub struct Square(pub u8);
+pub enum Square {
+    A1 = 0,
+    B1 = 1,
+    C1 = 2,
+    D1 = 3,
+    E1 = 4,
+    F1 = 5,
+    G1 = 6,
+    H1 = 7,
+    A2 = 8,
+    B2 = 9,
+    C2 = 10,
+    D2 = 11,
+    E2 = 12,
+    F2 = 13,
+    G2 = 14,
+    H2 = 15,
+    A3 = 16,
+    B3 = 17,
+    C3 = 18,
+    D3 = 19,
+    E3 = 20,
+    F3 = 21,
+    G3 = 22,
+    H3 = 23,
+    A4 = 24,
+    B4 = 25,
+    C4 = 26,
+    D4 = 27,
+    E4 = 28,
+    F4 = 29,
+    G4 = 30,
+    H4 = 31,
+    A5 = 32,
+    B5 = 33,
+    C5 = 34,
+    D5 = 35,
+    E5 = 36,
+    F5 = 37,
+    G5 = 38,
+    H5 = 39,
+    A6 = 40,
+    B6 = 41,
+    C6 = 42,
+    D6 = 43,
+    E6 = 44,
+    F6 = 45,
+    G6 = 46,
+    H6 = 47,
+    A7 = 48,
+    B7 = 49,
+    C7 = 50,
+    D7 = 51,
+    E7 = 52,
+    F7 = 53,
+    G7 = 54,
+    H7 = 55,
+    A8 = 56,
+    B8 = 57,
+    C8 = 58,
+    D8 = 59,
+    E8 = 60,
+    F8 = 61,
+    G8 = 62,
+    H8 = 63,
+}
 
 impl Square {
     #[inline]
@@ -22,8 +90,8 @@ impl Square {
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
     ///
-    pub const fn new(rank: usize, file: usize) -> Square {
-        Square((((rank & 7) << 3) | (file & 7)) as u8)
+    pub fn new(rank: usize, file: usize) -> Option<Square> {
+        Square::try_from(((rank << 3) | file) as u8).ok()
     }
 
     #[inline]
@@ -31,7 +99,7 @@ impl Square {
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
     ///
     pub const fn rank(self) -> usize {
-        ((self.0 >> 3u8) & 7u8) as usize
+        (self as u8 >> 3u8) as usize
     }
 
     #[inline]
@@ -39,15 +107,7 @@ impl Square {
     /// Get the integer representing the file (0 -> A, ...) of this square.
     ///
     pub const fn file(self) -> usize {
-        (self.0 & 7u8) as usize
-    }
-
-    #[inline]
-    ///
-    /// Return false if this is an illegal (i.e. inaccessible) square.
-    ///
-    pub const fn is_inbounds(self) -> bool {
-        self.0 < 64
+        (self as u8 & 7u8) as usize
     }
 
     #[inline]
@@ -71,15 +131,16 @@ impl Square {
             return Err("square name must be 2 characters");
         }
         let mut chars = s.chars();
-        let (ep_file, _) = match "abcdefgh".match_indices(chars.next().unwrap()).next() {
+        let (file, _) = match "abcdefgh".match_indices(chars.next().unwrap()).next() {
             Some(d) => d,
             None => return Err("illegal file for square"),
         };
-        let ep_rank = match chars.next().unwrap().to_digit(10) {
+        let rank = match chars.next().unwrap().to_digit(10) {
             Some(n) => n as usize,
             None => return Err("expected number for square rank"),
         };
-        Ok(Square::new(ep_rank - 1, ep_file))
+        // will not fail because we have already validated the rank and file
+        Ok(Square::new(rank - 1, file).unwrap())
     }
 }
 
@@ -87,14 +148,15 @@ impl Add<Direction> for Square {
     type Output = Square;
     #[inline]
     fn add(self, rhs: Direction) -> Self::Output {
-        Square(((self.0 as i8) + rhs.0) as u8)
+        // Apply the modulo to prevent UB.
+        unsafe { transmute(((self as i8) + rhs.0) as u8 & 63) }
     }
 }
 
 impl AddAssign<Direction> for Square {
     #[inline]
     fn add_assign(&mut self, rhs: Direction) {
-        self.0 = ((self.0 as i8) + rhs.0) as u8;
+        *self = *self + rhs;
     }
 }
 
@@ -109,153 +171,34 @@ impl Sub<Square> for Square {
     type Output = Direction;
     #[inline]
     fn sub(self, rhs: Square) -> Self::Output {
-        Direction((self.0 as i8) - (rhs.0 as i8))
+        Direction((self as i8) - (rhs as i8))
     }
 }
 
-impl From<Bitboard> for Square {
-    //Create the square closest to A1 (prioritizing rank) on the bitboard
+impl TryFrom<Bitboard> for Square {
+    type Error = &'static str;
+    ///
+    /// Create the square closest to A1 (prioritizing rank) on the given
+    /// bitboard.
+    ///
     #[inline]
-    fn from(bb: Bitboard) -> Square {
-        //Comment this out if you think you're strong enough
-        //new behavior: returns the square closest to A1 that is occupied
-        /*if bb.0.count_ones() != 1 {
-            return BAD_SQUARE;
-        }*/
-        Square(bb.0.trailing_zeros() as u8)
+    fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
+        Square::try_from(bb.0.trailing_zeros() as u8)
     }
 }
 
-#[allow(dead_code)]
-pub const A1: Square = Square(0);
-#[allow(dead_code)]
-pub const B1: Square = Square(1);
-#[allow(dead_code)]
-pub const C1: Square = Square(2);
-#[allow(dead_code)]
-pub const D1: Square = Square(3);
-#[allow(dead_code)]
-pub const E1: Square = Square(4);
-#[allow(dead_code)]
-pub const F1: Square = Square(5);
-#[allow(dead_code)]
-pub const G1: Square = Square(6);
-#[allow(dead_code)]
-pub const H1: Square = Square(7);
-#[allow(dead_code)]
-pub const A2: Square = Square(8);
-#[allow(dead_code)]
-pub const B2: Square = Square(9);
-#[allow(dead_code)]
-pub const C2: Square = Square(10);
-#[allow(dead_code)]
-pub const D2: Square = Square(11);
-#[allow(dead_code)]
-pub const E2: Square = Square(12);
-#[allow(dead_code)]
-pub const F2: Square = Square(13);
-#[allow(dead_code)]
-pub const G2: Square = Square(14);
-#[allow(dead_code)]
-pub const H2: Square = Square(15);
-#[allow(dead_code)]
-pub const A3: Square = Square(16);
-#[allow(dead_code)]
-pub const B3: Square = Square(17);
-#[allow(dead_code)]
-pub const C3: Square = Square(18);
-#[allow(dead_code)]
-pub const D3: Square = Square(19);
-#[allow(dead_code)]
-pub const E3: Square = Square(20);
-#[allow(dead_code)]
-pub const F3: Square = Square(21);
-#[allow(dead_code)]
-pub const G3: Square = Square(22);
-#[allow(dead_code)]
-pub const H3: Square = Square(23);
-#[allow(dead_code)]
-pub const A4: Square = Square(24);
-#[allow(dead_code)]
-pub const B4: Square = Square(25);
-#[allow(dead_code)]
-pub const C4: Square = Square(26);
-#[allow(dead_code)]
-pub const D4: Square = Square(27);
-#[allow(dead_code)]
-pub const E4: Square = Square(28);
-#[allow(dead_code)]
-pub const F4: Square = Square(29);
-#[allow(dead_code)]
-pub const G4: Square = Square(30);
-#[allow(dead_code)]
-pub const H4: Square = Square(31);
-#[allow(dead_code)]
-pub const A5: Square = Square(32);
-#[allow(dead_code)]
-pub const B5: Square = Square(33);
-#[allow(dead_code)]
-pub const C5: Square = Square(34);
-#[allow(dead_code)]
-pub const D5: Square = Square(35);
-#[allow(dead_code)]
-pub const E5: Square = Square(36);
-#[allow(dead_code)]
-pub const F5: Square = Square(37);
-#[allow(dead_code)]
-pub const G5: Square = Square(38);
-#[allow(dead_code)]
-pub const H5: Square = Square(39);
-#[allow(dead_code)]
-pub const A6: Square = Square(40);
-#[allow(dead_code)]
-pub const B6: Square = Square(41);
-#[allow(dead_code)]
-pub const C6: Square = Square(42);
-#[allow(dead_code)]
-pub const D6: Square = Square(43);
-#[allow(dead_code)]
-pub const E6: Square = Square(44);
-#[allow(dead_code)]
-pub const F6: Square = Square(45);
-#[allow(dead_code)]
-pub const G6: Square = Square(46);
-#[allow(dead_code)]
-pub const H6: Square = Square(47);
-#[allow(dead_code)]
-pub const A7: Square = Square(48);
-#[allow(dead_code)]
-pub const B7: Square = Square(49);
-#[allow(dead_code)]
-pub const C7: Square = Square(50);
-#[allow(dead_code)]
-pub const D7: Square = Square(51);
-#[allow(dead_code)]
-pub const E7: Square = Square(52);
-#[allow(dead_code)]
-pub const F7: Square = Square(53);
-#[allow(dead_code)]
-pub const G7: Square = Square(54);
-#[allow(dead_code)]
-pub const H7: Square = Square(55);
-#[allow(dead_code)]
-pub const A8: Square = Square(56);
-#[allow(dead_code)]
-pub const B8: Square = Square(57);
-#[allow(dead_code)]
-pub const C8: Square = Square(58);
-#[allow(dead_code)]
-pub const D8: Square = Square(59);
-#[allow(dead_code)]
-pub const E8: Square = Square(60);
-#[allow(dead_code)]
-pub const F8: Square = Square(61);
-#[allow(dead_code)]
-pub const G8: Square = Square(62);
-#[allow(dead_code)]
-pub const H8: Square = Square(63);
-#[allow(dead_code)]
-pub const BAD_SQUARE: Square = Square(64);
+impl TryFrom<u8> for Square {
+    type Error = &'static str;
+    #[inline]
+    fn try_from(x: u8) -> Result<Square, Self::Error> {
+        match x {
+            // This transmutation is safe because i will always be less than
+            // the total number of squares.
+            x if x <= Square::H8 as u8 => Ok(unsafe { transmute(x) }),
+            _ => Err("input for square conversion is out of bounds"),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -265,12 +208,18 @@ mod tests {
 
     #[test]
     fn test_add_square_and_direction() {
-        assert_eq!(A1 + Direction::EAST, B1);
-        assert_eq!(A1 + Direction::NORTHEAST, B2);
+        assert_eq!(Square::A1 + Direction::EAST, Square::B1);
+        assert_eq!(Square::A1 + Direction::NORTHEAST, Square::B2);
     }
 
     #[test]
     fn test_add_direction_and_square() {
-        assert_eq!(Direction::EAST + A1, B1);
+        assert_eq!(Direction::EAST + Square::A1, Square::B1);
+    }
+
+    #[test]
+    fn test_square_from_algebraic() {
+        assert_eq!(Square::from_algebraic("e4"), Ok(Square::E4));
+        assert_eq!(Square::from_algebraic("f7"), Ok(Square::F7));
     }
 }

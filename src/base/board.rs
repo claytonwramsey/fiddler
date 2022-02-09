@@ -1,11 +1,12 @@
 use crate::base::piece::Piece;
-use crate::base::square::{Square, A1, A8, BAD_SQUARE, H1, H8};
 use crate::base::zobrist;
 use crate::base::Bitboard;
 use crate::base::CastleRights;
 use crate::base::Color;
 use crate::base::Move;
+use crate::base::Square;
 
+use std::convert::TryFrom;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
@@ -34,7 +35,7 @@ pub struct Board {
     /// The square which can be moved to by a pawn in en passant. If en passant
     /// is not legal, this will be a `BAD_SQUARE`.
     ///
-    pub en_passant_square: Square,
+    pub en_passant_square: Option<Square>,
     ///
     /// The rights of this piece for castling.
     ///
@@ -53,7 +54,7 @@ impl Board {
     pub const BAD_BOARD: Board = Board {
         sides: [Bitboard::EMPTY; 2],
         pieces: [Bitboard::EMPTY; 6],
-        en_passant_square: BAD_SQUARE,
+        en_passant_square: None,
         player_to_move: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 0,
@@ -65,7 +66,7 @@ impl Board {
         let mut board = Board {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],
-            en_passant_square: BAD_SQUARE,
+            en_passant_square: None,
             player_to_move: Color::White,
             castle_rights: CastleRights::NO_RIGHTS,
             hash: 0,
@@ -104,7 +105,7 @@ impl Board {
             };
             if let Some(p) = pt {
                 //character is a piece type
-                board.add_piece(Square::new(r, c), p, color);
+                board.add_piece(Square::new(r, c).unwrap(), p, color);
                 c += 1;
             } else if chr == '/' {
                 //row divider
@@ -173,22 +174,16 @@ impl Board {
             None => return Err("illegal character in en passant square"),
         };
         if ep_file_chr != '-' {
-            if !"abcdefgh".contains(ep_file_chr) {
-                return Err("illegal file for en passant square");
-            }
-            //99 is just a dummy err value
-            let (ep_file, _) = match "abcdefgh".match_indices(ep_file_chr).next() {
-                Some(d) => d,
-                None => return Err("illegal file for en passant square"),
-            };
-            let ep_rank = match fen_chrs.next() {
-                Some(c) => match c.to_digit(10) {
-                    Some(n) => n as usize,
-                    None => return Err("expected number for en passant square rank"),
-                },
+            let ep_rank_chr = match fen_chrs.next() {
+                Some(c) => c,
                 None => return Err("reached end of string while parsing en passant rank"),
             };
-            board.en_passant_square = Square::new(ep_rank - 1, ep_file);
+            let mut s = String::from(ep_file_chr);
+            s.push(ep_rank_chr);
+            board.en_passant_square = match Square::from_algebraic(&s) {
+                Ok(sq) => Some(sq),
+                Err(e) => return Err(e),
+            };
         }
         board.recompute_hash();
         if !(board.is_valid()) {
@@ -276,7 +271,7 @@ impl Board {
     /// Is a given move en passant? Assumes the move is pseudo-legal.
     ///
     pub fn is_move_en_passant(&self, m: Move) -> bool {
-        m.to_square() == self.en_passant_square
+        Some(m.to_square()) == self.en_passant_square
             && m.from_square().file() != m.to_square().file()
             && self.type_at_square(m.from_square()) == Some(Piece::Pawn)
     }
@@ -309,7 +304,7 @@ impl Board {
 
         opponents_bb.contains(m.to_square())
             || (self.get_type(Piece::Pawn).contains(m.from_square())
-                && m.to_square() == self.en_passant_square)
+                && Some(m.to_square()) == self.en_passant_square)
     }
 
     ///
@@ -373,7 +368,8 @@ impl Board {
         /* En passant handling */
         //perform an en passant capture
         if is_en_passant {
-            let capturee_sq = Square::new(from_sq.rank(), self.en_passant_square.file());
+            let capturee_sq =
+                Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
             self.remove_piece(capturee_sq);
         }
         //remove previous EP square from hash
@@ -381,7 +377,7 @@ impl Board {
         //update EP square
         self.en_passant_square = match mover_type == Piece::Pawn && is_long_move {
             true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
-            false => BAD_SQUARE,
+            false => None,
         };
         //insert new EP key into hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
@@ -401,8 +397,8 @@ impl Board {
                 true => 5,  //rook moves to F file for kingside
                 false => 3, //rook moves to D file for queenside
             };
-            let rook_from_sq = Square::new(from_sq.rank(), rook_from_file);
-            let rook_to_sq = Square::new(from_sq.rank(), rook_to_file);
+            let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
+            let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
             self.remove_piece(rook_from_sq);
             self.add_piece(rook_to_sq, Piece::Rook, self.player_to_move);
         }
@@ -415,19 +411,19 @@ impl Board {
             //don't need to check if it's a rook because moving from this square
             //would mean you didn't have the right anyway
             rights_to_remove = match from_sq {
-                A1 => CastleRights::queen_castle(Color::White),
-                H1 => CastleRights::king_castle(Color::White),
-                A8 => CastleRights::queen_castle(Color::Black),
-                H8 => CastleRights::king_castle(Color::Black),
+                Square::A1 => CastleRights::queen_castle(Color::White),
+                Square::H1 => CastleRights::king_castle(Color::White),
+                Square::A8 => CastleRights::queen_castle(Color::Black),
+                Square::H8 => CastleRights::king_castle(Color::Black),
                 _ => CastleRights::NO_RIGHTS,
             };
 
             // capturing a rook also removes rights
             rights_to_remove |= match to_sq {
-                A1 => CastleRights::queen_castle(Color::White),
-                H1 => CastleRights::king_castle(Color::White),
-                A8 => CastleRights::queen_castle(Color::Black),
-                H8 => CastleRights::king_castle(Color::Black),
+                Square::A1 => CastleRights::queen_castle(Color::White),
+                Square::H1 => CastleRights::king_castle(Color::White),
+                Square::A8 => CastleRights::queen_castle(Color::Black),
+                Square::H8 => CastleRights::king_castle(Color::Black),
                 _ => CastleRights::NO_RIGHTS,
             }
         }
@@ -532,12 +528,14 @@ impl Board {
     }
 
     ///
-    /// Compute the hash value of this board from scratch.
+    /// Compute the hash value of this board from scratch. This should
+    /// generally only be used for debug purposes, as in most cases iteratively
+    /// updating the hashes as moves are made is enough.
     ///
     fn get_fresh_hash(&self) -> u64 {
         let mut hash = 0;
         for i in 0..64 {
-            let sq = Square(i);
+            let sq = Square::try_from(i).unwrap();
             hash ^= match self.color_at_square(sq) {
                 Some(c) => zobrist::get_square_key(sq, self.type_at_square(sq), c),
                 None => 0,
@@ -565,7 +563,7 @@ impl Display for Board {
         for r in 0..8 {
             for c in 0..8 {
                 let i = 64 - (r + 1) * 8 + c;
-                let current_square = Square(i);
+                let current_square = Square::try_from(i).unwrap();
                 match self.type_at_square(current_square) {
                     Some(p) => match self.color_at_square(current_square) {
                         Some(Color::White) => write!(f, "{p}")?,
@@ -614,7 +612,7 @@ impl Default for Board {
                 Bitboard(0x0800000000000008), //queen
                 Bitboard(0x1000000000000010), //king
             ],
-            en_passant_square: BAD_SQUARE,
+            en_passant_square: None,
             player_to_move: Color::White,
             castle_rights: CastleRights::ALL_RIGHTS,
             hash: 0,
@@ -647,7 +645,7 @@ pub mod tests {
             Bitboard(0x0000000000000000), //queen
             Bitboard(0x8000000000000001), //king
         ],
-        en_passant_square: BAD_SQUARE,
+        en_passant_square: None,
         player_to_move: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 3483926298739092744,
@@ -693,7 +691,16 @@ pub mod tests {
     /// Test that we can play e4 on the first move of the game.
     ///
     fn test_play_e4() {
-        test_move_helper(Board::default(), Move::new(E2, E4, None));
+        test_move_helper(Board::default(), Move::new(Square::E2, Square::E4, None));
+    }
+
+    #[test]
+    ///
+    /// Test that a board with an en passant square can be loaded from a FEN correctly.
+    /// 
+    fn test_load_en_passant() {
+        let b = Board::from_fen(fens::EN_PASSANT_READY_FEN).unwrap();
+        assert_eq!(b.en_passant_square, Some(Square::F6));
     }
 
     #[test]
@@ -701,7 +708,10 @@ pub mod tests {
     /// Test that we can capture en passant.
     ///
     fn test_en_passant() {
-        test_fen_helper(fens::EN_PASSANT_READY_FEN, Move::new(E5, F6, None));
+        test_fen_helper(
+            fens::EN_PASSANT_READY_FEN,
+            Move::normal(Square::E5, Square::F6),
+        );
     }
 
     ///
@@ -709,7 +719,10 @@ pub mod tests {
     ///
     #[test]
     fn test_white_kingide_castle() {
-        test_fen_helper(fens::WHITE_KINGSIDE_CASTLE_READY_FEN, Move::normal(E1, G1));
+        test_fen_helper(
+            fens::WHITE_KINGSIDE_CASTLE_READY_FEN,
+            Move::normal(Square::E1, Square::G1),
+        );
     }
 
     #[test]
@@ -719,7 +732,7 @@ pub mod tests {
     fn test_white_promote_queen() {
         test_fen_helper(
             fens::WHITE_READY_TO_PROMOTE_FEN,
-            Move::promoting(F7, F8, Piece::Queen),
+            Move::promoting(Square::F7, Square::F8, Piece::Queen),
         );
     }
 
@@ -728,12 +741,12 @@ pub mod tests {
     /// Test that capturing a rook removes the right to castle with that rook.
     ///
     fn test_no_castle_after_capture() {
-        let m = Move::new(B2, H8, None);
+        let m = Move::new(Square::B2, Square::H8, None);
         let mgen = MoveGenerator::default();
         test_fen_helper(fens::ROOK_HANGING_FEN, m);
         let mut b = Board::from_fen(fens::ROOK_HANGING_FEN).unwrap();
         b.make_move(m);
-        let castle_move = Move::new(E8, G8, None);
+        let castle_move = Move::new(Square::E8, Square::G8, None);
         assert!(b.try_move(&mgen, castle_move).is_err());
     }
 
@@ -792,11 +805,11 @@ pub mod tests {
         //Check en passant worked correctly
         if is_en_passant {
             assert_eq!(
-                new_board.type_at_square(old_board.en_passant_square),
+                new_board.type_at_square(old_board.en_passant_square.unwrap()),
                 Some(Piece::Pawn)
             );
             assert_eq!(
-                new_board.color_at_square(old_board.en_passant_square),
+                new_board.color_at_square(old_board.en_passant_square.unwrap()),
                 Some(old_board.player_to_move)
             );
         }
@@ -813,8 +826,8 @@ pub mod tests {
                 6 => 5,
                 _ => 9,
             };
-            let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file);
-            let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file);
+            let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file).unwrap();
+            let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file).unwrap();
 
             assert_eq!(new_board.type_at_square(rook_start_sq), None);
             assert_eq!(new_board.color_at_square(rook_start_sq), None);
@@ -836,16 +849,16 @@ pub mod tests {
         // Check castling rights were removed correctly
         if mover_type == Piece::Rook {
             match m.from_square() {
-                A1 => assert!(!new_board
+                Square::A1 => assert!(!new_board
                     .castle_rights
                     .is_queenside_castle_legal(Color::White)),
-                A8 => assert!(!new_board
+                Square::A8 => assert!(!new_board
                     .castle_rights
                     .is_kingside_castle_legal(Color::White)),
-                H1 => assert!(!new_board
+                Square::H1 => assert!(!new_board
                     .castle_rights
                     .is_queenside_castle_legal(Color::Black)),
-                H8 => assert!(!new_board
+                Square::H8 => assert!(!new_board
                     .castle_rights
                     .is_kingside_castle_legal(Color::Black)),
                 _ => {}
@@ -853,16 +866,16 @@ pub mod tests {
         }
 
         match m.to_square() {
-            A1 => assert!(!new_board
+            Square::A1 => assert!(!new_board
                 .castle_rights
                 .is_queenside_castle_legal(Color::White)),
-            A8 => assert!(!new_board
+            Square::A8 => assert!(!new_board
                 .castle_rights
                 .is_kingside_castle_legal(Color::White)),
-            H1 => assert!(!new_board
+            Square::H1 => assert!(!new_board
                 .castle_rights
                 .is_queenside_castle_legal(Color::Black)),
-            H8 => assert!(!new_board
+            Square::H8 => assert!(!new_board
                 .castle_rights
                 .is_kingside_castle_legal(Color::Black)),
             _ => {}

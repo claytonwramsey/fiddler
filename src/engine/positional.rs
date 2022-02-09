@@ -93,7 +93,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         for sq in b.get_type_and_color(pt, Color::Black) {
             //Invert the square that Black is on, since positional values are
             //flipped (as pawns move the other way, etc)
-            let alt_sq = Square::new(7 - sq.rank(), sq.file());
+            let alt_sq = Square::new(7 - sq.rank(), sq.file()).unwrap();
             positional_eval -= value_at_square(pt, alt_sq);
         }
     }
@@ -139,7 +139,7 @@ pub fn value_at_square(pt: Piece, sq: Square) -> Eval {
         Piece::Queen => &QUEEN_VALUES,
     };
 
-    Eval::pawns(unsafe { *val_table.get_unchecked(sq.0 as usize) })
+    Eval::pawns(unsafe { *val_table.get_unchecked(sq as usize) })
 }
 
 #[cfg(test)]
@@ -167,7 +167,7 @@ mod tests {
     fn test_f3_bad() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
-        g.make_move(Move::normal(F2, F3));
+        g.make_move(Move::normal(Square::F2, Square::F3));
         assert!(positional_evaluate(&mut g, &mgen) < Eval(0));
     }
 }
