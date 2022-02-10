@@ -20,7 +20,8 @@ fn perft(fen: &str, depth: u8) -> u64 {
         "time {:.2} secs, num nodes {num_nodes}: {speed:.0} nodes/sec",
         time.as_secs_f64()
     );
-    return num_nodes;
+
+    num_nodes
 }
 
 ///
@@ -37,7 +38,8 @@ fn perft_search(b: &Board, mgen: &MoveGenerator, depth: u8) -> u64 {
         bcopy.make_move(m);
         total += perft_search(&bcopy, mgen, depth - 1);
     }
-    return total;
+
+    total
 }
 
 #[cfg(test)]

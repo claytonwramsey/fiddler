@@ -12,6 +12,8 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::result::Result;
 
+use super::moves::MoveResult;
+
 #[derive(Copy, Clone, Debug)]
 ///
 /// A representation of a position. Does not handle the repetition or turn
@@ -345,7 +347,7 @@ impl Board {
     /// Apply the given move to the board. Will assume the move is legal (unlike
     /// `try_move()`).
     ///
-    pub fn make_move(&mut self, m: Move) {
+    pub fn make_move(&mut self, m: Move) -> MoveResult {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
         let mover_type = self.type_at_square(from_sq).unwrap();
@@ -356,6 +358,8 @@ impl Board {
 
         /* Core move functionality */
         self.remove_piece(from_sq);
+
+        let capturee = self.type_at_square(m.to_square());
 
         /* Promotion and normal piece movement */
         if let Some(p) = m.promote_type() {
@@ -374,6 +378,7 @@ impl Board {
         }
         //remove previous EP square from hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
+        let old_ep_square = self.en_passant_square;
         //update EP square
         self.en_passant_square = match mover_type == Piece::Pawn && is_long_move {
             true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
@@ -404,6 +409,7 @@ impl Board {
         }
 
         /* Handling castling rights */
+        let old_rights = self.castle_rights;
         let mut rights_to_remove;
         if mover_type == Piece::King {
             rights_to_remove = CastleRights::color_rights(self.player_to_move);
@@ -432,6 +438,13 @@ impl Board {
         /* Updating player to move */
         self.player_to_move = !self.player_to_move;
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+
+        MoveResult {
+            m,
+            capturee,
+            rights: old_rights,
+            ep_square: old_ep_square,
+        }
     }
 
     ///
@@ -443,13 +456,62 @@ impl Board {
         &mut self,
         mgen: &crate::base::movegen::MoveGenerator,
         m: Move,
-    ) -> Result<(), &'static str> {
+    ) -> Result<MoveResult, &'static str> {
         let legal_moves = mgen.get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");
         }
-        self.make_move(m);
-        Ok(())
+
+        Ok(self.make_move(m))
+    }
+
+    ///
+    /// Undo a move. `result` must have been created by the most recent output
+    /// of `Board::make_move`.
+    ///
+    pub fn undo(&mut self, result: &MoveResult) {
+        let from_sq = result.m.from_square();
+        let to_sq = result.m.to_square();
+        let mover_type = match result.m.promote_type() {
+            Some(_) => Piece::Pawn,
+            None => self.type_at_square(to_sq).unwrap(),
+        };
+
+        let former_player = !self.player_to_move;
+
+        if mover_type == Piece::Pawn && result.ep_square == Some(to_sq) {
+            // the previous move was en passant
+            self.add_piece(
+                to_sq + self.player_to_move.pawn_direction(),
+                Piece::Pawn,
+                self.player_to_move,
+            );
+        } else if mover_type == Piece::King && from_sq.chebyshev_to(to_sq) > 1 {
+            // this was a castle and requires special effort to undo
+            let (rook_from_file, rook_to_file) = match to_sq.file() {
+                2 => (0, 3), // queenside castle
+                _ => (7, 5), // kingside castle
+            };
+            let rook_rank = match former_player {
+                Color::White => 0,
+                Color::Black => 7,
+            };
+            let rook_from_sq = Square::try_from(rook_rank << 3 | rook_from_file).unwrap();
+            let rook_to_sq = Square::try_from(rook_rank << 3 | rook_to_file).unwrap();
+
+            self.remove_piece(rook_to_sq);
+            self.add_piece(rook_from_sq, Piece::Rook, former_player);
+        }
+        self.add_piece(from_sq, mover_type, former_player);
+        println!("setting the piece at {to_sq} to {:?}", result.capturee);
+        self.set_piece(to_sq, result.capturee, self.player_to_move);
+
+        self.en_passant_square = result.ep_square;
+        self.hash ^= zobrist::get_ep_key(result.ep_square);
+
+        self.return_castle_rights(result.rights);
+        self.player_to_move = former_player;
+        self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
     }
 
     ///
@@ -499,6 +561,21 @@ impl Board {
         if let Some(p) = pt {
             self.add_piece(sq, p, color);
         }
+    }
+
+    ///
+    /// Give the castle rights indicated back to the board.
+    ///
+    fn return_castle_rights(&mut self, rights_to_return: CastleRights) {
+        let rights_really_returned = rights_to_return & !self.castle_rights;
+
+        for i in 0..4 {
+            if 1 << i & rights_really_returned.0 != 0 {
+                self.hash ^= zobrist::get_castle_key(i);
+            }
+        }
+
+        self.castle_rights |= rights_really_returned;
     }
 
     ///
@@ -696,7 +773,8 @@ pub mod tests {
 
     #[test]
     ///
-    /// Test that a board with an en passant square can be loaded from a FEN correctly.
+    /// Test that a board with an en passant square can be loaded from a FEN 
+    /// correctly.
     ///
     fn test_load_en_passant() {
         let b = Board::from_fen(fens::EN_PASSANT_READY_FEN).unwrap();
@@ -772,11 +850,10 @@ pub mod tests {
         //new_board will be mutated to reflect the move
         let mut new_board = board;
 
-        let result = new_board.try_move(&mgen, m);
-
-        assert_eq!(result, Ok(()));
-
+        let result = new_board.try_move(&mgen, m).unwrap();
         test_move_result_helper(board, new_board, m);
+        new_board.undo(&result);
+        assert_eq!(new_board, board);
     }
 
     ///

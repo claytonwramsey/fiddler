@@ -2,7 +2,7 @@ use crate::base::Color;
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 ///
 /// A simple struct to store a piece's castling rights.
 /// The internal bits are used to represent castling rights.

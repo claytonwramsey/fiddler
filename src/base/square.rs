@@ -9,7 +9,7 @@ use std::mem::transmute;
 use std::ops::{Add, AddAssign, Sub};
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 ///
 /// A single integer containing all the data to identify one square on a board.
 /// From MSB to LSB, this is composed of:
