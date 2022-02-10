@@ -467,7 +467,8 @@ impl Board {
 
     ///
     /// Undo a move. `result` must have been created by the most recent output
-    /// of `Board::make_move`.
+    /// of `Board::make_move`. Currently it's not faster than just making a 
+    /// copy of the original board, though.
     ///
     pub fn undo(&mut self, result: &MoveResult) {
         let from_sq = result.m.from_square();
@@ -503,7 +504,6 @@ impl Board {
             self.add_piece(rook_from_sq, Piece::Rook, former_player);
         }
         self.add_piece(from_sq, mover_type, former_player);
-        println!("setting the piece at {to_sq} to {:?}", result.capturee);
         self.set_piece(to_sq, result.capturee, self.player_to_move);
 
         self.en_passant_square = result.ep_square;
@@ -514,6 +514,7 @@ impl Board {
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
     }
 
+    #[inline]
     ///
     /// Remove the piece at `sq` from this board.
     ///
@@ -534,6 +535,7 @@ impl Board {
         self.sides[Color::White as usize] &= mask;
     }
 
+    #[inline]
     ///
     /// Add a piece to the square at a given place on the board.
     /// This should only be called if you believe that the board as-is is empty
