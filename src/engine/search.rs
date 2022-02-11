@@ -14,6 +14,12 @@ use super::TimeoutCondition;
 const MAX_TRANSPOSITION_DEPTH: i8 = 5;
 
 ///
+/// The number of moves which are searched to a full depth before applying Late
+/// Move Evaluation.
+///
+const NUM_EARLY_MOVES: u8 = 4;
+
+///
 /// A chess engine which uses Principal Variation Search.
 ///
 pub struct PVSearch {
@@ -110,7 +116,7 @@ impl PVSearch {
             }
         }
 
-        if depth_to_go == 0 {
+        if depth_to_go <= 0 {
             return self.quiesce(depth_to_go, depth_so_far, g, mgen, alpha_in, beta_in);
         }
 
@@ -178,12 +184,22 @@ impl PVSearch {
             return (critical_move, alpha);
         }
 
+        let mut num_moves_checked = 1;
+
         for m in moves_iter {
+            let late_move = num_moves_checked > NUM_EARLY_MOVES
+                && depth_so_far > 4
+                && !g.get_board().is_move_capture(m)
+                && m.promote_type().is_none();
             g.make_move(m);
             // zero-window search
+            let depth_to_search = match late_move {
+                true => depth_to_go - 1,
+                false => depth_to_go - 2,
+            };
             score = -self
                 .pvs(
-                    depth_to_go - 1,
+                    depth_to_search,
                     depth_so_far + 1,
                     g,
                     mgen,
@@ -197,6 +213,12 @@ impl PVSearch {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
+                let position_lower_bound = match late_move {
+                    // if this was a late move, we can't use the previous
+                    // fail-high
+                    true => -alpha.step_forward(),
+                    false => -score.step_forward(),
+                };
                 score = -self
                     .pvs(
                         depth_to_go - 1,
@@ -204,7 +226,7 @@ impl PVSearch {
                         g,
                         mgen,
                         -beta.step_forward(),
-                        -score.step_forward(),
+                        position_lower_bound,
                         timeout,
                     )
                     .1
@@ -224,6 +246,8 @@ impl PVSearch {
                 self.killer_moves[killer_index] = m;
                 break;
             }
+
+            num_moves_checked += 1;
         }
 
         if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
@@ -624,7 +648,7 @@ pub mod tests {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
-        e.set_depth(8);
+        e.set_depth(10);
 
         assert_eq!(
             e.get_best_move(&mut g, &mgen, &NoTimeout),
