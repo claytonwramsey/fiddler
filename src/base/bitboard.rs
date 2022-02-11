@@ -1,5 +1,5 @@
 use crate::base::Square;
-use std::convert::TryFrom;
+use std::mem::transmute;
 use std::fmt::{Display, Formatter, Result};
 use std::iter::Iterator;
 use std::ops::{
@@ -156,10 +156,13 @@ impl Iterator for Bitboard {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let opt = Square::try_from(*self).ok();
-        if let Some(sq) = opt {
-            *self &= !Bitboard::from(sq);
-        };
-        opt
+        if *self == Bitboard::EMPTY {
+            return None;
+        }
+        // This will not cause UB because we already accounted for the empty 
+        // board case.
+        let result = Some(unsafe {transmute(self.0.trailing_zeros() as u8)});
+        self.0 &= self.0 - 1;
+        result
     }
 }
