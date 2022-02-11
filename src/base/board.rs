@@ -467,7 +467,7 @@ impl Board {
 
     ///
     /// Undo a move. `result` must have been created by the most recent output
-    /// of `Board::make_move`. Currently it's not faster than just making a 
+    /// of `Board::make_move`. Currently it's not faster than just making a
     /// copy of the original board, though.
     ///
     pub fn undo(&mut self, result: &MoveResult) {
@@ -775,7 +775,7 @@ pub mod tests {
 
     #[test]
     ///
-    /// Test that a board with an en passant square can be loaded from a FEN 
+    /// Test that a board with an en passant square can be loaded from a FEN
     /// correctly.
     ///
     fn test_load_en_passant() {

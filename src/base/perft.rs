@@ -10,9 +10,9 @@ use std::time::Instant;
 /// from which to generate moves.
 ///
 pub fn perft(fen: &str, depth: u8) -> u64 {
-    let mut b = Board::from_fen(fen).unwrap();
+    let b = Board::from_fen(fen).unwrap();
     let tic = Instant::now();
-    let num_nodes = perft_search(&mut b, &MoveGenerator::default(), depth);
+    let num_nodes = perft_search(&b, &MoveGenerator::default(), depth);
     let toc = Instant::now();
     let time = toc - tic;
     let speed = (num_nodes as f64) / time.as_secs_f64();
@@ -27,16 +27,17 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
 ///
 /// The core search algorithm for perft.
 ///
-fn perft_search(b: &mut Board, mgen: &MoveGenerator, depth: u8) -> u64 {
+fn perft_search(b: &Board, mgen: &MoveGenerator, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
     let moves = mgen.get_moves(b);
     let mut total = 0;
+    let mut bcopy;
     for m in moves {
-        let result = b.make_move(m);
-        total += perft_search(b, mgen, depth - 1);
-        b.undo(&result);
+        bcopy = *b;
+        bcopy.make_move(m);
+        total += perft_search(&bcopy, mgen, depth - 1);
     }
 
     total

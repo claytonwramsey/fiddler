@@ -1,7 +1,7 @@
 use crate::base::Square;
-use std::mem::transmute;
 use std::fmt::{Display, Formatter, Result};
 use std::iter::Iterator;
+use std::mem::transmute;
 use std::ops::{
     AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr,
 };
@@ -159,9 +159,9 @@ impl Iterator for Bitboard {
         if *self == Bitboard::EMPTY {
             return None;
         }
-        // This will not cause UB because we already accounted for the empty 
+        // This will not cause UB because we already accounted for the empty
         // board case.
-        let result = Some(unsafe {transmute(self.0.trailing_zeros() as u8)});
+        let result = Some(unsafe { transmute(self.0.trailing_zeros() as u8) });
         self.0 &= self.0 - 1;
         result
     }

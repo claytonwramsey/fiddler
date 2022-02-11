@@ -26,9 +26,10 @@ impl CastleRights {
     ///
     #[inline]
     pub const fn king_castle(color: Color) -> CastleRights {
-        // White = 0 --> 1
-        // Black = 1 --> 4
-        CastleRights((1 + (color as usize) * 3) as u8)
+        match color {
+            Color::White => CastleRights(1),
+            Color::Black => CastleRights(4),
+        }
     }
 
     ///
@@ -36,18 +37,20 @@ impl CastleRights {
     ///
     #[inline]
     pub const fn queen_castle(color: Color) -> CastleRights {
-        // White = 0 --> 2
-        // Black = 1 --> 8
-        CastleRights((2 + (color as usize) * 6) as u8)
+        match color {
+            Color::White => CastleRights(2),
+            Color::Black => CastleRights(8),
+        }
     }
 
     ///
     /// Get the full rights for one color.
     ///
     pub const fn color_rights(color: Color) -> CastleRights {
-        // White = 0 --> 3
-        // Black = 1 --> 12
-        CastleRights((3 + (color as usize) * 9) as u8)
+        match color {
+            Color::White => CastleRights(3),
+            Color::Black => CastleRights(12),
+        }
     }
 
     #[inline]
