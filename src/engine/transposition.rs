@@ -1,6 +1,6 @@
-use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::ops::Index;
+use nohash_hasher::NoHashHasher;
 
 use crate::base::Board;
 use crate::base::Move;
@@ -95,7 +95,7 @@ impl TTable {
     /// Store some evaluation data in the transposition table.
     ///
     pub fn store(&mut self, key: Board, value: EvalData) {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = NoHashHasher::<u64>::default();
         key.hash(&mut hasher);
         let hash = hasher.finish();
         let index = hash as usize % self.entries.len();
@@ -136,7 +136,7 @@ impl Index<&Board> for TTable {
     type Output = Option<EvalData>;
 
     fn index(&self, key: &Board) -> &Self::Output {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = NoHashHasher::<u64>::default();
         key.hash(&mut hasher);
         let key_hash = hasher.finish();
         let index = key_hash as usize % self.entries.len();
