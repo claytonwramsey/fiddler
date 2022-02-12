@@ -189,7 +189,6 @@ impl PVSearch {
 
         for m in moves_iter {
             let late_move = num_moves_checked > NUM_EARLY_MOVES
-                && depth_so_far > 4
                 && !g.get_board().is_move_capture(m)
                 && m.promote_type().is_none();
             g.make_move(m);
