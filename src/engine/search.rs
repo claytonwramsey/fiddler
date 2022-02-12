@@ -185,18 +185,18 @@ impl PVSearch {
             return (critical_move, alpha);
         }
 
-        let mut _num_moves_checked = 1;
+        let mut num_moves_checked = 1;
 
         for m in moves_iter {
-            let late_move = false;/*num_moves_checked > NUM_EARLY_MOVES
+            let late_move = num_moves_checked > NUM_EARLY_MOVES
                 && depth_so_far > 4
                 && !g.get_board().is_move_capture(m)
-                && m.promote_type().is_none();*/
+                && m.promote_type().is_none();
             g.make_move(m);
             // zero-window search
             let depth_to_search = match late_move {
-                true => depth_to_go - 1,
-                false => depth_to_go - 2,
+                true => depth_to_go - 2,
+                false => depth_to_go - 1,
             };
             score = -self
                 .pvs(
@@ -214,12 +214,12 @@ impl PVSearch {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
-                let position_lower_bound = -score.step_forward();/*match late_move {
+                let position_lower_bound = match late_move {
                     // if this was a late move, we can't use the previous
                     // fail-high
                     true => -alpha.step_forward(),
                     false => -score.step_forward(),
-                };*/
+                };
                 score = -self
                     .pvs(
                         depth_to_go - 1,
@@ -248,7 +248,7 @@ impl PVSearch {
                 break;
             }
 
-            _num_moves_checked += 1;
+            num_moves_checked += 1;
         }
 
         if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
@@ -649,7 +649,7 @@ pub mod tests {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
-        e.set_depth(10);
+        e.set_depth(9);
 
         assert_eq!(
             e.get_best_move(&mut g, &mgen, &NoTimeout),
