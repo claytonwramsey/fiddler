@@ -94,7 +94,7 @@ impl MoveGenerator {
         } else {
             // examine king moves normally
             for from_sq in board.get_type_and_color(Piece::King, player) {
-                let to_bb = self.sq_pseudolegal_moves(board, from_sq, Piece::King);
+                let to_bb = self.king_moves(board, from_sq);
                 move_vec.reserve(to_bb.0.count_ones() as usize);
 
                 // I would uses .drain() here normally, but that's not
