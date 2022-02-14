@@ -360,24 +360,25 @@ impl Board {
         let is_king_move = mover_type == Piece::King;
 
         /* Core move functionality */
-
-        let capturee = self.type_at_square(m.to_square());
-
+        let capturee = self.type_at_square(to_sq);
+        if let Some(c) = capturee {
+            self.remove_known_piece(to_sq, c);
+        }
         /* Promotion and normal piece movement */
         if let Some(p) = m.promote_type() {
-            self.set_piece(to_sq, Some(p), self.player_to_move);
+            self.add_piece(to_sq, p, self.player_to_move);
         } else {
             //using set_piece handles capturing internally
-            self.set_piece(to_sq, Some(mover_type), self.player_to_move);
+            self.add_piece(to_sq, mover_type, self.player_to_move);
         }
-        self.remove_piece(from_sq);
+        self.remove_known_piece(from_sq, mover_type);
 
         /* En passant handling */
         //perform an en passant capture
         if is_en_passant {
             let capturee_sq =
                 Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
-            self.remove_piece(capturee_sq);
+            self.remove_known_piece(capturee_sq, Piece::Pawn);
         }
         //remove previous EP square from hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
@@ -412,7 +413,7 @@ impl Board {
                 };
                 let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
                 let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
-                self.remove_piece(rook_from_sq);
+                self.remove_known_piece(rook_from_sq, Piece::Rook);
                 self.add_piece(rook_to_sq, Piece::Rook, self.player_to_move);
             }
         } else {
@@ -502,11 +503,11 @@ impl Board {
             let rook_from_sq = Square::try_from(rook_rank << 3 | rook_from_file).unwrap();
             let rook_to_sq = Square::try_from(rook_rank << 3 | rook_to_file).unwrap();
 
-            self.remove_piece(rook_to_sq);
+            self.remove_known_piece(rook_to_sq, Piece::Rook);
             self.add_piece(rook_from_sq, Piece::Rook, former_player);
         }
         self.add_piece(from_sq, mover_type, former_player);
-        self.set_piece(to_sq, result.capturee, self.player_to_move);
+        self.set_known_piece(to_sq, result.capturee, self.player_to_move, mover_type);
 
         self.en_passant_square = result.ep_square;
         self.hash ^= zobrist::get_ep_key(result.ep_square);
@@ -521,11 +522,21 @@ impl Board {
     /// Remove the piece at `sq` from this board.
     ///
     fn remove_piece(&mut self, sq: Square) {
-        //Remove the hash from the piece that was there before
-        //(no-op if it was empty)
+        let found_piece = self.type_at_square(sq);
+        match found_piece {
+            Some(p) => self.remove_known_piece(sq, p),
+            None => (),
+        };
+    }
 
+    #[inline]
+    ///
+    /// Remove a piece of a known type at a square, which will be slightly more 
+    /// efficient than `remove_piece`.
+    /// 
+    pub fn remove_known_piece(&mut self, sq: Square, pt: Piece) {
         self.hash ^= match self.color_at_square(sq) {
-            Some(c) => zobrist::get_square_key(sq, self.type_at_square(sq), c),
+            Some(c) => zobrist::get_square_key(sq, Some(pt), c),
             None => 0,
         };
         let mask = !Bitboard::from(sq);
@@ -562,6 +573,18 @@ impl Board {
     ///
     pub fn set_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color) {
         self.remove_piece(sq);
+        if let Some(p) = pt {
+            self.add_piece(sq, p, color);
+        }
+    }
+
+    #[inline]
+    ///
+    /// Remove a piece of a known type from a square, and then replace it with 
+    /// a piece of type `pt` and color `color`.
+    /// 
+    pub fn set_known_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color, removee: Piece) {
+        self.remove_known_piece(sq, removee);
         if let Some(p) = pt {
             self.add_piece(sq, p, color);
         }
