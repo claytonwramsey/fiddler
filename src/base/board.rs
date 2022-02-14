@@ -300,12 +300,8 @@ impl Board {
     /// Is the given move a capture in the current state of the board?
     ///
     pub fn is_move_capture(&self, m: Move) -> bool {
-        let opponents_bb =
-            self.get_color_occupancy(!self.color_at_square(m.from_square()).unwrap());
-
-        opponents_bb.contains(m.to_square())
-            || (self.get_type(Piece::Pawn).contains(m.from_square())
-                && Some(m.to_square()) == self.en_passant_square)
+        self.get_occupancy().contains(m.to_square())
+            || self.is_move_en_passant(m)
     }
 
     ///

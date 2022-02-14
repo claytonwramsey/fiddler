@@ -1,8 +1,7 @@
 use crate::base::square::Square;
 use crate::base::Piece;
 use std::{
-    convert::TryFrom,
-    fmt::{Display, Formatter},
+    fmt::{Display, Formatter}, mem::transmute,
 };
 
 use crate::base::CastleRights;
@@ -60,14 +59,14 @@ impl Move {
     /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
     ///
     pub const fn new(from_square: Square, to_square: Square, promote_type: Option<Piece>) -> Move {
-        let from_square_bits = from_square as u16;
-        let to_square_bits = (to_square as u16) << 6;
-        let promote_type_bits = match promote_type {
+        let mut bits = from_square as u16;
+        bits |= (to_square as u16) << 6;
+        bits |= match promote_type {
             Some(p) => p as u16,
             None => Move::NO_PROMOTE,
         } << 12;
 
-        Move(from_square_bits | to_square_bits | promote_type_bits)
+        Move(bits)
     }
 
     #[inline]
@@ -91,7 +90,8 @@ impl Move {
     /// Get the target square of this move.
     ///
     pub fn to_square(self) -> Square {
-        Square::try_from(((self.0 >> 6) & 63u16) as u8).unwrap()
+        // Masking out the bottom bits will make this always valid.
+        unsafe { transmute(((self.0 >> 6) & 63u16) as u8)}
     }
 
     #[inline]
@@ -99,7 +99,8 @@ impl Move {
     /// Get the square that a piece moves from to execute this move.
     ///
     pub fn from_square(self) -> Square {
-        Square::try_from((self.0 & 63u16) as u8).unwrap()
+        // Masking out the bottom bits will make this always valid
+        unsafe { transmute((self.0 & 63u16) as u8)}
     }
 
     #[inline]

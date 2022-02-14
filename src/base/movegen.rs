@@ -52,7 +52,7 @@ impl MoveGenerator {
     pub fn get_moves(&self, board: &Board) -> Vec<Move> {
         self.get_pseudolegal_moves(board, board.player_to_move)
             .into_iter()
-            .filter(|m| self.is_pseudolegal_move_legal(board, m))
+            .filter(|&m| self.is_pseudolegal_move_legal(board, m))
             .collect()
     }
 
@@ -63,7 +63,7 @@ impl MoveGenerator {
     pub fn get_loud_moves(&self, board: &Board) -> Vec<Move> {
         self.get_pseudolegal_loud_moves(board)
             .into_iter()
-            .filter(|m| self.is_pseudolegal_move_legal(board, m))
+            .filter(|&m| self.is_pseudolegal_move_legal(board, m))
             .collect()
     }
 
@@ -140,11 +140,11 @@ impl MoveGenerator {
     ///
     /// Given a pseudolegal move, is that move legal?
     ///
-    fn is_pseudolegal_move_legal(&self, board: &Board, m: &Move) -> bool {
-        if self.is_move_self_check(board, *m) {
+    fn is_pseudolegal_move_legal(&self, board: &Board, m: Move) -> bool {
+        if self.is_move_self_check(board, m) {
             return false;
         }
-        if board.is_move_castle(*m) {
+        if board.is_move_castle(m) {
             let is_queen_castle = m.to_square().file() == 2;
             let mut king_passthru_min = 4;
             let mut king_passthru_max = 7;
@@ -240,27 +240,28 @@ impl MoveGenerator {
             );
         }
         for sq in promoting_pawns {
+            let pmoves_bb = self.pawn_moves(board, sq, color);
             bitboard_to_promotions(
                 sq, 
-                self.pawn_moves(board, sq, color), 
+                pmoves_bb, 
                 Some(Piece::Queen),
                 &mut moves
             );
             bitboard_to_promotions(
                 sq, 
-                self.pawn_moves(board, sq, color), 
+                pmoves_bb, 
                 Some(Piece::Knight),
                 &mut moves
             );
             bitboard_to_promotions(
                 sq, 
-                self.pawn_moves(board, sq, color), 
+                pmoves_bb, 
                 Some(Piece::Bishop),
                 &mut moves
             );
             bitboard_to_promotions(
                 sq, 
-                self.pawn_moves(board, sq, color), 
+                pmoves_bb, 
                 Some(Piece::Rook),
                 &mut moves
             );
@@ -326,28 +327,12 @@ impl MoveGenerator {
             );
         }
         for sq in promoting_pawns {
+            let pmoves_bb = self.pawn_moves(board, sq, player);
+            // ignore non-queen promotions since they're not very interesting
             bitboard_to_promotions(
                 sq, 
-                self.pawn_captures(board, sq, player) & opponents_bb, 
+                pmoves_bb, 
                 Some(Piece::Queen),
-                &mut moves
-            );
-            bitboard_to_promotions(
-                sq, 
-                self.pawn_captures(board, sq, player) & opponents_bb, 
-                Some(Piece::Knight),
-                &mut moves
-            );
-            bitboard_to_promotions(
-                sq, 
-                self.pawn_captures(board, sq, player) & opponents_bb, 
-                Some(Piece::Bishop),
-                &mut moves
-            );
-            bitboard_to_promotions(
-                sq, 
-                self.pawn_captures(board, sq, player) & opponents_bb, 
-                Some(Piece::Rook),
                 &mut moves
             );
         }
