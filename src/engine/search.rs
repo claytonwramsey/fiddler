@@ -3,7 +3,6 @@ use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::transposition::{EvalData, TTable};
 use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
-use crate::Engine;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -421,26 +420,13 @@ impl PVSearch {
             },
         );
     }
-}
 
-impl Default for PVSearch {
-    fn default() -> PVSearch {
-        let mut searcher = PVSearch {
-            depth: 0,
-            evaluator: positional_evaluate,
-            candidator: crate::engine::candidacy::candidacy,
-            ttable: TTable::default(),
-            killer_moves: Vec::new(),
-            num_nodes_evaluated: 0,
-            num_transpositions: 0,
-        };
-        searcher.set_depth(5);
-        searcher
-    }
-}
-
-impl Engine for PVSearch {
-    fn set_depth(&mut self, depth: usize) {
+    ///
+    /// Set the search depth of the engine. This is preferred over strictly 
+    /// mutating the engine, as the depth may alter some data structures used 
+    /// by the engine.
+    /// 
+    pub fn set_depth(&mut self, depth: usize) {
         self.depth = depth as i8;
         for _ in 0..depth {
             self.killer_moves.push(Move::BAD_MOVE);
@@ -448,7 +434,10 @@ impl Engine for PVSearch {
     }
 
     #[inline]
-    fn evaluate(
+    ///
+    /// Return an evaluation on the current position.
+    /// 
+    pub fn evaluate(
         &mut self,
         g: &mut Game,
         mgen: &MoveGenerator,
@@ -486,7 +475,10 @@ impl Engine for PVSearch {
         eval
     }
 
-    fn get_evals(
+    ///
+    /// Get the evaluation on every legal move in the position.
+    /// 
+    pub fn get_evals(
         &mut self,
         g: &mut Game,
         mgen: &MoveGenerator,
@@ -512,7 +504,10 @@ impl Engine for PVSearch {
         evals
     }
 
-    fn get_best_move(
+    ///
+    /// Get the best move in the position.
+    /// 
+    pub fn get_best_move(
         &mut self,
         g: &mut Game,
         mgen: &MoveGenerator,
@@ -558,6 +553,22 @@ impl Engine for PVSearch {
         );
 
         best_move
+    }
+}
+
+impl Default for PVSearch {
+    fn default() -> PVSearch {
+        let mut searcher = PVSearch {
+            depth: 0,
+            evaluator: positional_evaluate,
+            candidator: crate::engine::candidacy::candidacy,
+            ttable: TTable::default(),
+            killer_moves: Vec::new(),
+            num_nodes_evaluated: 0,
+            num_transpositions: 0,
+        };
+        searcher.set_depth(5);
+        searcher
     }
 }
 

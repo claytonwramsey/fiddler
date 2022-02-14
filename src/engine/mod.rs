@@ -1,10 +1,7 @@
-use crate::base::algebraic::algebraic_from_move;
-use crate::base::Color;
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
 
-use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::time::Duration;
@@ -27,99 +24,6 @@ pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
 /// A function which can decide how much it "likes" a move.
 ///
 pub type MoveCandidacyFn = fn(&mut Game, &MoveGenerator, Move) -> Eval;
-
-///
-/// An `Engine` is something that can evaluate a `Game`, and give moves which
-/// it thinks are good. All the public methods require it to be mutable so that
-/// the engine can alter its internal state (such as with transposition tables)
-/// to update its internal data.
-///
-pub trait Engine {
-    ///
-    /// Evaluate the position of the given game. `g` is only given as mutable to
-    /// allow this method access to the ability to make and undo moves, but `g`
-    /// should be the same before and after its use.
-    ///
-    fn evaluate(
-        &mut self,
-        g: &mut Game,
-        mgen: &MoveGenerator,
-        timeout: &dyn TimeoutCondition,
-    ) -> Eval;
-
-    ///
-    /// Set the depth of the engine's search functionality. The exact effects
-    /// of this method may vary from engine to engine, but it should be
-    /// expected that higher depths result in longer search times and better
-    /// evaluations.
-    ///
-    fn set_depth(&mut self, depth: usize);
-
-    ///
-    /// Get what this engine believes to be the best move in the given position.
-    /// `g` is only given as mutable to allow this method access to the ability
-    /// to make and undo moves, but `g` should be the same before and after its
-    /// use.
-    ///
-    fn get_best_move(
-        &mut self,
-        g: &mut Game,
-        mgen: &MoveGenerator,
-        timeout: &dyn TimeoutCondition,
-    ) -> Move {
-        /*self.get_evals(g, mgen)
-        .into_iter()
-        .max_by(|a, b| a.1.cmp(&b.1))
-        .map(|(k, _)| k)
-        .unwrap_or(Move::BAD_MOVE)*/
-        let player = g.get_board().player_to_move;
-        let evals = self.get_evals(g, mgen, timeout);
-        let mut best_move = Move::BAD_MOVE;
-        let mut best_eval = match player {
-            Color::White => Eval::MIN,
-            _ => Eval::MAX,
-        };
-        for (m, eval) in evals.iter() {
-            if g.get_board().player_to_move == Color::White {
-                if best_eval < *eval {
-                    best_eval = *eval;
-                    best_move = *m;
-                }
-            } else if best_eval > *eval {
-                best_eval = *eval;
-                best_move = *m;
-            }
-        }
-
-        best_move
-    }
-
-    ///
-    /// Get the evaluation of each move in this position. `g` is only given as
-    /// mutable to allow this method access to the ability to make and undo
-    /// moves, but `g` should be the same before and after its use.
-    ///
-    fn get_evals(
-        &mut self,
-        g: &mut Game,
-        mgen: &MoveGenerator,
-        timeout: &dyn TimeoutCondition,
-    ) -> HashMap<Move, Eval> {
-        let moves = g.get_moves(mgen);
-        let mut evals = HashMap::new();
-        for m in moves {
-            g.make_move(m);
-            let ev = self.evaluate(g, mgen, timeout);
-
-            //this should never fail since we just made a move, but who knows?
-            g.undo().unwrap();
-            evals.insert(m, ev);
-            println!("{}: {ev}", algebraic_from_move(m, g.get_board(), mgen));
-        }
-
-        evals
-    }
-}
 
 pub trait TimeoutCondition {
     ///

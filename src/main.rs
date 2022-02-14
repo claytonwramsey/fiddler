@@ -4,8 +4,6 @@ use crabchess::base::Game;
 use crabchess::base::MoveGenerator;
 #[allow(unused_imports)]
 use crabchess::engine::search::PVSearch;
-#[allow(unused_imports)]
-use crabchess::engine::Engine;
 
 #[allow(unused_imports)]
 use crabchess::cli;

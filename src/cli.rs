@@ -4,7 +4,6 @@ use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::engine::search::PVSearch;
 use crate::engine::{ElapsedTimeout, TimeoutCondition};
-use crate::Engine;
 
 use std::fmt;
 use std::io;
@@ -26,7 +25,7 @@ pub struct CrabchessApp<'a> {
     ///
     /// The currently-running engine to play against.
     ///
-    engine: Box<dyn Engine + 'a>,
+    engine: PVSearch,
     ///
     /// The input stream to receive messages from.
     ///
@@ -330,7 +329,7 @@ impl<'a> Default for CrabchessApp<'a> {
         CrabchessApp {
             game: Game::default(),
             mgen: MoveGenerator::default(),
-            engine: Box::new(PVSearch::default()),
+            engine: PVSearch::default(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
             timeout_condition: Box::new(ElapsedTimeout::new(Duration::from_secs(5))),
