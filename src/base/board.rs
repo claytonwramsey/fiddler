@@ -13,6 +13,7 @@ use std::hash::{Hash, Hasher};
 use std::result::Result;
 
 use super::moves::MoveResult;
+use super::MoveGenerator;
 
 #[derive(Copy, Clone, Debug)]
 ///
@@ -287,6 +288,10 @@ impl Board {
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
+    #[inline]
+    ///
+    /// In the given position, is this move a promotion?
+    ///
     pub fn is_move_promotion(&self, m: Move) -> bool {
         self.get_type_and_color(Piece::Pawn, self.player_to_move)
             .contains(m.from_square())
@@ -296,12 +301,25 @@ impl Board {
                 .contains(m.to_square())
     }
 
+    #[inline]
     ///
     /// Is the given move a capture in the current state of the board?
     ///
     pub fn is_move_capture(&self, m: Move) -> bool {
-        self.get_occupancy().contains(m.to_square())
-            || self.is_move_en_passant(m)
+        self.get_occupancy().contains(m.to_square()) || self.is_move_en_passant(m)
+    }
+
+    #[inline]
+    ///
+    /// In the current state, is the king (i.e. player to move) in check?
+    ///
+    pub fn is_king_checked(&self, mgen: &MoveGenerator) -> bool {
+        let player = self.player_to_move;
+        mgen.is_square_attacked_by(
+            self,
+            Square::try_from(self.get_type_and_color(Piece::King, player)).unwrap(),
+            !player,
+        )
     }
 
     ///
@@ -389,7 +407,7 @@ impl Board {
         /* Handling castling and castle rights */
         //in normal castling, we describe it with a `Move` as a king move which
         //jumps two or three squares.
-        
+
         let old_rights = self.castle_rights;
         let mut rights_to_remove;
         if is_king_move {
@@ -526,9 +544,9 @@ impl Board {
 
     #[inline]
     ///
-    /// Remove a piece of a known type at a square, which will be slightly more 
+    /// Remove a piece of a known type at a square, which will be slightly more
     /// efficient than `remove_piece`.
-    /// 
+    ///
     pub fn remove_known_piece(&mut self, sq: Square, pt: Piece) {
         self.hash ^= match self.color_at_square(sq) {
             Some(c) => zobrist::get_square_key(sq, Some(pt), c),
@@ -575,9 +593,9 @@ impl Board {
 
     #[inline]
     ///
-    /// Remove a piece of a known type from a square, and then replace it with 
+    /// Remove a piece of a known type from a square, and then replace it with
     /// a piece of type `pt` and color `color`.
-    /// 
+    ///
     pub fn set_known_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color, removee: Piece) {
         self.remove_known_piece(sq, removee);
         if let Some(p) = pt {

@@ -8,8 +8,8 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
-use super::TimeoutCondition;
 use super::candidacy::candidacy;
+use super::TimeoutCondition;
 
 const MAX_TRANSPOSITION_DEPTH: i8 = 6;
 
@@ -110,7 +110,15 @@ impl PVSearch {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce(depth_to_go, depth_so_far, g, mgen, alpha_in, beta_in);
+            return self.quiesce(
+                depth_to_go,
+                depth_so_far,
+                g,
+                mgen,
+                alpha_in,
+                beta_in,
+                timeout,
+            );
         }
 
         let mut moves = g.get_moves(mgen);
@@ -124,7 +132,11 @@ impl PVSearch {
 
         // Sort moves so that the most promising move is evaluated first
         let killer_index = depth_so_far as usize;
-        let retrieved_killer_move = self.killer_moves[killer_index];
+        let can_use_killers = depth_so_far < self.depth;
+        let mut retrieved_killer_move = Move::BAD_MOVE;
+        if can_use_killers {
+            retrieved_killer_move = self.killer_moves[killer_index];
+        }
         moves.sort_by_cached_key(|m| {
             if *m == stored_move {
                 return Eval::MIN;
@@ -163,7 +175,9 @@ impl PVSearch {
         alpha = max(alpha, score);
         if alpha >= beta {
             // Beta cutoff, we have found a better line somewhere else
-            self.killer_moves[killer_index] = critical_move;
+            if can_use_killers {
+                self.killer_moves[killer_index] = critical_move;
+            }
             if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
                 self.ttable_store(
                     g,
@@ -235,7 +249,9 @@ impl PVSearch {
             }
             if alpha >= beta {
                 // Beta cutoff, we have  found a better line somewhere else
-                self.killer_moves[killer_index] = m;
+                if can_use_killers {
+                    self.killer_moves[killer_index] = m;
+                }
                 break;
             }
 
@@ -271,10 +287,18 @@ impl PVSearch {
         mgen: &MoveGenerator,
         alpha_in: Eval,
         beta_in: Eval,
+        timeout: &dyn TimeoutCondition,
     ) -> (Move, Eval) {
         self.num_nodes_evaluated += 1;
 
         let player = g.get_board().player_to_move;
+
+        // Any position where the kind is in check is nowhere near quiet
+        // enough to evaluate.
+        if g.get_board().is_king_checked(mgen) {
+            return self.pvs(1, depth_so_far, g, mgen, alpha_in, beta_in, timeout);
+        }
+
         let mut moves = g.get_loud_moves(mgen);
 
         // capturing is unforced, so we can stop here if the player to move
@@ -311,6 +335,7 @@ impl PVSearch {
                     mgen,
                     -beta.step_forward(),
                     -alpha.step_forward(),
+                    timeout,
                 )
                 .1
                 .step_back();
@@ -337,6 +362,7 @@ impl PVSearch {
                     mgen,
                     -alpha.step_forward() - Eval(1),
                     -alpha.step_forward(),
+                    timeout,
                 )
                 .1
                 .step_back();
@@ -352,6 +378,7 @@ impl PVSearch {
                         mgen,
                         -beta.step_forward(),
                         -score.step_forward(),
+                        timeout,
                     )
                     .1
                     .step_back();
@@ -415,10 +442,10 @@ impl PVSearch {
     }
 
     ///
-    /// Set the search depth of the engine. This is preferred over strictly 
-    /// mutating the engine, as the depth may alter some data structures used 
+    /// Set the search depth of the engine. This is preferred over strictly
+    /// mutating the engine, as the depth may alter some data structures used
     /// by the engine.
-    /// 
+    ///
     pub fn set_depth(&mut self, depth: usize) {
         self.depth = depth as i8;
         for _ in 0..depth {
@@ -429,7 +456,7 @@ impl PVSearch {
     #[inline]
     ///
     /// Return an evaluation on the current position.
-    /// 
+    ///
     pub fn evaluate(
         &mut self,
         g: &mut Game,
@@ -470,7 +497,7 @@ impl PVSearch {
 
     ///
     /// Get the evaluation on every legal move in the position.
-    /// 
+    ///
     pub fn get_evals(
         &mut self,
         g: &mut Game,
@@ -499,7 +526,7 @@ impl PVSearch {
 
     ///
     /// Get the best move in the position.
-    /// 
+    ///
     pub fn get_best_move(
         &mut self,
         g: &mut Game,
@@ -589,7 +616,7 @@ pub mod tests {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
-        e.set_depth(5); // this prevents taking too long on searches
+        e.set_depth(7); // this prevents taking too long on searches
 
         println!("moves with evals are:");
         e.get_evals(&mut g, &mgen, &NoTimeout);

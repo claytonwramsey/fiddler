@@ -1,6 +1,6 @@
+use nohash_hasher::NoHashHasher;
 use std::hash::{Hash, Hasher};
 use std::ops::Index;
-use nohash_hasher::NoHashHasher;
 
 use crate::base::Board;
 use crate::base::Move;

@@ -1,7 +1,8 @@
 use crate::base::square::Square;
 use crate::base::Piece;
 use std::{
-    fmt::{Display, Formatter}, mem::transmute,
+    fmt::{Display, Formatter},
+    mem::transmute,
 };
 
 use crate::base::CastleRights;
@@ -91,7 +92,7 @@ impl Move {
     ///
     pub fn to_square(self) -> Square {
         // Masking out the bottom bits will make this always valid.
-        unsafe { transmute(((self.0 >> 6) & 63u16) as u8)}
+        unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
     }
 
     #[inline]
@@ -100,7 +101,7 @@ impl Move {
     ///
     pub fn from_square(self) -> Square {
         // Masking out the bottom bits will make this always valid
-        unsafe { transmute((self.0 & 63u16) as u8)}
+        unsafe { transmute((self.0 & 63u16) as u8) }
     }
 
     #[inline]

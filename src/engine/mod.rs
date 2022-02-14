@@ -1,4 +1,3 @@
-
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::time::Duration;
