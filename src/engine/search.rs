@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use super::TimeoutCondition;
 
-const MAX_TRANSPOSITION_DEPTH: i8 = 5;
+const MAX_TRANSPOSITION_DEPTH: i8 = 6;
 
 #[allow(unused)]
 ///
