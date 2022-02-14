@@ -187,7 +187,10 @@ impl Game {
             return true;
         }
 
-        // TODO 50 move rule
+        if self.history.last().unwrap().1 >= 50 {
+            // draw by 50 move rule
+            return true;
+        }
         false
     }
 
