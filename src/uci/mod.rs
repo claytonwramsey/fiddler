@@ -1,11 +1,16 @@
-use crate::base::Move;
+use std::time::Duration;
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+use crate::base::Move;
+use crate::engine::Eval;
+
+pub mod engine;
+
+#[derive(Clone, Eq, PartialEq, Hash)]
 ///
 /// An enum representing the set of all commands that the GUI can send to the
 /// engine via UCI.
 ///
-pub enum UciCommand<'a> {
+pub enum UciCommand {
     ///
     /// Command given at the start of UCI. The engine must reply with
     /// `UciMessage::Id` message and send the `UciMessage::Option` commands to
@@ -33,9 +38,13 @@ pub enum UciCommand<'a> {
     /// for the given value to set.
     ///
     SetOption {
-        name: &'a str,
-        value: Option<&'a str>,
+        name: String,
+        value: Option<String>,
     },
+    /*
+
+    Register is currently unimplemented.
+
     ///
     /// A command that gives the engine login information requested from the
     /// GUI. This will typically be a reply to a request for registration from
@@ -47,6 +56,7 @@ pub enum UciCommand<'a> {
         name: Option<&'a str>,
         code: Option<&'a str>,
     },
+    */
     ///
     /// Inform the engine that the next position it will be requested to
     /// evaluate will be from a new game. An engine should not, however, expect
@@ -63,31 +73,43 @@ pub enum UciCommand<'a> {
         /// The FEN from which to set up the position. If `fen` is `None`, then
         /// start from the default start position for a normal game of chess.
         ///
-        fen: Option<&'a str>,
+        fen: Option<String>,
         ///
         /// The set of moves to play after setting up with the given FEN.
         ///
-        moves: &'a [Move],
+        moves: Vec<Move>,
     },
     ///
     /// A `Go` will always be given after a `Position` command. The options are
     /// given as a table of options.
     ///
-    Go(&'a [GoOption<'a>]),
+    Go(Vec<GoOption>),
     ///
-    /// While the engine was in pondering mode, the player opposing the engine selected to play the ponder-move. Continue searching, but know that the player chose the ponder-move.
+    /// Stop searching immediately, and when done, reply with a best move and 
+    /// potentially a ponder.
+    /// 
+    Stop,
+    ///
+    /// While the engine was in pondering mode, the player opposing the engine 
+    /// selected to play the ponder-move. Continue searching, but know that the 
+    /// player chose the ponder-move.
+    /// 
     PonderHit,
+    ///
+    /// Quit the program as soon as possible.
+    /// 
+    Quit,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 ///
 /// The options that can be given for a `UciCommand::Go` command.
 ///
-pub enum GoOption<'a> {
+pub enum GoOption {
     ///
     /// Restrict the search to these moves only.
     ///
-    SearchMoves(&'a [Move]),
+    SearchMoves(Vec<Move>),
     ///
     /// Search in "ponder" mode. The engine must not exit the search until
     /// ordered, no matter the conditions. The last move which was sent in the
@@ -145,11 +167,11 @@ pub enum GoOption<'a> {
     Infinite,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 ///
 /// The set of messages that the engine can send to the GUI.
 ///
-pub enum UciMessage<'a> {
+pub enum UciMessage {
     ///
     /// The engine identifies itself. Must be sent after receiving a
     /// `UciCommand::Uci` message.
@@ -158,19 +180,143 @@ pub enum UciMessage<'a> {
         ///
         /// The name of the engine.
         ///
-        name: Option<&'a str>,
+        name: Option<String>,
         ///
         /// The author of the engine.
         ///
-        author: Option<&'a str>,
+        author: Option<String>,
     },
+    ///
+    /// Sent after `id` and additional options are given to inform the GUI that 
+    /// the engine is ready in UCI mode.
+    /// 
+    UciOk,
+    ///
+    /// Must be sent after a `UciCommand::IsReady` command and the engine has 
+    /// processed all input. Typically only for commands that take some time, 
+    /// but can actually be sent at any time.
+    /// 
+    ReadyOk,
     ///
     /// Request that the GUI display an option to the user.
     /// Not to be confused with the standard `Option`.
     ///
     Option,
-    UciOk,
-    ReadyOk,
+    ///
+    /// Inform the GUI that the engine has found a move. `m` is the best move 
+    /// that it found, and `ponder` may optionally be the opponent's reply to 
+    /// the best move that the engine would like to think about. Directly 
+    /// before a `BestMove`, the engine should send an `Info` command with the 
+    /// final search information.
+    /// 
+    BestMove {
+        m: Move,
+        ponder: Option<Move>,
+    },
+    ///
+    /// Give the GUI some information about what the engine is thinking.
+    /// 
+    Info(Vec<EngineInfo>)
+
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+///
+/// Information about an engine's search state.
+/// 
+pub enum EngineInfo {
+    ///
+    /// The depth to which this information was created.
+    /// 
+    Depth(u8),
+    ///
+    /// The selective search depth.
+    /// 
+    SelDepth(u8),
+    ///
+    /// The time searched.
+    /// 
+    Time(Duration),
+    ///
+    /// The number of nodes searched.
+    /// 
+    Nodes(u64),
+    ///
+    /// The principal variation.
+    ///
+    Pv(Vec<Move>),
+    ///
+    /// Optional. The number of principal variations given.
+    /// 
+    MultiPv(u8),
+    ///
+    /// The evaluation of the position.
+    /// 
+    Score {
+        ///
+        /// A numeric evaluation of the position.
+        /// 
+        eval: Eval,
+        ///
+        /// Whether the evaluation given is only a lower bound.
+        /// 
+        is_lower_bound: bool,
+        ///
+        /// Whether the evaluation given is only an upper bound.
+        /// 
+        is_upper_bound: bool,
+    },
+    ///
+    /// The current move being examined.
+    /// 
+    CurrMove(Move),
+    ///
+    /// The number of the move currently being searched. For the first move 
+    /// searched, this would be 1, etc.
+    /// 
+    CurrMoveNumber(u8),
+    ///
+    /// The hash fill rate of the transposition table. Measured out of 1000.
+    /// 
+    HashFull(u16),
+    ///
+    /// The number of nodes searched per second by the engine.
+    /// 
+    NodeSpeed(u64),
+    ///
+    /// Any string which should be displayed to the GUI.
+    /// 
+    String(String),
+
+    /* Other infos omitted for now */
+}
+
+pub enum OptionType {
+    ///
+    /// A spin box which takes an integer. The internal value is its default 
+    /// parameter.
+    /// 
+    Spin {
+        default: i64,
+        min: i64,
+        max: i64,
+    },
+    ///
+    /// A string which the user can input. The default is the given value.
+    /// 
+    String(String),
+    ///
+    /// A checkbox which will either be true (checked) or false (unchecked)
+    /// 
+    Check(bool),
+    ///
+    /// A set of selectable options for a mode.
+    /// 
+    Combo(Vec<String>),
+    ///
+    /// A button which can be pressed to send a command.
+    /// 
+    Button,
 }
 
 ///
