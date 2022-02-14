@@ -8,6 +8,7 @@ pub mod greedy;
 pub mod positional;
 pub mod search;
 pub mod transposition;
+pub mod uci;
 
 pub trait TimeoutCondition {
     ///
@@ -72,6 +73,16 @@ impl TimeoutCondition for ElapsedTimeout {
 /// play their move and mate), 999,998 is White to mate in 1, with Black to
 /// move (Black will play their move, then White will play their move to mate)
 /// and so on. Values of < -999,000 are reserved for black mates, likewise.
+/// 
+/// # Examples 
+/// 
+/// ```
+/// use crabchess::engine::Eval;
+/// let mate_eval = Eval::mate_in(3);
+/// let draw_eval = Eval::draw();
+/// assert!(mate_eval > draw_eval);
+/// ```
+/// 
 ///
 pub struct Eval(i32);
 
@@ -122,6 +133,14 @@ impl Eval {
 
     #[inline]
     ///
+    /// Create an evaluation for a drawn or even position.
+    /// 
+    pub fn draw() -> Eval{
+        Eval(0)
+    }
+
+    #[inline]
+    ///
     /// Create an `Eval` based on the number of half-moves required for White to
     /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
     /// plies.
@@ -136,6 +155,15 @@ impl Eval {
     /// not be changed, but mates will be moved one closer to 0. When the
     /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined
     /// behavior.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use crabchess::engine::Eval;
+    /// let current_eval = Eval::mate_in(0);
+    /// let previous_ply_eval = current_eval.step_back();
+    /// assert_eq!(previous_ply_eval, Eval::mate_in(1));
+    /// ```
     ///
     pub const fn step_back(&self) -> Eval {
         Eval(self.0 - self.0 / (Eval::MATE_CUTOFF + 1))
