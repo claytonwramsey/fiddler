@@ -65,7 +65,7 @@ mod tests {
     }
 
     #[test]
-    fn test_perf_unbalanced() {
+    fn test_perft_unbalanced() {
         perft_assistant(
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
             &[1, 6, 264, 9_467, 422_333, 15_833_292],

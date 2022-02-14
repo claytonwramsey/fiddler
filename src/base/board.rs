@@ -275,7 +275,7 @@ impl Board {
     pub fn is_move_en_passant(&self, m: Move) -> bool {
         Some(m.to_square()) == self.en_passant_square
             && m.from_square().file() != m.to_square().file()
-            && self.type_at_square(m.from_square()) == Some(Piece::Pawn)
+            && self.get_type(Piece::Pawn).contains(m.from_square())
     }
 
     #[inline]
@@ -350,14 +350,16 @@ impl Board {
     pub fn make_move(&mut self, m: Move) -> MoveResult {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
-        let mover_type = self.type_at_square(from_sq).unwrap();
         let is_en_passant = self.is_move_en_passant(m);
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
         let is_long_move = from_sq.chebyshev_to(to_sq) > 1;
+        // TODO figure out a way to remove the (slow) call to `type_at_square`?
+        let mover_type = self.type_at_square(from_sq).unwrap();
+        let is_pawn_move = mover_type == Piece::Pawn;
+        let is_king_move = mover_type == Piece::King;
 
         /* Core move functionality */
-        self.remove_piece(from_sq);
 
         let capturee = self.type_at_square(m.to_square());
 
@@ -368,6 +370,7 @@ impl Board {
             //using set_piece handles capturing internally
             self.set_piece(to_sq, Some(mover_type), self.player_to_move);
         }
+        self.remove_piece(from_sq);
 
         /* En passant handling */
         //perform an en passant capture
@@ -380,39 +383,38 @@ impl Board {
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
         let old_ep_square = self.en_passant_square;
         //update EP square
-        self.en_passant_square = match mover_type == Piece::Pawn && is_long_move {
+        self.en_passant_square = match is_pawn_move && is_long_move {
             true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
             false => None,
         };
         //insert new EP key into hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
 
-        /* Handling castling */
+        /* Handling castling and castle rights */
         //in normal castling, we describe it with a `Move` as a king move which
         //jumps two or three squares.
-        if mover_type == Piece::King && is_long_move {
-            //a long move from a king means this must be a castle
-            //G file is file 6 (TODO move this to be a constant?)
-            let is_kingside_castle = to_sq.file() == 6;
-            let rook_from_file = match is_kingside_castle {
-                true => 7,  //rook moves from H file for kingside castling
-                false => 0, //rook moves from A file for queenside
-            };
-            let rook_to_file = match is_kingside_castle {
-                true => 5,  //rook moves to F file for kingside
-                false => 3, //rook moves to D file for queenside
-            };
-            let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
-            let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
-            self.remove_piece(rook_from_sq);
-            self.add_piece(rook_to_sq, Piece::Rook, self.player_to_move);
-        }
-
-        /* Handling castling rights */
+        
         let old_rights = self.castle_rights;
         let mut rights_to_remove;
-        if mover_type == Piece::King {
+        if is_king_move {
             rights_to_remove = CastleRights::color_rights(self.player_to_move);
+            if is_long_move {
+                //a long move from a king means this must be a castle
+                //G file is file 6 (TODO move this to be a constant?)
+                let is_kingside_castle = to_sq.file() == 6;
+                let rook_from_file = match is_kingside_castle {
+                    true => 7,  //rook moves from H file for kingside castling
+                    false => 0, //rook moves from A file for queenside
+                };
+                let rook_to_file = match is_kingside_castle {
+                    true => 5,  //rook moves to F file for kingside
+                    false => 3, //rook moves to D file for queenside
+                };
+                let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
+                let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
+                self.remove_piece(rook_from_sq);
+                self.add_piece(rook_to_sq, Piece::Rook, self.player_to_move);
+            }
         } else {
             //don't need to check if it's a rook because moving from this square
             //would mean you didn't have the right anyway
