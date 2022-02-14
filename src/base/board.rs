@@ -274,7 +274,6 @@ impl Board {
     ///
     pub fn is_move_en_passant(&self, m: Move) -> bool {
         Some(m.to_square()) == self.en_passant_square
-            && m.from_square().file() != m.to_square().file()
             && self.get_type(Piece::Pawn).contains(m.from_square())
     }
 
