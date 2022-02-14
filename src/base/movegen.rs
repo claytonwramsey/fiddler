@@ -168,7 +168,7 @@ impl MoveGenerator {
     /// self-check?
     ///
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
-        let player = board.color_at_square(m.from_square()).unwrap();
+        let player = board.player_to_move;
         let player_king_bb = board.get_type_and_color(Piece::King, player);
         let is_king_move = player_king_bb.contains(m.from_square());
         // Square where the king will be after this move ends.
