@@ -2,13 +2,14 @@ use crate::base::algebraic::algebraic_from_move;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::transposition::{EvalData, TTable};
-use crate::engine::{Eval, EvaluationFn, MoveCandidacyFn};
+use crate::engine::Eval;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::time::Instant;
 
 use super::TimeoutCondition;
+use super::candidacy::candidacy;
 
 const MAX_TRANSPOSITION_DEPTH: i8 = 6;
 
@@ -27,14 +28,6 @@ pub struct PVSearch {
     /// The depth at which this algorithm will evaluate a position.
     ///
     depth: i8,
-    ///
-    /// The function used to evaluate the quality of a position.
-    ///
-    pub evaluator: EvaluationFn,
-    ///
-    /// The function used to determine which moves should be explored first.
-    ///
-    pub candidator: MoveCandidacyFn,
     ///
     /// The transposition table.
     ///
@@ -125,7 +118,7 @@ impl PVSearch {
         if moves.is_empty() {
             return (
                 Move::BAD_MOVE,
-                (self.evaluator)(g, mgen) * (1 - 2 * g.get_board().player_to_move as i32),
+                positional_evaluate(g, mgen) * (1 - 2 * g.get_board().player_to_move as i32),
             );
         }
 
@@ -139,7 +132,7 @@ impl PVSearch {
             if *m == retrieved_killer_move {
                 return Eval::MIN + Eval(1);
             }
-            -(self.candidator)(g, mgen, *m)
+            -candidacy(g, mgen, *m)
         });
 
         let mut moves_iter = moves.into_iter();
@@ -286,7 +279,7 @@ impl PVSearch {
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = (self.evaluator)(g, mgen);
+        let leaf_evaluation = positional_evaluate(g, mgen);
         // (1 - 2 * us) will cause the evaluation to be positive for
         // whichever player is moving. This will cascade up the Negamax
         // inversions to make the final result at the top correct.
@@ -304,7 +297,7 @@ impl PVSearch {
             return (Move::BAD_MOVE, beta);
         }
 
-        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        moves.sort_by_cached_key(|m| -candidacy(g, mgen, *m));
         let mut moves_iter = moves.into_iter();
         let mut critical_move = Move::BAD_MOVE;
         // we must wrap with an if in case there are no captures
@@ -486,7 +479,7 @@ impl PVSearch {
     ) -> HashMap<Move, Eval> {
         let mut moves = g.get_moves(mgen);
         //negate because sort is ascending
-        moves.sort_by_cached_key(|m| -(self.candidator)(g, mgen, *m));
+        moves.sort_by_cached_key(|m| -candidacy(g, mgen, *m));
         let mut evals = HashMap::new();
         for m in moves {
             g.make_move(m);
@@ -560,8 +553,6 @@ impl Default for PVSearch {
     fn default() -> PVSearch {
         let mut searcher = PVSearch {
             depth: 0,
-            evaluator: positional_evaluate,
-            candidator: crate::engine::candidacy::candidacy,
             ttable: TTable::default(),
             killer_moves: Vec::new(),
             num_nodes_evaluated: 0,

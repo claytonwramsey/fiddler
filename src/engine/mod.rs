@@ -1,6 +1,3 @@
-use crate::base::Game;
-use crate::base::Move;
-use crate::base::MoveGenerator;
 
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -12,18 +9,6 @@ pub mod greedy;
 pub mod positional;
 pub mod search;
 pub mod transposition;
-
-///
-/// A function which can shallowly evaluate a position. The given array of
-/// moves is the set of moves in the position, but a move generator is also
-/// given in case the function desires it.
-///
-pub type EvaluationFn = fn(&mut Game, &MoveGenerator) -> Eval;
-
-///
-/// A function which can decide how much it "likes" a move.
-///
-pub type MoveCandidacyFn = fn(&mut Game, &MoveGenerator, Move) -> Eval;
 
 pub trait TimeoutCondition {
     ///
