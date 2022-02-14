@@ -82,7 +82,7 @@ impl MoveGenerator {
             //king is in check
 
             //King can probably get out on his own
-            let king_to_sqs = self.king_moves(board, king_square);
+            let king_to_sqs = self.king_moves(board, king_square, player);
             let mut king_moves = Vec::with_capacity(king_to_sqs.0.count_ones() as usize);
             bitboard_to_moves(king_square, king_to_sqs, &mut king_moves);
             for m in king_moves {
@@ -101,7 +101,7 @@ impl MoveGenerator {
         } else {
             // examine king moves normally
             for from_sq in board.get_type_and_color(Piece::King, player) {
-                let to_bb = self.king_moves(board, from_sq);
+                let to_bb = self.king_moves(board, from_sq, player);
                 move_vec.reserve(to_bb.0.count_ones() as usize);
 
                 // I would uses .drain() here normally, but that's not
@@ -269,35 +269,35 @@ impl MoveGenerator {
         for sq in board.get_type_and_color(Piece::Knight, color) {
             bitboard_to_moves(
                 sq, 
-                self.knight_moves(board, sq),
+                self.knight_moves(board, sq, color),
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::Bishop, color) {
             bitboard_to_moves(
                 sq, 
-                self.bishop_moves(board, sq), 
+                self.bishop_moves(board, sq, color), 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::Rook, color) {
             bitboard_to_moves(
                 sq, 
-                self.rook_moves(board, sq), 
+                self.rook_moves(board, sq, color), 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::Queen, color) {
             bitboard_to_moves(
                 sq, 
-                self.queen_moves(board, sq), 
+                self.queen_moves(board, sq, color), 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::King, color) {
             bitboard_to_moves(
                 sq, 
-                self.king_moves(board, sq), 
+                self.king_moves(board, sq, color), 
                 &mut moves
             );
         }
@@ -355,35 +355,35 @@ impl MoveGenerator {
         for sq in board.get_type_and_color(Piece::Knight, player) {
             bitboard_to_moves(
                 sq, 
-                self.knight_moves(board, sq) & opponents_bb, 
+                self.knight_moves(board, sq, player) & opponents_bb, 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::Bishop, player) {
             bitboard_to_moves(
                 sq, 
-                self.bishop_moves(board, sq) & opponents_bb, 
+                self.bishop_moves(board, sq, player) & opponents_bb, 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::Rook, player) {
             bitboard_to_moves(
                 sq, 
-                self.rook_moves(board, sq) & opponents_bb, 
+                self.rook_moves(board, sq, player) & opponents_bb, 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::Queen, player) {
             bitboard_to_moves(
                 sq, 
-                self.queen_moves(board, sq) & opponents_bb, 
+                self.queen_moves(board, sq, player) & opponents_bb, 
                 &mut moves
             );
         }
         for sq in board.get_type_and_color(Piece::King, player) {
             bitboard_to_moves(
                 sq, 
-                self.king_moves(board, sq) & opponents_bb, 
+                self.king_moves(board, sq, player) & opponents_bb, 
                 &mut moves
             );
         }
@@ -438,33 +438,34 @@ impl MoveGenerator {
         let color = board.color_at_square(sq).unwrap();
         match pt {
             Piece::Pawn => self.pawn_moves(board, sq, color),
-            Piece::Knight => self.knight_moves(board, sq),
-            Piece::King => self.king_moves(board, sq),
-            Piece::Bishop => self.bishop_moves(board, sq),
-            Piece::Rook => self.rook_moves(board, sq),
-            Piece::Queen => self.queen_moves(board, sq),
+            Piece::Knight => self.knight_moves(board, sq, color),
+            Piece::King => self.king_moves(board, sq, color),
+            Piece::Bishop => self.bishop_moves(board, sq, color),
+            Piece::Rook => self.rook_moves(board, sq, color),
+            Piece::Queen => self.queen_moves(board, sq, color),
         }
     }
 
     #[inline]
     ///
     /// Get the pseudolegal moves that a knight on the square `sq` could make in
-    /// this position. Also, haha bob seger.
+    /// this position. `color` is the color of the piece at `sq`. 
+    /// bob seger.
     ///
-    fn knight_moves(&self, board: &Board, sq: Square) -> Bitboard {
+    fn knight_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         self.knight_moves[sq as usize]
-            & !board.get_color_occupancy(board.color_at_square(sq).unwrap())
+            & !board.get_color_occupancy(color)
     }
 
     #[inline]
     ///
     /// Get the pseudolegal moves that a king on square `sq` could make in this
     /// position. Does not check if castling can be done through or out of
-    /// check.
+    /// check. `color` is the color of the piece at `sq`. 
     ///
-    fn king_moves(&self, board: &Board, sq: Square) -> Bitboard {
+    fn king_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         let mut moves = self.king_moves[sq as usize]
-            & !board.get_color_occupancy(board.color_at_square(sq).unwrap());
+            & !board.get_color_occupancy(color);
 
         //castling
         let kingside_castle_passthrough_sqs = match board.player_to_move {
@@ -522,7 +523,7 @@ impl MoveGenerator {
     ///
     /// Get the captures a pawn can make in the current position. The given
     /// color is the color that a pawn would be to generate the captures from
-    /// this square.
+    /// this square. `color` is the color of the piece at `sq`. 
     ///
     fn pawn_captures(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         let mut capture_mask = board.get_color_occupancy(!color);
@@ -536,30 +537,30 @@ impl MoveGenerator {
     #[inline]
     ///
     /// Get the pseudolegal moves that a bishop on square `sq` could make in
-    /// this position.
+    /// this position. `color` is the color of the piece at `sq`. 
     ///
-    fn bishop_moves(&self, board: &Board, sq: Square) -> Bitboard {
+    fn bishop_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         get_bishop_attacks(board.get_occupancy(), sq, &self.mtable)
-            & !board.get_color_occupancy(board.color_at_square(sq).unwrap())
+            & !board.get_color_occupancy(color)
     }
 
     #[inline]
     ///
     /// Get the pseudolegal moves that a rook on square `sq` could make in this
-    /// position.
+    /// position. `color` is the color of the piece at `sq`. 
     ///
-    fn rook_moves(&self, board: &Board, sq: Square) -> Bitboard {
+    fn rook_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
-            & !board.get_color_occupancy(board.color_at_square(sq).unwrap())
+            & !board.get_color_occupancy(color)
     }
 
     #[inline]
     ///
     /// Get the pseudolegal moves that a queen on square `sq` could make in this
-    /// position.
+    /// position. `color` is the color of the piece at `sq`. 
     ///
-    fn queen_moves(&self, board: &Board, sq: Square) -> Bitboard {
-        self.bishop_moves(board, sq) | self.rook_moves(board, sq)
+    fn queen_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
+        self.bishop_moves(board, sq, color) | self.rook_moves(board, sq, color)
     }
 }
 
