@@ -7,8 +7,3 @@ pub mod engine;
 /// for tests.
 ///
 mod fens;
-
-///
-/// A module for supporting the Universal Chess Interface (UCI).
-///
-pub mod uci;
