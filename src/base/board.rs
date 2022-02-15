@@ -381,7 +381,6 @@ impl Board {
         if let Some(p) = m.promote_type() {
             self.add_piece(to_sq, p, self.player_to_move);
         } else {
-            //using set_piece handles capturing internally
             self.add_piece(to_sq, mover_type, self.player_to_move);
         }
         self.remove_known_piece(from_sq, mover_type);
@@ -553,10 +552,7 @@ impl Board {
             None => 0,
         };
         let mask = !Bitboard::from(sq);
-
-        for i in 0..Piece::NUM_TYPES {
-            self.pieces[i] &= mask;
-        }
+        self.pieces[pt as usize] &= mask;
         self.sides[Color::Black as usize] &= mask;
         self.sides[Color::White as usize] &= mask;
     }
