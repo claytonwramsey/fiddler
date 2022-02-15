@@ -10,12 +10,13 @@ use std::convert::TryFrom;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::ops::Index;
 use std::result::Result;
 
 use super::moves::MoveResult;
 use super::MoveGenerator;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq)]
 ///
 /// A representation of a position. Does not handle the repetition or turn
 /// timer.
@@ -701,7 +702,33 @@ impl PartialEq for Board {
     }
 }
 
-impl Eq for Board {}
+impl Index<Piece> for Board {
+    type Output = Bitboard;
+
+    #[inline]
+    ///
+    /// Get the squares occupied by the given piece.
+    /// 
+    fn index(&self, index: Piece) -> &Self::Output {
+        // This will not fail because there are the same number of pieces as 
+        // indices on `pieces`
+        unsafe {self.pieces.get_unchecked(index as usize)}
+    }
+}
+
+impl Index<Color> for Board {
+    type Output = Bitboard;
+
+    #[inline]
+    ///
+    /// Get the squares occupied by the given piece.
+    /// 
+    fn index(&self, index: Color) -> &Self::Output {
+        // This will not fail because there are the same number of colors as 
+        // indices on `sides`
+        unsafe {self.sides.get_unchecked(index as usize)}
+    }
+}
 
 impl Default for Board {
     fn default() -> Board {
