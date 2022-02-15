@@ -364,6 +364,8 @@ impl Board {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
         let is_en_passant = self.is_move_en_passant(m);
+        let player = self.player_to_move;
+        let opponent = !player;
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
         let is_long_move = from_sq.chebyshev_to(to_sq) > 1;
@@ -375,7 +377,7 @@ impl Board {
         /* Core move functionality */
         let capturee = self.type_at_square(to_sq);
         if let Some(c) = capturee {
-            self.remove_known_piece(to_sq, c);
+            self.remove_known_piece(to_sq, c, opponent);
         }
         /* Promotion and normal piece movement */
         if let Some(p) = m.promote_type() {
@@ -383,14 +385,14 @@ impl Board {
         } else {
             self.add_piece(to_sq, mover_type, self.player_to_move);
         }
-        self.remove_known_piece(from_sq, mover_type);
+        self.remove_known_piece(from_sq, mover_type, player);
 
         /* En passant handling */
         //perform an en passant capture
         if is_en_passant {
             let capturee_sq =
                 Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
-            self.remove_known_piece(capturee_sq, Piece::Pawn);
+            self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
         }
         //remove previous EP square from hash
         self.hash ^= zobrist::get_ep_key(self.en_passant_square);
@@ -425,7 +427,7 @@ impl Board {
                 };
                 let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
                 let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
-                self.remove_known_piece(rook_from_sq, Piece::Rook);
+                self.remove_known_piece(rook_from_sq, Piece::Rook, player);
                 self.add_piece(rook_to_sq, Piece::Rook, self.player_to_move);
             }
         } else {
@@ -488,9 +490,12 @@ impl Board {
     pub fn undo(&mut self, result: &MoveResult) {
         let from_sq = result.m.from_square();
         let to_sq = result.m.to_square();
-        let mover_type = match result.m.promote_type() {
-            Some(_) => Piece::Pawn,
-            None => self.type_at_square(to_sq).unwrap(),
+        let (mover_type, resulting_type) = match result.m.promote_type() {
+            Some(p) => (Piece::Pawn, p),
+            None => {
+                let t = self.type_at_square(to_sq).unwrap();
+                (t, t)
+            },
         };
 
         let former_player = !self.player_to_move;
@@ -515,11 +520,14 @@ impl Board {
             let rook_from_sq = Square::try_from(rook_rank << 3 | rook_from_file).unwrap();
             let rook_to_sq = Square::try_from(rook_rank << 3 | rook_to_file).unwrap();
 
-            self.remove_known_piece(rook_to_sq, Piece::Rook);
+            self.remove_known_piece(rook_to_sq, Piece::Rook, former_player);
             self.add_piece(rook_from_sq, Piece::Rook, former_player);
         }
         self.add_piece(from_sq, mover_type, former_player);
-        self.set_known_piece(to_sq, result.capturee, self.player_to_move, mover_type);
+        self.remove_known_piece(to_sq, resulting_type, former_player);
+        if let Some(c) = result.capturee {
+            self.add_piece(to_sq, c, self.player_to_move);
+        }
 
         self.en_passant_square = result.ep_square;
         self.hash ^= zobrist::get_ep_key(result.ep_square);
@@ -536,7 +544,7 @@ impl Board {
     fn remove_piece(&mut self, sq: Square) {
         let found_piece = self.type_at_square(sq);
         match found_piece {
-            Some(p) => self.remove_known_piece(sq, p),
+            Some(p) => self.remove_known_piece(sq, p, self.color_at_square(sq).unwrap()),
             None => (),
         };
     }
@@ -546,15 +554,12 @@ impl Board {
     /// Remove a piece of a known type at a square, which will be slightly more
     /// efficient than `remove_piece`.
     ///
-    pub fn remove_known_piece(&mut self, sq: Square, pt: Piece) {
-        self.hash ^= match self.color_at_square(sq) {
-            Some(c) => zobrist::get_square_key(sq, Some(pt), c),
-            None => 0,
-        };
-        let mask = !Bitboard::from(sq);
-        self.pieces[pt as usize] &= mask;
-        self.sides[Color::Black as usize] &= mask;
-        self.sides[Color::White as usize] &= mask;
+    pub fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
+        let mask = Bitboard::from(sq);
+        self.hash ^= zobrist::get_square_key(sq, Some(pt), color);
+        let removal_mask = !mask;
+        self.pieces[pt as usize] &= removal_mask;
+        self.sides[color as usize] &= removal_mask;
     }
 
     #[inline]
@@ -582,18 +587,6 @@ impl Board {
     ///
     pub fn set_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color) {
         self.remove_piece(sq);
-        if let Some(p) = pt {
-            self.add_piece(sq, p, color);
-        }
-    }
-
-    #[inline]
-    ///
-    /// Remove a piece of a known type from a square, and then replace it with
-    /// a piece of type `pt` and color `color`.
-    ///
-    pub fn set_known_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color, removee: Piece) {
-        self.remove_known_piece(sq, removee);
         if let Some(p) = pt {
             self.add_piece(sq, p, color);
         }
