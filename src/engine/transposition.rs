@@ -64,10 +64,6 @@ struct TTableEntry {
     ///
     pub hash: u64,
     ///
-    /// The board with this evaluation.
-    ///
-    pub key: Board,
-    ///
     /// The transposition data.
     ///
     pub data: Option<EvalData>,
@@ -83,7 +79,6 @@ impl TTable {
             entries: vec![
                 TTableEntry {
                     hash: BAD_HASH,
-                    key: Board::BAD_BOARD,
                     data: None
                 };
                 capacity
@@ -104,7 +99,6 @@ impl TTable {
             // index has been modulo'd by the length of the entry table.
             *self.entries.get_unchecked_mut(index) = TTableEntry {
                 hash,
-                key,
                 data: Some(value),
             };
         }
@@ -119,7 +113,6 @@ impl TTable {
             .iter()
             .map(|_| TTableEntry {
                 hash: BAD_HASH,
-                key: Board::BAD_BOARD,
                 data: None,
             })
             .collect();
@@ -152,11 +145,18 @@ impl Index<&Board> for TTable {
             return &self.sentinel;
         }
 
+        /*
+        // Although this line is theoretically needed, in practice, there are 
+        // essentially no Zobrist hash collisions. We skip this step to save 
+        // speed. A collision here would however be a logic error.
+
         // Since the hashes matched, these positions are likely equal.
         // Check whether they're truly equal.
         if *key != entry.key {
+            println!("true zobrist collision!");
             return &self.sentinel;
         }
+        */
 
         &entry.data
     }
