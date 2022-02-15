@@ -33,9 +33,10 @@ pub struct Game {
     moves: Vec<Move>,
     ///
     /// Stores the number of times a position has been reached in the course of
-    /// this game. It is used for three-move-rule draws.
+    /// this game. It is used for three-move-rule draws. The keys are the 
+    /// Zobrist hashes of the boards previously visited.
     ///
-    repetitions: HashMap<Board, u64>,
+    repetitions: HashMap<u64, u64>,
 }
 
 impl Game {
@@ -45,7 +46,7 @@ impl Game {
         Ok(Game {
             history: vec![(b, 0)],
             moves: Vec::new(),
-            repetitions: HashMap::from([(b, 1)]),
+            repetitions: HashMap::from([(b.hash, 1)]),
         })
     }
 
@@ -59,7 +60,7 @@ impl Game {
         self.moves.clear();
         self.repetitions.clear();
         //since we cleared this, or_insert will always be called
-        self.repetitions.entry(start_board).or_insert(1);
+        self.repetitions.entry(start_board.hash).or_insert(1);
     }
 
     ///
@@ -79,7 +80,7 @@ impl Game {
         };
         newboard.make_move(m);
 
-        let num_reps = self.repetitions.entry(newboard).or_insert(0);
+        let num_reps = self.repetitions.entry(newboard.hash).or_insert(0);
         *num_reps += 1;
         self.history.push((newboard, move_timeout));
         self.moves.push(m);
@@ -119,10 +120,10 @@ impl Game {
             Some(p) => p.0,
             None => return Err("no boards in history"),
         };
-        let num_reps = self.repetitions.entry(state_removed).or_insert(1);
+        let num_reps = self.repetitions.entry(state_removed.hash).or_insert(1);
         *num_reps -= 1;
         if *num_reps == 0 {
-            self.repetitions.remove(&state_removed);
+            self.repetitions.remove(&state_removed.hash);
         }
 
         Ok(move_removed)
@@ -181,7 +182,7 @@ impl Game {
     /// move rule or due to repetition)?
     ///
     fn is_drawn_historically(&self) -> bool {
-        let num_reps = *self.repetitions.get(self.get_board()).unwrap_or(&0);
+        let num_reps = *self.repetitions.get(&self.get_board().hash).unwrap_or(&0);
         if num_reps >= 3 {
             // draw by repetition
             return true;
@@ -220,7 +221,7 @@ impl Default for Game {
         Game {
             history: vec![(Board::default(), 0)],
             moves: Vec::new(),
-            repetitions: HashMap::from([(Board::default(), 1)]),
+            repetitions: HashMap::from([(Board::default().hash, 1)]),
         }
     }
 }

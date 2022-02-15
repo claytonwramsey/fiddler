@@ -47,7 +47,7 @@ pub struct Board {
     /// A saved internal hash. If the board is valid, the this value must ALWAYS
     /// be equal to the output of `Board.get_fresh_hash()`.
     ///
-    hash: u64,
+    pub hash: u64,
 }
 
 impl Board {

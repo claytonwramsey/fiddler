@@ -1,5 +1,3 @@
-use nohash_hasher::NoHashHasher;
-use std::hash::{Hash, Hasher};
 use std::ops::Index;
 
 use crate::base::Board;
@@ -90,15 +88,12 @@ impl TTable {
     /// Store some evaluation data in the transposition table.
     ///
     pub fn store(&mut self, key: Board, value: EvalData) {
-        let mut hasher = NoHashHasher::<u64>::default();
-        key.hash(&mut hasher);
-        let hash = hasher.finish();
-        let index = hash as usize % self.entries.len();
+        let index = key.hash as usize % self.entries.len();
         unsafe {
             // We trust that this will not lead to an out of bounds as the
             // index has been modulo'd by the length of the entry table.
             *self.entries.get_unchecked_mut(index) = TTableEntry {
-                hash,
+                hash: key.hash,
                 data: Some(value),
             };
         }
@@ -129,10 +124,7 @@ impl Index<&Board> for TTable {
     type Output = Option<EvalData>;
 
     fn index(&self, key: &Board) -> &Self::Output {
-        let mut hasher = NoHashHasher::<u64>::default();
-        key.hash(&mut hasher);
-        let key_hash = hasher.finish();
-        let index = key_hash as usize % self.entries.len();
+        let index = key.hash as usize % self.entries.len();
         let entry = unsafe {
             // We trust that this will not lead to a memory error because index
             // was modulo'd by the length of entries.
@@ -141,7 +133,7 @@ impl Index<&Board> for TTable {
 
         // First, compare hashes to "fast-track" checking if these
         // positions are truly equal.
-        if entry.hash != key_hash {
+        if entry.hash != key.hash {
             return &self.sentinel;
         }
 
