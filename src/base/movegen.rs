@@ -118,7 +118,15 @@ impl MoveGenerator {
         for pt in Piece::NON_KING_TYPES {
             // examine moves that other pieces can make
             for from_sq in board.get_type_and_color(pt, player) {
-                let to_bb = self.sq_pseudolegal_moves(board, from_sq, pt);
+                let to_bb = match pt {
+                    Piece::Pawn => self.pawn_moves(board, from_sq, player),
+                    Piece::Bishop => self.bishop_moves(board, from_sq, player),
+                    Piece::Rook => self.rook_moves(board, from_sq, player),
+                    Piece::Queen => self.bishop_moves(board, from_sq, player) | self.rook_moves(board, from_sq, player),
+                    Piece::Knight => self.knight_moves(board, from_sq, player),
+                    _ => Bitboard::EMPTY
+                };
+
                 move_vec.reserve(to_bb.0.count_ones() as usize);
 
                 // we need not handle promotion because pawn promotion also
@@ -230,6 +238,9 @@ impl MoveGenerator {
         let pawns = board.get_type_and_color(Piece::Pawn, color);
         let promoting_pawns = pawns & about_to_promote_bb;
         let non_promoting_pawns = pawns ^ promoting_pawns;
+        let our_queens = board.get_type_and_color(Piece::Queen, color);
+        let rook_movers = board.get_type_and_color(Piece::Rook, color) | our_queens;
+        let bishop_movers = board.get_type_and_color(Piece::Bishop, color) | our_queens;
 
         let mut moves = Vec::with_capacity(MAX_NUM_MOVES);
         for sq in non_promoting_pawns {
@@ -246,14 +257,11 @@ impl MoveGenerator {
         for sq in board.get_type_and_color(Piece::Knight, color) {
             bitboard_to_moves(sq, self.knight_moves(board, sq, color), &mut moves);
         }
-        for sq in board.get_type_and_color(Piece::Bishop, color) {
+        for sq in bishop_movers {
             bitboard_to_moves(sq, self.bishop_moves(board, sq, color), &mut moves);
         }
-        for sq in board.get_type_and_color(Piece::Rook, color) {
+        for sq in rook_movers {
             bitboard_to_moves(sq, self.rook_moves(board, sq, color), &mut moves);
-        }
-        for sq in board.get_type_and_color(Piece::Queen, color) {
-            bitboard_to_moves(sq, self.queen_moves(board, sq, color), &mut moves);
         }
         for sq in board.get_type_and_color(Piece::King, color) {
             bitboard_to_moves(sq, self.king_moves(board, sq, color), &mut moves);
@@ -273,6 +281,9 @@ impl MoveGenerator {
         let pawns = board.get_type_and_color(Piece::Pawn, player);
         let non_promoting_pawns = pawns & !about_to_promote_bb;
         let promoting_pawns = pawns & about_to_promote_bb;
+        let our_queens = board.get_type_and_color(Piece::Queen, player);
+        let rook_movers = board.get_type_and_color(Piece::Rook, player) | our_queens;
+        let bishop_movers = board.get_type_and_color(Piece::Bishop, player) | our_queens;
 
         let mut moves = Vec::with_capacity(MAX_NUM_MOVES);
         for sq in non_promoting_pawns {
@@ -291,24 +302,17 @@ impl MoveGenerator {
                 &mut moves,
             );
         }
-        for sq in board.get_type_and_color(Piece::Bishop, player) {
+        for sq in bishop_movers {
             bitboard_to_moves(
                 sq,
                 self.bishop_moves(board, sq, player) & opponents_bb,
                 &mut moves,
             );
         }
-        for sq in board.get_type_and_color(Piece::Rook, player) {
+        for sq in rook_movers {
             bitboard_to_moves(
                 sq,
                 self.rook_moves(board, sq, player) & opponents_bb,
-                &mut moves,
-            );
-        }
-        for sq in board.get_type_and_color(Piece::Queen, player) {
-            bitboard_to_moves(
-                sq,
-                self.queen_moves(board, sq, player) & opponents_bb,
                 &mut moves,
             );
         }
@@ -359,23 +363,6 @@ impl MoveGenerator {
         attackers |= king_vision & board.get_type(Piece::King);
 
         attackers & color_bb
-    }
-
-    #[inline]
-    ///
-    /// Enumerate all the pseudolegal moves that can be made by a given piece
-    /// type at the given position.
-    ///
-    fn sq_pseudolegal_moves(&self, board: &Board, sq: Square, pt: Piece) -> Bitboard {
-        let color = board.color_at_square(sq).unwrap();
-        match pt {
-            Piece::Pawn => self.pawn_moves(board, sq, color),
-            Piece::Knight => self.knight_moves(board, sq, color),
-            Piece::King => self.king_moves(board, sq, color),
-            Piece::Bishop => self.bishop_moves(board, sq, color),
-            Piece::Rook => self.rook_moves(board, sq, color),
-            Piece::Queen => self.queen_moves(board, sq, color),
-        }
     }
 
     #[inline]
@@ -482,15 +469,6 @@ impl MoveGenerator {
     fn rook_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
             & !board.get_color_occupancy(color)
-    }
-
-    #[inline]
-    ///
-    /// Get the pseudolegal moves that a queen on square `sq` could make in this
-    /// position. `color` is the color of the piece at `sq`.
-    ///
-    fn queen_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        self.bishop_moves(board, sq, color) | self.rook_moves(board, sq, color)
     }
 }
 
