@@ -77,7 +77,8 @@ impl MoveGenerator {
         let king_attackers = self.get_square_attackers(board, king_square, opponent);
 
         // moves which can be generated from a given from-square
-        let mut move_vec = Vec::new();
+        // 28 is the maximum number of moves that a single piece can make
+        let mut move_vec = Vec::with_capacity(28);
         if king_attackers != Bitboard::EMPTY {
             //king is in check
 
@@ -100,20 +101,17 @@ impl MoveGenerator {
             //only blocks can save us from checks
         } else {
             // examine king moves normally
-            for from_sq in board.get_type_and_color(Piece::King, player) {
-                let to_bb = self.king_moves(board, from_sq, player);
-                move_vec.reserve(to_bb.0.count_ones() as usize);
+            let to_bb = self.king_moves(board, king_square, player);
 
-                // I would uses .drain() here normally, but that's not
-                // yet supported.
-                bitboard_to_moves(from_sq, to_bb, &mut move_vec);
-                for m in move_vec.iter() {
-                    if !self.is_move_self_check(board, *m) {
-                        return true;
-                    }
+            // I would uses .drain() here normally, but that's not
+            // yet supported.
+            bitboard_to_moves(king_square, to_bb, &mut move_vec);
+            for m in move_vec.iter() {
+                if !self.is_move_self_check(board, *m) {
+                    return true;
                 }
-                move_vec.clear();
             }
+            move_vec.clear();
         }
         for pt in Piece::NON_KING_TYPES {
             // examine moves that other pieces can make
@@ -126,8 +124,6 @@ impl MoveGenerator {
                     Piece::Knight => self.knight_moves(board, from_sq, player),
                     _ => Bitboard::EMPTY
                 };
-
-                move_vec.reserve(to_bb.0.count_ones() as usize);
 
                 // we need not handle promotion because pawn promotion also
                 // blocks. I would uses .drain() here normally, but that's not
