@@ -25,12 +25,12 @@ pub struct Board {
     ///
     /// The squares ocupied by White and Black
     ///
-    pub sides: [Bitboard; 2],
+    sides: [Bitboard; 2],
     ///
     /// The squares occupied by (in order) pawns, knights, bishops, rooks,
     /// queens, and kings.
     ///
-    pub pieces: [Bitboard; Piece::NUM_TYPES],
+    pieces: [Bitboard; Piece::NUM_TYPES],
     ///
     /// The color of the player to move.
     ///
