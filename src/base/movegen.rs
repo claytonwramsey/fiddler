@@ -25,7 +25,6 @@ pub struct MoveGenerator {
     /// A magic move generator.
     ///
     mtable: MagicTable,
-    #[allow(unused)]
     ///
     /// A bitboard of all the squares which a pawn on the given square can
     /// attack. The first index is for White's pawn attacks, the second is for
@@ -42,6 +41,38 @@ pub struct MoveGenerator {
     /// the index of the list.
     ///
     knight_moves: [Bitboard; 64],
+    ///
+    /// A lookup table for the squares "between" two other squares, either down
+    /// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
+    /// would return a `Bitboard` with A2 as its only active square.
+    ///
+    between: [[Bitboard; 64]; 64],
+}
+
+///
+/// A struct containing information for generating moves without self-checking,
+/// such as the necessary pieces to block the king. When a `Game` makes a move,
+/// this information is expected to be lost.
+///
+pub struct CheckInfo {
+    ///
+    /// The locations of pieces which are checking the king in the current
+    /// position.
+    ///
+    checkers: Bitboard,
+    ///
+    /// The locations of pieces that are blocking would-be checkers from the
+    /// opponent.
+    king_blockers: [Bitboard; 2],
+    ///
+    /// The locations of pieces which are pinning their corresponding blockers
+    /// in `king_blockers`.
+    ///
+    pinners: [Bitboard; 2],
+    ///
+    /// The squares which each piece could move to to check the opposing king.
+    ///
+    check_squares: [Bitboard; Piece::NUM_TYPES],
 }
 
 impl MoveGenerator {
@@ -143,6 +174,75 @@ impl MoveGenerator {
         }
 
         false
+    }
+
+    ///
+    /// Construct check information for a given board.
+    ///
+    pub fn create_check_info(&self, b: &Board) -> CheckInfo {
+        let white_king_sq = Square::try_from(b[Piece::King] & b[Color::White]).unwrap();
+        let black_king_sq = Square::try_from(b[Piece::King] & b[Color::Black]).unwrap();
+
+        let (blockers_white, pinners_black) = self.analyze_pins(b, b[Color::Black], white_king_sq);
+        let (blockers_black, pinners_white) = self.analyze_pins(b, b[Color::White], black_king_sq);
+
+        let king_sq = Square::try_from(b[Piece::King] & b[!b.player_to_move]).unwrap();
+
+        // TODO this ignores checks by retreating the rook?
+        let rook_check_sqs = get_rook_attacks(b.occupancy(), king_sq, &self.mtable);
+        let bishop_check_sqs = get_bishop_attacks(b.occupancy(), king_sq, &self.mtable);
+
+        CheckInfo {
+            checkers: self.get_square_attackers(b, king_sq, !b.player_to_move),
+            king_blockers: [blockers_white, blockers_black],
+            pinners: [pinners_white, pinners_black],
+            check_squares: [
+                self.pawn_attacks[b.player_to_move as usize][king_sq as usize],
+                self.knight_moves[king_sq as usize],
+                bishop_check_sqs,
+                rook_check_sqs,
+                bishop_check_sqs | rook_check_sqs,
+                Bitboard::EMPTY,
+            ],
+        }
+    }
+
+    ///
+    /// Examine the pins in a position to generate the set of pinners and
+    /// blockers on the square `sq`. The first return val is the set of
+    /// blockers, and the second return val is the set of pinners. The blockers
+    /// are pieces of either color that prevent an attack on `sq`. `sliders` is
+    /// the set of all squares containing attackers we are interested in -
+    /// typically, this is the set of all pieces owned by one color. `pinners`,
+    /// however, is all the pieces that are prevented from moving due to an
+    /// attack on the targeted square.
+    ///  
+    fn analyze_pins(&self, board: &Board, sliders: Bitboard, sq: Square) -> (Bitboard, Bitboard) {
+        let mut blockers = Bitboard::EMPTY;
+        let mut pinners = Bitboard::EMPTY;
+        let sq_color = board.color_at_square(sq);
+
+        let rook_mask = get_rook_attacks(Bitboard::EMPTY, sq, &self.mtable);
+        let bishop_mask = get_bishop_attacks(Bitboard::EMPTY, sq, &self.mtable);
+
+        let snipers = sliders
+            & ((rook_mask & (board[Piece::Queen] | board[Piece::Rook]))
+                | (bishop_mask & (board[Piece::Queen] | board[Piece::Bishop])));
+
+        for sniper_sq in snipers {
+            let between_bb = self.between(sq, sniper_sq);
+
+            if between_bb.0.count_ones() == 1 {
+                blockers |= between_bb;
+                if let Some(color) = sq_color {
+                    if board[color] & between_bb != Bitboard::EMPTY {
+                        pinners |= Bitboard::from(sniper_sq);
+                    }
+                }
+            }
+        }
+
+        (blockers, pinners)
     }
 
     ///
@@ -470,11 +570,20 @@ impl MoveGenerator {
     fn rook_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         get_rook_attacks(board.occupancy(), sq, &self.mtable) & !board[color]
     }
+
+    #[inline]
+    ///
+    /// Get a bitboard of all the squares between the two given squares, along
+    /// the moves of a bishop or rook.
+    ///
+    pub fn between(&self, sq1: Square, sq2: Square) -> Bitboard {
+        self.between[sq1 as usize][sq2 as usize]
+    }
 }
 
 impl Default for MoveGenerator {
     fn default() -> MoveGenerator {
-        MoveGenerator {
+        let mut mgen = MoveGenerator {
             mtable: MagicTable::load(),
             pawn_attacks: [
                 create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
@@ -482,7 +591,24 @@ impl Default for MoveGenerator {
             ],
             king_moves: create_step_attacks(&get_king_steps(), 1),
             knight_moves: create_step_attacks(&get_knight_steps(), 2),
+            between: [[Bitboard::EMPTY; 64]; 64],
+        };
+
+        // populate `between`
+        for sq1 in Bitboard::ALL {
+            let mut attacks1 = get_bishop_attacks(Bitboard::EMPTY, sq1, &mgen.mtable);
+            attacks1 |= get_rook_attacks(Bitboard::EMPTY, sq1, &mgen.mtable);
+
+            for sq2 in Bitboard::ALL {
+                if attacks1.contains(sq2) {
+                    let mut attacks2 = get_bishop_attacks(Bitboard::EMPTY, sq2, &mgen.mtable);
+                    attacks2 |= get_rook_attacks(Bitboard::EMPTY, sq2, &mgen.mtable);
+                    mgen.between[sq1 as usize][sq2 as usize] = attacks1 & attacks2;
+                }
+            }
         }
+
+        mgen
     }
 }
 

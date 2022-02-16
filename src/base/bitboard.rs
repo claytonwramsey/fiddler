@@ -19,6 +19,11 @@ impl Bitboard {
     ///
     pub const EMPTY: Bitboard = Bitboard(0);
 
+    ///
+    /// A bitboard containing all squares.
+    ///
+    pub const ALL: Bitboard = Bitboard(!0);
+
     #[inline]
     ///
     /// Determine whether a square of a bitboard is occupied.
