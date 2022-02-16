@@ -201,43 +201,8 @@ impl Board {
     ///
     /// Get the squares occupied by pieces.
     ///
-    pub fn get_occupancy(&self) -> Bitboard {
-        // This gets called so often that unchecked getting is necessary.
-        self.get_color_occupancy(Color::White) | self.get_color_occupancy(Color::Black)
-    }
-
-    #[inline]
-    ///
-    /// Get the squares occupied by pieces of a given color. `color` must be
-    /// either `Color::White` or `Color::Black`.
-    ///
-    pub fn get_color_occupancy(&self, color: Color) -> Bitboard {
-        // This gets called so often that unchecked lookup is necessary for
-        // performance. Because `Color` can only be 0 or 1, this will never
-        // result in a fault.
-        unsafe { *self.sides.get_unchecked(color as usize) }
-    }
-
-    #[inline]
-    ///
-    /// Get the squares occupied by pieces of a given type. `pt` must be the
-    /// type of a valid piece (i.e. pawn, knight, rook, bishop, queen, or king).
-    ///
-    pub fn get_type(&self, pt: Piece) -> Bitboard {
-        // This gets called so often that unchecked lookup is necessary for
-        // performance. The enum nature means that this can never be out of
-        // bounds.
-        unsafe { *self.pieces.get_unchecked(pt as usize) }
-    }
-
-    #[inline]
-    ///
-    /// Get the squares occupied by pieces of a given type and color. The type
-    /// must be a valid piece type, and the color must be either `Color::White` or
-    /// `Color::Black`.
-    ///
-    pub fn get_type_and_color(&self, pt: Piece, color: Color) -> Bitboard {
-        self.get_type(pt) & self.get_color_occupancy(color)
+    pub fn occupancy(&self) -> Bitboard {
+        self[Color::White] | self[Color::Black]
     }
 
     ///
@@ -246,7 +211,7 @@ impl Board {
     ///
     pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
         for pt in Piece::ALL_TYPES {
-            if self.get_type(pt).contains(sq) {
+            if self[pt].contains(sq) {
                 return Some(pt);
             }
         }
@@ -275,8 +240,7 @@ impl Board {
     /// Is a given move en passant? Assumes the move is pseudo-legal.
     ///
     pub fn is_move_en_passant(&self, m: Move) -> bool {
-        Some(m.to_square()) == self.en_passant_square
-            && self.get_type(Piece::Pawn).contains(m.from_square())
+        Some(m.to_square()) == self.en_passant_square && self[Piece::Pawn].contains(m.from_square())
     }
 
     #[inline]
@@ -285,7 +249,7 @@ impl Board {
     /// pseudo-legal.
     ///
     pub fn is_move_castle(&self, m: Move) -> bool {
-        self.get_type(Piece::King).contains(m.from_square())
+        self[Piece::King].contains(m.from_square())
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
@@ -294,8 +258,7 @@ impl Board {
     /// In the given position, is this move a promotion?
     ///
     pub fn is_move_promotion(&self, m: Move) -> bool {
-        self.get_type_and_color(Piece::Pawn, self.player_to_move)
-            .contains(m.from_square())
+        (self[Piece::Pawn] & self[self.player_to_move]).contains(m.from_square())
             && self
                 .player_to_move
                 .pawn_promote_rank()
@@ -307,7 +270,7 @@ impl Board {
     /// Is the given move a capture in the current state of the board?
     ///
     pub fn is_move_capture(&self, m: Move) -> bool {
-        self.get_occupancy().contains(m.to_square()) || self.is_move_en_passant(m)
+        self.occupancy().contains(m.to_square()) || self.is_move_en_passant(m)
     }
 
     #[inline]
@@ -318,7 +281,7 @@ impl Board {
         let player = self.player_to_move;
         mgen.is_square_attacked_by(
             self,
-            Square::try_from(self.get_type_and_color(Piece::King, player)).unwrap(),
+            Square::try_from(self[Piece::King] & self[player]).unwrap(),
             !player,
         )
     }
@@ -496,7 +459,7 @@ impl Board {
             None => {
                 let t = self.type_at_square(to_sq).unwrap();
                 (t, t)
-            },
+            }
         };
 
         let former_player = !self.player_to_move;
@@ -543,11 +506,9 @@ impl Board {
     /// Remove the piece at `sq` from this board.
     ///
     fn remove_piece(&mut self, sq: Square) {
-        let found_piece = self.type_at_square(sq);
-        match found_piece {
-            Some(p) => self.remove_known_piece(sq, p, self.color_at_square(sq).unwrap()),
-            None => (),
-        };
+        if let Some(p) = self.type_at_square(sq) {
+            self.remove_known_piece(sq, p, self.color_at_square(sq).unwrap());
+        }
     }
 
     #[inline]
@@ -708,11 +669,11 @@ impl Index<Piece> for Board {
     #[inline]
     ///
     /// Get the squares occupied by the given piece.
-    /// 
+    ///
     fn index(&self, index: Piece) -> &Self::Output {
-        // This will not fail because there are the same number of pieces as 
+        // This will not fail because there are the same number of pieces as
         // indices on `pieces`
-        unsafe {self.pieces.get_unchecked(index as usize)}
+        unsafe { self.pieces.get_unchecked(index as usize) }
     }
 }
 
@@ -722,11 +683,11 @@ impl Index<Color> for Board {
     #[inline]
     ///
     /// Get the squares occupied by the given piece.
-    /// 
+    ///
     fn index(&self, index: Color) -> &Self::Output {
-        // This will not fail because there are the same number of colors as 
+        // This will not fail because there are the same number of colors as
         // indices on `sides`
-        unsafe {self.sides.get_unchecked(index as usize)}
+        unsafe { self.sides.get_unchecked(index as usize) }
     }
 }
 

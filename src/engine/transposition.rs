@@ -138,8 +138,8 @@ impl Index<&Board> for TTable {
         }
 
         /*
-        // Although this line is theoretically needed, in practice, there are 
-        // essentially no Zobrist hash collisions. We skip this step to save 
+        // Although this line is theoretically needed, in practice, there are
+        // essentially no Zobrist hash collisions. We skip this step to save
         // speed. A collision here would however be a logic error.
 
         // Since the hashes matched, these positions are likely equal.

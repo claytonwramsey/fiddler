@@ -91,7 +91,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     // Determine if the move was a check or a mate.
     let mut bcopy = *b;
     let player_color = b.player_to_move;
-    let enemy_king_sq = Square::try_from(b.get_type_and_color(Piece::King, !player_color)).unwrap();
+    let enemy_king_sq = Square::try_from(b[Piece::King] & b[!player_color]).unwrap();
     bcopy.make_move(m);
     if mgen.is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
         if mgen.get_moves(&bcopy).is_empty() {

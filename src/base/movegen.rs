@@ -72,8 +72,9 @@ impl MoveGenerator {
     ///
     pub fn has_moves(&self, board: &Board) -> bool {
         let player = board.player_to_move;
+        let player_occupancy = board[player];
         let opponent = !player;
-        let king_square = Square::try_from(board.get_type_and_color(Piece::King, player)).unwrap();
+        let king_square = Square::try_from(board[Piece::King] & player_occupancy).unwrap();
         let king_attackers = self.get_square_attackers(board, king_square, opponent);
 
         // moves which can be generated from a given from-square
@@ -115,14 +116,17 @@ impl MoveGenerator {
         }
         for pt in Piece::NON_KING_TYPES {
             // examine moves that other pieces can make
-            for from_sq in board.get_type_and_color(pt, player) {
+            for from_sq in board[pt] & player_occupancy {
                 let to_bb = match pt {
                     Piece::Pawn => self.pawn_moves(board, from_sq, player),
                     Piece::Bishop => self.bishop_moves(board, from_sq, player),
                     Piece::Rook => self.rook_moves(board, from_sq, player),
-                    Piece::Queen => self.bishop_moves(board, from_sq, player) | self.rook_moves(board, from_sq, player),
+                    Piece::Queen => {
+                        self.bishop_moves(board, from_sq, player)
+                            | self.rook_moves(board, from_sq, player)
+                    }
                     Piece::Knight => self.knight_moves(board, from_sq, player),
-                    _ => Bitboard::EMPTY
+                    _ => Bitboard::EMPTY,
                 };
 
                 // we need not handle promotion because pawn promotion also
@@ -173,7 +177,7 @@ impl MoveGenerator {
     ///
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
         let player = board.player_to_move;
-        let player_king_bb = board.get_type_and_color(Piece::King, player);
+        let player_king_bb = board[Piece::King] & board[player];
         let is_king_move = player_king_bb.contains(m.from_square());
         // Square where the king will be after this move ends.
         let mut king_square = Square::try_from(player_king_bb).unwrap();
@@ -199,7 +203,7 @@ impl MoveGenerator {
             squares_emptied |=
                 Bitboard::from(board.en_passant_square.unwrap() + opponent.pawn_direction());
         }
-        let occupancy = (board.get_occupancy() & !squares_emptied) | Bitboard::from(m.to_square());
+        let occupancy = (board.occupancy() & !squares_emptied) | Bitboard::from(m.to_square());
 
         let attackers =
             self.square_attackers_with_occupancy(board, king_square, opponent, occupancy);
@@ -222,7 +226,7 @@ impl MoveGenerator {
     /// representing the squares of the attackers.
     ///
     pub fn get_square_attackers(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        self.square_attackers_with_occupancy(board, sq, color, board.get_occupancy())
+        self.square_attackers_with_occupancy(board, sq, color, board.occupancy())
     }
 
     ///
@@ -231,12 +235,13 @@ impl MoveGenerator {
     ///
     fn get_pseudolegal_moves(&self, board: &Board, color: Color) -> Vec<Move> {
         let about_to_promote_bb = (!color).pawn_start_rank();
-        let pawns = board.get_type_and_color(Piece::Pawn, color);
+        let color_occupancy = board[color];
+        let pawns = board[Piece::Pawn] & color_occupancy;
         let promoting_pawns = pawns & about_to_promote_bb;
         let non_promoting_pawns = pawns ^ promoting_pawns;
-        let our_queens = board.get_type_and_color(Piece::Queen, color);
-        let rook_movers = board.get_type_and_color(Piece::Rook, color) | our_queens;
-        let bishop_movers = board.get_type_and_color(Piece::Bishop, color) | our_queens;
+        let queens = board[Piece::Queen];
+        let rook_movers = (board[Piece::Rook] | queens) & color_occupancy;
+        let bishop_movers = (board[Piece::Bishop] | queens) & color_occupancy;
 
         let mut moves = Vec::with_capacity(MAX_NUM_MOVES);
         for sq in non_promoting_pawns {
@@ -250,7 +255,7 @@ impl MoveGenerator {
             bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Rook), &mut moves);
         }
 
-        for sq in board.get_type_and_color(Piece::Knight, color) {
+        for sq in board[Piece::Knight] & color_occupancy {
             bitboard_to_moves(sq, self.knight_moves(board, sq, color), &mut moves);
         }
         for sq in bishop_movers {
@@ -259,7 +264,7 @@ impl MoveGenerator {
         for sq in rook_movers {
             bitboard_to_moves(sq, self.rook_moves(board, sq, color), &mut moves);
         }
-        for sq in board.get_type_and_color(Piece::King, color) {
+        for sq in board[Piece::King] & color_occupancy {
             bitboard_to_moves(sq, self.king_moves(board, sq, color), &mut moves);
         }
 
@@ -271,15 +276,16 @@ impl MoveGenerator {
     ///
     fn get_pseudolegal_loud_moves(&self, board: &Board) -> Vec<Move> {
         let player = board.player_to_move;
+        let player_occupancy = board[player];
         let opponent = !player;
-        let opponents_bb = board.get_color_occupancy(opponent);
+        let opponents_bb = board[opponent];
         let about_to_promote_bb = opponent.pawn_start_rank();
-        let pawns = board.get_type_and_color(Piece::Pawn, player);
+        let pawns = board[Piece::Pawn] & player_occupancy;
         let non_promoting_pawns = pawns & !about_to_promote_bb;
         let promoting_pawns = pawns & about_to_promote_bb;
-        let our_queens = board.get_type_and_color(Piece::Queen, player);
-        let rook_movers = board.get_type_and_color(Piece::Rook, player) | our_queens;
-        let bishop_movers = board.get_type_and_color(Piece::Bishop, player) | our_queens;
+        let queens = board[Piece::Queen];
+        let rook_movers = (board[Piece::Rook] | queens) & player_occupancy;
+        let bishop_movers = (board[Piece::Bishop] | queens) & player_occupancy;
 
         let mut moves = Vec::with_capacity(MAX_NUM_MOVES);
         for sq in non_promoting_pawns {
@@ -291,7 +297,7 @@ impl MoveGenerator {
             bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Queen), &mut moves);
         }
 
-        for sq in board.get_type_and_color(Piece::Knight, player) {
+        for sq in board[Piece::Knight] & player_occupancy {
             bitboard_to_moves(
                 sq,
                 self.knight_moves(board, sq, player) & opponents_bb,
@@ -312,7 +318,7 @@ impl MoveGenerator {
                 &mut moves,
             );
         }
-        for sq in board.get_type_and_color(Piece::King, player) {
+        for sq in board[Piece::King] & player_occupancy {
             bitboard_to_moves(
                 sq,
                 self.king_moves(board, sq, player) & opponents_bb,
@@ -335,28 +341,28 @@ impl MoveGenerator {
         occupancy: Bitboard,
     ) -> Bitboard {
         let mut attackers = Bitboard::EMPTY;
-        let color_bb = board.get_color_occupancy(color);
+        let color_bb = board[color];
         // Check for pawn attacks
         let pawn_vision = self.pawn_captures(board, sq, !color);
-        attackers |= pawn_vision & board.get_type(Piece::Pawn);
+        attackers |= pawn_vision & board[Piece::Pawn];
 
         // Check for knight attacks
         let knight_vision = self.knight_moves[sq as usize];
-        attackers |= knight_vision & board.get_type(Piece::Knight);
+        attackers |= knight_vision & board[Piece::Knight];
 
-        let queens_bb = board.get_type_and_color(Piece::Queen, color);
+        let queens_bb = board[Piece::Queen];
 
         // Check for rook/horizontal queen attacks
         let rook_vision = get_rook_attacks(occupancy, sq, &self.mtable);
-        attackers |= rook_vision & (queens_bb | board.get_type(Piece::Rook));
+        attackers |= rook_vision & (queens_bb | board[Piece::Rook]);
 
         // Check for bishop/diagonal queen attacks
         let bishop_vision = get_bishop_attacks(occupancy, sq, &self.mtable);
-        attackers |= bishop_vision & (queens_bb | board.get_type(Piece::Bishop));
+        attackers |= bishop_vision & (queens_bb | board[Piece::Bishop]);
 
         // Check for king attacks
         let king_vision = self.king_moves[sq as usize];
-        attackers |= king_vision & board.get_type(Piece::King);
+        attackers |= king_vision & board[Piece::King];
 
         attackers & color_bb
     }
@@ -368,7 +374,7 @@ impl MoveGenerator {
     /// bob seger.
     ///
     fn knight_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        self.knight_moves[sq as usize] & !board.get_color_occupancy(color)
+        self.knight_moves[sq as usize] & !board[color]
     }
 
     #[inline]
@@ -378,7 +384,7 @@ impl MoveGenerator {
     /// check. `color` is the color of the piece at `sq`.
     ///
     fn king_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        let mut moves = self.king_moves[sq as usize] & !board.get_color_occupancy(color);
+        let mut moves = self.king_moves[sq as usize] & !board[color];
 
         //castling
         let kingside_castle_passthrough_sqs = match board.player_to_move {
@@ -393,11 +399,11 @@ impl MoveGenerator {
         let can_kingside_castle = board
             .castle_rights
             .is_kingside_castle_legal(board.player_to_move)
-            && board.get_occupancy() & kingside_castle_passthrough_sqs == Bitboard::EMPTY;
+            && board.occupancy() & kingside_castle_passthrough_sqs == Bitboard::EMPTY;
         let can_queenside_castle = board
             .castle_rights
             .is_queenside_castle_legal(board.player_to_move)
-            && board.get_occupancy() & queenside_castle_passthrough_sqs == Bitboard::EMPTY;
+            && board.occupancy() & queenside_castle_passthrough_sqs == Bitboard::EMPTY;
 
         if can_kingside_castle {
             moves |= Bitboard::from(Square::new(sq.rank(), 6).unwrap());
@@ -417,7 +423,7 @@ impl MoveGenerator {
         let dir = color.pawn_direction();
         let start_rank = color.pawn_start_rank();
         let from_bb = Bitboard::from(sq);
-        let occupancy = board.get_occupancy();
+        let occupancy = board.occupancy();
         let mut target_squares = Bitboard::EMPTY;
         //this will never be out of bounds because pawns don't live on promotion rank
         if !occupancy.contains(sq + dir) {
@@ -428,7 +434,7 @@ impl MoveGenerator {
             }
         }
         target_squares |= self.pawn_captures(board, sq, color);
-        target_squares &= !board.get_color_occupancy(color);
+        target_squares &= !board[color];
 
         target_squares
     }
@@ -439,7 +445,7 @@ impl MoveGenerator {
     /// this square. `color` is the color of the piece at `sq`.
     ///
     fn pawn_captures(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        let mut capture_mask = board.get_color_occupancy(!color);
+        let mut capture_mask = board[!color];
         if let Some(ep_square) = board.en_passant_square {
             capture_mask |= Bitboard::from(ep_square);
         }
@@ -453,8 +459,7 @@ impl MoveGenerator {
     /// this position. `color` is the color of the piece at `sq`.
     ///
     fn bishop_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        get_bishop_attacks(board.get_occupancy(), sq, &self.mtable)
-            & !board.get_color_occupancy(color)
+        get_bishop_attacks(board.occupancy(), sq, &self.mtable) & !board[color]
     }
 
     #[inline]
@@ -463,8 +468,7 @@ impl MoveGenerator {
     /// position. `color` is the color of the piece at `sq`.
     ///
     fn rook_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
-        get_rook_attacks(board.get_occupancy(), sq, &self.mtable)
-            & !board.get_color_occupancy(color)
+        get_rook_attacks(board.occupancy(), sq, &self.mtable) & !board[color]
     }
 }
 

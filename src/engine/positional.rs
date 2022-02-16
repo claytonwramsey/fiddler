@@ -87,10 +87,10 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let mut positional_eval = Eval(0);
 
     for pt in [Piece::Pawn, Piece::Bishop, Piece::Knight, Piece::King] {
-        for sq in b.get_type_and_color(pt, Color::White) {
+        for sq in b[pt] & b[Color::White] {
             positional_eval += value_at_square(pt, sq);
         }
-        for sq in b.get_type_and_color(pt, Color::Black) {
+        for sq in b[pt] & b[Color::Black] {
             //Invert the square that Black is on, since positional values are
             //flipped (as pawns move the other way, etc)
             let alt_sq = Square::new(7 - sq.rank(), sq.file()).unwrap();
@@ -99,8 +99,8 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     }
 
     // Add losses due to doubled pawns
-    let white_occupancy = b.get_color_occupancy(Color::White);
-    let pawns = b.get_type(Piece::Pawn);
+    let white_occupancy = b[Color::White];
+    let pawns = b[Piece::Pawn];
     let mut col_mask = Bitboard(0x0101010101010101);
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;

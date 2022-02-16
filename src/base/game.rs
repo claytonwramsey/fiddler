@@ -33,7 +33,7 @@ pub struct Game {
     moves: Vec<Move>,
     ///
     /// Stores the number of times a position has been reached in the course of
-    /// this game. It is used for three-move-rule draws. The keys are the 
+    /// this game. It is used for three-move-rule draws. The keys are the
     /// Zobrist hashes of the boards previously visited.
     ///
     repetitions: HashMap<u64, u64>,
@@ -72,12 +72,11 @@ impl Game {
         let previous_state = self.history.last().unwrap();
         let mut newboard = previous_state.0;
 
-        let move_timeout = match newboard.get_occupancy().contains(m.to_square())
-            || newboard.get_type(Piece::Pawn).contains(m.from_square())
-        {
-            true => 0,
-            false => previous_state.1 + 1,
-        };
+        let move_timeout =
+            match newboard.is_move_capture(m) || newboard[Piece::Pawn].contains(m.from_square()) {
+                true => 0,
+                false => previous_state.1 + 1,
+            };
         newboard.make_move(m);
 
         let num_reps = self.repetitions.entry(newboard.hash).or_insert(0);
@@ -169,8 +168,7 @@ impl Game {
             return (false, None);
         }
 
-        let king_sq =
-            Square::try_from(b.get_type_and_color(Piece::King, b.player_to_move)).unwrap();
+        let king_sq = Square::try_from(b[Piece::King] & b[b.player_to_move]).unwrap();
         match mgen.is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate
