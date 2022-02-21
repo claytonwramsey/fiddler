@@ -175,6 +175,14 @@ impl Sub<Square> for Square {
     }
 }
 
+impl Sub<Direction> for Square {
+    type Output = Square;
+    #[inline]
+    fn sub(self, rhs: Direction) -> Self::Output {
+        Square::try_from(((self as i8) - (rhs.0)) as u8 & 63u8).unwrap()
+    }
+}
+
 impl TryFrom<Bitboard> for Square {
     type Error = &'static str;
     ///
