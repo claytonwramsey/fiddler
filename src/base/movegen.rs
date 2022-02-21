@@ -41,11 +41,11 @@ pub struct MoveGenerator {
     ///
     between: [[Bitboard; 64]; 64],
     ///
-    /// A lookup table for the squares on a line between any two squares, 
-    /// either down a row like a rook or diagonal like a bishop. 
-    /// `lines[A1][B2]` would return a bitboard with active squares down the 
+    /// A lookup table for the squares on a line between any two squares,
+    /// either down a row like a rook or diagonal like a bishop.
+    /// `lines[A1][B2]` would return a bitboard with active squares down the
     /// main diagonal.
-    /// 
+    ///
     lines: [[Bitboard; 64]; 64],
 }
 
@@ -94,9 +94,10 @@ impl MoveGenerator {
         };
 
         // Eliminate moves that would put us in check.
-        moves.into_iter()
-        .filter(|&m| self.validate(board, &check_info, m))
-        .collect()
+        moves
+            .into_iter()
+            .filter(|&m| self.validate(board, &check_info, m))
+            .collect()
     }
 
     #[inline]
@@ -111,12 +112,13 @@ impl MoveGenerator {
 
         let mut moves = Vec::with_capacity(50);
 
-        // Eliminate moves that would put us in check.
         self.loud_moves(board, &check_info, &mut moves);
-        
-        moves.into_iter()
-        .filter(|&m| self.validate(board, &check_info, m))
-        .collect()
+
+        // Eliminate moves that would put us in check.
+        moves
+            .into_iter()
+            .filter(|&m| self.validate(board, &check_info, m))
+            .collect()
     }
 
     ///
@@ -234,14 +236,13 @@ impl MoveGenerator {
     /// blockers, and the second return val is the set of pinners. The blockers
     /// are pieces of either color that prevent an attack on `sq`. `sliders` is
     /// the set of all squares containing attackers we are interested in -
-    /// typically, this is the set of all pieces owned by one color. `pinners`,
-    /// however, is all the pieces that are prevented from moving due to an
-    /// attack on the targeted square.
+    /// typically, this is the set of all pieces owned by one color.
     ///  
     fn analyze_pins(&self, board: &Board, sliders: Bitboard, sq: Square) -> (Bitboard, Bitboard) {
         let mut blockers = Bitboard::EMPTY;
         let mut pinners = Bitboard::EMPTY;
         let sq_color = board.color_at_square(sq);
+        let occupancy = board.occupancy();
 
         let rook_mask = get_rook_attacks(Bitboard::EMPTY, sq, &self.mtable);
         let bishop_mask = get_bishop_attacks(Bitboard::EMPTY, sq, &self.mtable);
@@ -255,7 +256,7 @@ impl MoveGenerator {
         for sniper_sq in snipers {
             let between_bb = self.between(sq, sniper_sq);
 
-            if between_bb.0.count_ones() == 1 {
+            if (between_bb & occupancy).0.count_ones() == 1 {
                 blockers |= between_bb;
                 if let Some(color) = sq_color {
                     if board[color] & between_bb != Bitboard::EMPTY {
@@ -270,11 +271,10 @@ impl MoveGenerator {
 
     #[inline]
     ///
-    /// Determine whether a move is valid in the position on the board, given 
+    /// Determine whether a move is valid in the position on the board, given
     /// that it was generated during the `get_moves` process.
-    /// 
+    ///
     fn validate(&self, board: &Board, check_info: &CheckInfo, m: Move) -> bool {
-        
         // the pieces which are pinned
         let pinned = check_info.king_blockers[board.player_to_move as usize];
         let from_bb = Bitboard::from(m.from_square());
@@ -282,23 +282,25 @@ impl MoveGenerator {
 
         // verify that taking en passant does not result in self-check
         if board.is_move_en_passant(m) {
-            println!("en passant");
             let player = board.player_to_move;
             let king_sq = Square::try_from(board[Piece::King] & board[player]).unwrap();
-            println!("{to_bb}");
-            println!("shift right by {}", player.pawn_direction().0);
+            let enemy = board[!board.player_to_move];
 
             let capture_bb = match board.player_to_move {
                 Color::White => to_bb >> 8,
-                Color::Black => to_bb << 8, 
+                Color::Black => to_bb << 8,
             };
 
-            let new_occupancy = (board.occupancy() ^ from_bb ^ capture_bb) | to_bb;
+            let new_occupancy = board.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
 
-            return 
-                (get_rook_attacks(new_occupancy, king_sq, &self.mtable)
-                    & (board[Piece::Rook] | board[Piece::Queen]) == Bitboard::EMPTY) 
-                && (get_bishop_attacks(new_occupancy, king_sq, &self.mtable) & (board[Piece::Bishop] | board[Piece::Queen]) == Bitboard::EMPTY);
+            return (get_rook_attacks(new_occupancy, king_sq, &self.mtable)
+                & (board[Piece::Rook] | board[Piece::Queen])
+                & enemy
+                == Bitboard::EMPTY)
+                && (get_bishop_attacks(new_occupancy, king_sq, &self.mtable)
+                    & (board[Piece::Bishop] | board[Piece::Queen])
+                    & enemy
+                    == Bitboard::EMPTY);
         }
 
         // Validate passthrough squares for castling
@@ -321,13 +323,17 @@ impl MoveGenerator {
         // Other king moves must make sure they don't step into check
         if board[Piece::King] & from_bb != Bitboard::EMPTY {
             let new_occupancy = (board.occupancy() ^ from_bb) | to_bb;
-            return self.square_attackers_with_occupancy(board, Square::try_from(to_bb).unwrap(), !board.player_to_move, new_occupancy) == Bitboard::EMPTY;
+            return self.square_attackers_with_occupancy(
+                board,
+                Square::try_from(to_bb).unwrap(),
+                !board.player_to_move,
+                new_occupancy,
+            ) == Bitboard::EMPTY;
         }
 
         let king_sq = Square::try_from(board[Piece::King] & board[board.player_to_move]).unwrap();
-
-        (pinned & from_bb == Bitboard::EMPTY) 
-        || self.aligned(m.from_square(), m.to_square(), king_sq)
+        (pinned & from_bb == Bitboard::EMPTY)
+            || self.aligned(m.from_square(), m.to_square(), king_sq)
     }
 
     ///
@@ -392,7 +398,13 @@ impl MoveGenerator {
     /// Enumerate the pseudolegal moves a player of the given color would be
     /// able to make if it were their turn to move.
     ///
-    fn all_moves(&self, board: &Board, color: Color, _check_info: &CheckInfo, moves: &mut Vec<Move>) {
+    fn all_moves(
+        &self,
+        board: &Board,
+        color: Color,
+        _check_info: &CheckInfo,
+        moves: &mut Vec<Move>,
+    ) {
         self.normal_piece_assistant(board, color, moves, Bitboard::ALL);
         self.pawn_assistant(board, color, moves, Bitboard::ALL);
         for sq in board[Piece::King] & board[color] {
@@ -403,7 +415,7 @@ impl MoveGenerator {
     #[allow(unused)]
     ///
     /// Enumerate the evasions in a position, in case the king is in check.
-    /// 
+    ///
     fn evasions(&self, board: &Board, color: Color, check_info: &CheckInfo, moves: &mut Vec<Move>) {
         let king_sq = Square::try_from(board[Piece::King] & board[board.player_to_move]).unwrap();
 
@@ -424,7 +436,7 @@ impl MoveGenerator {
             self.pawn_assistant(board, color, moves, pawn_targets);
             self.normal_piece_assistant(board, color, moves, target_sqs);
         }
-        
+
         for sq in board[Piece::King] & board[color] {
             bitboard_to_moves(sq, self.king_moves(board, sq, color), moves);
         }
@@ -450,9 +462,9 @@ impl MoveGenerator {
     }
 
     ///
-    /// Generate the moves all pawns can make and populate `moves` with those 
+    /// Generate the moves all pawns can make and populate `moves` with those
     /// moves.
-    /// 
+    ///
     fn pawn_assistant(&self, board: &Board, color: Color, moves: &mut Vec<Move>, target: Bitboard) {
         let about_to_promote_bb = (!color).pawn_start_rank();
         let color_occupancy = board[color];
@@ -474,10 +486,16 @@ impl MoveGenerator {
     }
 
     ///
-    /// Generate the loud moves all pawns can make and populate `moves` with 
+    /// Generate the loud moves all pawns can make and populate `moves` with
     /// those moves.
-    /// 
-    fn loud_pawn_assistant(&self, board: &Board, color: Color, moves: &mut Vec<Move>, target: Bitboard) {
+    ///
+    fn loud_pawn_assistant(
+        &self,
+        board: &Board,
+        color: Color,
+        moves: &mut Vec<Move>,
+        target: Bitboard,
+    ) {
         let about_to_promote_bb = (!color).pawn_start_rank();
         let color_occupancy = board[color];
         let pawns = board[Piece::Pawn] & color_occupancy;
@@ -495,12 +513,16 @@ impl MoveGenerator {
     }
 
     ///
-    /// Generate all the moves for a knight, bishop, rook, or queen which end 
-    /// up on the target. 
-    /// 
-    fn normal_piece_assistant(&self, board: &Board, color: Color, 
-        moves: &mut Vec<Move>, target: Bitboard) {
-
+    /// Generate all the moves for a knight, bishop, rook, or queen which end
+    /// up on the target.
+    ///
+    fn normal_piece_assistant(
+        &self,
+        board: &Board,
+        color: Color,
+        moves: &mut Vec<Move>,
+        target: Bitboard,
+    ) {
         let color_occupancy = board[color];
         let queens = board[Piece::Queen];
         let rook_movers = (board[Piece::Rook] | queens) & color_occupancy;
@@ -516,7 +538,6 @@ impl MoveGenerator {
             bitboard_to_moves(sq, self.rook_moves(board, sq, color) & target, moves);
         }
     }
-
 
     ///
     /// Same functionality as get_square_attackers, but uses the provided
@@ -671,9 +692,9 @@ impl MoveGenerator {
 
     #[inline]
     ///
-    /// Determine whether three squares are aligned according to rook or bishop 
+    /// Determine whether three squares are aligned according to rook or bishop
     /// directions.
-    /// 
+    ///
     pub fn aligned(&self, sq1: Square, sq2: Square, sq3: Square) -> bool {
         self.lines[sq1 as usize][sq2 as usize] & Bitboard::from(sq3) != Bitboard::EMPTY
     }
@@ -690,23 +711,20 @@ impl Default for MoveGenerator {
             king_moves: create_step_attacks(&get_king_steps(), 1),
             knight_moves: create_step_attacks(&get_knight_steps(), 2),
             between: [[Bitboard::EMPTY; 64]; 64],
-            lines: [[Bitboard::EMPTY; 64]; 64]
+            lines: [[Bitboard::EMPTY; 64]; 64],
         };
 
         // populate `between`
         for sq1 in Bitboard::ALL {
-
             let ln_bishop_1 = get_bishop_attacks(Bitboard::EMPTY, sq1, &mgen.mtable);
             let ln_rook_1 = get_rook_attacks(Bitboard::EMPTY, sq1, &mgen.mtable);
             for sq2 in Bitboard::ALL {
-
-                
-
                 if ln_bishop_1.contains(sq2) {
                     let ln_bishop_2 = get_bishop_attacks(Bitboard::EMPTY, sq2, &mgen.mtable);
                     let bt_bishop1 = get_bishop_attacks(Bitboard::from(sq2), sq1, &mgen.mtable);
                     let bt_bishop2 = get_bishop_attacks(Bitboard::from(sq1), sq2, &mgen.mtable);
-                    mgen.lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
+                    mgen.lines[sq1 as usize][sq2 as usize] |=
+                        Bitboard::from(sq1) | Bitboard::from(sq2);
                     mgen.lines[sq1 as usize][sq2 as usize] |= ln_bishop_1 & ln_bishop_2;
                     mgen.between[sq1 as usize][sq2 as usize] |= bt_bishop1 & bt_bishop2;
                 }
@@ -714,7 +732,8 @@ impl Default for MoveGenerator {
                     let ln_rook_2 = get_rook_attacks(Bitboard::EMPTY, sq2, &mgen.mtable);
                     let bt_rook1 = get_rook_attacks(Bitboard::from(sq2), sq1, &mgen.mtable);
                     let bt_rook2 = get_rook_attacks(Bitboard::from(sq1), sq2, &mgen.mtable);
-                    mgen.lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
+                    mgen.lines[sq1 as usize][sq2 as usize] |=
+                        Bitboard::from(sq1) | Bitboard::from(sq2);
                     mgen.between[sq1 as usize][sq2 as usize] |= bt_rook1 & bt_rook2;
                     mgen.lines[sq1 as usize][sq2 as usize] |= ln_rook_1 & ln_rook_2;
                 }
@@ -994,6 +1013,34 @@ mod tests {
         let mgen = MoveGenerator::default();
         let moves = mgen.get_moves(&b);
         assert!(!moves.contains(&Move::normal(Square::F4, Square::E3)));
+    }
+
+    #[test]
+    ///
+    /// Test that a pinned piece cannot make a capture if it does not defend
+    /// against the pin.
+    ///
+    fn test_pinned_knight_capture() {
+        let b = Board::from_fen("r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8")
+            .unwrap();
+        let illegal_move = Move::normal(Square::D5, Square::C3);
+        let mgen = MoveGenerator::default();
+
+        assert!(!mgen.get_moves(&b).contains(&illegal_move));
+        assert!(!mgen.get_loud_moves(&b).contains(&illegal_move));
+    }
+
+    #[test]
+    ///
+    /// Test that en passant moves are generated correctly.
+    ///
+    fn test_en_passant_generated() {
+        let b = Board::from_fen(EN_PASSANT_READY_FEN).unwrap();
+        let mgen = MoveGenerator::default();
+        let m = Move::normal(Square::E5, Square::F6);
+
+        assert!(mgen.get_moves(&b).contains(&m));
+        assert!(mgen.get_loud_moves(&b).contains(&m));
     }
 
     ///
