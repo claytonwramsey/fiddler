@@ -633,13 +633,13 @@ impl Display for Board {
                 let i = 64 - (r + 1) * 8 + c;
                 let current_square = Square::try_from(i).unwrap();
                 match self.type_at_square(current_square) {
-                    Some(p) => match self.color_at_square(current_square) {
-                        Some(Color::White) => write!(f, "{p}")?,
-                        Some(Color::Black) => write!(f, "{}", p.get_code().to_lowercase())?,
-                        None => write!(f, " ")?,
+                    Some(p) => match self.color_at_square(current_square).unwrap() {
+                        Color::White => write!(f, "{p}")?,
+                        Color::Black => write!(f, "{}", p.get_code().to_lowercase())?,
                     },
-                    None => write!(f, " ")?,
+                    None => write!(f, ".")?,
                 }
+                write!(f, " ")?;
             }
             writeln!(f)?;
         }

@@ -1043,6 +1043,18 @@ mod tests {
         assert!(mgen.get_loud_moves(&b).contains(&m));
     }
 
+    #[test]
+    ///
+    /// Test that a position where a rook is horizontal to the king is mate.
+    ///
+    fn test_horizontal_rook_mate() {
+        let b = Board::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32").unwrap();
+        let mgen = MoveGenerator::default();
+
+        assert!(mgen.get_moves(&b).is_empty());
+        assert!(!mgen.has_moves(&b));
+    }
+
     ///
     /// A helper function that will force that the given FEN will have loud
     /// moves generated correctly.

@@ -83,7 +83,7 @@ enum Command {
     SetTimeout(u64),
     ///
     /// Print out the history of the game currently being played.
-    /// 
+    ///
     PrintHistory,
 }
 
@@ -239,14 +239,13 @@ impl<'a> CrabchessApp<'a> {
             Command::PrintHistory => match writeln!(self.output_stream, "{}", self.game) {
                 Ok(()) => Ok(()),
                 Err(_) => Err("write failed"),
-            }
+            },
             _ => {
                 if writeln!(self.output_stream, "the command type `{c}` is unsupported").is_err() {
                     return Err("write failed");
                 }
                 Ok(())
-            },
-            
+            }
         }
     }
 
