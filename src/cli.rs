@@ -81,6 +81,10 @@ enum Command {
     /// number of milliseconds on the timeout.
     ///
     SetTimeout(u64),
+    ///
+    /// Print out the history of the game currently being played.
+    /// 
+    PrintHistory,
 }
 
 impl fmt::Display for Command {
@@ -95,6 +99,7 @@ impl fmt::Display for Command {
             Command::ListMoves => write!(f, "list moves"),
             Command::EngineMove => write!(f, "play engine move"),
             Command::SetTimeout(n) => write!(f, "set timeout {:.3}", *n as f32 / 1000f32),
+            Command::PrintHistory => write!(f, "print history"),
         }
     }
 }
@@ -201,6 +206,7 @@ impl<'a> CrabchessApp<'a> {
                     }
                 }
                 "list" => Ok(Command::ListMoves),
+                "h" | "history" => Ok(Command::PrintHistory),
                 _ => Err("unrecognized command"),
             }
         } else {
@@ -230,12 +236,17 @@ impl<'a> CrabchessApp<'a> {
                 self.timeout_condition = Box::new(ElapsedTimeout::new(Duration::from_millis(num)));
                 Ok(())
             }
+            Command::PrintHistory => match writeln!(self.output_stream, "{}", self.game) {
+                Ok(()) => Ok(()),
+                Err(_) => Err("write failed"),
+            }
             _ => {
                 if writeln!(self.output_stream, "the command type `{c}` is unsupported").is_err() {
                     return Err("write failed");
                 }
                 Ok(())
-            }
+            },
+            
         }
     }
 
