@@ -53,7 +53,7 @@ impl Piece {
     ///
     /// Get the FEN code of this piece as an uppercase string.
     ///
-    pub const fn get_code(self) -> &'static str {
+    pub const fn code(self) -> &'static str {
         match self {
             Piece::Pawn => "P",
             Piece::Knight => "N",
@@ -82,6 +82,6 @@ impl Piece {
 
 impl Display for Piece {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "{}", self.get_code())
+        write!(f, "{}", self.code())
     }
 }

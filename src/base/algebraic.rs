@@ -40,7 +40,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
 
         // Type of the piece moving
         if mover_type != Piece::Pawn {
-            s += mover_type.get_code();
+            s += mover_type.code();
         } else if is_move_capture {
             is_unclear = true;
             is_unclear_file = true;
@@ -84,7 +84,7 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
         // Add promote types
         if let Some(p) = m.promote_type() {
             s += "=";
-            s += p.get_code();
+            s += p.code();
         }
     }
 

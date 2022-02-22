@@ -635,7 +635,7 @@ impl Display for Board {
                 match self.type_at_square(current_square) {
                     Some(p) => match self.color_at_square(current_square).unwrap() {
                         Color::White => write!(f, "{p}")?,
-                        Color::Black => write!(f, "{}", p.get_code().to_lowercase())?,
+                        Color::Black => write!(f, "{}", p.code().to_lowercase())?,
                     },
                     None => write!(f, ".")?,
                 }
