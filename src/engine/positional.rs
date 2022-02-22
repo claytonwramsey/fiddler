@@ -66,7 +66,7 @@ const DOUBLED_PAWN_VALUE: Eval = Eval(100);
 /// Evaluate a position by both its material and the positional value of the/// position.
 ///
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
-    let b = g.get_board();
+    let b = g.board();
 
     match g.is_game_over(mgen) {
         (true, Some(_)) => {
@@ -82,7 +82,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     };
 
     let starting_eval = greedy_evaluate(g, mgen);
-    let b = g.get_board();
+    let b = g.board();
 
     let mut positional_eval = Eval(0);
 

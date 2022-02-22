@@ -6,7 +6,7 @@ use crate::base::Square;
 ///
 /// Get the Zobrist key for a given key, type, and square.
 ///
-pub fn get_square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
+pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
         None => 0,
         // Because sq, p, and color are all enums with fixed ranges, we can
@@ -34,7 +34,7 @@ pub const fn get_castle_key(right: u8) -> u64 {
 ///
 /// Get the Zobrist key of an en passant square.
 ///
-pub fn get_ep_key(ep_square: Option<Square>) -> u64 {
+pub fn ep_key(ep_square: Option<Square>) -> u64 {
     match ep_square {
         None => 0,
         // Since the square is in the square enum, we can safely get this
@@ -47,7 +47,7 @@ pub fn get_ep_key(ep_square: Option<Square>) -> u64 {
 ///
 /// Get the Zobrist key for the player to move
 ///
-pub const fn get_player_to_move_key(player_to_move: Color) -> u64 {
+pub const fn player_to_move_key(player_to_move: Color) -> u64 {
     match player_to_move {
         Color::White => 0,
         Color::Black => BLACK_TO_MOVE_KEY,

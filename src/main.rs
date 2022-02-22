@@ -15,7 +15,7 @@ fn main() {
     let mut e = PVSearch::default();
     e.set_depth(7);
 
-    let m = e.get_best_move(&mut g, &mgen, &crabchess::engine::NoTimeout);
+    let m = e.best_move(&mut g, &mgen, &crabchess::engine::NoTimeout);
     println!("{:?}", m);*/
 
     println!("running!");

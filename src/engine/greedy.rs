@@ -23,7 +23,7 @@ pub fn piece_value(pt: Piece) -> Eval {
 ///
 pub fn greedy_evaluate(g: &mut Game, _mgen: &MoveGenerator) -> Eval {
     let mut eval = Eval(0);
-    let b = g.get_board();
+    let b = g.board();
 
     let white_occupancy = b[Color::White];
     let black_occupancy = b[Color::Black];

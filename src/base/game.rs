@@ -148,7 +148,7 @@ impl Game {
     /// history (but this should never happen if the game was initialized
     /// correctly)
     ///
-    pub fn get_board(&self) -> &Board {
+    pub fn board(&self) -> &Board {
         &self.history.last().unwrap().0
     }
 
@@ -162,7 +162,7 @@ impl Game {
         if self.is_drawn_historically() {
             return (true, None);
         }
-        let b = self.get_board();
+        let b = self.board();
 
         if mgen.has_moves(b) {
             return (false, None);
@@ -180,7 +180,7 @@ impl Game {
     /// move rule or due to repetition)?
     ///
     fn is_drawn_historically(&self) -> bool {
-        let num_reps = *self.repetitions.get(&self.get_board().hash).unwrap_or(&0);
+        let num_reps = *self.repetitions.get(&self.board().hash).unwrap_or(&0);
         if num_reps >= 3 {
             // draw by repetition
             return true;
@@ -202,7 +202,7 @@ impl Game {
             return Vec::new();
         }
 
-        mgen.get_moves(self.get_board())
+        mgen.get_moves(self.board())
     }
 
     pub fn get_loud_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
@@ -210,7 +210,7 @@ impl Game {
             return Vec::new();
         }
 
-        mgen.get_loud_moves(self.get_board())
+        mgen.get_loud_moves(self.board())
     }
 }
 
@@ -256,9 +256,9 @@ mod tests {
     fn test_play_e4() {
         let mut g = Game::default();
         let m = Move::normal(Square::E2, Square::E4);
-        let old_board = *g.get_board();
+        let old_board = *g.board();
         g.make_move(Move::normal(Square::E2, Square::E4));
-        let new_board = g.get_board();
+        let new_board = g.board();
         board::tests::test_move_result_helper(old_board, *new_board, m);
     }
 
@@ -271,7 +271,7 @@ mod tests {
         let m = Move::normal(Square::E2, Square::E4);
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
-        assert_eq!(*g.get_board(), Board::default());
+        assert_eq!(*g.board(), Board::default());
     }
 
     #[test]
@@ -281,7 +281,7 @@ mod tests {
     fn test_illegal_undo() {
         let mut g = Game::default();
         assert!(g.undo().is_err());
-        assert_eq!(*g.get_board(), Board::default());
+        assert_eq!(*g.board(), Board::default());
     }
 
     #[test]
@@ -295,7 +295,7 @@ mod tests {
         g.make_move(m0);
         g.make_move(m1);
         assert_eq!(g.undo_n(2), Ok(()));
-        assert_eq!(*g.get_board(), Board::default());
+        assert_eq!(*g.board(), Board::default());
     }
 
     #[test]
@@ -320,7 +320,7 @@ mod tests {
         g.make_move(m);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN).unwrap());
-        assert_eq!(g.get_board(), &Board::from_fen(FRIED_LIVER_FEN).unwrap());
+        assert_eq!(g.board(), &Board::from_fen(FRIED_LIVER_FEN).unwrap());
     }
 
     #[test]
@@ -339,11 +339,11 @@ mod tests {
     fn test_is_mate_over() {
         let g = Game::from_fen(SCHOLARS_MATE_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let moves = mgen.get_moves(g.get_board());
+        let moves = mgen.get_moves(g.board());
         for m in moves {
             println!("{m}");
         }
-        assert!(!mgen.has_moves(g.get_board()));
+        assert!(!mgen.has_moves(g.board()));
         assert_eq!(g.is_game_over(&mgen), (true, Some(Color::White)));
     }
 
@@ -351,12 +351,12 @@ mod tests {
     fn test_is_mate_over_2() {
         let g: Game = Game::from_fen(WHITE_MATED_FEN).unwrap();
         let mgen = MoveGenerator::default();
-        let moves = mgen.get_moves(g.get_board());
+        let moves = mgen.get_moves(g.board());
         println!("moves: ");
         for m in moves {
             println!("{m}");
         }
-        assert!(!mgen.has_moves(g.get_board()));
+        assert!(!mgen.has_moves(g.board()));
         assert_eq!(g.is_game_over(&mgen), (true, Some(Color::Black)));
     }
 

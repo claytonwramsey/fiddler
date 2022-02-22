@@ -87,7 +87,7 @@ impl PVSearch {
         // the position
         let mut stored_move = Move::BAD_MOVE;
         if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
-            if let Some(edata) = self.ttable[g.get_board()] {
+            if let Some(edata) = self.ttable[g.board()] {
                 self.num_transpositions += 1;
                 stored_move = edata.critical_move;
                 if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
@@ -126,7 +126,7 @@ impl PVSearch {
         if moves.is_empty() {
             return (
                 Move::BAD_MOVE,
-                positional_evaluate(g, mgen) * (1 - 2 * g.get_board().player_to_move as i32),
+                positional_evaluate(g, mgen) * (1 - 2 * g.board().player_to_move as i32),
             );
         }
 
@@ -195,7 +195,7 @@ impl PVSearch {
 
         for m in moves_iter {
             let late_move = num_moves_checked > NUM_EARLY_MOVES
-                && !g.get_board().is_move_capture(m)
+                && !g.board().is_move_capture(m)
                 && m.promote_type().is_none();
             g.make_move(m);
             // zero-window search
@@ -291,11 +291,11 @@ impl PVSearch {
     ) -> (Move, Eval) {
         self.num_nodes_evaluated += 1;
 
-        let player = g.get_board().player_to_move;
+        let player = g.board().player_to_move;
 
         // Any position where the kind is in check is nowhere near quiet
         // enough to evaluate.
-        if g.get_board().is_king_checked(mgen) {
+        if g.board().is_king_checked(mgen) {
             return self.pvs(1, depth_so_far, g, mgen, alpha_in, beta_in, timeout);
         }
 
@@ -431,7 +431,7 @@ impl PVSearch {
             false => Eval::MIN,
         };
         self.ttable.store(
-            *g.get_board(),
+            *g.board(),
             EvalData {
                 depth,
                 lower_bound,
@@ -473,7 +473,7 @@ impl PVSearch {
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
             let mut search_result = self.pvs(iter_depth, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
-            search_result.1 *= 1 - 2 * g.get_board().player_to_move as i32;
+            search_result.1 *= 1 - 2 * g.board().player_to_move as i32;
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
                 eval = search_result.1;
@@ -498,7 +498,7 @@ impl PVSearch {
     ///
     /// Get the evaluation on every legal move in the position.
     ///
-    pub fn get_evals(
+    pub fn evals(
         &mut self,
         g: &mut Game,
         mgen: &MoveGenerator,
@@ -518,7 +518,7 @@ impl PVSearch {
             } else {
                 println!("somehow, undoing failed on a game");
             }
-            println!("{}: {ev}", algebraic_from_move(m, g.get_board(), mgen));
+            println!("{}: {ev}", algebraic_from_move(m, g.board(), mgen));
         }
 
         evals
@@ -527,7 +527,7 @@ impl PVSearch {
     ///
     /// Get the best move in the position.
     ///
-    pub fn get_best_move(
+    pub fn best_move(
         &mut self,
         g: &mut Game,
         mgen: &MoveGenerator,
@@ -551,10 +551,10 @@ impl PVSearch {
                 successful_nodes_evaluated = self.num_nodes_evaluated;
                 best_move = result.0;
                 eval_uncalibrated = result.1;
-                eval = eval_uncalibrated * (1 - 2 * g.get_board().player_to_move as i32);
+                eval = eval_uncalibrated * (1 - 2 * g.board().player_to_move as i32);
                 println!(
                     "depth {iter_depth} gives {}: {eval}",
-                    algebraic_from_move(best_move, g.get_board(), mgen)
+                    algebraic_from_move(best_move, g.board(), mgen)
                 );
             }
             iter_depth += 1;
@@ -619,7 +619,7 @@ pub mod tests {
         e.set_depth(7); // this prevents taking too long on searches
 
         println!("moves with evals are:");
-        e.get_evals(&mut g, &mgen, &NoTimeout);
+        e.evals(&mut g, &mgen, &NoTimeout);
     }
 
     #[test]
@@ -632,7 +632,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(8);
 
-        e.get_best_move(&mut g, &mgen, &NoTimeout);
+        e.best_move(&mut g, &mgen, &NoTimeout);
     }
 
     #[test]
@@ -647,7 +647,7 @@ pub mod tests {
         e.set_depth(6); // this prevents taking too long on searches
 
         assert_eq!(
-            e.get_best_move(&mut g, &mgen, &NoTimeout),
+            e.best_move(&mut g, &mgen, &NoTimeout),
             Move::normal(Square::D1, Square::F3)
         );
     }
@@ -680,7 +680,7 @@ pub mod tests {
         e.set_depth(9);
 
         assert_eq!(
-            e.get_best_move(&mut g, &mgen, &NoTimeout),
+            e.best_move(&mut g, &mgen, &NoTimeout),
             Move::normal(Square::F2, Square::F7)
         );
     }

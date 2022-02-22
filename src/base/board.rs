@@ -359,7 +359,7 @@ impl Board {
             self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
         }
         //remove previous EP square from hash
-        self.hash ^= zobrist::get_ep_key(self.en_passant_square);
+        self.hash ^= zobrist::ep_key(self.en_passant_square);
         let old_ep_square = self.en_passant_square;
         //update EP square
         self.en_passant_square = match is_pawn_move && is_long_move {
@@ -367,7 +367,7 @@ impl Board {
             false => None,
         };
         //insert new EP key into hash
-        self.hash ^= zobrist::get_ep_key(self.en_passant_square);
+        self.hash ^= zobrist::ep_key(self.en_passant_square);
 
         /* Handling castling and castle rights */
         //in normal castling, we describe it with a `Move` as a king move which
@@ -494,7 +494,7 @@ impl Board {
         }
 
         self.en_passant_square = result.ep_square;
-        self.hash ^= zobrist::get_ep_key(result.ep_square);
+        self.hash ^= zobrist::ep_key(result.ep_square);
 
         self.return_castle_rights(result.rights);
         self.player_to_move = former_player;
@@ -518,7 +518,7 @@ impl Board {
     ///
     pub fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
         let mask = Bitboard::from(sq);
-        self.hash ^= zobrist::get_square_key(sq, Some(pt), color);
+        self.hash ^= zobrist::square_key(sq, Some(pt), color);
         let removal_mask = !mask;
         self.pieces[pt as usize] &= removal_mask;
         self.sides[color as usize] &= removal_mask;
@@ -538,7 +538,7 @@ impl Board {
         self.pieces[pt as usize] |= mask;
         self.sides[color as usize] |= mask;
         //Update the hash with the result of our addition
-        self.hash ^= zobrist::get_square_key(sq, Some(pt), color);
+        self.hash ^= zobrist::square_key(sq, Some(pt), color);
     }
 
     #[inline]
@@ -605,7 +605,7 @@ impl Board {
         for i in 0..64 {
             let sq = Square::try_from(i).unwrap();
             hash ^= match self.color_at_square(sq) {
-                Some(c) => zobrist::get_square_key(sq, self.type_at_square(sq), c),
+                Some(c) => zobrist::square_key(sq, self.type_at_square(sq), c),
                 None => 0,
             };
         }
@@ -614,8 +614,8 @@ impl Board {
                 hash ^= zobrist::get_castle_key(i);
             }
         }
-        hash ^= zobrist::get_ep_key(self.en_passant_square);
-        hash ^= zobrist::get_player_to_move_key(self.player_to_move);
+        hash ^= zobrist::ep_key(self.en_passant_square);
+        hash ^= zobrist::player_to_move_key(self.player_to_move);
         hash
     }
 }

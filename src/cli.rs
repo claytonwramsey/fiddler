@@ -114,7 +114,7 @@ impl<'a> CrabchessApp<'a> {
     pub fn run(&mut self) -> std::io::Result<()> {
         let mut has_quit = false;
         while !has_quit {
-            let board = self.game.get_board();
+            let board = self.game.board();
             writeln!(self.output_stream, "{board}")?;
             writeln!(self.output_stream, "Type out a move or enter a command.")?;
             let mut user_input = String::new();
@@ -216,7 +216,7 @@ impl<'a> CrabchessApp<'a> {
                 return Err("no move given to play");
             }
             let move_result =
-                move_from_algebraic(move_token.unwrap(), self.game.get_board(), &self.mgen)?;
+                move_from_algebraic(move_token.unwrap(), self.game.board(), &self.mgen)?;
 
             Ok(Command::PlayMove(move_result))
         }
@@ -286,12 +286,12 @@ impl<'a> CrabchessApp<'a> {
     /// Print out a list of the available moves in this position.
     ///
     fn list_moves(&mut self) -> CommandResult {
-        let moves = self.mgen.get_moves(self.game.get_board());
+        let moves = self.mgen.get_moves(self.game.board());
         for m in moves.iter() {
             if writeln!(
                 self.output_stream,
                 "{}",
-                algebraic_from_move(*m, self.game.get_board(), &self.mgen)
+                algebraic_from_move(*m, self.game.board(), &self.mgen)
             )
             .is_err()
             {
@@ -323,10 +323,10 @@ impl<'a> CrabchessApp<'a> {
         self.timeout_condition.start();
         let m =
             self.engine
-                .get_best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
+                .best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
         println!(
             "the engine played {}",
-            algebraic_from_move(m, self.game.get_board(), &self.mgen)
+            algebraic_from_move(m, self.game.board(), &self.mgen)
         );
         self.game.make_move(m);
 

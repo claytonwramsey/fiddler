@@ -11,7 +11,7 @@ use std::cmp::max;
 /// if the given move is illegal.
 ///
 pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
-    let b = g.get_board();
+    let b = g.board();
     let mover_type = b.type_at_square(m.from_square()).unwrap();
     let promote_type = m.promote_type();
     let capture_type = b.type_at_square(m.to_square());
