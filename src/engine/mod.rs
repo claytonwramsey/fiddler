@@ -8,7 +8,6 @@ pub mod greedy;
 pub mod positional;
 pub mod search;
 pub mod transposition;
-pub mod uci;
 
 pub trait TimeoutCondition {
     ///

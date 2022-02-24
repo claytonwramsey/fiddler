@@ -3,7 +3,9 @@ use std::time::Duration;
 use crate::base::Move;
 use crate::engine::Eval;
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+pub mod main;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 ///
 /// An enum representing the set of all commands that the GUI can send to the
 /// engine via UCI.
@@ -96,7 +98,7 @@ pub enum UciCommand {
     Quit,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 ///
 /// The options that can be given for a `UciCommand::Go` command.
 ///

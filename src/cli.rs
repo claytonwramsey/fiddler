@@ -321,9 +321,9 @@ impl<'a> CrabchessApp<'a> {
     ///
     fn play_engine_move(&mut self) -> CommandResult {
         self.timeout_condition.start();
-        let m =
-            self.engine
-                .best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
+        let m = self
+            .engine
+            .best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
         println!(
             "the engine played {}",
             algebraic_from_move(m, self.game.board(), &self.mgen)
