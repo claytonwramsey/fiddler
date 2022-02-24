@@ -96,7 +96,7 @@ fn parse_set_option(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
             }
         };
 
-        if value.is_empty() {
+        if !value.is_empty() {
             value += " ";
         }
         value += val_tok;
@@ -158,7 +158,7 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::base::Square;
     #[test]
     ///
     /// Test that an ordinary "startpos" UCI position command is parsed 
@@ -170,6 +170,65 @@ mod tests {
             Ok(UciCommand::Position {
                 fen: None, 
                 moves: Vec::new()
+            })
+        );
+    }
+
+    #[test]
+    /// 
+    /// Test that a FEN is properly loaded from a UCI position command.
+    /// 
+    fn test_position_fen() {
+        assert_eq!(
+            parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n"), 
+            Ok(UciCommand::Position {
+                fen: Some(String::from("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")), 
+                moves: Vec::new()
+            })
+        );
+    }
+
+    #[test]
+    /// 
+    /// Test that a FEN is properly loaded from a UCI position command.
+    /// 
+    fn test_position_fen_then_moves() {
+        assert_eq!(
+            parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n"), 
+            Ok(UciCommand::Position {
+                fen: Some(String::from("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")), 
+                moves: vec![
+                    Move::normal(Square::C7, Square::C5),
+                    Move::normal(Square::G1, Square::F3)
+                ]
+            })
+        );
+    }
+
+    #[test]
+    ///
+    /// Test that an option with no value is correctly set.
+    /// 
+    fn test_setoption_key_only() {
+        assert_eq!(
+            parse_line("setoption name MyOption\n"),
+            Ok(UciCommand::SetOption {
+                name: String::from("MyOption"),
+                value: None
+            })
+        );
+    }
+
+    #[test]
+    ///
+    /// Test that a key-value pair for a setoption is correct.
+    /// 
+    fn test_setoption_key_value() {
+        assert_eq!(
+            parse_line("setoption name my option value 4 or 5\n"),
+            Ok(UciCommand::SetOption {
+                name: String::from("my option"),
+                value: Some(String::from("4 or 5"))
             })
         );
     }
