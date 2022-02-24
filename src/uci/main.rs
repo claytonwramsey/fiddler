@@ -111,7 +111,7 @@ fn parse_set_option(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     let start_fen = match tokens
         .next()
-        .ok_or(format!("reached EOL while parsing position"))?
+        .ok_or_else(|| "reached EOL while parsing position".to_string())?
     {
         "fen" => {
             // Extract
@@ -138,11 +138,11 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 
             None
         }
-        _ => return Err(format!("illegal starting position token")),
+        _ => return Err("illegal starting position token".to_string()),
     };
 
     let mut moves = Vec::new();
-    for m_result in tokens.map(|tok| Move::from_uci(tok)) {
+    for m_result in tokens.map(Move::from_uci) {
         match m_result {
             Ok(m) => moves.push(m),
             Err(e) => return Err(format!("could not parse UCI move: {e}"))
@@ -153,4 +153,24 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
         fen: start_fen,
         moves
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    ///
+    /// Test that an ordinary "startpos" UCI position command is parsed 
+    /// correctly.
+    /// 
+    fn test_position_starting() {
+        assert_eq!(
+            parse_line("position startpos moves\n"), 
+            Ok(UciCommand::Position {
+                fen: None, 
+                moves: Vec::new()
+            })
+        );
+    }
 }
