@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::base::Move;
 use crate::engine::Eval;
 
-pub mod main;
+pub mod parse;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 ///

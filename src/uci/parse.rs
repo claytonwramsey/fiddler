@@ -1,5 +1,3 @@
-use std::io;
-
 use crate::uci::UciCommand;
 use crate::base::Move;
 
