@@ -27,6 +27,9 @@ pub fn parse_line(line: &str) -> UciParseResult {
         "ucinewgame" => Ok(UciCommand::NewGame),
         "position" => parse_position(&mut tokens),
         "go" => parse_go(&mut tokens),
+        "stop" => Ok(UciCommand::Stop),
+        "ponderhit" => Ok(UciCommand::PonderHit),
+        "quit" => Ok(UciCommand::Quit),
         _ => Err(String::from("unrecognized UCI command")),
     }
 }
@@ -152,7 +155,6 @@ fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     let mut peeks = tokens.peekable();
     // build the options
     while let Some(opt_tok) = peeks.next() {
-        println!("opt key {opt_tok}");
         opts.push(match opt_tok {
             "searchmoves" => {
                 let mut moves = Vec::new();
@@ -327,7 +329,7 @@ mod tests {
                 GoOption::MoveTime(7),
                 GoOption::Ponder,
             ]))
-        )
+        );
     }
 
     #[test]
@@ -342,6 +344,24 @@ mod tests {
                 GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
                 GoOption::Infinite,
             ]))
-        )
+        );
+    }
+
+    #[test]
+    ///
+    /// Test that a `uci` command is parsed correctly.
+    ///
+    fn test_uci() {
+        assert_eq!(parse_line("uci\n"), Ok(UciCommand::Uci));
+    }
+
+    #[test]
+    ///
+    /// Test that the `debug` commands are parsed correctly.
+    ///
+    fn test_debug() {
+        assert_eq!(parse_line("debug on\n"), Ok(UciCommand::Debug(true)));
+
+        assert_eq!(parse_line("debug off\n"), Ok(UciCommand::Debug(false)));
     }
 }
