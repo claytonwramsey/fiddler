@@ -1,6 +1,8 @@
 use crate::uci::UciCommand;
 use crate::base::Move;
 
+use super::GoOption;
+
 ///
 /// The result type for processing a line from a UCI command. According to the
 /// UCI protocol, these errors should generally be logged or ignored.
@@ -24,6 +26,7 @@ pub fn parse_line(line: &str) -> UciParseResult {
         "setoption" => parse_set_option(&mut tokens),
         "ucinewgame" => Ok(UciCommand::NewGame),
         "position" => parse_position(&mut tokens),
+        "go" => parse_go(&mut tokens),
         _ => Err(String::from("unrecognized UCI command")),
     }
 }
@@ -136,6 +139,64 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
         fen: start_fen,
         moves
     })
+}
+
+///
+/// Parse a `go` command from UCI. Assumes the token `go` has already been 
+/// consumed.
+/// 
+fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
+    let mut opts = Vec::new();
+
+    // build the options
+    while let Some(opt_tok) = tokens.next() {
+        opts.push(match opt_tok {
+            "searchmoves" => {
+                let mut moves = Vec::new();
+                let mut peek_tokens = tokens.peekable();
+                // continually add moves to the set of moves to search until we 
+                // bump into a keyword
+                loop {
+                    let move_peek = peek_tokens.peek();
+                    match move_peek {
+                        Some(m_tok) => if let Ok(m) = Move::from_uci(m_tok) {
+                            moves.push(m);
+                            peek_tokens.next();
+                        }
+                        None => break,
+                    };
+                }
+
+                GoOption::SearchMoves(moves)
+            },
+            "ponder" => GoOption::Ponder,
+            "wtime" => GoOption::WhiteTime(parse_int(tokens.next())? as u32),
+            "btime" => GoOption::BlackTime(parse_int(tokens.next())? as u32),
+            "winc" => GoOption::WhiteInc(parse_int(tokens.next())? as u32),
+            "binc" => GoOption::BlackInc(parse_int(tokens.next())? as u32),
+            "movestogo" => GoOption::MovesToGo(parse_int(tokens.next())? as u8),
+            "depth" => GoOption::Depth(parse_int(tokens.next())? as u8),
+            "nodes" => GoOption::Nodes(parse_int(tokens.next())?),
+            "mate" => GoOption::Mate(parse_int(tokens.next())? as u8),
+            "movetime" => GoOption::MoveTime(parse_int(tokens.next())? as u32),
+            "infinite" => GoOption::Infinite,
+            _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
+        });
+    }
+
+    Ok(UciCommand::Go(opts))
+}
+
+///
+/// A helper function for `parse_go` which will attempt to parse an int out of 
+/// a token if it is `Some`, and fail if it cannot parse the int or if it is 
+/// given `None`.
+/// 
+fn parse_int(x: Option<&str>) -> Result<u64, String> {
+    match x {
+        None => Err(String::from("reached EOF while parsing int")),
+        Some(s) => s.parse().map_err(|e| format!("could not parse int due to error: {e}")),
+    }
 }
 
 #[cfg(test)]
