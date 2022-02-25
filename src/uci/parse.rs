@@ -4,21 +4,6 @@ use crate::uci::UciCommand;
 use crate::base::Move;
 
 ///
-/// The main function which runs to use the engine in UCI mode.
-///
-pub fn main() {
-
-    loop {
-        let mut line = String::new();
-        io::stdin().read_line(&mut line).unwrap();
-        match parse_line(&line) {
-            Ok(command) => println!("{command:?}"),
-            Err(_) => println!("err!"),
-        };
-    }
-}
-
-///
 /// The result type for processing a line from a UCI command. According to the
 /// UCI protocol, these errors should generally be logged or ignored.
 ///
