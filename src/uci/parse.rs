@@ -1,5 +1,5 @@
-use crate::uci::UciCommand;
 use crate::base::Move;
+use crate::uci::UciCommand;
 
 use super::GoOption;
 
@@ -119,7 +119,9 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
         "startpos" => {
             let moves_tok = tokens.next().ok_or("reached EOL while parsing position")?;
             if moves_tok != "moves" {
-                return Err(format!("expected token `moves` after `startpos`, got {moves_tok}"));
+                return Err(format!(
+                    "expected token `moves` after `startpos`, got {moves_tok}"
+                ));
             }
 
             None
@@ -131,20 +133,20 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     for m_result in tokens.map(Move::from_uci) {
         match m_result {
             Ok(m) => moves.push(m),
-            Err(e) => return Err(format!("could not parse UCI move: {e}"))
+            Err(e) => return Err(format!("could not parse UCI move: {e}")),
         };
     }
 
     Ok(UciCommand::Position {
         fen: start_fen,
-        moves
+        moves,
     })
 }
 
 ///
-/// Parse a `go` command from UCI. Assumes the token `go` has already been 
+/// Parse a `go` command from UCI. Assumes the token `go` has already been
 /// consumed.
-/// 
+///
 fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     let mut opts = Vec::new();
     let mut peeks = tokens.peekable();
@@ -154,24 +156,26 @@ fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
         opts.push(match opt_tok {
             "searchmoves" => {
                 let mut moves = Vec::new();
-                // continually add moves to the set of moves to search until we 
+                // continually add moves to the set of moves to search until we
                 // bump into a keyword
                 loop {
                     let move_peek = peeks.peek();
                     match move_peek {
-                        Some(m_tok) => if let Ok(m) = Move::from_uci(m_tok) {
-                            moves.push(m);
-                            // consume the token that we peeked
-                            peeks.next()
-                        } else {break},
-                        None => {
-                            break
-                        },
+                        Some(m_tok) => {
+                            if let Ok(m) = Move::from_uci(m_tok) {
+                                moves.push(m);
+                                // consume the token that we peeked
+                                peeks.next()
+                            } else {
+                                break;
+                            }
+                        }
+                        None => break,
                     };
                 }
 
                 GoOption::SearchMoves(moves)
-            },
+            }
             "ponder" => GoOption::Ponder,
             "wtime" => GoOption::WhiteTime(parse_int(peeks.next())? as u32),
             "btime" => GoOption::BlackTime(parse_int(peeks.next())? as u32),
@@ -191,14 +195,16 @@ fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 }
 
 ///
-/// A helper function for `parse_go` which will attempt to parse an int out of 
-/// a token if it is `Some`, and fail if it cannot parse the int or if it is 
+/// A helper function for `parse_go` which will attempt to parse an int out of
+/// a token if it is `Some`, and fail if it cannot parse the int or if it is
 /// given `None`.
-/// 
+///
 fn parse_int(x: Option<&str>) -> Result<u64, String> {
     match x {
         None => Err(String::from("reached EOF while parsing int")),
-        Some(s) => s.parse().map_err(|e| format!("could not parse int due to error: {e}")),
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("could not parse int due to error: {e}")),
     }
 }
 
@@ -208,37 +214,41 @@ mod tests {
     use crate::base::Square;
     #[test]
     ///
-    /// Test that an ordinary "startpos" UCI position command is parsed 
+    /// Test that an ordinary "startpos" UCI position command is parsed
     /// correctly.
-    /// 
+    ///
     fn test_position_starting() {
         assert_eq!(
-            parse_line("position startpos moves\n"), 
+            parse_line("position startpos moves\n"),
             Ok(UciCommand::Position {
-                fen: None, 
+                fen: None,
                 moves: Vec::new()
             })
         );
     }
 
     #[test]
-    /// 
+    ///
     /// Test that a FEN is properly loaded from a UCI position command.
-    /// 
+    ///
     fn test_position_fen() {
         assert_eq!(
-            parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n"), 
+            parse_line(
+                "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n"
+            ),
             Ok(UciCommand::Position {
-                fen: Some(String::from("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")), 
+                fen: Some(String::from(
+                    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+                )),
                 moves: Vec::new()
             })
         );
     }
 
     #[test]
-    /// 
+    ///
     /// Test that a FEN is properly loaded from a UCI position command.
-    /// 
+    ///
     fn test_position_fen_then_moves() {
         assert_eq!(
             parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n"), 
@@ -255,7 +265,7 @@ mod tests {
     #[test]
     ///
     /// Test that an option with no value is correctly set.
-    /// 
+    ///
     fn test_setoption_key_only() {
         assert_eq!(
             parse_line("setoption name MyOption\n"),
@@ -269,7 +279,7 @@ mod tests {
     #[test]
     ///
     /// Test that a key-value pair for a setoption is correct.
-    /// 
+    ///
     fn test_setoption_key_value() {
         assert_eq!(
             parse_line("setoption name my option value 4 or 5\n"),
@@ -283,7 +293,7 @@ mod tests {
     #[test]
     ///
     /// Test that a simple `go` command is parsed correctly.
-    /// 
+    ///
     fn test_go_simple() {
         assert_eq!(
             parse_line("go depth 7 nodes 25\n"),
@@ -296,10 +306,10 @@ mod tests {
 
     #[test]
     ///
-    /// Test that a `go` command with every option is parsed correctly. In 
-    /// practice this command would be invalid since the `infinite` option 
+    /// Test that a `go` command with every option is parsed correctly. In
+    /// practice this command would be invalid since the `infinite` option
     /// would remove the validity of all others.
-    /// 
+    ///
     fn test_go_all() {
         assert_eq!(
             parse_line("go depth 7 nodes 250 infinite searchmoves e2e4 wtime 1 btime 2 winc 3 binc 4 movestogo 5 mate 6 movetime 7 ponder\n"),
@@ -322,16 +332,16 @@ mod tests {
 
     #[test]
     ///
-    /// Test that a `go searchmoves` does not cause the moves to eat future 
+    /// Test that a `go searchmoves` does not cause the moves to eat future
     /// options.
-    /// 
+    ///
     fn test_go_searchmoves() {
         assert_eq!(
             parse_line("go searchmoves e2e4 infinite\n"),
             Ok(UciCommand::Go(vec![
                 GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
                 GoOption::Infinite,
-            ])
-        ))
+            ]))
+        )
     }
 }
