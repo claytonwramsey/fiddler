@@ -147,38 +147,41 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 /// 
 fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     let mut opts = Vec::new();
-
+    let mut peeks = tokens.peekable();
     // build the options
-    while let Some(opt_tok) = tokens.next() {
+    while let Some(opt_tok) = peeks.next() {
+        println!("opt key {opt_tok}");
         opts.push(match opt_tok {
             "searchmoves" => {
                 let mut moves = Vec::new();
-                let mut peek_tokens = tokens.peekable();
                 // continually add moves to the set of moves to search until we 
                 // bump into a keyword
                 loop {
-                    let move_peek = peek_tokens.peek();
+                    let move_peek = peeks.peek();
                     match move_peek {
                         Some(m_tok) => if let Ok(m) = Move::from_uci(m_tok) {
                             moves.push(m);
-                            peek_tokens.next();
-                        }
-                        None => break,
+                            // consume the token that we peeked
+                            peeks.next()
+                        } else {break},
+                        None => {
+                            break
+                        },
                     };
                 }
 
                 GoOption::SearchMoves(moves)
             },
             "ponder" => GoOption::Ponder,
-            "wtime" => GoOption::WhiteTime(parse_int(tokens.next())? as u32),
-            "btime" => GoOption::BlackTime(parse_int(tokens.next())? as u32),
-            "winc" => GoOption::WhiteInc(parse_int(tokens.next())? as u32),
-            "binc" => GoOption::BlackInc(parse_int(tokens.next())? as u32),
-            "movestogo" => GoOption::MovesToGo(parse_int(tokens.next())? as u8),
-            "depth" => GoOption::Depth(parse_int(tokens.next())? as u8),
-            "nodes" => GoOption::Nodes(parse_int(tokens.next())?),
-            "mate" => GoOption::Mate(parse_int(tokens.next())? as u8),
-            "movetime" => GoOption::MoveTime(parse_int(tokens.next())? as u32),
+            "wtime" => GoOption::WhiteTime(parse_int(peeks.next())? as u32),
+            "btime" => GoOption::BlackTime(parse_int(peeks.next())? as u32),
+            "winc" => GoOption::WhiteInc(parse_int(peeks.next())? as u32),
+            "binc" => GoOption::BlackInc(parse_int(peeks.next())? as u32),
+            "movestogo" => GoOption::MovesToGo(parse_int(peeks.next())? as u8),
+            "depth" => GoOption::Depth(parse_int(peeks.next())? as u8),
+            "nodes" => GoOption::Nodes(parse_int(peeks.next())?),
+            "mate" => GoOption::Mate(parse_int(peeks.next())? as u8),
+            "movetime" => GoOption::MoveTime(parse_int(peeks.next())? as u32),
             "infinite" => GoOption::Infinite,
             _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
         });
@@ -275,5 +278,60 @@ mod tests {
                 value: Some(String::from("4 or 5"))
             })
         );
+    }
+
+    #[test]
+    ///
+    /// Test that a simple `go` command is parsed correctly.
+    /// 
+    fn test_go_simple() {
+        assert_eq!(
+            parse_line("go depth 7 nodes 25\n"),
+            Ok(UciCommand::Go(vec![
+                GoOption::Depth(7),
+                GoOption::Nodes(25),
+            ]))
+        );
+    }
+
+    #[test]
+    ///
+    /// Test that a `go` command with every option is parsed correctly. In 
+    /// practice this command would be invalid since the `infinite` option 
+    /// would remove the validity of all others.
+    /// 
+    fn test_go_all() {
+        assert_eq!(
+            parse_line("go depth 7 nodes 250 infinite searchmoves e2e4 wtime 1 btime 2 winc 3 binc 4 movestogo 5 mate 6 movetime 7 ponder\n"),
+            Ok(UciCommand::Go(vec![
+                GoOption::Depth(7),
+                GoOption::Nodes(250),
+                GoOption::Infinite,
+                GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
+                GoOption::WhiteTime(1),
+                GoOption::BlackTime(2),
+                GoOption::WhiteInc(3),
+                GoOption::BlackInc(4),
+                GoOption::MovesToGo(5),
+                GoOption::Mate(6),
+                GoOption::MoveTime(7),
+                GoOption::Ponder,
+            ]))
+        )
+    }
+
+    #[test]
+    ///
+    /// Test that a `go searchmoves` does not cause the moves to eat future 
+    /// options.
+    /// 
+    fn test_go_searchmoves() {
+        assert_eq!(
+            parse_line("go searchmoves e2e4 infinite\n"),
+            Ok(UciCommand::Go(vec![
+                GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
+                GoOption::Infinite,
+            ])
+        ))
     }
 }
