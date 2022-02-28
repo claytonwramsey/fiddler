@@ -4,6 +4,7 @@ use crate::base::Move;
 use crate::engine::Eval;
 
 pub mod parse;
+pub mod send;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 ///
@@ -198,7 +199,7 @@ pub enum UciMessage {
     /// Request that the GUI display an option to the user.
     /// Not to be confused with the standard `Option`.
     ///
-    Option,
+    Option { name: String, opt: OptionType },
     ///
     /// Inform the GUI that the engine has found a move. `m` is the best move
     /// that it found, and `ponder` may optionally be the opponent's reply to
@@ -213,7 +214,7 @@ pub enum UciMessage {
     Info(Vec<EngineInfo>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 ///
 /// Information about an engine's search state.
 ///
@@ -283,6 +284,7 @@ pub enum EngineInfo {
     /* Other infos omitted for now */
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum OptionType {
     ///
     /// A spin box which takes an integer. The internal value is its default
@@ -292,15 +294,25 @@ pub enum OptionType {
     ///
     /// A string which the user can input. The default is the given value.
     ///
-    String(String),
+    String(Option<String>),
     ///
-    /// A checkbox which will either be true (checked) or false (unchecked)
+    /// A checkbox which will either be true (checked) or false (unchecked).
     ///
-    Check(bool),
+    Check(Option<bool>),
     ///
     /// A set of selectable options for a mode.
     ///
-    Combo(Vec<String>),
+    Combo {
+        ///
+        /// The default selection on the combination box.
+        ///
+        default: Option<String>,
+        ///
+        /// The variations on the combinations. Need not include the value of
+        /// the `default` part of this struct.
+        ///
+        vars: Vec<String>,
+    },
     ///
     /// A button which can be pressed to send a command.
     ///
