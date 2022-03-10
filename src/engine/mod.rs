@@ -107,6 +107,11 @@ impl Eval {
     pub const WHITE_MATE: Eval = Eval(Eval::MATE_0_VAL);
 
     ///
+    /// The evaluation of a drawn position.
+    ///
+    pub const DRAW: Eval = Eval(0);
+
+    ///
     /// The internal evaluation of a mate in 0 for White (i.e. White made the
     /// mating move on the previous ply).
     ///
@@ -128,14 +133,6 @@ impl Eval {
     ///
     pub fn pawns(x: f64) -> Eval {
         Eval((x * Eval::PAWN_VALUE as f64) as i32)
-    }
-
-    #[inline]
-    ///
-    /// Create an evaluation for a drawn or even position.
-    ///
-    pub fn draw() -> Eval {
-        Eval(0)
     }
 
     #[inline]
@@ -185,6 +182,39 @@ impl Eval {
     ///
     pub const fn is_mate(&self) -> bool {
         self.0 > Eval::MATE_CUTOFF || self.0 < -Eval::MATE_CUTOFF
+    }
+
+    ///
+    /// Get the number of plies until a mated position, assuming perfect play.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let ev1 = Eval::pawns(2.5);
+    /// let ev2 = Eval::mate_in(3);
+    ///
+    /// assert_eq!(ev1.plies_to_mate(), None);
+    /// assert_eq!(ev2.plies_to_mate(), Some(3));
+    /// ```
+    ///
+    pub const fn plies_to_mate(&self) -> Option<u8> {
+        match self.is_mate() {
+            true => {
+                if self.0 > 0 {
+                    // white to mate
+                    Some(((Eval::MATE_0_VAL - self.0 + 1) / 2) as u8)
+                } else {
+                    // black to mate
+                    Some(((Eval::MATE_0_VAL + self.0 + 1) / 2) as u8)
+                }
+            }
+            false => None,
+        }
+    }
+
+    #[inline]
+    pub const fn centipawn_val(&self) -> i32 {
+        self.0 / 10
     }
 }
 
