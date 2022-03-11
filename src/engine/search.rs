@@ -11,7 +11,7 @@ use std::time::Instant;
 use super::candidacy::candidacy;
 use super::TimeoutCondition;
 
-const MAX_TRANSPOSITION_DEPTH: i8 = 6;
+const MAX_TRANSPOSITION_DEPTH: i8 = 7;
 
 #[allow(unused)]
 ///
@@ -484,12 +484,13 @@ impl PVSearch {
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         println!(
-            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions; branch factor {:.2}",
+            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions; branch factor {:.2}, hash fill rate {:.2}",
             self.num_nodes_evaluated,
             nsecs,
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
-            branch_factor(highest_successful_depth, successful_nodes_evaluated)
+            branch_factor(highest_successful_depth, successful_nodes_evaluated),
+            self.ttable.fill_rate(),
         );
 
         eval
@@ -564,12 +565,13 @@ impl PVSearch {
         // Note that the print statements in iterative deepening take a
         // significant amount of time.
         println!(
-            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions; branch factor {:.2}",
+            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions; branch factor {:.2}, hash fill rate {:.2}",
             self.num_nodes_evaluated,
             nsecs,
             self.num_nodes_evaluated as f64 / nsecs,
             self.num_transpositions,
             branch_factor(highest_successful_depth, successful_nodes_evaluated),
+            self.ttable.fill_rate(),
         );
 
         best_move

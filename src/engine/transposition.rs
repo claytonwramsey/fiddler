@@ -29,7 +29,7 @@ pub struct TTable {
     /// Number of occupied slots. Since each entry has two slots (for most 
     /// recent and deepest), this can be at most double the length of `entries`.
     /// 
-    occupancy: u64,
+    occupancy: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -157,6 +157,24 @@ impl TTable {
             })
             .collect();
         self.occupancy = 0;
+    }
+
+    #[inline]
+    ///
+    /// Get the fill proportion of this transposition table. The fill 
+    /// proportion is 0 for an empty table and 1 for a completely full one.
+    /// 
+    pub fn fill_rate(&self) -> f32 {
+        (self.occupancy as f32) / (2. * self.entries.len() as f32)
+    }
+
+    #[inline]
+    ///
+    /// Get the fill rate proportion of this transposition table out of 1000. 
+    /// Typically used for UCI.
+    /// 
+    pub fn fill_rate_permill(&self) -> u16 {
+        (self.occupancy * 500 / self.entries.len()) as u16
     }
 }
 
