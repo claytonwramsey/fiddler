@@ -7,7 +7,7 @@ use crate::engine::Eval;
 ///
 /// Convenient bad-key value which may help with debugging.
 ///
-const BAD_HASH: u64 = 0x00000000DEADBEEF;
+const BAD_HASH: u64 = 0xDEADBEEF;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 ///
@@ -25,6 +25,11 @@ pub struct TTable {
     /// List of all entries in the transposition table.
     ///
     entries: Vec<TTableEntry>,
+    ///
+    /// Number of occupied slots. Since each entry has two slots (for most 
+    /// recent and deepest), this can be at most double the length of `entries`.
+    /// 
+    occupancy: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,13 +62,25 @@ pub struct EvalData {
 ///
 struct TTableEntry {
     ///
+    /// The most recently entered data in this entry.
+    ///
+    pub recent: Slot,
+    ///
+    /// The data with the deepest evaluation ever requested in this entry.
+    /// 
+    pub deepest: Slot,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Slot {
+    ///
     /// The hash which caused this entry. Used as a speedy way to avoid
     /// comparing a whole board.
     ///
     pub hash: u64,
     ///
-    /// The transposition data.
-    ///
+    /// The data for this slot.
+    /// 
     pub data: Option<EvalData>,
 }
 
@@ -76,11 +93,18 @@ impl TTable {
             sentinel: None,
             entries: vec![
                 TTableEntry {
-                    hash: BAD_HASH,
-                    data: None
+                    recent: Slot { 
+                        hash: BAD_HASH, 
+                        data: None
+                    },
+                    deepest: Slot { 
+                        hash: BAD_HASH, 
+                        data: None
+                    },
                 };
                 capacity
             ],
+            occupancy: 0,
         }
     }
 
@@ -89,14 +113,29 @@ impl TTable {
     ///
     pub fn store(&mut self, key: Board, value: EvalData) {
         let index = key.hash as usize % self.entries.len();
-        unsafe {
-            // We trust that this will not lead to an out of bounds as the
-            // index has been modulo'd by the length of the entry table.
-            *self.entries.get_unchecked_mut(index) = TTableEntry {
-                hash: key.hash,
-                data: Some(value),
-            };
+        let mut entry = unsafe {
+            // We trust that this is safe since we modulo'd by the length.
+            self.entries.get_unchecked_mut(index)
+        };
+        let new_slot = Slot{
+            hash: key.hash,
+            data: Some(value)
+        };
+        let overwrite_deepest = match entry.deepest.data {
+            Some(data) => value.depth >= data.depth,
+            None => {
+                // increment occupancy because we are overwriting None
+                self.occupancy += 1;
+                true
+            },
+        };
+        if overwrite_deepest {
+            entry.deepest = new_slot;
         }
+        if entry.recent.data.is_none() {
+            self.occupancy += 1;
+        }
+        entry.recent = new_slot;
     }
 
     ///
@@ -107,10 +146,17 @@ impl TTable {
             .entries
             .iter()
             .map(|_| TTableEntry {
-                hash: BAD_HASH,
-                data: None,
+                recent: Slot { 
+                    hash: BAD_HASH, 
+                    data: None 
+                },
+                deepest: Slot { 
+                    hash: BAD_HASH, 
+                    data: None 
+                },
             })
             .collect();
+        self.occupancy = 0;
     }
 }
 
@@ -131,10 +177,12 @@ impl Index<&Board> for TTable {
             self.entries.get_unchecked(index)
         };
 
-        // First, compare hashes to "fast-track" checking if these
-        // positions are truly equal.
-        if entry.hash != key.hash {
-            return &self.sentinel;
+        if entry.deepest.hash == key.hash {
+            return &entry.deepest.data;
+        }
+
+        if entry.recent.hash == key.hash {
+            return &entry.recent.data;
         }
 
         /*
@@ -150,7 +198,7 @@ impl Index<&Board> for TTable {
         }
         */
 
-        &entry.data
+        &self.sentinel
     }
 }
 
@@ -174,22 +222,6 @@ mod tests {
             lower_bound: Eval(0),
             critical_move: Move::BAD_MOVE,
         };
-        ttable.store(b, data);
-        assert_eq!(ttable[&b], Some(data));
-    }
-
-    #[test]
-    fn test_eviction() {
-        let mut ttable = TTable::with_capacity(1);
-        let b = Board::default();
-        let mut data = EvalData {
-            depth: 0,
-            upper_bound: Eval(0),
-            lower_bound: Eval(0),
-            critical_move: Move::BAD_MOVE,
-        };
-        ttable.store(b, data);
-        data.upper_bound = Eval(4);
         ttable.store(b, data);
         assert_eq!(ttable[&b], Some(data));
     }
