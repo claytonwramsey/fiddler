@@ -78,7 +78,7 @@ impl TimeoutCondition for ElapsedTimeout {
 /// ```
 /// use crabchess::engine::Eval;
 /// let mate_eval = Eval::mate_in(3);
-/// let draw_eval = Eval::draw();
+/// let draw_eval = Eval::DRAW;
 /// assert!(mate_eval > draw_eval);
 /// ```
 ///
@@ -185,19 +185,20 @@ impl Eval {
     }
 
     ///
-    /// Get the number of plies until a mated position, assuming perfect play.
+    /// Get the number of moves until a mated position, assuming perfect play.
     ///
     /// # Examples
     ///
     /// ```
+    /// use crabchess::engine::Eval;
     /// let ev1 = Eval::pawns(2.5);
     /// let ev2 = Eval::mate_in(3);
     ///
-    /// assert_eq!(ev1.plies_to_mate(), None);
-    /// assert_eq!(ev2.plies_to_mate(), Some(3));
+    /// assert_eq!(ev1.moves_to_mate(), None);
+    /// assert_eq!(ev2.moves_to_mate(), Some(2));
     /// ```
     ///
-    pub const fn plies_to_mate(&self) -> Option<u8> {
+    pub const fn moves_to_mate(&self) -> Option<u8> {
         match self.is_mate() {
             true => {
                 if self.0 > 0 {

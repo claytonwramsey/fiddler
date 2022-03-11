@@ -1,3 +1,4 @@
+use std::fmt;
 use std::time::Duration;
 
 use crate::base::Move;
@@ -214,6 +215,12 @@ pub enum UciMessage {
     Info(Vec<EngineInfo>),
 }
 
+impl fmt::Display for UciMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", send::build_message(self))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 ///
 /// Information about an engine's search state.
@@ -278,7 +285,8 @@ pub enum EngineInfo {
     ///
     NodeSpeed(u64),
     ///
-    /// Any string which should be displayed to the GUI.
+    /// Any string which should be displayed to the GUI. The string may not
+    /// contain any newlines (`\n`).
     ///
     String(String),
     /* Other infos omitted for now */

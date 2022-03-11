@@ -142,6 +142,21 @@ impl Move {
 
         Ok(Move::new(from_sq, to_sq, promote_type))
     }
+
+    ///
+    /// Construct a UCI string version of this move.
+    ///
+    pub fn to_uci(&self) -> String {
+        match self.promote_type() {
+            None => format!("{}{}", self.from_square(), self.to_square()),
+            Some(p) => format!(
+                "{}{}{}",
+                self.from_square(),
+                self.to_square(),
+                p.code().to_lowercase()
+            ),
+        }
+    }
 }
 
 impl Display for Move {
