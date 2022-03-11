@@ -158,15 +158,12 @@ impl MoveGenerator {
             // examine king moves normally
             let to_bb = self.king_moves(board, king_square, player);
 
-            // I would uses .drain() here normally, but that's not
-            // yet supported.
             bitboard_to_moves(king_square, to_bb, &mut move_vec);
-            for m in move_vec.iter() {
-                if !self.is_move_self_check(board, *m) {
+            for m in move_vec.drain(..) {
+                if !self.is_move_self_check(board, m) {
                     return true;
                 }
             }
-            move_vec.clear();
         }
         for pt in Piece::NON_KING_TYPES {
             // examine moves that other pieces can make
@@ -184,15 +181,12 @@ impl MoveGenerator {
                 };
 
                 // we need not handle promotion because pawn promotion also
-                // blocks. I would uses .drain() here normally, but that's not
-                // yet supported.
                 bitboard_to_moves(from_sq, to_bb, &mut move_vec);
-                for m in move_vec.iter() {
-                    if !self.is_move_self_check(board, *m) {
+                for m in move_vec.drain(..) {
+                    if !self.is_move_self_check(board, m) {
                         return true;
                     }
                 }
-                move_vec.clear();
             }
         }
 
