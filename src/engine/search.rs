@@ -481,6 +481,7 @@ impl PVSearch {
             }
             iter_depth += 1;
         }
+        self.ttable.age_up(2);
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         println!(
@@ -560,6 +561,7 @@ impl PVSearch {
             }
             iter_depth += 1;
         }
+        self.ttable.age_up(2);
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
         // Note that the print statements in iterative deepening take a

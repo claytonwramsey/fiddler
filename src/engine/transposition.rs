@@ -26,9 +26,9 @@ pub struct TTable {
     ///
     entries: Vec<TTableEntry>,
     ///
-    /// Number of occupied slots. Since each entry has two slots (for most 
+    /// Number of occupied slots. Since each entry has two slots (for most
     /// recent and deepest), this can be at most double the length of `entries`.
-    /// 
+    ///
     occupancy: usize,
 }
 
@@ -67,7 +67,7 @@ struct TTableEntry {
     pub recent: Slot,
     ///
     /// The data with the deepest evaluation ever requested in this entry.
-    /// 
+    ///
     pub deepest: Slot,
 }
 
@@ -79,9 +79,22 @@ struct Slot {
     ///
     pub hash: u64,
     ///
+    /// The age of this slot. Initialized to zero, and then incremented every
+    /// time the transposition table is aged up.
+    ///
+    pub age: u8,
+    ///
     /// The data for this slot.
-    /// 
+    ///
     pub data: Option<EvalData>,
+}
+
+impl Slot {
+    pub const EMPTY: Slot = Slot {
+        hash: BAD_HASH,
+        age: 0,
+        data: None,
+    };
 }
 
 impl TTable {
@@ -93,18 +106,27 @@ impl TTable {
             sentinel: None,
             entries: vec![
                 TTableEntry {
-                    recent: Slot { 
-                        hash: BAD_HASH, 
-                        data: None
-                    },
-                    deepest: Slot { 
-                        hash: BAD_HASH, 
-                        data: None
-                    },
+                    recent: Slot::EMPTY,
+                    deepest: Slot::EMPTY,
                 };
                 capacity
             ],
             occupancy: 0,
+        }
+    }
+
+    ///
+    /// Age up all the entries in this table, and for any slot which is at
+    /// least as old as the max age, evict it.
+    ///
+    pub fn age_up(&mut self, max_age: u8) {
+        for entry in self.entries.iter_mut() {
+            for slot in [&mut entry.recent, &mut entry.deepest] {
+                slot.age += 1;
+                if slot.age >= max_age {
+                    *slot = Slot::EMPTY;
+                }
+            }
         }
     }
 
@@ -117,9 +139,10 @@ impl TTable {
             // We trust that this is safe since we modulo'd by the length.
             self.entries.get_unchecked_mut(index)
         };
-        let new_slot = Slot{
+        let new_slot = Slot {
             hash: key.hash,
-            data: Some(value)
+            age: 0,
+            data: Some(value),
         };
         let overwrite_deepest = match entry.deepest.data {
             Some(data) => value.depth >= data.depth,
@@ -127,7 +150,7 @@ impl TTable {
                 // increment occupancy because we are overwriting None
                 self.occupancy += 1;
                 true
-            },
+            }
         };
         if overwrite_deepest {
             entry.deepest = new_slot;
@@ -146,13 +169,15 @@ impl TTable {
             .entries
             .iter()
             .map(|_| TTableEntry {
-                recent: Slot { 
-                    hash: BAD_HASH, 
-                    data: None 
+                recent: Slot {
+                    hash: BAD_HASH,
+                    age: 0,
+                    data: None,
                 },
-                deepest: Slot { 
-                    hash: BAD_HASH, 
-                    data: None 
+                deepest: Slot {
+                    hash: BAD_HASH,
+                    age: 0,
+                    data: None,
                 },
             })
             .collect();
@@ -161,18 +186,18 @@ impl TTable {
 
     #[inline]
     ///
-    /// Get the fill proportion of this transposition table. The fill 
+    /// Get the fill proportion of this transposition table. The fill
     /// proportion is 0 for an empty table and 1 for a completely full one.
-    /// 
+    ///
     pub fn fill_rate(&self) -> f32 {
         (self.occupancy as f32) / (2. * self.entries.len() as f32)
     }
 
     #[inline]
     ///
-    /// Get the fill rate proportion of this transposition table out of 1000. 
+    /// Get the fill rate proportion of this transposition table out of 1000.
     /// Typically used for UCI.
-    /// 
+    ///
     pub fn fill_rate_permill(&self) -> u16 {
         (self.occupancy * 500 / self.entries.len()) as u16
     }
@@ -195,6 +220,10 @@ impl Index<&Board> for TTable {
             self.entries.get_unchecked(index)
         };
 
+        // Theoretically, we would need to check for key equality (such as the
+        // original board) here, but in practice key collisions are so rare
+        // that the extra performance loss makes it not worth it.
+
         if entry.deepest.hash == key.hash {
             return &entry.deepest.data;
         }
@@ -202,19 +231,6 @@ impl Index<&Board> for TTable {
         if entry.recent.hash == key.hash {
             return &entry.recent.data;
         }
-
-        /*
-        // Although this line is theoretically needed, in practice, there are
-        // essentially no Zobrist hash collisions. We skip this step to save
-        // speed. A collision here would however be a logic error.
-
-        // Since the hashes matched, these positions are likely equal.
-        // Check whether they're truly equal.
-        if *key != entry.key {
-            println!("true zobrist collision!");
-            return &self.sentinel;
-        }
-        */
 
         &self.sentinel
     }
