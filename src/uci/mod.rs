@@ -4,8 +4,10 @@ use std::time::Duration;
 use crate::base::Move;
 use crate::engine::Eval;
 
+mod send;
+pub use crate::uci::send::*;
+
 pub mod parse;
-pub mod send;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 ///
@@ -217,14 +219,14 @@ pub enum UciMessage {
 
 impl fmt::Display for UciMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", send::build_message(self))
+        write!(f, "{}", build_message(self))
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 ///
 /// Information about an engine's search state.
-///
+//
 pub enum EngineInfo {
     ///
     /// The depth to which this information was created.
