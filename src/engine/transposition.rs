@@ -93,13 +93,13 @@ impl TTable {
     /// least as old as the max age, evict it.
     pub fn age_up(&mut self, max_age: u8) {
         for entry in self.entries.iter_mut() {
-            for slot in [&mut entry.recent, &mut entry.deepest] {
-                if slot.data.is_some() {
-                    slot.age += 1;
-                    if slot.age >= max_age {
-                        self.occupancy -= 1;
-                        *slot = Slot::EMPTY;
-                    }
+            // do not alter the most recent one since it will be overwritten 
+            // anyway if needed
+            if entry.deepest.data.is_some() {
+                entry.deepest.age += 1;
+                if entry.deepest.age >= max_age {
+                    self.occupancy -= 1;
+                    entry.deepest = Slot::EMPTY;
                 }
             }
         }
