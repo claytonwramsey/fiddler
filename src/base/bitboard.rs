@@ -94,7 +94,10 @@ impl Shl<i8> for Bitboard {
 
     #[inline]
     fn shl(self, rhs: i8) -> Self::Output {
-        Bitboard(self.0 << rhs)
+        match rhs < 0 {
+            false => Bitboard(self.0 << rhs),
+            true => Bitboard(self.0 >> -rhs),
+        }
     }
 }
 

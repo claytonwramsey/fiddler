@@ -34,7 +34,6 @@ pub struct MoveGenerator {
     between: [[Bitboard; 64]; 64],
 
     /// A lookup table for the squares on a line between any two squares,
-
     /// either down a row like a rook or diagonal like a bishop.
     /// `lines[A1][B2]` would return a bitboard with active squares down the
     /// main diagonal.
@@ -52,10 +51,12 @@ pub struct CheckInfo {
     /// The locations of pieces that are blocking would-be checkers from the
     /// opponent.
     king_blockers: [Bitboard; 2],
+
     #[allow(unused)]
     /// The locations of pieces which are pinning their corresponding blockers
     /// in `king_blockers`.
     pinners: [Bitboard; 2],
+
     #[allow(unused)]
     /// The squares which each piece could move to to check the opposing king.
     check_squares: [Bitboard; Piece::NUM_TYPES],
@@ -251,11 +252,7 @@ impl MoveGenerator {
             let player = board.player_to_move;
             let king_sq = Square::try_from(board[Piece::King] & board[player]).unwrap();
             let enemy = board[!board.player_to_move];
-
-            let capture_bb = match board.player_to_move {
-                Color::White => to_bb >> 8,
-                Color::Black => to_bb << 8,
-            };
+            let capture_bb = to_bb << -board.player_to_move.pawn_direction().0;
 
             let new_occupancy = board.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
 
@@ -416,24 +413,76 @@ impl MoveGenerator {
     }
 
     /// Generate the moves all pawns can make and populate `moves` with those
-    /// moves.
+    /// moves. `target` is the set of squares for which it is desired to move a
+    /// pawn.
     fn pawn_assistant(&self, board: &Board, color: Color, moves: &mut Vec<Move>, target: Bitboard) {
-        let about_to_promote_bb = (!color).pawn_start_rank();
         let color_occupancy = board[color];
+        let enemy_occupancy = board[!color];
+        let occupancy = color_occupancy | enemy_occupancy;
+        let unoccupied = !occupancy;
         let pawns = board[Piece::Pawn] & color_occupancy;
-        let promoting_pawns = pawns & about_to_promote_bb;
-        let non_promoting_pawns = pawns ^ promoting_pawns;
+        let rank8 = color.pawn_promote_rank();
+        let not_rank8 = !rank8;
+        let rank3 = match color {
+            Color::White => Bitboard(0xFF0000),
+            Color::Black => Bitboard(0xFF0000000000),
+        };
+        let direction = color.pawn_direction();
+        let double_direction = 2 * direction;
 
-        // TODO use bitshifts to accelerate pawn move generation
-        for sq in non_promoting_pawns {
-            bitboard_to_moves(sq, self.pawn_moves(board, sq, color) & target, moves);
+        let mut singles = (pawns << direction.0) & unoccupied;
+        let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
+        singles &= target;
+
+        for to_sq in singles & not_rank8 {
+            moves.push(Move::normal(to_sq - direction, to_sq));
         }
-        for sq in promoting_pawns {
-            let pmoves_bb = self.pawn_moves(board, sq, color) & target;
-            bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Queen), moves);
-            bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Knight), moves);
-            bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Bishop), moves);
-            bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Rook), moves);
+        for to_sq in doubles {
+            moves.push(Move::normal(to_sq - double_direction, to_sq));
+        }
+
+        let capture_dir_e = direction + Direction::EAST;
+        let capture_dir_w = direction + Direction::WEST;
+
+        let mut capture_mask = enemy_occupancy;
+        if let Some(ep_square) = board.en_passant_square {
+            capture_mask |= Bitboard::from(ep_square);
+        }
+        capture_mask &= target;
+
+        // prevent pawns from capturing by wraparound
+        let not_westmost = Bitboard(0xFEFEFEFEFEFEFEFE);
+        let not_eastmost = Bitboard(0x7F7F7F7F7F7F7F7F);
+        let capture_e = ((pawns & not_eastmost) << capture_dir_e.0) & capture_mask;
+        let capture_w = ((pawns & not_westmost) << capture_dir_w.0) & capture_mask;
+
+        for to_sq in capture_e & not_rank8 {
+            moves.push(Move::normal(to_sq - capture_dir_e, to_sq));
+        }
+        for to_sq in capture_w & not_rank8 {
+            moves.push(Move::normal(to_sq - capture_dir_w, to_sq));
+        }
+
+        for to_sq in singles & rank8 {
+            let from_sq = to_sq - direction;
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Queen));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Knight));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Bishop));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Rook));
+        }
+        for to_sq in capture_e & rank8 {
+            let from_sq = to_sq - capture_dir_e;
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Queen));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Knight));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Bishop));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Rook));
+        }
+        for to_sq in capture_w & rank8 {
+            let from_sq = to_sq - capture_dir_w;
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Queen));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Knight));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Bishop));
+            moves.push(Move::promoting(from_sq, to_sq, Piece::Rook));
         }
     }
 
