@@ -2,7 +2,7 @@ use std::fmt;
 use std::time::Duration;
 
 use crate::base::Move;
-use crate::engine::Eval;
+use crate::base::Eval;
 
 mod send;
 pub use crate::uci::send::*;

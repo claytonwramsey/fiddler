@@ -5,7 +5,7 @@ use crate::base::Game;
 use crate::base::MoveGenerator;
 use crate::base::Square;
 use crate::engine::greedy::greedy_evaluate;
-use crate::engine::Eval;
+use crate::base::Eval;
 
 type ValueTable = [f64; 64];
 
@@ -58,7 +58,7 @@ const BISHOP_VALUES: ValueTable = [
 ];
 
 /// The value of having an opponent's pawn doubled.
-const DOUBLED_PAWN_VALUE: Eval = Eval(100);
+const DOUBLED_PAWN_VALUE: Eval = Eval::millipawns(100);
 
 /// Evaluate a position by both its material and the positional value of the
 /// position.
@@ -73,7 +73,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
             }
         }
         (true, None) => {
-            return Eval(0);
+            return Eval::DRAW;
         }
         _ => {}
     };
@@ -81,7 +81,7 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let b = g.board();
     let starting_eval = greedy_evaluate(b);
 
-    let mut positional_eval = Eval(0);
+    let mut positional_eval = Eval::DRAW;
 
     for pt in [Piece::Pawn, Piece::Bishop, Piece::Knight, Piece::King] {
         for sq in b[pt] & b[Color::White] {
@@ -149,7 +149,7 @@ mod tests {
     fn test_equal_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
-        assert_eq!(positional_evaluate(&mut g, &mgen), Eval(0));
+        assert_eq!(positional_evaluate(&mut g, &mgen), Eval::DRAW);
     }
 
     #[test]
@@ -159,6 +159,6 @@ mod tests {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
         g.make_move(Move::normal(Square::F2, Square::F3));
-        assert!(positional_evaluate(&mut g, &mgen) < Eval(0));
+        assert!(positional_evaluate(&mut g, &mgen) < Eval::DRAW);
     }
 }

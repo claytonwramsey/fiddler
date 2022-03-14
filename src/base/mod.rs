@@ -24,6 +24,9 @@ pub mod constants;
 pub mod direction;
 pub use crate::base::direction::Direction;
 
+mod eval;
+pub use eval::Eval;
+
 pub mod game;
 pub use crate::base::game::Game;
 
@@ -57,3 +60,4 @@ pub use crate::base::color::Color;
 
 /// A performance testing module to record the speed of move generation.
 pub mod perft;
+

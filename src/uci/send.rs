@@ -1,4 +1,4 @@
-use crate::engine::Eval;
+use crate::base::Eval;
 use crate::uci::OptionType;
 use crate::uci::UciMessage;
 
@@ -132,7 +132,7 @@ mod tests {
     use crate::base::Move;
     use crate::base::Piece;
     use crate::base::Square;
-    use crate::engine::Eval;
+    use crate::base::Eval;
 
     use std::time::Duration;
 

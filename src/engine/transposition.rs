@@ -2,7 +2,7 @@ use std::ops::Index;
 
 use crate::base::Board;
 use crate::base::Move;
-use crate::engine::Eval;
+use crate::base::Eval;
 
 /// Convenient bad-key value which may help with debugging.
 const BAD_HASH: u64 = 0xDEADBEEF;
@@ -226,8 +226,8 @@ mod tests {
         let b = Board::default();
         let data = EvalData {
             depth: 0,
-            upper_bound: Eval(0),
-            lower_bound: Eval(0),
+            upper_bound: Eval::DRAW,
+            lower_bound: Eval::DRAW,
             critical_move: Move::BAD_MOVE,
         };
         ttable.store(b, data);

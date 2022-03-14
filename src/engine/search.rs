@@ -2,7 +2,7 @@ use crate::base::algebraic::algebraic_from_move;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::positional::positional_evaluate;
 use crate::engine::transposition::{EvalData, TTable};
-use crate::engine::Eval;
+use crate::base::Eval;
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -66,7 +66,7 @@ impl PVSearch {
         self.num_nodes_evaluated += 1;
 
         if timeout.is_over() {
-            return (Move::BAD_MOVE, Eval(0));
+            return (Move::BAD_MOVE, Eval::DRAW);
         }
 
         if alpha_in >= Eval::mate_in(1) {
@@ -139,7 +139,7 @@ impl PVSearch {
                 return Eval::MIN;
             }
             if *m == retrieved_killer_move {
-                return Eval::MIN + Eval(1);
+                return Eval::MIN + Eval::millipawns(1);
             }
             -candidacy(g, mgen, *m)
         });
@@ -206,7 +206,7 @@ impl PVSearch {
                     depth_so_far + 1,
                     g,
                     mgen,
-                    -alpha.step_forward() - Eval(1),
+                    -alpha.step_forward() - Eval::millipawns(1),
                     -alpha.step_forward(),
                     timeout,
                 )
@@ -361,7 +361,7 @@ impl PVSearch {
                     depth_so_far + 1,
                     g,
                     mgen,
-                    -alpha.step_forward() - Eval(1),
+                    -alpha.step_forward() - Eval::millipawns(1),
                     -alpha.step_forward(),
                     timeout,
                 )
@@ -461,7 +461,7 @@ impl PVSearch {
         let tic = Instant::now();
         let iter_min = min(4, self.depth);
         let mut iter_depth = iter_min;
-        let mut eval = Eval(0);
+        let mut eval = Eval::DRAW;
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {

@@ -2,7 +2,8 @@ use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::base::Piece;
-use crate::engine::{greedy, positional, Eval};
+use crate::base::Eval;
+use crate::engine::{greedy, positional};
 use std::cmp::max;
 
 /// Create an estimate for how good a move is.
@@ -21,7 +22,7 @@ pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
     };
     let positional_capture = match capture_type {
         Some(p) => positional::value_at_square(p, m.to_square()),
-        None => Eval(0),
+        None => Eval::DRAW,
     };
 
     let positional_delta = positional_gain + positional_capture - positional_loss;
@@ -29,7 +30,7 @@ pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
     // Best case, we keep the piece we captured
     let mut best_case_material = match capture_type {
         Some(p) => greedy::piece_value(p),
-        None => Eval(0),
+        None => Eval::DRAW,
     };
     if promote_type != None {
         best_case_material +=
@@ -38,5 +39,5 @@ pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
     //Worst case, we lose the piece we moved
     let worst_case_material = best_case_material - greedy::piece_value(mover_type);
 
-    positional_delta + max(worst_case_material, Eval(0))
+    positional_delta + max(worst_case_material, Eval::DRAW)
 }

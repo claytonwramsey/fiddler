@@ -1,7 +1,7 @@
 use crate::base::Board;
 use crate::base::Color;
 use crate::base::Piece;
-use crate::engine::Eval;
+use crate::base::Eval;
 
 /// Get the value of one piece by its type.
 pub fn piece_value(pt: Piece) -> Eval {
@@ -17,7 +17,7 @@ pub fn piece_value(pt: Piece) -> Eval {
 
 /// Evaluate a position solely by the amount of material available.
 pub fn greedy_evaluate(b: &Board) -> Eval {
-    let mut eval = Eval(0);
+    let mut eval = Eval::DRAW;
 
     let white_occupancy = b[Color::White];
     let black_occupancy = b[Color::Black];
