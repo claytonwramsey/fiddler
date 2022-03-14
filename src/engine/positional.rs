@@ -78,8 +78,8 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
         _ => {}
     };
 
-    let starting_eval = greedy_evaluate(g, mgen);
     let b = g.board();
+    let starting_eval = greedy_evaluate(b);
 
     let mut positional_eval = Eval(0);
 

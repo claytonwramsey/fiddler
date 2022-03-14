@@ -1,6 +1,5 @@
+use crate::base::Board;
 use crate::base::Color;
-use crate::base::Game;
-use crate::base::MoveGenerator;
 use crate::base::Piece;
 use crate::engine::Eval;
 
@@ -17,9 +16,8 @@ pub fn piece_value(pt: Piece) -> Eval {
 }
 
 /// Evaluate a position solely by the amount of material available.
-pub fn greedy_evaluate(g: &mut Game, _mgen: &MoveGenerator) -> Eval {
+pub fn greedy_evaluate(b: &Board) -> Eval {
     let mut eval = Eval(0);
-    let b = g.board();
 
     let white_occupancy = b[Color::White];
     let black_occupancy = b[Color::Black];
