@@ -63,7 +63,7 @@ impl PVSearch {
         if alpha_in >= Eval::mate_in(1) {
             // we do not need to evaluate this position because we are
             // guaranteed a mate which is as fast or faster elsewhere.
-            return (Move::BAD_MOVE, Eval::mate_in(1));
+            return (Move::BAD_MOVE, Eval::mate_in(2));
         }
 
         // Lower bound on evaluation.
@@ -279,7 +279,13 @@ impl PVSearch {
 
         let player = g.board().player_to_move;
 
-        // Any position where the kind is in check is nowhere near quiet
+        if alpha_in >= Eval::mate_in(1) {
+            // we do not need to evaluate this position because we are
+            // guaranteed a mate which is as fast or faster elsewhere.
+            return (Move::BAD_MOVE, Eval::mate_in(2));
+        }
+
+        // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if g.board().is_king_checked(mgen) {
             return self.pvs(1, depth_so_far, g, mgen, alpha_in, beta_in, timeout);

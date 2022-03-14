@@ -94,12 +94,12 @@ impl TTable {
     pub fn age_up(&mut self, max_age: u8) {
         for entry in self.entries.iter_mut() {
             for slot in [&mut entry.recent, &mut entry.deepest] {
-                slot.age += 1;
-                if slot.age >= max_age {
-                    if slot.data.is_some() {
+                if slot.data.is_some() {
+                    slot.age += 1;
+                    if slot.age >= max_age {
                         self.occupancy -= 1;
+                        *slot = Slot::EMPTY;
                     }
-                    *slot = Slot::EMPTY;
                 }
             }
         }
@@ -197,7 +197,7 @@ impl TTable {
 
 impl Default for TTable {
     fn default() -> TTable {
-        TTable::with_capacity(1 << 20)
+        TTable::with_capacity(1 << 16)
     }
 }
 
