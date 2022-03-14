@@ -495,19 +495,51 @@ impl MoveGenerator {
         moves: &mut Vec<Move>,
         target: Bitboard,
     ) {
-        let about_to_promote_bb = (!color).pawn_start_rank();
+        
         let color_occupancy = board[color];
-        let pawns = board[Piece::Pawn] & color_occupancy;
-        let promoting_pawns = pawns & about_to_promote_bb;
-        let non_promoting_pawns = pawns ^ promoting_pawns;
+        let enemy_occupancy = board[!color];
+        let rank8 = color.pawn_promote_rank();
+        let not_rank8 = !rank8;
+        let occupancy = color_occupancy | enemy_occupancy;
+        let unoccupied = !occupancy;
+        let direction = color.pawn_direction();
+        let pawns = color_occupancy & board[Piece::Pawn];
 
-        // TODO use bitshifts to accelerate pawn move generation
-        for sq in non_promoting_pawns {
-            bitboard_to_moves(sq, self.pawn_moves(board, sq, color) & target, moves);
+        let singles = (pawns << direction.0) & unoccupied & target;
+        
+        let capture_dir_e = direction + Direction::EAST;
+        let capture_dir_w = direction + Direction::WEST;
+
+        let mut capture_mask = enemy_occupancy;
+        if let Some(ep_square) = board.en_passant_square {
+            capture_mask |= Bitboard::from(ep_square);
         }
-        for sq in promoting_pawns {
-            let pmoves_bb = self.pawn_moves(board, sq, color) & target;
-            bitboard_to_promotions(sq, pmoves_bb, Some(Piece::Queen), moves);
+        capture_mask &= target;
+
+        // prevent pawns from capturing by wraparound
+        let not_westmost = Bitboard(0xFEFEFEFEFEFEFEFE);
+        let not_eastmost = Bitboard(0x7F7F7F7F7F7F7F7F);
+        let capture_e = ((pawns & not_eastmost) << capture_dir_e.0) & capture_mask;
+        let capture_w = ((pawns & not_westmost) << capture_dir_w.0) & capture_mask;
+
+        for to_sq in singles & rank8 {
+            moves.push(Move::promoting(to_sq - direction, to_sq, Piece::Queen));
+        }
+
+        for to_sq in capture_e & not_rank8 {
+            moves.push(Move::normal(to_sq - capture_dir_e, to_sq));
+        }
+
+        for to_sq in capture_w & not_rank8 {
+            moves.push(Move::normal(to_sq - capture_dir_w, to_sq));
+        }
+
+        for to_sq in capture_e & rank8 {
+            moves.push(Move::promoting(to_sq - capture_dir_e, to_sq, Piece::Queen));
+        }
+
+        for to_sq in capture_w & rank8 {
+            moves.push(Move::promoting(to_sq - capture_dir_w, to_sq, Piece::Queen));
         }
     }
 
