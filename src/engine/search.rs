@@ -11,17 +11,22 @@ use std::time::Instant;
 use super::candidacy::candidacy;
 use super::TimeoutCondition;
 
-const MAX_TRANSPOSITION_DEPTH: i8 = 7;
+/// Configuration options for a search.
+struct SearchConfig {
 
-#[allow(unused)]
-/// The number of moves which are searched to a full depth before applying Late
-/// Move Evaluation.
-const NUM_EARLY_MOVES: u8 = 4;
+    /// The maximum depth to which the engine will add or edit entries in the 
+    /// transposition table.
+    max_transposition_depth: u8,
+
+    /// The number of moves at each layer which will be searched to a full 
+    /// depth, as opposed to a lower-than-target depth.
+    num_early_moves: u8,
+}
 
 /// A chess engine which uses Principal Variation Search.
 pub struct PVSearch {
     /// The depth at which this algorithm will evaluate a position.
-    depth: i8,
+    depth: u8,
 
     /// The transposition table.
     ttable: TTable,
@@ -35,6 +40,9 @@ pub struct PVSearch {
 
     /// The cumulative number of transpositions.
     num_transpositions: u64,
+
+    /// The configuration of this search.
+    config: SearchConfig,
 }
 
 impl PVSearch {
@@ -43,11 +51,12 @@ impl PVSearch {
     /// This search uses Negamax, which inverts at every step to save on
     /// branches. This will return a lower bound on the position's value for
     /// the player to move, where said lower bound is exact if it is less than
-    /// `beta_in`.
+    /// `beta_in`. `depth_to_go` is signed because late-move-reduction may 
+    /// cause it to become negative.
     pub fn pvs(
         &mut self,
         depth_to_go: i8,
-        depth_so_far: i8,
+        depth_so_far: u8,
         g: &mut Game,
         mgen: &MoveGenerator,
         alpha_in: Eval,
@@ -74,7 +83,7 @@ impl PVSearch {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut stored_move = Move::BAD_MOVE;
-        if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
+        if depth_so_far <= self.config.max_transposition_depth {
             if let Some(edata) = self.ttable[g.board()] {
                 self.num_transpositions += 1;
                 stored_move = edata.critical_move;
@@ -166,7 +175,7 @@ impl PVSearch {
             if can_use_killers {
                 self.killer_moves[killer_index] = critical_move;
             }
-            if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
+            if depth_so_far <= self.config.max_transposition_depth {
                 self.ttable_store(
                     g,
                     depth_to_go,
@@ -182,7 +191,7 @@ impl PVSearch {
         let mut num_moves_checked = 1;
 
         for m in moves_iter {
-            let late_move = num_moves_checked > NUM_EARLY_MOVES
+            let late_move = num_moves_checked > self.config.num_early_moves
                 && !g.board().is_move_capture(m)
                 && m.promote_type().is_none();
             g.make_move(m);
@@ -246,7 +255,7 @@ impl PVSearch {
             num_moves_checked += 1;
         }
 
-        if depth_so_far <= MAX_TRANSPOSITION_DEPTH {
+        if depth_so_far <= self.config.max_transposition_depth {
             self.ttable_store(
                 g,
                 depth_to_go,
@@ -268,7 +277,7 @@ impl PVSearch {
     fn quiesce(
         &mut self,
         depth_to_go: i8,
-        depth_so_far: i8,
+        depth_so_far: u8,
         g: &mut Game,
         mgen: &MoveGenerator,
         alpha_in: Eval,
@@ -432,8 +441,8 @@ impl PVSearch {
     /// Set the search depth of the engine. This is preferred over strictly
     /// mutating the engine, as the depth may alter some data structures used
     /// by the engine.
-    pub fn set_depth(&mut self, depth: usize) {
-        self.depth = depth as i8;
+    pub fn set_depth(&mut self, depth: u8) {
+        self.depth = depth;
         for _ in 0..depth {
             self.killer_moves.push(Move::BAD_MOVE);
         }
@@ -456,7 +465,7 @@ impl PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let mut search_result = self.pvs(iter_depth, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
+            let mut search_result = self.pvs(iter_depth as i8, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
             search_result.1 *= 1 - 2 * g.board().player_to_move as i32;
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
@@ -527,7 +536,7 @@ impl PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let result = self.pvs(iter_depth, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
+            let result = self.pvs(iter_depth as i8, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
                 successful_nodes_evaluated = self.num_nodes_evaluated;
@@ -568,6 +577,10 @@ impl Default for PVSearch {
             killer_moves: Vec::new(),
             num_nodes_evaluated: 0,
             num_transpositions: 0,
+            config: SearchConfig {
+                max_transposition_depth: 8,
+                num_early_moves: 4,
+            }
         };
         searcher.set_depth(5);
         searcher
@@ -577,7 +590,7 @@ impl Default for PVSearch {
 #[inline]
 /// Compute the effective branch factor given a given search depth and a number
 /// of nodes evaluated.
-fn branch_factor(depth: i8, num_nodes: u64) -> f64 {
+fn branch_factor(depth: u8, num_nodes: u64) -> f64 {
     (num_nodes as f64).powf(1f64 / (depth as f64))
 }
 
@@ -588,7 +601,6 @@ pub mod tests {
     use crate::base::square::*;
     use crate::engine::NoTimeout;
     use crate::fens::*;
-    use std::collections::HashMap;
 
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.
@@ -644,33 +656,23 @@ pub mod tests {
     #[test]
     /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
     fn test_my_special_puzzle() {
-        let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-        let mut e = PVSearch::default();
-        e.set_depth(9);
-
-        assert_eq!(
-            e.best_move(&mut g, &mgen, &NoTimeout),
-            Move::normal(Square::F2, Square::F7)
-        );
+        test_eval_helper(MY_PUZZLE_FEN, Eval::mate_in(9), 9);
     }
 
     /// A helper function which ensures that the evaluation of a position is
-    /// equal to what we expect it to be.
-    fn test_eval_helper(fen: &str, eval: Eval, depth: usize) {
+    /// equal to what we expect it to be. It will check both a normal search 
+    /// and a search without the transposition table.
+    fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(depth);
 
         assert_eq!(e.evaluate(&mut g, &mgen, &NoTimeout), eval);
+        e.config.max_transposition_depth = 0;
+        e.clear();
+        assert_eq!(e.evaluate(&mut g, &mgen, &NoTimeout), eval);
     }
 
-    #[allow(unused)]
-    /// Print a map from moves to evals in a user-readable way.
-    fn print_move_map(map: &HashMap<Move, Eval>) {
-        for (m, eval) in map {
-            println!("{m}:{eval}");
-        }
-    }
+
 }

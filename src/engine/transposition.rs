@@ -197,7 +197,7 @@ impl TTable {
 
 impl Default for TTable {
     fn default() -> TTable {
-        TTable::with_capacity(1 << 16)
+        TTable::with_capacity(1 << 18)
     }
 }
 

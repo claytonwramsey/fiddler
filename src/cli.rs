@@ -273,7 +273,7 @@ impl<'a> CrabchessApp<'a> {
     fn select_engine(&mut self, opts: String) -> CommandResult {
         // For now, we just use it to set the depth, as there are no engines to
         // select.
-        match opts.parse::<usize>() {
+        match opts.parse::<u8>() {
             Ok(num) => {
                 self.engine.set_depth(num);
                 Ok(())
