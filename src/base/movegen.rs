@@ -10,78 +10,60 @@ use crate::base::Square;
 use std::convert::TryFrom;
 
 #[derive(Clone, Debug)]
-///
 /// A struct which contains all the necessary data to create moves.
-///
 pub struct MoveGenerator {
-    ///
     /// A magic move generator.
-    ///
     mtable: MagicTable,
-    ///
+
     /// A bitboard of all the squares which a pawn on the given square can
     /// attack. The first index is for White's pawn attacks, the second is for
     /// Black's.
-    ///
     pawn_attacks: [[Bitboard; 64]; 2],
-    ///
+
     /// A bitboard of all the squares a king can move to if his position is the
     /// index in the list.
-    ///
     king_moves: [Bitboard; 64],
-    ///
+
     /// A bitboard of all the squares a knight can move to if its position is
     /// the index of the list.
-    ///
     knight_moves: [Bitboard; 64],
-    ///
+
     /// A lookup table for the squares "between" two other squares, either down
     /// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
     /// would return a `Bitboard` with A2 as its only active square.
-    ///
     between: [[Bitboard; 64]; 64],
-    ///
+
     /// A lookup table for the squares on a line between any two squares,
+
     /// either down a row like a rook or diagonal like a bishop.
     /// `lines[A1][B2]` would return a bitboard with active squares down the
     /// main diagonal.
-    ///
     lines: [[Bitboard; 64]; 64],
 }
 
-///
 /// A struct containing information for generating moves without self-checking,
 /// such as the necessary pieces to block the king. When a `Game` makes a move,
 /// this information is expected to be lost.
-///
 pub struct CheckInfo {
-    ///
     /// The locations of pieces which are checking the king in the current
     /// position.
-    ///
     checkers: Bitboard,
-    ///
+
     /// The locations of pieces that are blocking would-be checkers from the
     /// opponent.
     king_blockers: [Bitboard; 2],
     #[allow(unused)]
-    ///
     /// The locations of pieces which are pinning their corresponding blockers
     /// in `king_blockers`.
-    ///
     pinners: [Bitboard; 2],
     #[allow(unused)]
-    ///
     /// The squares which each piece could move to to check the opposing king.
-    ///
     check_squares: [Bitboard; Piece::NUM_TYPES],
 }
 
 impl MoveGenerator {
     #[inline]
-    ///
     /// Get all the legal moves on a board.
-    ///
     pub fn get_moves(&self, board: &Board) -> Vec<Move> {
         let check_info = self.create_check_info(board);
 
@@ -101,9 +83,7 @@ impl MoveGenerator {
     }
 
     #[inline]
-    ///
     /// Get moves which are "loud," i.e. captures or checks.
-    ///
     pub fn get_loud_moves(&self, board: &Board) -> Vec<Move> {
         let check_info = self.create_check_info(board);
         if check_info.checkers != Bitboard::EMPTY {
@@ -121,9 +101,7 @@ impl MoveGenerator {
             .collect()
     }
 
-    ///
     /// Does the player to move have any legal moves in this position?
-    ///
     pub fn has_moves(&self, board: &Board) -> bool {
         let player = board.player_to_move;
         let player_occupancy = board[player];
@@ -193,9 +171,7 @@ impl MoveGenerator {
         false
     }
 
-    ///
     /// Construct check information for a given board.
-    ///
     pub fn create_check_info(&self, b: &Board) -> CheckInfo {
         let white_king_sq = Square::try_from(b[Piece::King] & b[Color::White]).unwrap();
         let black_king_sq = Square::try_from(b[Piece::King] & b[Color::Black]).unwrap();
@@ -224,14 +200,12 @@ impl MoveGenerator {
         }
     }
 
-    ///
     /// Examine the pins in a position to generate the set of pinners and
     /// blockers on the square `sq`. The first return val is the set of
     /// blockers, and the second return val is the set of pinners. The blockers
     /// are pieces of either color that prevent an attack on `sq`. `sliders` is
     /// the set of all squares containing attackers we are interested in -
     /// typically, this is the set of all pieces owned by one color.
-    ///  
     fn analyze_pins(&self, board: &Board, sliders: Bitboard, sq: Square) -> (Bitboard, Bitboard) {
         let mut blockers = Bitboard::EMPTY;
         let mut pinners = Bitboard::EMPTY;
@@ -264,10 +238,8 @@ impl MoveGenerator {
     }
 
     #[inline]
-    ///
     /// Determine whether a move is valid in the position on the board, given
     /// that it was generated during the `get_moves` process.
-    ///
     fn validate(&self, board: &Board, check_info: &CheckInfo, m: Move) -> bool {
         // the pieces which are pinned
         let pinned = check_info.king_blockers[board.player_to_move as usize];
@@ -330,10 +302,8 @@ impl MoveGenerator {
             || self.aligned(m.from_square(), m.to_square(), king_sq)
     }
 
-    ///
     /// In a given board state, is a move illegal because it would be a
     /// self-check?
-    ///
     pub fn is_move_self_check(&self, board: &Board, m: Move) -> bool {
         let player = board.player_to_move;
         let player_king_bb = board[Piece::King] & board[player];
@@ -372,26 +342,20 @@ impl MoveGenerator {
     }
 
     #[inline]
-    ///
     /// In a given board state, is a square attacked by the given color?
-    ///
     pub fn is_square_attacked_by(&self, board: &Board, sq: Square, color: Color) -> bool {
         self.get_square_attackers(board, sq, color) != Bitboard::EMPTY
     }
 
     #[inline]
-    ///
     /// Get the attackers of a given color on a square as a `Bitboard`
     /// representing the squares of the attackers.
-    ///
     pub fn get_square_attackers(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         self.square_attackers_with_occupancy(board, sq, color, board.occupancy())
     }
 
-    ///
     /// Enumerate the pseudolegal moves a player of the given color would be
     /// able to make if it were their turn to move.
-    ///
     fn all_moves(
         &self,
         board: &Board,
@@ -407,9 +371,7 @@ impl MoveGenerator {
     }
 
     #[allow(unused)]
-    ///
     /// Enumerate the evasions in a position, in case the king is in check.
-    ///
     fn evasions(&self, board: &Board, color: Color, check_info: &CheckInfo, moves: &mut Vec<Move>) {
         let king_sq = Square::try_from(board[Piece::King] & board[board.player_to_move]).unwrap();
 
@@ -437,9 +399,7 @@ impl MoveGenerator {
     }
 
     #[inline]
-    ///
     /// Enumerate the "loud" pseudolegal moves for a given board.
-    ///
     fn loud_moves(&self, board: &Board, _check_info: &CheckInfo, moves: &mut Vec<Move>) {
         let player = board.player_to_move;
         let target_sqs = board[!player];
@@ -455,10 +415,8 @@ impl MoveGenerator {
         }
     }
 
-    ///
     /// Generate the moves all pawns can make and populate `moves` with those
     /// moves.
-    ///
     fn pawn_assistant(&self, board: &Board, color: Color, moves: &mut Vec<Move>, target: Bitboard) {
         let about_to_promote_bb = (!color).pawn_start_rank();
         let color_occupancy = board[color];
@@ -479,10 +437,8 @@ impl MoveGenerator {
         }
     }
 
-    ///
     /// Generate the loud moves all pawns can make and populate `moves` with
     /// those moves.
-    ///
     fn loud_pawn_assistant(
         &self,
         board: &Board,
@@ -506,10 +462,8 @@ impl MoveGenerator {
         }
     }
 
-    ///
     /// Generate all the moves for a knight, bishop, rook, or queen which end
     /// up on the target.
-    ///
     fn normal_piece_assistant(
         &self,
         board: &Board,
@@ -533,10 +487,8 @@ impl MoveGenerator {
         }
     }
 
-    ///
     /// Same functionality as get_square_attackers, but uses the provided
     /// occupancy bitboard (as opposed to the board's occupancy.)
-    ///
     fn square_attackers_with_occupancy(
         &self,
         board: &Board,
@@ -572,21 +524,17 @@ impl MoveGenerator {
     }
 
     #[inline]
-    ///
     /// Get the pseudolegal moves that a knight on the square `sq` could make in
     /// this position. `color` is the color of the piece at `sq`.
     /// bob seger.
-    ///
     fn knight_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         self.knight_moves[sq as usize] & !board[color]
     }
 
     #[inline]
-    ///
     /// Get the pseudolegal moves that a king on square `sq` could make in this
     /// position. Does not check if castling can be done through or out of
     /// check. `color` is the color of the piece at `sq`.
-    ///
     fn king_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         let mut moves = self.king_moves[sq as usize] & !board[color];
 
@@ -619,10 +567,8 @@ impl MoveGenerator {
         moves
     }
 
-    ///
     /// Get the pseudolegal moves that a pawn on square `sq` with color `color`
     /// could make in this position.
-    ///
     fn pawn_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         let dir = color.pawn_direction();
         let start_rank = color.pawn_start_rank();
@@ -643,11 +589,9 @@ impl MoveGenerator {
         target_squares
     }
 
-    ///
     /// Get the captures a pawn can make in the current position. The given
     /// color is the color that a pawn would be to generate the captures from
     /// this square. `color` is the color of the piece at `sq`.
-    ///
     fn pawn_captures(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         let mut capture_mask = board[!color];
         if let Some(ep_square) = board.en_passant_square {
@@ -658,37 +602,29 @@ impl MoveGenerator {
     }
 
     #[inline]
-    ///
     /// Get the pseudolegal moves that a bishop on square `sq` could make in
     /// this position. `color` is the color of the piece at `sq`.
-    ///
     fn bishop_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         get_bishop_attacks(board.occupancy(), sq, &self.mtable) & !board[color]
     }
 
     #[inline]
-    ///
     /// Get the pseudolegal moves that a rook on square `sq` could make in this
     /// position. `color` is the color of the piece at `sq`.
-    ///
     fn rook_moves(&self, board: &Board, sq: Square, color: Color) -> Bitboard {
         get_rook_attacks(board.occupancy(), sq, &self.mtable) & !board[color]
     }
 
     #[inline]
-    ///
     /// Get a bitboard of all the squares between the two given squares, along
     /// the moves of a bishop or rook.
-    ///
     pub fn between(&self, sq1: Square, sq2: Square) -> Bitboard {
         self.between[sq1 as usize][sq2 as usize]
     }
 
     #[inline]
-    ///
     /// Determine whether three squares are aligned according to rook or bishop
     /// directions.
-    ///
     pub fn aligned(&self, sq1: Square, sq2: Square, sq3: Square) -> bool {
         self.lines[sq1 as usize][sq2 as usize] & Bitboard::from(sq3) != Bitboard::EMPTY
     }
@@ -702,8 +638,8 @@ impl Default for MoveGenerator {
                 create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
                 create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
             ],
-            king_moves: create_step_attacks(&get_king_steps(), 1),
-            knight_moves: create_step_attacks(&get_knight_steps(), 2),
+            king_moves: create_step_attacks(&Direction::KING_STEPS, 1),
+            knight_moves: create_step_attacks(&Direction::KNIGHT_STEPS, 2),
             between: [[Bitboard::EMPTY; 64]; 64],
             lines: [[Bitboard::EMPTY; 64]; 64],
         };
@@ -738,11 +674,9 @@ impl Default for MoveGenerator {
     }
 }
 
-///
 /// Get the step attacks that could be made by moving in `dirs` from each point
 /// in the square. Exclude the steps that travel more than `max_dist` (this
 /// prevents overflow around the edges of the board).
-///
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard(0); 64];
     for (i, item) in attacks.iter_mut().enumerate() {
@@ -759,19 +693,15 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
 }
 
 #[inline]
-///
 /// Given a bitboard of possible to-squares and a fixed from-square, convert
 /// this to a list of `Move`s with promotion type `NO_TYPE`.
-///
 fn bitboard_to_moves(from_sq: Square, bb: Bitboard, target: &mut Vec<Move>) {
     bitboard_to_promotions(from_sq, bb, None, target);
 }
 
-///
 /// Given a bitboard of possible to-squares and a fixed from-square, convert
 /// this to a list of `Move`s with the given promotion type and push them onto
 /// the target.
-///
 fn bitboard_to_promotions(
     from_sq: Square,
     bb: Bitboard,
@@ -781,38 +711,6 @@ fn bitboard_to_promotions(
     for to_sq in bb {
         target.push(Move::new(from_sq, to_sq, promote_type));
     }
-}
-
-///
-/// Get the steps a king can make.
-///
-fn get_king_steps() -> Vec<Direction> {
-    vec![
-        Direction::NORTH,
-        Direction::NORTHEAST,
-        Direction::EAST,
-        Direction::SOUTHEAST,
-        Direction::SOUTH,
-        Direction::SOUTHWEST,
-        Direction::WEST,
-        Direction::NORTHWEST,
-    ]
-}
-
-///
-/// Get the steps a knight can make.
-///
-fn get_knight_steps() -> Vec<Direction> {
-    vec![
-        Direction::NNW,
-        Direction::NNE,
-        Direction::NEE,
-        Direction::SEE,
-        Direction::SSE,
-        Direction::SSW,
-        Direction::SWW,
-        Direction::NWW,
-    ]
 }
 
 #[cfg(test)]
@@ -833,10 +731,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that we can play Qf3+, the critical move in the Fried Liver
     /// opening.
-    ///
     fn test_best_queen_fried_liver() {
         let mg = MoveGenerator::default();
         let m = Move::new(Square::D1, Square::F3, None);
@@ -851,9 +747,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that capturing a pawn is parsed correctly.
-    ///
     fn test_pawn_capture_generated() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -866,9 +760,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// The pawn is checking the king. Is move enumeration correct?
-    ///
     fn test_enumerate_pawn_checking_king() {
         let mgen = MoveGenerator::default();
         let b = Board::from_fen(PAWN_CHECKING_KING_FEN).unwrap();
@@ -881,9 +773,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// In a mated position, make sure that the king has no moves.
-    ///
     fn test_white_mated_has_no_moves() {
         let b = Board::from_fen(WHITE_MATED_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -896,9 +786,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Check that the king has exactly one move in this position.
-    ///
     fn test_king_has_only_one_move() {
         let b = Board::from_fen(KING_HAS_ONE_MOVE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -907,9 +795,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that queenside castling actually works.
-    ///
     fn test_queenside_castle() {
         let b = Board::from_fen(BLACKQUEENSIDE_CASTLE_READY_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -919,9 +805,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that Black cannot castle because there is a knight in the way.
-    ///
     fn test_no_queenside_castle_through_knight() {
         let b = Board::from_fen(KNIGHT_PREVENTS_LONG_CASTLE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -931,10 +815,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that loud moves are generated correctly on the Fried Liver
     /// position.
-    ///
     fn test_get_loud_moves_fried_liver() {
         loud_moves_helper(FRIED_LIVER_FEN);
     }
@@ -960,9 +842,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a king can escape check without capturing the checker.
-    ///
     fn test_king_escape_without_capture() {
         let b = Board::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -984,9 +864,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that Black can promote a piece (on e1).
-    ///
     fn test_black_can_promote() {
         let b = Board::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1").unwrap();
         let mgen = MoveGenerator::default();
@@ -998,10 +876,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a pawn cannot en passant if doing so would put the king in
     /// check.
-    ///
     fn test_en_passant_pinned() {
         let b = Board::from_fen("8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2").unwrap();
         let mgen = MoveGenerator::default();
@@ -1010,10 +886,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a pinned piece cannot make a capture if it does not defend
     /// against the pin.
-    ///
     fn test_pinned_knight_capture() {
         let b = Board::from_fen("r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8")
             .unwrap();
@@ -1025,9 +899,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that en passant moves are generated correctly.
-    ///
     fn test_en_passant_generated() {
         let b = Board::from_fen(EN_PASSANT_READY_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -1038,9 +910,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a position where a rook is horizontal to the king is mate.
-    ///
     fn test_horizontal_rook_mate() {
         let b = Board::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32").unwrap();
         let mgen = MoveGenerator::default();
@@ -1049,10 +919,8 @@ mod tests {
         assert!(!mgen.has_moves(&b));
     }
 
-    ///
     /// A helper function that will force that the given FEN will have loud
     /// moves generated correctly.
-    ///
     fn loud_moves_helper(fen: &str) {
         let b = Board::from_fen(fen).unwrap();
         let mgen = MoveGenerator::default();

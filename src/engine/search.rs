@@ -14,48 +14,36 @@ use super::TimeoutCondition;
 const MAX_TRANSPOSITION_DEPTH: i8 = 7;
 
 #[allow(unused)]
-///
 /// The number of moves which are searched to a full depth before applying Late
 /// Move Evaluation.
-///
 const NUM_EARLY_MOVES: u8 = 4;
 
-///
 /// A chess engine which uses Principal Variation Search.
-///
 pub struct PVSearch {
-    ///
     /// The depth at which this algorithm will evaluate a position.
-    ///
     depth: i8,
-    ///
+
     /// The transposition table.
-    ///
     ttable: TTable,
-    ///
+
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
-    ///
     killer_moves: Vec<Move>,
-    ///
+
     /// The cumulative number of nodes evaluated in this evaluation event.
-    ///
     num_nodes_evaluated: u64,
-    ///
+
     /// The cumulative number of transpositions.
-    ///
     num_transpositions: u64,
 }
 
 impl PVSearch {
     #[allow(clippy::too_many_arguments)]
-    ///
     /// Use Principal Variation Search to evaluate the given game to a depth.
     /// This search uses Negamax, which inverts at every step to save on
     /// branches. This will return a lower bound on the position's value for
     /// the player to move, where said lower bound is exact if it is less than
     /// `beta_in`.
-    ///
     pub fn pvs(
         &mut self,
         depth_to_go: i8,
@@ -273,12 +261,10 @@ impl PVSearch {
     }
 
     #[allow(clippy::too_many_arguments)]
-    ///
     /// Use quiescent search (captures only) to evaluate a position as deep as
     /// it needs to go. The given `depth_to_go` does not alter the power of the
     /// search, but serves as a handy tool for the search to understand where
     /// it is.
-    ///
     fn quiesce(
         &mut self,
         depth_to_go: i8,
@@ -398,21 +384,17 @@ impl PVSearch {
         (critical_move, alpha)
     }
 
-    ///
     /// Clear out internal data.
-    ///
     pub fn clear(&mut self) {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         self.ttable.clear();
     }
 
-    ///
     /// Store data in the transposition table.
     /// `score` is the best score of the position as evaluated, while `alpha`
     /// and `beta` are the upper and lower bounds on the overall position due
     /// to alpha-beta pruning.
-    ///
     fn ttable_store(
         &mut self,
         g: &Game,
@@ -441,11 +423,9 @@ impl PVSearch {
         );
     }
 
-    ///
     /// Set the search depth of the engine. This is preferred over strictly
     /// mutating the engine, as the depth may alter some data structures used
     /// by the engine.
-    ///
     pub fn set_depth(&mut self, depth: usize) {
         self.depth = depth as i8;
         for _ in 0..depth {
@@ -454,9 +434,7 @@ impl PVSearch {
     }
 
     #[inline]
-    ///
     /// Return an evaluation on the current position.
-    ///
     pub fn evaluate(
         &mut self,
         g: &mut Game,
@@ -497,9 +475,7 @@ impl PVSearch {
         eval
     }
 
-    ///
     /// Get the evaluation on every legal move in the position.
-    ///
     pub fn evals(
         &mut self,
         g: &mut Game,
@@ -526,9 +502,7 @@ impl PVSearch {
         evals
     }
 
-    ///
     /// Get the best move in the position.
-    ///
     pub fn best_move(
         &mut self,
         g: &mut Game,
@@ -595,10 +569,8 @@ impl Default for PVSearch {
 }
 
 #[inline]
-///
 /// Compute the effective branch factor given a given search depth and a number
 /// of nodes evaluated.
-///
 fn branch_factor(depth: i8, num_nodes: u64) -> f64 {
     (num_nodes as f64).powf(1f64 / (depth as f64))
 }
@@ -613,9 +585,7 @@ pub mod tests {
     use std::collections::HashMap;
 
     #[test]
-    ///
     /// Test PVSearch's evaluation of the start position of the game.
-    ///
     pub fn test_eval_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
@@ -627,9 +597,7 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// Try finding the best starting move in the game.
-    ///
     pub fn test_get_starting_move() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
@@ -640,10 +608,8 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
-    ///
     fn test_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -657,26 +623,20 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// A test that the engine can find a mate in 1 move.
-    ///
     fn test_mate_in_1() {
         test_eval_helper(MATE_IN_1_FEN, Eval::mate_in(1), 2);
     }
 
     #[test]
-    ///
     /// A test that shows the engine can find a mate in 4 plies, given enough
     /// depth.
-    ///
     fn test_mate_in_4_ply() {
         test_eval_helper(MATE_IN_4_FEN, Eval::mate_in(4), 5);
     }
 
     #[test]
-    ///
     /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
-    ///
     fn test_my_special_puzzle() {
         let mut g = Game::from_fen(MY_PUZZLE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -689,10 +649,8 @@ pub mod tests {
         );
     }
 
-    ///
     /// A helper function which ensures that the evaluation of a position is
     /// equal to what we expect it to be.
-    ///
     fn test_eval_helper(fen: &str, eval: Eval, depth: usize) {
         let mut g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::default();
@@ -703,9 +661,7 @@ pub mod tests {
     }
 
     #[allow(unused)]
-    ///
     /// Print a map from moves to evals in a user-readable way.
-    ///
     fn print_move_map(map: &HashMap<Move, Eval>) {
         for (m, eval) in map {
             println!("{m}:{eval}");

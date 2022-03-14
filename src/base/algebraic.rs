@@ -7,12 +7,10 @@ use crate::base::Square;
 
 use std::convert::TryFrom;
 
-///
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.
 /// # Panics
 /// if the move given is illegal or otherwise invalid.
-///
 pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     //longest possible algebraic string would be something along the lines of
     //Qe4xd4# (7 chars)
@@ -104,10 +102,8 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
     s
 }
 
-///
 /// Given the string of an algebraic-notation move, get the `Move` which can be
 /// played. Will return Err if the string is invalid.
-///
 pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<Move, &'static str> {
     mgen.get_moves(b)
         .into_iter()
@@ -121,10 +117,8 @@ mod tests {
     use crate::base::square::*;
     use crate::fens::*;
     #[test]
-    ///
     /// Test that playing e4 can be successfully converted to its algebraic
     /// form.
-    ///
     fn test_e4_to_algebraic() {
         let b = Board::default();
         let mgen = MoveGenerator::default();
@@ -134,9 +128,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a mating move is correctly displayed.
-    ///
     fn test_mate() {
         let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -147,9 +139,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that capturing a pawn is parsed correctly.
-    ///
     fn test_algebraic_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -164,9 +154,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that the opening move e4 can be converted from a string to a move.
-    ///
     fn test_move_from_e4() {
         let b = Board::default();
         let mgen = MoveGenerator::default();
@@ -177,9 +165,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that capturing a pawn is parsed correctly.
-    ///
     fn test_move_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -195,9 +181,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that promotions are displayed correctly.
-    ///
     fn test_promotion() {
         let b = Board::from_fen(WHITE_READY_TO_PROMOTE_FEN).unwrap();
         let mgen = MoveGenerator::default();
@@ -207,9 +191,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that you get an error out when you give it a bad string.
-    ///
     fn test_bad_algebraic() {
         let b = Board::default();
         let mgen = MoveGenerator::default();

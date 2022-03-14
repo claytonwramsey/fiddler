@@ -57,14 +57,11 @@ const BISHOP_VALUES: ValueTable = [
     0.1, 0.05, 0.0, 0.0, 0.0, 0.0, 0.05, 0.1, //rank 8
 ];
 
-///
 /// The value of having an opponent's pawn doubled.
-///
 const DOUBLED_PAWN_VALUE: Eval = Eval(100);
 
-///
-/// Evaluate a position by both its material and the positional value of the/// position.
-///
+/// Evaluate a position by both its material and the positional value of the
+/// position.
 pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
     let b = g.board();
 
@@ -125,10 +122,8 @@ pub fn positional_evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
 }
 
 #[inline]
-///
 /// Get the positional value of a piece at a square.
 /// Requires that the square be a valid square.
-///
 pub fn value_at_square(pt: Piece, sq: Square) -> Eval {
     let val_table = match pt {
         Piece::Pawn => &PAWN_VALUES,
@@ -149,10 +144,8 @@ mod tests {
     use crate::base::{Game, Move};
 
     #[test]
-    ///
     /// Test that at the start of the game, the positional value of all the
     /// pieces is equal.
-    ///
     fn test_equal_start() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();
@@ -160,10 +153,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that if White plays F3, the positional value of the position is
     /// better for Black.
-    ///
     fn test_f3_bad() {
         let mut g = Game::default();
         let mgen = MoveGenerator::default();

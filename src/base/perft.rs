@@ -4,11 +4,9 @@ use crate::base::MoveGenerator;
 use std::time::Instant;
 
 #[allow(dead_code)]
-///
 /// Perform a performance test on the move generator and print out facts. The
 /// input fen is the FEN of the board to start from, and the depth is the depth
 /// from which to generate moves.
-///
 pub fn perft(fen: &str, depth: u8) -> u64 {
     let b = Board::from_fen(fen).unwrap();
     let tic = Instant::now();
@@ -24,9 +22,7 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
     num_nodes
 }
 
-///
 /// The core search algorithm for perft.
-///
 fn perft_search(b: &Board, mgen: &MoveGenerator, depth: u8) -> u64 {
     if depth == 0 {
         return 1;

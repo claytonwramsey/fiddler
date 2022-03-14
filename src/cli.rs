@@ -10,80 +10,60 @@ use std::io;
 use std::io::BufRead;
 use std::time::Duration;
 
-///
 /// A text-based application for running CrabChess.
-///
 pub struct CrabchessApp<'a> {
-    ///
     /// The currently-played game.
-    ///
     game: Game,
-    ///
+
     /// The generator for moves.
-    ///
     mgen: MoveGenerator,
-    ///
-    /// The currently-running engine to play against.
-    ///
+
+    /// The currently-running engine to play against.,
     engine: PVSearch,
-    ///
+
     /// The input stream to receive messages from.
-    ///
     input_stream: Box<dyn io::Read + 'a>,
-    ///
+
     /// The output stream to send messages to.
-    ///
     output_stream: Box<dyn io::Write + 'a>,
-    ///
-    /// The condition on which
+
+    /// The condition on which search will stop.
     timeout_condition: Box<dyn TimeoutCondition + 'a>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-///
 /// The set of commands which this command line program can execute.
 ///
 enum Command {
-    ///
     /// Quit the currently-running application.
-    ///
     Quit,
-    ///
+
     /// Echo an error message to the output stream.
-    ///
     EchoError(&'static str),
-    ///
+
     /// Select an engine to play against.
-    ///
     EngineSelect(String),
-    ///
+
     /// Play a move.
-    ///
     PlayMove(Move),
-    ///
-    /// Load a FEN (Forsyth-Edwards Notation) string of a board position.
-    ///
+
+    /// Load a FEN (Forsyth-Edwards Notation) string of a board.
     LoadFen(String),
-    ///
+
     /// Undo the most recent moves.
-    ///
     Undo(usize),
-    ///
+
     /// List the available moves to the user.
-    ///
     ListMoves,
-    ///
-    /// Request the engine play the next move.
-    ///
+
+    /// Request that the engine play the next move.
     EngineMove,
-    ///
+
     /// Set the amount of time for which an engine can run. The number is the
     /// number of milliseconds on the timeout.
-    ///
     SetTimeout(u64),
-    ///
+
     /// Print out the history of the game currently being played.
-    ///
     PrintHistory,
 }
 
@@ -107,10 +87,8 @@ impl fmt::Display for Command {
 type CommandResult = Result<(), &'static str>;
 
 impl<'a> CrabchessApp<'a> {
-    ///
     /// Run the command line application.
     /// Will continue running until the user specifies to quit.
-    ///
     pub fn run(&mut self) -> std::io::Result<()> {
         let mut has_quit = false;
         while !has_quit {
@@ -152,10 +130,8 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
-    ///
     /// Parse the given text command, and create a new `Command` to describe it.
     /// Will return an `Err` if it cannot parse the given command.
-    ///
     fn parse_command(&self, s: String) -> Result<Command, &'static str> {
         let mut token_iter = s.split_ascii_whitespace();
         let first_token = token_iter.next();
@@ -249,9 +225,7 @@ impl<'a> CrabchessApp<'a> {
         }
     }
 
-    ///
     /// Echo out an error string to the user.
-    ///
     fn echo_error(&mut self, s: &str) -> CommandResult {
         if writeln!(self.output_stream, "error: {s}").is_err() {
             return Err("failed to write error to output stream");
@@ -259,9 +233,7 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
-    ///
     /// Attempt to load a FEN string into the game.
-    ///
     fn load_fen(&mut self, fen: String) -> CommandResult {
         match Game::from_fen(fen.as_str()) {
             Ok(game) => {
@@ -272,9 +244,7 @@ impl<'a> CrabchessApp<'a> {
         }
     }
 
-    ///
     /// Attempt to play a move.
-    ///
     fn try_move(&mut self, m: Move) -> CommandResult {
         self.game.try_move(&self.mgen, m)?;
         self.play_engine_move()?;
@@ -282,9 +252,7 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
-    ///
     /// Print out a list of the available moves in this position.
-    ///
     fn list_moves(&mut self) -> CommandResult {
         let moves = self.mgen.get_moves(self.game.board());
         for m in moves.iter() {
@@ -301,9 +269,7 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
-    ///
     /// Select an engine based on the given options string.
-    ///
     fn select_engine(&mut self, opts: String) -> CommandResult {
         // For now, we just use it to set the depth, as there are no engines to
         // select.
@@ -316,9 +282,7 @@ impl<'a> CrabchessApp<'a> {
         }
     }
 
-    ///
     /// Have the engine play a move.
-    ///
     fn play_engine_move(&mut self) -> CommandResult {
         self.timeout_condition.start();
         let m = self
@@ -353,18 +317,14 @@ mod tests {
     use crate::base::Square;
 
     #[test]
-    ///
     /// Test that the quit input yields a quit command.
-    ///
     fn test_parse_quit() {
         let app = CrabchessApp::default();
         assert_eq!(app.parse_command(String::from("/q")), Ok(Command::Quit));
     }
 
     #[test]
-    ///
     /// Test that move input yields a move command.
-    ///
     fn test_parse_move() {
         let app = CrabchessApp::default();
 
@@ -375,9 +335,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that load input yields a load fen command.
-    ///
     fn test_parse_load() {
         let app = CrabchessApp::default();
         assert_eq!(
@@ -391,9 +349,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that executing a FEN load is successful.
-    ///
     fn test_execute_load() {
         let mut app = CrabchessApp::default();
         assert_eq!(
@@ -409,9 +365,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that we can parse an engine selection command.
-    ///
     fn test_parse_engine() {
         let app = CrabchessApp::default();
         assert_eq!(
@@ -421,9 +375,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a garbage input does not parse correctly.
-    ///
     fn test_garbage_failure() {
         let app = CrabchessApp::default();
         assert!(app.parse_command(String::from("garbage")).is_err());

@@ -3,15 +3,11 @@ use crate::uci::UciCommand;
 
 use super::GoOption;
 
-///
 /// The result type for processing a line from a UCI command. According to the
 /// UCI protocol, these errors should generally be logged or ignored.
-///
 pub type UciParseResult = Result<UciCommand, String>;
 
-///
 /// Perform a read of a single UCI instruction.
-///
 pub fn parse_line(line: &str) -> UciParseResult {
     let mut tokens = line.split_ascii_whitespace();
     let first_tok = tokens.next().ok_or("line contains no tokens")?;
@@ -34,11 +30,9 @@ pub fn parse_line(line: &str) -> UciParseResult {
     }
 }
 
-///
 /// Parse a `setoption` line from a UCI string. Assumes that the `"setoption"`
 /// token in the line has already been consumed (i.e. that the next token will
 /// be `"name"`).
-///
 fn parse_set_option(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     // consume `name` token
     let name_tok = tokens
@@ -92,11 +86,9 @@ fn parse_set_option(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     }
 }
 
-///
 /// Parse a `position` UCI command line. Assumes that the `"position"` token
 /// has already been consumed, so the next token will either be `"fen"` or
 /// `"startpos"`.
-///
 fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     let start_fen = match tokens
         .next()
@@ -146,10 +138,8 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     })
 }
 
-///
 /// Parse a `go` command from UCI. Assumes the token `go` has already been
 /// consumed.
-///
 fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     let mut opts = Vec::new();
     let mut peeks = tokens.peekable();
@@ -196,11 +186,9 @@ fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
     Ok(UciCommand::Go(opts))
 }
 
-///
 /// A helper function for `parse_go` which will attempt to parse an int out of
 /// a token if it is `Some`, and fail if it cannot parse the int or if it is
 /// given `None`.
-///
 fn parse_int(x: Option<&str>) -> Result<u64, String> {
     match x {
         None => Err(String::from("reached EOF while parsing int")),
@@ -215,10 +203,8 @@ mod tests {
     use super::*;
     use crate::base::Square;
     #[test]
-    ///
     /// Test that an ordinary "startpos" UCI position command is parsed
     /// correctly.
-    ///
     fn test_position_starting() {
         assert_eq!(
             parse_line("position startpos moves\n"),
@@ -230,9 +216,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a FEN is properly loaded from a UCI position command.
-    ///
     fn test_position_fen() {
         assert_eq!(
             parse_line(
@@ -248,9 +232,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a FEN is properly loaded from a UCI position command.
-    ///
     fn test_position_fen_then_moves() {
         assert_eq!(
             parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n"), 
@@ -265,9 +247,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that an option with no value is correctly set.
-    ///
     fn test_setoption_key_only() {
         assert_eq!(
             parse_line("setoption name MyOption\n"),
@@ -279,9 +259,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a key-value pair for a setoption is correct.
-    ///
     fn test_setoption_key_value() {
         assert_eq!(
             parse_line("setoption name my option value 4 or 5\n"),
@@ -293,9 +271,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a simple `go` command is parsed correctly.
-    ///
     fn test_go_simple() {
         assert_eq!(
             parse_line("go depth 7 nodes 25\n"),
@@ -307,11 +283,9 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a `go` command with every option is parsed correctly. In
     /// practice this command would be invalid since the `infinite` option
     /// would remove the validity of all others.
-    ///
     fn test_go_all() {
         assert_eq!(
             parse_line("go depth 7 nodes 250 infinite searchmoves e2e4 wtime 1 btime 2 winc 3 binc 4 movestogo 5 mate 6 movetime 7 ponder\n"),
@@ -333,10 +307,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a `go searchmoves` does not cause the moves to eat future
     /// options.
-    ///
     fn test_go_searchmoves() {
         assert_eq!(
             parse_line("go searchmoves e2e4 infinite\n"),
@@ -348,17 +320,13 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test that a `uci` command is parsed correctly.
-    ///
     fn test_uci() {
         assert_eq!(parse_line("uci\n"), Ok(UciCommand::Uci));
     }
 
     #[test]
-    ///
     /// Test that the `debug` commands are parsed correctly.
-    ///
     fn test_debug() {
         assert_eq!(parse_line("debug on\n"), Ok(UciCommand::Debug(true)));
 

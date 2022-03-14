@@ -4,11 +4,9 @@ use crate::uci::UciMessage;
 
 use super::EngineInfo;
 
-///
 /// Construct a UCI message string from the engine to the GUI.
 /// The message may be split into multiple lines (such as when handling
 /// info-strings).
-///
 pub fn build_message(message: &UciMessage) -> String {
     match message {
         UciMessage::Id { name, author } => {
@@ -36,9 +34,7 @@ pub fn build_message(message: &UciMessage) -> String {
     }
 }
 
-///
 /// Helper function to build an output line to inform the GUI of an option.
-///
 fn build_option(name: &str, opt: &OptionType) -> String {
     let mut result = format!("option name {name} ");
     match opt {
@@ -75,9 +71,7 @@ fn build_option(name: &str, opt: &OptionType) -> String {
     result
 }
 
-///
 /// Build a set of messages for informing the GUI about facts of the engine.
-///
 fn build_info(infos: &[EngineInfo]) -> String {
     let mut result = String::from("info ");
     let mut new_line = false;
@@ -143,9 +137,7 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    ///
     /// Test an info message describing the current move.
-    ///
     fn test_info_currmove() {
         assert_eq!(
             build_message(&UciMessage::Info(vec![
@@ -157,10 +149,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an info message describing a current move which is also a
     /// promotion.
-    ///
     fn test_info_currmove_promotion() {
         assert_eq!(
             build_message(&UciMessage::Info(vec![
@@ -172,10 +162,8 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an info message which is composed of many different pieces of
     /// information.
-    ///
     fn test_info_composed() {
         assert_eq!(
             build_message(&UciMessage::Info(vec![
@@ -201,9 +189,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an id message.
-    ///
     fn test_id() {
         assert_eq!(
             build_message(&UciMessage::Id {
@@ -215,9 +201,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an option message for a checkbox.
-    ///
     fn test_option_check() {
         assert_eq!(
             build_message(&UciMessage::Option {
@@ -229,9 +213,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an option message for a spin-wheel.
-    ///
     fn test_option_spin() {
         assert_eq!(
             build_message(&UciMessage::Option {
@@ -247,9 +229,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an option message for a combo-box.
-    ///
     fn test_option_combo() {
         assert_eq!(
             build_message(&UciMessage::Option {
@@ -270,9 +250,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an option message for string input.
-    ///
     fn test_option_string() {
         assert_eq!(
             build_message(&UciMessage::Option {
@@ -284,9 +262,7 @@ mod tests {
     }
 
     #[test]
-    ///
     /// Test an option message for a button.
-    ///
     fn test_option_button() {
         assert_eq!(
             build_message(&UciMessage::Option {

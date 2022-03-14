@@ -17,44 +17,34 @@ use super::moves::MoveResult;
 use super::MoveGenerator;
 
 #[derive(Copy, Clone, Debug, Eq)]
-///
 /// A representation of a position. Does not handle the repetition or turn
 /// timer.
-///
 pub struct Board {
-    ///
-    /// The squares ocupied by White and Black
-    ///
+    /// The squares ocupied by White and Black, respectively.
     sides: [Bitboard; 2],
-    ///
+
     /// The squares occupied by (in order) pawns, knights, bishops, rooks,
+
     /// queens, and kings.
-    ///
     pieces: [Bitboard; Piece::NUM_TYPES],
-    ///
+
     /// The color of the player to move.
-    ///
     pub player_to_move: Color,
-    ///
+
     /// The square which can be moved to by a pawn in en passant. Will be
     /// `None` when a pawn has not moved two squares in the previous move.
-    ///
     pub en_passant_square: Option<Square>,
-    ///
+
     /// The rights of this piece for castling.
-    ///
     pub castle_rights: CastleRights,
-    ///
+
     /// A saved internal hash. If the board is valid, the this value must ALWAYS
     /// be equal to the output of `Board.get_fresh_hash()`.
-    ///
     pub hash: u64,
 }
 
 impl Board {
-    ///
     /// A "bad" board value which can be used as a debug value.
-    ///
     pub const BAD_BOARD: Board = Board {
         sides: [Bitboard::EMPTY; 2],
         pieces: [Bitboard::EMPTY; 6],
@@ -63,9 +53,7 @@ impl Board {
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 0,
     };
-    ///
     /// Create an empty board with no pieces or castle rights.
-    ///
     pub fn empty() -> Board {
         let mut board = Board {
             sides: [Bitboard::EMPTY; 2],
@@ -79,11 +67,9 @@ impl Board {
         board
     }
 
-    ///
     /// Create a Board populated from some FEN and load it.
     /// Will return `Err` if the FEN is invalid with a string describing why it
     /// failed.
-    ///
     pub fn from_fen(fen: &str) -> Result<Board, &'static str> {
         let mut board = Board::empty();
         let mut fen_chrs = fen.chars();
@@ -198,17 +184,13 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Get the squares occupied by pieces.
-    ///
     pub fn occupancy(&self) -> Bitboard {
         self[Color::White] | self[Color::Black]
     }
 
-    ///
     /// Get the type of the piece occupying a given square.
-    /// Returns NO_TYPE if there are no pieces occupying the square.
-    ///
+    /// Returns `None` if there are no pieces occupying the square.
     pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
         for pt in Piece::ALL_TYPES {
             if self[pt].contains(sq) {
@@ -219,11 +201,8 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Get the color of a piece occupying a current square.
-    /// Returns NO_COLOR if there are
-    /// no pieces occupying the square.
-    ///
+    /// Returns `None` if there are no pieces occupying the square.
     pub fn color_at_square(&self, sq: Square) -> Option<Color> {
         let bb = Bitboard::from(sq);
         if self.sides[Color::Black as usize] & bb != Bitboard::EMPTY {
@@ -236,27 +215,21 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Is a given move en passant? Assumes the move is pseudo-legal.
-    ///
     pub fn is_move_en_passant(&self, m: Move) -> bool {
         Some(m.to_square()) == self.en_passant_square && self[Piece::Pawn].contains(m.from_square())
     }
 
     #[inline]
-    ///
     /// In this state, is the given move a castle? Assumes the move is
     /// pseudo-legal.
-    ///
     pub fn is_move_castle(&self, m: Move) -> bool {
         self[Piece::King].contains(m.from_square())
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
     #[inline]
-    ///
     /// In the given position, is this move a promotion?
-    ///
     pub fn is_move_promotion(&self, m: Move) -> bool {
         (self[Piece::Pawn] & self[self.player_to_move]).contains(m.from_square())
             && self
@@ -266,17 +239,13 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Is the given move a capture in the current state of the board?
-    ///
     pub fn is_move_capture(&self, m: Move) -> bool {
         self.occupancy().contains(m.to_square()) || self.is_move_en_passant(m)
     }
 
     #[inline]
-    ///
     /// In the current state, is the king (i.e. player to move) in check?
-    ///
     pub fn is_king_checked(&self, mgen: &MoveGenerator) -> bool {
         let player = self.player_to_move;
         mgen.is_square_attacked_by(
@@ -286,10 +255,9 @@ impl Board {
         )
     }
 
-    ///
     /// Check if the state of this board is valid,
+
     /// Returns false if the board is invalid.
-    ///
     pub fn is_valid(&self) -> bool {
         let mut sides_checksum = Bitboard::EMPTY;
         let mut sides_checkor = Bitboard::EMPTY;
@@ -320,10 +288,8 @@ impl Board {
         true
     }
 
-    ///
     /// Apply the given move to the board. Will assume the move is legal (unlike
     /// `try_move()`).
-    ///
     pub fn make_move(&mut self, m: Move) -> MoveResult {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
@@ -428,11 +394,9 @@ impl Board {
         }
     }
 
-    ///
     /// Apply the given move to the board. Will *not* assume the move is legal
     /// (unlike `make_move()`). On illegal moves, will return an `Err` with a
     /// string describing the issue.
-    ///
     pub fn try_move(
         &mut self,
         mgen: &crate::base::movegen::MoveGenerator,
@@ -446,11 +410,9 @@ impl Board {
         Ok(self.make_move(m))
     }
 
-    ///
     /// Undo a move. `result` must have been created by the most recent output
     /// of `Board::make_move`. Currently it's not faster than just making a
     /// copy of the original board, though.
-    ///
     pub fn undo(&mut self, result: &MoveResult) {
         let from_sq = result.m.from_square();
         let to_sq = result.m.to_square();
@@ -502,9 +464,7 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Remove the piece at `sq` from this board.
-    ///
     fn remove_piece(&mut self, sq: Square) {
         if let Some(p) = self.type_at_square(sq) {
             self.remove_known_piece(sq, p, self.color_at_square(sq).unwrap());
@@ -512,10 +472,8 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Remove a piece of a known type at a square, which will be slightly more
     /// efficient than `remove_piece`.
-    ///
     pub fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
         let mask = Bitboard::from(sq);
         self.hash ^= zobrist::square_key(sq, Some(pt), color);
@@ -525,12 +483,10 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Add a piece to the square at a given place on the board.
     /// This should only be called if you believe that the board as-is is empty
     /// at the square below. Otherwise it will break the internal board
     /// representation.
-    ///
     fn add_piece(&mut self, sq: Square, pt: Piece, color: Color) {
         //Remove the hash from the piece that was there before (no-op if it was
         //empty)
@@ -542,11 +498,10 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Set the piece at a given position to be a certain piece. This is safe,
+
     /// and will not result in any issues regarding hash legality. If the given
     /// piece type is None, the color given will be ignored.
-    ///
     pub fn set_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color) {
         self.remove_piece(sq);
         if let Some(p) = pt {
@@ -554,9 +509,7 @@ impl Board {
         }
     }
 
-    ///
     /// Give the castle rights indicated back to the board.
-    ///
     fn return_castle_rights(&mut self, rights_to_return: CastleRights) {
         let rights_really_returned = rights_to_return & !self.castle_rights;
 
@@ -569,10 +522,8 @@ impl Board {
         self.castle_rights |= rights_really_returned;
     }
 
-    ///
     /// Remove the given `CastleRights` from this board's castling rights, and
     /// update the internal hash of the board to match.
-    ///
     fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
         let rights_actually_removed = rights_to_remove & self.castle_rights;
 
@@ -587,19 +538,15 @@ impl Board {
     }
 
     #[inline]
-    ///
     /// Recompute the Zobrist hash of this board and set it to the saved hash
     /// value.
-    ///
     pub fn recompute_hash(&mut self) {
         self.hash = self.get_fresh_hash();
     }
 
-    ///
     /// Compute the hash value of this board from scratch. This should
     /// generally only be used for debug purposes, as in most cases iteratively
     /// updating the hashes as moves are made is enough.
-    ///
     fn get_fresh_hash(&self) -> u64 {
         let mut hash = 0;
         for i in 0..64 {
@@ -621,12 +568,10 @@ impl Board {
 }
 
 impl Display for Board {
-    ///
     /// Display this board in a console-ready format. Expresses as a series of 8
     /// lines, where the topmost line is the 8th rank and the bottommost is the
     /// 1st. White pieces are represented with capital letters, while black
     /// pieces have lowercase.
-    ///
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for r in 0..8 {
             for c in 0..8 {
@@ -667,9 +612,7 @@ impl Index<Piece> for Board {
     type Output = Bitboard;
 
     #[inline]
-    ///
     /// Get the squares occupied by the given piece.
-    ///
     fn index(&self, index: Piece) -> &Self::Output {
         // This will not fail because there are the same number of pieces as
         // indices on `pieces`
@@ -681,9 +624,7 @@ impl Index<Color> for Board {
     type Output = Bitboard;
 
     #[inline]
-    ///
     /// Get the squares occupied by the given piece.
-    ///
     fn index(&self, index: Color) -> &Self::Output {
         // This will not fail because there are the same number of colors as
         // indices on `sides`
@@ -723,9 +664,7 @@ pub mod tests {
     use crate::base::square::*;
     use crate::fens;
 
-    ///
     /// A board with the white king on A1 and the black king on H8.
-    ///
     const TWO_KINGS_BOARD: Board = Board {
         sides: [
             Bitboard(0x0000000000000001), //white
@@ -746,9 +685,7 @@ pub mod tests {
     };
 
     #[test]
-    ///
     /// Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
-    ///
     fn test_load_two_kings_fen() {
         let result = Board::from_fen(fens::TWO_KINGS_BOARD_FEN);
         match result {
@@ -763,10 +700,8 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// Test that the start position of a normal chess game can be loaded from
     /// its FEN.
-    ///
     fn test_start_fen() {
         let result = Board::from_fen(fens::BOARD_START_FEN);
         match result {
@@ -781,27 +716,21 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// Test that we can play e4 on the first move of the game.
-    ///
     fn test_play_e4() {
         test_move_helper(Board::default(), Move::new(Square::E2, Square::E4, None));
     }
 
     #[test]
-    ///
     /// Test that a board with an en passant square can be loaded from a FEN
     /// correctly.
-    ///
     fn test_load_en_passant() {
         let b = Board::from_fen(fens::EN_PASSANT_READY_FEN).unwrap();
         assert_eq!(b.en_passant_square, Some(Square::F6));
     }
 
     #[test]
-    ///
     /// Test that we can capture en passant.
-    ///
     fn test_en_passant() {
         test_fen_helper(
             fens::EN_PASSANT_READY_FEN,
@@ -809,10 +738,8 @@ pub mod tests {
         );
     }
 
-    ///
-    /// Test that White can castle kingside.
-    ///
     #[test]
+    /// Test that White can castle kingside.
     fn test_white_kingide_castle() {
         test_fen_helper(
             fens::WHITE_KINGSIDE_CASTLE_READY_FEN,
@@ -821,9 +748,7 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// Test that White can promote their pawn to a queen
-    ///
     fn test_white_promote_queen() {
         test_fen_helper(
             fens::WHITE_READY_TO_PROMOTE_FEN,
@@ -832,9 +757,7 @@ pub mod tests {
     }
 
     #[test]
-    ///
     /// Test that capturing a rook removes the right to castle with that rook.
-    ///
     fn test_no_castle_after_capture() {
         let m = Move::new(Square::B2, Square::H8, None);
         let mgen = MoveGenerator::default();
@@ -845,10 +768,8 @@ pub mod tests {
         assert!(b.try_move(&mgen, castle_move).is_err());
     }
 
-    ///
     /// A helper function which will load a board from a FEN and then try
     /// running the given move on that board.
-    ///
     pub fn test_fen_helper(fen: &str, m: Move) {
         let result = Board::from_fen(fen);
         match result {
@@ -857,10 +778,9 @@ pub mod tests {
         };
     }
 
-    ///
     /// A helper function which will attempt to make a legal move on a board,
+
     /// and will fail assertions if the board's state was not changed correctly.
-    ///
     pub fn test_move_helper(board: Board, m: Move) {
         let mgen = MoveGenerator::default();
 
@@ -873,10 +793,8 @@ pub mod tests {
         assert_eq!(new_board, board);
     }
 
-    ///
-    /// Test that `new_board` was created by playing the move `m` on `
-    /// old_board`. Fails assertion if this is not the case.
-    ///
+    /// Test that `new_board` was created by playing the move `m` on
+    /// `old_board`. Fails assertion if this is not the case.
     pub fn test_move_result_helper(old_board: Board, new_board: Board, m: Move) {
         let mover_color = old_board.color_at_square(m.from_square()).unwrap();
         let mover_type = old_board.type_at_square(m.from_square()).unwrap();

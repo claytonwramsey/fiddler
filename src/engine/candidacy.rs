@@ -5,11 +5,9 @@ use crate::base::Piece;
 use crate::engine::{greedy, positional, Eval};
 use std::cmp::max;
 
-///
 /// Create an estimate for how good a move is.
 /// # Panics
 /// if the given move is illegal.
-///
 pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
     let b = g.board();
     let mover_type = b.type_at_square(m.from_square()).unwrap();

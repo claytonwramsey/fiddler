@@ -10,13 +10,11 @@ use std::ops::{Add, AddAssign, Sub};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-///
 /// A single integer containing all the data to identify one square on a board.
 /// From MSB to LSB, this is composed of:
 /// * 2 unused bits
 /// * 3 bits for the rank
 /// * 3 bits for the file
-///
 pub enum Square {
     A1 = 0,
     B1 = 1,
@@ -86,34 +84,26 @@ pub enum Square {
 
 impl Square {
     #[inline]
-    ///
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
-    ///
     pub fn new(rank: usize, file: usize) -> Option<Square> {
         Square::try_from(((rank << 3) | file) as u8).ok()
     }
 
     #[inline]
-    ///
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
-    ///
     pub const fn rank(self) -> usize {
         (self as u8 >> 3u8) as usize
     }
 
     #[inline]
-    ///
     /// Get the integer representing the file (0 -> A, ...) of this square.
-    ///
     pub const fn file(self) -> usize {
         (self as u8 & 7u8) as usize
     }
 
     #[inline]
-    ///
     /// Get the Chebyshev distance to another square.
-    ///
     pub fn chebyshev_to(self, rhs: Square) -> u8 {
         let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
         let filediff = ((rhs.file() as i16) - (self.file() as i16)).abs();
@@ -121,11 +111,9 @@ impl Square {
         max(rankdiff, filediff) as u8
     }
 
-    ///
     /// Convert an algebraic string (such as 'e7') to a square.
     /// To get an `Ok` result, the string must be two characters.
     /// The file must be in lowercase.
-    ///
     pub fn from_algebraic(s: &str) -> Result<Square, &'static str> {
         if s.len() != 2 {
             return Err("square name must be 2 characters");
@@ -185,10 +173,9 @@ impl Sub<Direction> for Square {
 
 impl TryFrom<Bitboard> for Square {
     type Error = &'static str;
-    ///
+
     /// Create the square closest to A1 (prioritizing rank) on the given
     /// bitboard.
-    ///
     #[inline]
     fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
         Square::try_from(bb.0.trailing_zeros() as u8)
