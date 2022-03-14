@@ -262,18 +262,3 @@ pub enum OptionType {
     /// A button which can be pressed to send a command.
     Button,
 }
-
-/// A trait representing something that can send and receive messages as if it
-/// is a UCI GUI.
-pub trait UciGui {
-    /// Send a message to the UCI GUI.
-    fn send(&mut self, message: UciMessage);
-}
-
-/// A trait representing an engine for UCI. It must be able to tolerate
-/// messages from the UCI GUI.
-pub trait UciModel {
-    /// Receive a Uci command. The processor must then send all its replies to
-    /// the given GUI.
-    fn receive(&mut self, command: UciCommand, gui: &dyn UciGui);
-}
