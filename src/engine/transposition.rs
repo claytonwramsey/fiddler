@@ -124,6 +124,9 @@ impl TTable {
             for slot in [&mut entry.recent, &mut entry.deepest] {
                 slot.age += 1;
                 if slot.age >= max_age {
+                    if slot.data.is_some() {
+                        self.occupancy -= 1;
+                    }
                     *slot = Slot::EMPTY;
                 }
             }
@@ -159,6 +162,33 @@ impl TTable {
             self.occupancy += 1;
         }
         entry.recent = new_slot;
+    }
+
+    ///
+    /// Get the evaluation data stored by this table for a given key, if it 
+    /// exists. Returns `&None` if no such key exists.
+    /// 
+    pub fn get(&self, hash_key: u64) -> &Option<EvalData> {
+        let index = hash_key as usize % self.entries.len();
+        let entry = unsafe {
+            // We trust that this will not lead to a memory error because index
+            // was modulo'd by the length of entries.
+            self.entries.get_unchecked(index)
+        };
+
+        // Theoretically, we would need to check for key equality (such as the
+        // original board) here, but in practice key collisions are so rare
+        // that the extra performance loss makes it not worth it.
+
+        if entry.deepest.hash == hash_key {
+            return &entry.deepest.data;
+        }
+
+        if entry.recent.hash == hash_key {
+            return &entry.recent.data;
+        }
+
+        &self.sentinel
     }
 
     ///
@@ -212,27 +242,9 @@ impl Default for TTable {
 impl Index<&Board> for TTable {
     type Output = Option<EvalData>;
 
+    #[inline]
     fn index(&self, key: &Board) -> &Self::Output {
-        let index = key.hash as usize % self.entries.len();
-        let entry = unsafe {
-            // We trust that this will not lead to a memory error because index
-            // was modulo'd by the length of entries.
-            self.entries.get_unchecked(index)
-        };
-
-        // Theoretically, we would need to check for key equality (such as the
-        // original board) here, but in practice key collisions are so rare
-        // that the extra performance loss makes it not worth it.
-
-        if entry.deepest.hash == key.hash {
-            return &entry.deepest.data;
-        }
-
-        if entry.recent.hash == key.hash {
-            return &entry.recent.data;
-        }
-
-        &self.sentinel
+        self.get(key.hash)
     }
 }
 
