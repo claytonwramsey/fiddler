@@ -118,6 +118,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
+    /// use crabchess::base::Square;
     /// let sq1 = Square::A1;
     /// let sq2 = sq1.opposite();
     /// assert_eq!(sq2, Square::A8);
