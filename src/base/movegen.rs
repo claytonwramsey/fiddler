@@ -495,7 +495,6 @@ impl MoveGenerator {
         moves: &mut Vec<Move>,
         target: Bitboard,
     ) {
-        
         let color_occupancy = board[color];
         let enemy_occupancy = board[!color];
         let rank8 = color.pawn_promote_rank();
@@ -506,7 +505,7 @@ impl MoveGenerator {
         let pawns = color_occupancy & board[Piece::Pawn];
 
         let singles = (pawns << direction.0) & unoccupied & target;
-        
+
         let capture_dir_e = direction + Direction::EAST;
         let capture_dir_w = direction + Direction::WEST;
 

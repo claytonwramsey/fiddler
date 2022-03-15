@@ -60,4 +60,3 @@ pub use crate::base::color::Color;
 
 /// A performance testing module to record the speed of move generation.
 pub mod perft;
-

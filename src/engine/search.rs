@@ -1,8 +1,8 @@
 use crate::base::algebraic::algebraic_from_move;
-use crate::base::{Game, Move, MoveGenerator};
-use crate::engine::positional::positional_evaluate;
-use crate::engine::transposition::{EvalData, TTable};
 use crate::base::Eval;
+use crate::base::{Game, Move, MoveGenerator};
+use crate::engine::evaluate::evaluate;
+use crate::engine::transposition::{EvalData, TTable};
 
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -13,12 +13,11 @@ use super::TimeoutCondition;
 
 /// Configuration options for a search.
 struct SearchConfig {
-
-    /// The maximum depth to which the engine will add or edit entries in the 
+    /// The maximum depth to which the engine will add or edit entries in the
     /// transposition table.
     max_transposition_depth: u8,
 
-    /// The number of moves at each layer which will be searched to a full 
+    /// The number of moves at each layer which will be searched to a full
     /// depth, as opposed to a lower-than-target depth.
     num_early_moves: u8,
 }
@@ -51,7 +50,7 @@ impl PVSearch {
     /// This search uses Negamax, which inverts at every step to save on
     /// branches. This will return a lower bound on the position's value for
     /// the player to move, where said lower bound is exact if it is less than
-    /// `beta_in`. `depth_to_go` is signed because late-move-reduction may 
+    /// `beta_in`. `depth_to_go` is signed because late-move-reduction may
     /// cause it to become negative.
     pub fn pvs(
         &mut self,
@@ -123,7 +122,7 @@ impl PVSearch {
         if moves.is_empty() {
             return (
                 Move::BAD_MOVE,
-                positional_evaluate(g, mgen) * (1 - 2 * g.board().player_to_move as i32),
+                evaluate(g, mgen) * (1 - 2 * g.board().player_to_move as i32),
             );
         }
 
@@ -304,7 +303,7 @@ impl PVSearch {
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = positional_evaluate(g, mgen);
+        let leaf_evaluation = evaluate(g, mgen);
         // (1 - 2 * us) will cause the evaluation to be positive for
         // whichever player is moving. This will cascade up the Negamax
         // inversions to make the final result at the top correct.
@@ -465,7 +464,8 @@ impl PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let mut search_result = self.pvs(iter_depth as i8, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
+            let mut search_result =
+                self.pvs(iter_depth as i8, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
             search_result.1 *= 1 - 2 * g.board().player_to_move as i32;
             if !timeout.is_over() {
                 highest_successful_depth = iter_depth;
@@ -580,7 +580,7 @@ impl Default for PVSearch {
             config: SearchConfig {
                 max_transposition_depth: 8,
                 num_early_moves: 4,
-            }
+            },
         };
         searcher.set_depth(5);
         searcher
@@ -660,7 +660,7 @@ pub mod tests {
     }
 
     /// A helper function which ensures that the evaluation of a position is
-    /// equal to what we expect it to be. It will check both a normal search 
+    /// equal to what we expect it to be. It will check both a normal search
     /// and a search without the transposition table.
     fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
         let mut g = Game::from_fen(fen).unwrap();
@@ -673,6 +673,4 @@ pub mod tests {
         e.clear();
         assert_eq!(e.evaluate(&mut g, &mgen, &NoTimeout), eval);
     }
-
-
 }

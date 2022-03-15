@@ -1,10 +1,10 @@
-
 use std::time::Duration;
 use std::time::Instant;
 
 pub mod candidacy;
+pub mod evaluate;
 pub mod greedy;
-pub mod positional;
+pub mod pst;
 pub mod search;
 pub mod transposition;
 

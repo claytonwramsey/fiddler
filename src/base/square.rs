@@ -92,8 +92,8 @@ impl Square {
 
     #[inline]
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
-    pub const fn rank(self) -> usize {
-        (self as u8 >> 3u8) as usize
+    pub const fn rank(&self) -> usize {
+        (*self as u8 >> 3u8) as usize
     }
 
     #[inline]
@@ -104,11 +104,26 @@ impl Square {
 
     #[inline]
     /// Get the Chebyshev distance to another square.
-    pub fn chebyshev_to(self, rhs: Square) -> u8 {
+    pub fn chebyshev_to(&self, rhs: Square) -> u8 {
         let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
         let filediff = ((rhs.file() as i16) - (self.file() as i16)).abs();
 
         max(rankdiff, filediff) as u8
+    }
+
+    #[inline]
+    /// Get what this square would appear to be from the point of view of the
+    /// opposing player.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let sq1 = Square::A1;
+    /// let sq2 = sq1.opposite();
+    /// assert_eq!(sq2, Square::A8);
+    /// ```
+    pub fn opposite(&self) -> Square {
+        Square::new(7 - self.rank(), self.file()).unwrap()
     }
 
     /// Convert an algebraic string (such as 'e7') to a square.

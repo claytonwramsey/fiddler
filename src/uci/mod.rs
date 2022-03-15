@@ -1,8 +1,8 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::base::Move;
 use crate::base::Eval;
+use crate::base::Move;
 
 mod send;
 pub use crate::uci::send::*;

@@ -1,8 +1,8 @@
 use std::ops::Index;
 
 use crate::base::Board;
-use crate::base::Move;
 use crate::base::Eval;
+use crate::base::Move;
 
 /// Convenient bad-key value which may help with debugging.
 const BAD_HASH: u64 = 0xDEADBEEF;
@@ -93,7 +93,7 @@ impl TTable {
     /// least as old as the max age, evict it.
     pub fn age_up(&mut self, max_age: u8) {
         for entry in self.entries.iter_mut() {
-            // do not alter the most recent one since it will be overwritten 
+            // do not alter the most recent one since it will be overwritten
             // anyway if needed
             if entry.deepest.data.is_some() {
                 entry.deepest.age += 1;

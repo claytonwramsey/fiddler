@@ -58,7 +58,7 @@ impl Eval {
     }
 
     #[inline]
-    /// Get an evaluation equivalent to the given number of thousandths of a 
+    /// Get an evaluation equivalent to the given number of thousandths of a
     /// pawn.
     pub const fn millipawns(x: i32) -> Eval {
         Eval(x)
@@ -165,6 +165,14 @@ impl Mul<i32> for Eval {
     #[inline]
     fn mul(self, rhs: i32) -> Self::Output {
         Eval(self.0 * rhs)
+    }
+}
+
+impl Mul<f32> for Eval {
+    type Output = Self;
+    #[inline]
+    fn mul(self, rhs: f32) -> Self::Output {
+        Eval((self.0 as f32 * rhs) as i32)
     }
 }
 

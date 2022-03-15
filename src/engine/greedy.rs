@@ -1,7 +1,7 @@
 use crate::base::Board;
 use crate::base::Color;
-use crate::base::Piece;
 use crate::base::Eval;
+use crate::base::Piece;
 
 /// Get the value of one piece by its type.
 pub fn piece_value(pt: Piece) -> Eval {

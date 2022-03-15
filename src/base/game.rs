@@ -192,6 +192,11 @@ impl Game {
 
         mgen.get_loud_moves(self.board())
     }
+
+    /// Get the number of total positions in this history of this game.
+    pub fn len(&self) -> usize {
+        self.history.len()
+    }
 }
 
 impl Default for Game {

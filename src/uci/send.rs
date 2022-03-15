@@ -129,10 +129,10 @@ fn build_info(infos: &[EngineInfo]) -> String {
 mod tests {
     use super::*;
 
+    use crate::base::Eval;
     use crate::base::Move;
     use crate::base::Piece;
     use crate::base::Square;
-    use crate::base::Eval;
 
     use std::time::Duration;
 
