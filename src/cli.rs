@@ -45,7 +45,12 @@ enum Command {
     EngineSelect(String),
 
     /// Play a move.
-    PlayMove(Move),
+    PlayMove {
+        /// The move to play.
+        m: Move,
+        /// Whether the engine should make an immediate reply to the move.
+        engine_reply: bool,
+    },
 
     /// Load a FEN (Forsyth-Edwards Notation) string of a board.
     LoadFen(String),
@@ -73,12 +78,15 @@ impl fmt::Display for Command {
             Command::Quit => write!(f, "quit"),
             Command::EchoError(s) => write!(f, "echo error {s}"),
             Command::EngineSelect(s) => write!(f, "select engine {s}"),
-            Command::PlayMove(m) => write!(f, "play move {m}"),
+            Command::PlayMove {
+                m,
+                engine_reply: reply,
+            } => write!(f, "play move {m}; reply? {reply}"),
             Command::LoadFen(s) => write!(f, "load fen {s}"),
             Command::Undo(n) => write!(f, "undo {n}"),
             Command::ListMoves => write!(f, "list moves"),
             Command::EngineMove => write!(f, "play engine move"),
-            Command::SetTimeout(n) => write!(f, "set timeout {:.3}", *n as f32 / 1000f32),
+            Command::SetTimeout(n) => write!(f, "set timeout {:.3}", *n as f32 / 1000.),
             Command::PrintHistory => write!(f, "print history"),
         }
     }
@@ -86,26 +94,26 @@ impl fmt::Display for Command {
 
 type CommandResult = Result<(), &'static str>;
 
+type ParseResult = Result<Command, &'static str>;
+
 impl<'a> CrabchessApp<'a> {
     /// Run the command line application.
     /// Will continue running until the user specifies to quit.
     pub fn run(&mut self) -> std::io::Result<()> {
         let mut has_quit = false;
+        let mut user_input = String::with_capacity(64);
         while !has_quit {
             let board = self.game.board();
             writeln!(self.output_stream, "{board}")?;
             writeln!(self.output_stream, "Type out a move or enter a command.")?;
-            let mut user_input = String::new();
+
             let mut buf_reader = io::BufReader::new(&mut self.input_stream);
 
-            if let Err(e) = buf_reader.read_line(&mut user_input) {
-                writeln!(
-                    self.output_stream,
-                    "failed to read off of input stream with error {e}"
-                )?;
-            };
+            buf_reader.read_line(&mut user_input)?;
 
-            let parse_result = self.parse_command(user_input);
+            println!("user input: {:?}", &user_input);
+
+            let parse_result = self.parse_command(&user_input);
             let command = match parse_result {
                 Ok(cmd) => cmd,
                 Err(s) => Command::EchoError(s),
@@ -126,26 +134,25 @@ impl<'a> CrabchessApp<'a> {
                     "an error occurred while executing the command: {s}"
                 )?;
             }
+
+            user_input.clear();
         }
         Ok(())
     }
 
     /// Parse the given text command, and create a new `Command` to describe it.
     /// Will return an `Err` if it cannot parse the given command.
-    fn parse_command(&self, s: String) -> Result<Command, &'static str> {
+    fn parse_command(&self, s: &str) -> ParseResult {
         let mut token_iter = s.split_ascii_whitespace();
         let first_token = token_iter.next();
         if first_token.is_none() {
-            return Err("no token given");
+            panic!();
         }
-        let command_block = first_token.unwrap();
-        if command_block.starts_with('/') {
-            let command_name = command_block.get(1..);
-            if command_name == None {
-                return Err("no command specified");
-            }
+        let command_block = first_token.ok_or("no token given")?;
+        let result = if command_block.starts_with('/') {
+            let command_name = command_block.get(1..).ok_or("no command specified")?;
 
-            match command_name.unwrap() {
+            match command_name {
                 "q" | "quit" => Ok(Command::Quit),
                 "e" | "engine" => {
                     let engine_opt = String::from(s[command_block.len()..].trim());
@@ -171,6 +178,12 @@ impl<'a> CrabchessApp<'a> {
                     }
                 }
                 "m" | "move" => Ok(Command::EngineMove),
+                "p" | "play" => self.parse_move_token(token_iter.next()).map(|m|
+                    Command::PlayMove {
+                        m,
+                        engine_reply: false,
+                    }
+                ),
                 "t" | "timeout" => {
                     let n_msecs_token = token_iter.next();
                     match n_msecs_token {
@@ -187,22 +200,30 @@ impl<'a> CrabchessApp<'a> {
             }
         } else {
             //this is a move
-            let move_token = first_token;
-            if move_token.is_none() {
-                return Err("no move given to play");
-            }
-            let move_result =
-                move_from_algebraic(move_token.unwrap(), self.game.board(), &self.mgen)?;
+            self.parse_move_token(first_token).map(|m| 
+                Command::PlayMove {
+                    m,
+                    engine_reply: true,
+                }
+            )
+        };
 
-            Ok(Command::PlayMove(move_result))
+        result
+    }
+
+    /// Parse a token for an algebraic move. Returns
+    fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, &'static str> {
+        if move_token.is_none() {
+            return Err("no move given to play");
         }
+        move_from_algebraic(move_token.unwrap(), self.game.board(), &self.mgen)
     }
 
     fn execute_command(&mut self, c: Command) -> CommandResult {
         match c {
             Command::EchoError(s) => self.echo_error(s),
             Command::LoadFen(fen) => self.load_fen(fen),
-            Command::PlayMove(m) => self.try_move(m),
+            Command::PlayMove { m, engine_reply } => self.try_move(m, engine_reply),
             Command::ListMoves => self.list_moves(),
             Command::Undo(n) => self.game.undo_n(n),
             Command::EngineSelect(s) => self.select_engine(s),
@@ -245,9 +266,11 @@ impl<'a> CrabchessApp<'a> {
     }
 
     /// Attempt to play a move.
-    fn try_move(&mut self, m: Move) -> CommandResult {
+    fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
         self.game.try_move(&self.mgen, m)?;
-        self.play_engine_move()?;
+        if engine_reply {
+            self.play_engine_move()?;
+        }
 
         Ok(())
     }
@@ -256,15 +279,11 @@ impl<'a> CrabchessApp<'a> {
     fn list_moves(&mut self) -> CommandResult {
         let moves = self.mgen.get_moves(self.game.board());
         for m in moves.iter() {
-            if writeln!(
+            writeln!(
                 self.output_stream,
                 "{}",
                 algebraic_from_move(*m, self.game.board(), &self.mgen)
-            )
-            .is_err()
-            {
-                return Err("failed to write move list");
-            }
+            ).map_err(|_| "failed to write move list")?;
         }
         Ok(())
     }
@@ -313,6 +332,9 @@ impl<'a> Default for CrabchessApp<'a> {
 
 #[cfg(test)]
 mod tests {
+
+    use std::io::Cursor;
+
     use super::*;
     use crate::base::Square;
 
@@ -320,7 +342,7 @@ mod tests {
     /// Test that the quit input yields a quit command.
     fn test_parse_quit() {
         let app = CrabchessApp::default();
-        assert_eq!(app.parse_command(String::from("/q")), Ok(Command::Quit));
+        assert_eq!(app.parse_command("/q"), Ok(Command::Quit));
     }
 
     #[test]
@@ -329,8 +351,11 @@ mod tests {
         let app = CrabchessApp::default();
 
         assert_eq!(
-            app.parse_command(String::from("e4")),
-            Ok(Command::PlayMove(Move::new(Square::E2, Square::E4, None)))
+            app.parse_command("e4"),
+            Ok(Command::PlayMove {
+                m: Move::new(Square::E2, Square::E4, None),
+                engine_reply: true,
+            })
         );
     }
 
@@ -339,9 +364,9 @@ mod tests {
     fn test_parse_load() {
         let app = CrabchessApp::default();
         assert_eq!(
-            app.parse_command(String::from(
+            app.parse_command(
                 "/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
-            )),
+            ),
             Ok(Command::LoadFen(String::from(
                 "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
             )))
@@ -369,7 +394,7 @@ mod tests {
     fn test_parse_engine() {
         let app = CrabchessApp::default();
         assert_eq!(
-            app.parse_command(String::from("/e m 8")),
+            app.parse_command("/e m 8"),
             Ok(Command::EngineSelect(String::from("m 8")))
         );
     }
@@ -378,6 +403,6 @@ mod tests {
     /// Test that a garbage input does not parse correctly.
     fn test_garbage_failure() {
         let app = CrabchessApp::default();
-        assert!(app.parse_command(String::from("garbage")).is_err());
+        assert!(app.parse_command("garbage").is_err());
     }
 }
