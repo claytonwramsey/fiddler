@@ -332,9 +332,6 @@ impl<'a> Default for CrabchessApp<'a> {
 
 #[cfg(test)]
 mod tests {
-
-    use std::io::Cursor;
-
     use super::*;
     use crate::base::Square;
 

@@ -13,8 +13,6 @@ opt-level = 3
 [dependencies]
 # Random number generator for creating magic bitboards.
 rand = "0.8.4" 
-# Low-overhead hasher for Zobrist keys.
-nohash-hasher = "0.2.0"
 
 [profile.release]
 opt-level = 3
