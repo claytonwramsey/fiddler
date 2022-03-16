@@ -189,7 +189,7 @@ impl Game {
     }
 
     // no need for `is_empty` since history should always be nonempty
-    #[allow(clippy::len_without_is_empty)] 
+    #[allow(clippy::len_without_is_empty)]
     /// Get the number of total positions in this history of this game.
     pub fn len(&self) -> usize {
         self.history.len()

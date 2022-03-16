@@ -2,12 +2,13 @@ use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
+use crate::engine::limit::{ArcLimit, SearchLimit};
 use crate::engine::search::PVSearch;
-use crate::engine::{ElapsedTimeout, TimeoutCondition};
 
 use std::fmt;
 use std::io;
 use std::io::BufRead;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 /// A text-based application for running CrabChess.
@@ -28,12 +29,11 @@ pub struct CrabchessApp<'a> {
     output_stream: Box<dyn io::Write + 'a>,
 
     /// The condition on which search will stop.
-    timeout_condition: Box<dyn TimeoutCondition + 'a>,
+    limit: ArcLimit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// The set of commands which this command line program can execute.
-///
 enum Command {
     /// Quit the currently-running application.
     Quit,
@@ -178,12 +178,13 @@ impl<'a> CrabchessApp<'a> {
                     }
                 }
                 "m" | "move" => Ok(Command::EngineMove),
-                "p" | "play" => self.parse_move_token(token_iter.next()).map(|m|
-                    Command::PlayMove {
-                        m,
-                        engine_reply: false,
-                    }
-                ),
+                "p" | "play" => {
+                    self.parse_move_token(token_iter.next())
+                        .map(|m| Command::PlayMove {
+                            m,
+                            engine_reply: false,
+                        })
+                }
                 "t" | "timeout" => {
                     let n_msecs_token = token_iter.next();
                     match n_msecs_token {
@@ -200,12 +201,11 @@ impl<'a> CrabchessApp<'a> {
             }
         } else {
             //this is a move
-            self.parse_move_token(first_token).map(|m| 
-                Command::PlayMove {
+            self.parse_move_token(first_token)
+                .map(|m| Command::PlayMove {
                     m,
                     engine_reply: true,
-                }
-            )
+                })
         };
 
         result
@@ -230,7 +230,9 @@ impl<'a> CrabchessApp<'a> {
             Command::EngineMove => self.play_engine_move(),
             Command::SetTimeout(num) => {
                 println!("{num} milliseconds");
-                self.timeout_condition = Box::new(ElapsedTimeout::new(Duration::from_millis(num)));
+                let mut limit = SearchLimit::new();
+                limit.search_duration = Some(Duration::from_millis(num));
+                self.set_limit(limit);
                 Ok(())
             }
             Command::PrintHistory => match writeln!(self.output_stream, "{}", self.game) {
@@ -283,7 +285,8 @@ impl<'a> CrabchessApp<'a> {
                 self.output_stream,
                 "{}",
                 algebraic_from_move(*m, self.game.board(), &self.mgen)
-            ).map_err(|_| "failed to write move list")?;
+            )
+            .map_err(|_| "failed to write move list")?;
         }
         Ok(())
     }
@@ -303,30 +306,48 @@ impl<'a> CrabchessApp<'a> {
 
     /// Have the engine play a move.
     fn play_engine_move(&mut self) -> CommandResult {
-        self.timeout_condition.start();
-        let m = self
-            .engine
-            .best_move(&mut self.game, &self.mgen, self.timeout_condition.as_ref());
-        println!(
+        self.limit
+            .write()
+            .map_err(|_| "failed to lock limit")?
+            .start();
+        let m = self.engine.best_move(&mut self.game, &self.mgen);
+        writeln!(
+            self.output_stream,
             "the engine played {}",
             algebraic_from_move(m, self.game.board(), &self.mgen)
-        );
+        )
+        .map_err(|_| "failed to write to output")?;
         self.game.make_move(m);
 
         Ok(())
+    }
+
+    /// Set the internal search limit of this CLI, and update the searcher to 
+    /// match.
+    fn set_limit(&mut self, limit: SearchLimit) {
+        let arc_limit = Arc::new(RwLock::new(limit));
+        self.limit = arc_limit.clone();
+        self.engine.limit = arc_limit.clone();
     }
 }
 
 impl<'a> Default for CrabchessApp<'a> {
     fn default() -> CrabchessApp<'a> {
-        CrabchessApp {
+        let arc_limit = {
+            let mut limit = SearchLimit::new();
+            limit.search_duration = Some(Duration::from_secs(5));
+            Arc::new(RwLock::new(limit))
+        };
+        let mut app = CrabchessApp {
             game: Game::default(),
             mgen: MoveGenerator::default(),
             engine: PVSearch::default(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
-            timeout_condition: Box::new(ElapsedTimeout::new(Duration::from_secs(5))),
-        }
+            limit: arc_limit.clone(),
+        };
+        app.engine.limit = arc_limit.clone();
+        app
     }
 }
 
@@ -361,9 +382,7 @@ mod tests {
     fn test_parse_load() {
         let app = CrabchessApp::default();
         assert_eq!(
-            app.parse_command(
-                "/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
-            ),
+            app.parse_command("/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"),
             Ok(Command::LoadFen(String::from(
                 "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
             )))
