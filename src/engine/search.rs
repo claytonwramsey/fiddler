@@ -386,6 +386,7 @@ impl PVSearch {
             }
             #[allow(unused_must_use)]
             {
+
                 g.undo();
             }
             alpha = max(alpha, score);
@@ -418,6 +419,10 @@ impl PVSearch {
         score: Eval,
         critical_move: Move,
     ) {
+        if critical_move == Move::BAD_MOVE {
+            // refuse to store if the search was incomplete
+            return;
+        }
         let upper_bound = match score < beta {
             true => score,
             false => Eval::MAX,
