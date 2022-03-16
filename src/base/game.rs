@@ -80,12 +80,7 @@ impl Game {
     /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
     /// you that the move is illegal, and no state will be changed.
     pub fn try_move(&mut self, mgen: &MoveGenerator, m: Move) -> Result<(), &'static str> {
-        let prev_board = match self.history.last() {
-            Some(b) => b.0,
-            None => return Err("no history available!"),
-        };
-
-        if mgen.get_moves(&prev_board).contains(&m) {
+        if self.get_moves(mgen).contains(&m) {
             self.make_move(m);
             Ok(())
         } else {
@@ -192,7 +187,7 @@ impl Game {
 
         mgen.get_loud_moves(self.board())
     }
-    
+
     // no need for `is_empty` since history should always be nonempty
     #[allow(clippy::len_without_is_empty)] 
     /// Get the number of total positions in this history of this game.
