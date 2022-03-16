@@ -44,14 +44,21 @@ pub struct PVSearch {
     config: SearchConfig,
 }
 
+/// The output type of a search. An `Err` may be given if, for instance, 
+/// the search times out.
+type SearchResult = Result<(Move, Eval), ()>;
+
 impl PVSearch {
+
     #[allow(clippy::too_many_arguments)]
     /// Use Principal Variation Search to evaluate the given game to a depth.
     /// This search uses Negamax, which inverts at every step to save on
     /// branches. This will return a lower bound on the position's value for
     /// the player to move, where said lower bound is exact if it is less than
     /// `beta_in`. `depth_to_go` is signed because late-move-reduction may
-    /// cause it to become negative.
+    /// cause it to become negative. In the case where the search returns 
+    /// `Err`, the moves on `g` will not be correctly undone, so it is strongly 
+    /// recommended to pass in a reference to a copy of your original game.
     pub fn pvs(
         &mut self,
         depth_to_go: i8,
@@ -61,17 +68,17 @@ impl PVSearch {
         alpha_in: Eval,
         beta_in: Eval,
         timeout: &dyn TimeoutCondition,
-    ) -> (Move, Eval) {
+    ) -> SearchResult {
         self.num_nodes_evaluated += 1;
 
         if timeout.is_over() {
-            return (Move::BAD_MOVE, Eval::DRAW);
+            return Err(());
         }
 
         if alpha_in >= Eval::mate_in(1) {
             // we do not need to evaluate this position because we are
             // guaranteed a mate which is as fast or faster elsewhere.
-            return (Move::BAD_MOVE, Eval::mate_in(2));
+            return Ok((Move::BAD_MOVE, Eval::mate_in(2)));
         }
 
         // Lower bound on evaluation.
@@ -89,15 +96,15 @@ impl PVSearch {
                 if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
                     // searching deeper will not find us an escape from or a
                     // faster mate if the fill tree was searched
-                    return (stored_move, edata.lower_bound);
+                    return Ok((stored_move, edata.lower_bound));
                 }
                 if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
                     if edata.lower_bound >= beta_in {
-                        return (stored_move, edata.lower_bound);
+                        return Ok((stored_move, edata.lower_bound));
                     }
                     if edata.upper_bound <= alpha_in {
-                        return (stored_move, edata.upper_bound);
+                        return Ok((stored_move, edata.upper_bound));
                     }
                     alpha = max(alpha, edata.lower_bound);
                     beta = min(beta, edata.upper_bound);
@@ -120,10 +127,10 @@ impl PVSearch {
         let mut moves = g.get_moves(mgen);
 
         if moves.is_empty() {
-            return (
+            return Ok((
                 Move::BAD_MOVE,
                 evaluate(g, mgen) * (1 - 2 * g.board().player_to_move as i32),
-            );
+            ));
         }
 
         // Sort moves so that the most promising move is evaluated first
@@ -159,7 +166,7 @@ impl PVSearch {
                 -beta.step_forward(),
                 -alpha.step_forward(),
                 timeout,
-            )
+            )?
             .1
             .step_back();
         #[allow(unused_must_use)]
@@ -184,7 +191,7 @@ impl PVSearch {
                     critical_move,
                 );
             }
-            return (critical_move, alpha);
+            return Ok((critical_move, alpha));
         }
 
         let mut num_moves_checked = 1;
@@ -208,7 +215,7 @@ impl PVSearch {
                     -alpha.step_forward() - Eval::millipawns(1),
                     -alpha.step_forward(),
                     timeout,
-                )
+                )?
                 .1
                 .step_back();
             if alpha < score && score < beta {
@@ -230,7 +237,7 @@ impl PVSearch {
                         -beta.step_forward(),
                         position_lower_bound,
                         timeout,
-                    )
+                    )?
                     .1
                     .step_back();
             }
@@ -265,7 +272,7 @@ impl PVSearch {
             );
         }
 
-        (critical_move, alpha)
+        Ok((critical_move, alpha))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -282,7 +289,7 @@ impl PVSearch {
         alpha_in: Eval,
         beta_in: Eval,
         timeout: &dyn TimeoutCondition,
-    ) -> (Move, Eval) {
+    ) -> SearchResult {
         self.num_nodes_evaluated += 1;
 
         let player = g.board().player_to_move;
@@ -290,7 +297,7 @@ impl PVSearch {
         if alpha_in >= Eval::mate_in(1) {
             // we do not need to evaluate this position because we are
             // guaranteed a mate which is as fast or faster elsewhere.
-            return (Move::BAD_MOVE, Eval::mate_in(2));
+            return Ok((Move::BAD_MOVE, Eval::mate_in(2)));
         }
 
         // Any position where the king is in check is nowhere near quiet
@@ -318,7 +325,7 @@ impl PVSearch {
         if alpha >= beta {
             // beta cutoff, this line would not be selected because there is a
             // better option somewhere else
-            return (Move::BAD_MOVE, beta);
+            return Ok((Move::BAD_MOVE, alpha));
         }
 
         moves.sort_by_cached_key(|m| -candidacy(g, mgen, *m));
@@ -336,7 +343,7 @@ impl PVSearch {
                     -beta.step_forward(),
                     -alpha.step_forward(),
                     timeout,
-                )
+                )?
                 .1
                 .step_back();
             #[allow(unused_must_use)]
@@ -347,7 +354,7 @@ impl PVSearch {
             alpha = max(alpha, score);
             if alpha >= beta {
                 // Beta cutoff, we have found a better line somewhere else
-                return (critical_move, alpha);
+                return Ok((critical_move, alpha));
             }
         }
 
@@ -363,7 +370,7 @@ impl PVSearch {
                     -alpha.step_forward() - Eval::millipawns(1),
                     -alpha.step_forward(),
                     timeout,
-                )
+                )?
                 .1
                 .step_back();
             if alpha < score && score < beta {
@@ -379,7 +386,7 @@ impl PVSearch {
                         -beta.step_forward(),
                         -score.step_forward(),
                         timeout,
-                    )
+                    )?
                     .1
                     .step_back();
                 critical_move = m;
@@ -396,7 +403,7 @@ impl PVSearch {
             }
         }
 
-        (critical_move, alpha)
+        Ok((critical_move, alpha))
     }
 
     /// Clear out internal data.
@@ -419,10 +426,6 @@ impl PVSearch {
         score: Eval,
         critical_move: Move,
     ) {
-        if critical_move == Move::BAD_MOVE {
-            // refuse to store if the search was incomplete
-            return;
-        }
         let upper_bound = match score < beta {
             true => score,
             false => Eval::MAX,
@@ -456,12 +459,13 @@ impl PVSearch {
     /// Return an evaluation on the current position.
     pub fn evaluate(
         &mut self,
-        g: &mut Game,
+        g: &Game,
         mgen: &MoveGenerator,
         timeout: &dyn TimeoutCondition,
     ) -> Eval {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
+        let mut gcopy = g.clone();
         let tic = Instant::now();
         let iter_min = min(4, self.depth);
         let mut iter_depth = iter_min;
@@ -469,15 +473,20 @@ impl PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let mut search_result =
-                self.pvs(iter_depth as i8, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
-            search_result.1 *= 1 - 2 * g.board().player_to_move as i32;
-            if !timeout.is_over() {
-                highest_successful_depth = iter_depth;
-                eval = search_result.1;
-                successful_nodes_evaluated = self.num_nodes_evaluated;
+            if let Ok(mut search_result) =
+                self.pvs(iter_depth as i8, 0, &mut gcopy, mgen, Eval::MIN, Eval::MAX, timeout) {
+                    search_result.1 *= 1 - 2 * g.board().player_to_move as i32;
+                    if !timeout.is_over() {
+                        highest_successful_depth = iter_depth;
+                        eval = search_result.1;
+                        successful_nodes_evaluated = self.num_nodes_evaluated;
+                    }
+                    iter_depth += 1;
+                }
+            else {
+                // timeout
+                break;
             }
-            iter_depth += 1;
         }
         self.ttable.age_up(2);
         let toc = Instant::now();
@@ -498,25 +507,26 @@ impl PVSearch {
     /// Get the evaluation on every legal move in the position.
     pub fn evals(
         &mut self,
-        g: &mut Game,
+        g: &Game,
         mgen: &MoveGenerator,
         timeout: &dyn TimeoutCondition,
     ) -> HashMap<Move, Eval> {
         let mut moves = g.get_moves(mgen);
+        let mut gcopy = g.clone();
         //negate because sort is ascending
-        moves.sort_by_cached_key(|m| -candidacy(g, mgen, *m));
+        moves.sort_by_cached_key(|m| -candidacy(&mut gcopy, mgen, *m));
         let mut evals = HashMap::new();
         for m in moves {
-            g.make_move(m);
+            gcopy.make_move(m);
             let ev = self.evaluate(g, mgen, timeout);
 
             //this should never fail since we just made a move, but who knows?
-            if g.undo().is_ok() {
+            if gcopy.undo().is_ok() {
                 evals.insert(m, ev);
             } else {
                 println!("somehow, undoing failed on a game");
             }
-            println!("{}: {ev}", algebraic_from_move(m, g.board(), mgen));
+            println!("{}: {ev}", algebraic_from_move(m, gcopy.board(), mgen));
         }
 
         evals
@@ -525,7 +535,7 @@ impl PVSearch {
     /// Get the best move in the position.
     pub fn best_move(
         &mut self,
-        g: &mut Game,
+        g: &Game,
         mgen: &MoveGenerator,
         timeout: &dyn TimeoutCondition,
     ) -> Move {
@@ -533,6 +543,7 @@ impl PVSearch {
         self.num_transpositions = 0;
         let tic = Instant::now();
         let iter_min = min(4, self.depth);
+        let mut gcopy = g.clone();
 
         let mut best_move = Move::BAD_MOVE;
         let mut eval;
@@ -541,8 +552,7 @@ impl PVSearch {
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
         while iter_depth <= self.depth && !timeout.is_over() {
-            let result = self.pvs(iter_depth as i8, 0, g, mgen, Eval::MIN, Eval::MAX, timeout);
-            if !timeout.is_over() {
+            if let Ok(result) = self.pvs(iter_depth as i8, 0, &mut gcopy, mgen, Eval::MIN, Eval::MAX, timeout) {
                 highest_successful_depth = iter_depth;
                 successful_nodes_evaluated = self.num_nodes_evaluated;
                 best_move = result.0;
@@ -552,6 +562,9 @@ impl PVSearch {
                     "depth {iter_depth} gives {}: {eval}",
                     algebraic_from_move(best_move, g.board(), mgen)
                 );
+            } else {
+                // timeout
+                break;
             }
             iter_depth += 1;
         }
