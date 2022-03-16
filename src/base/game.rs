@@ -192,7 +192,9 @@ impl Game {
 
         mgen.get_loud_moves(self.board())
     }
-
+    
+    // no need for `is_empty` since history should always be nonempty
+    #[allow(clippy::len_without_is_empty)] 
     /// Get the number of total positions in this history of this game.
     pub fn len(&self) -> usize {
         self.history.len()
