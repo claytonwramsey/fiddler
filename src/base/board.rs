@@ -616,8 +616,7 @@ impl Index<Piece> for Board {
     fn index(&self, index: Piece) -> &Self::Output {
         // This will not fail because there are the same number of pieces as
         // indices on `pieces`
-        // unsafe { self.pieces.get_unchecked(index as usize) }
-        &self.pieces[index as usize]
+        unsafe { self.pieces.get_unchecked(index as usize) }
     }
 }
 
@@ -629,8 +628,7 @@ impl Index<Color> for Board {
     fn index(&self, index: Color) -> &Self::Output {
         // This will not fail because there are the same number of colors as
         // indices on `sides`
-        // unsafe { self.sides.get_unchecked(index as usize) }
-        &self.sides[index as usize]
+        unsafe { self.sides.get_unchecked(index as usize) }
     }
 }
 

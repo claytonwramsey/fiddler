@@ -88,9 +88,6 @@ impl Move {
         // Justification for the transmutation here:
         // We know that from the creation of a Move its promotion type must
         // always have been valid.
-        if self == Move::BAD_MOVE {
-            panic!("no promote type for bad move");
-        }
         match promote_bits {
             Move::NO_PROMOTE => None,
             x => Some(unsafe { std::mem::transmute(x as u8) }),
