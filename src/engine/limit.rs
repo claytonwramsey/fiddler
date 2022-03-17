@@ -64,4 +64,9 @@ impl SearchLimit {
     pub fn add_nodes(&mut self, nodes: u64) {
         self.num_nodes += nodes;
     }
+
+    /// Get the cumulative number of nodes searched.
+    pub fn num_nodes(&self) -> u64 {
+        self.num_nodes
+    }
 }

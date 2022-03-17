@@ -447,42 +447,47 @@ impl PVSearch {
     }
 
     #[inline]
-    /// Return an evaluation on the current position.
-    pub fn evaluate(&mut self, g: &Game, mgen: &MoveGenerator) -> Eval {
+    /// Evaluate the given game. Return a pair containing the best move and its 
+    /// evaluation.
+    pub fn evaluate(&mut self, g: &Game, mgen: &MoveGenerator) -> (Move, Eval) {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let mut gcopy = g.clone();
         let tic = Instant::now();
-        let mut eval = Eval::DRAW;
+        let mut result = (Move::BAD_MOVE, Eval::DRAW);
         let mut highest_successful_depth = 0;
         let mut successful_nodes_evaluated = 0;
-        for iter_depth in 0..=self.config.depth {
-            if let Ok(mut search_result) =
+        for iter_depth in 1..=self.config.depth {
+            if let Ok(search_result) =
                 self.pvs(iter_depth as i8, 0, &mut gcopy, mgen, Eval::MIN, Eval::MAX)
             {
-                search_result.1 *= 1 - 2 * g.board().player_to_move as i32;
+                result = (
+                    search_result.0,
+                    search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32)
+                );
                 highest_successful_depth = iter_depth;
-                eval = search_result.1;
-                successful_nodes_evaluated = self.num_nodes_evaluated;
+                successful_nodes_evaluated = self.limit.read().unwrap().num_nodes();
             } else {
                 // timeout
                 break;
             }
         }
         self.ttable.age_up(2);
+        self.update_node_limits().unwrap();
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();
+        let n_nodes = self.limit.read().unwrap().num_nodes();
         println!(
             "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions; branch factor {:.2}, hash fill rate {:.2}",
-            self.num_nodes_evaluated,
+            n_nodes,
             nsecs,
-            self.num_nodes_evaluated as f64 / nsecs,
+            n_nodes as f64 / nsecs,
             self.num_transpositions,
             branch_factor(highest_successful_depth, successful_nodes_evaluated),
             self.ttable.fill_rate(),
         );
 
-        eval
+        result
     }
 
     /// Get the evaluation on every legal move in the position.
@@ -494,82 +499,25 @@ impl PVSearch {
         let mut evals = HashMap::new();
         for m in moves {
             gcopy.make_move(m);
-            let ev = self.evaluate(g, mgen);
+            let result = self.evaluate(&gcopy, mgen);
 
             //this should never fail since we just made a move, but who knows?
             if gcopy.undo().is_ok() {
-                evals.insert(m, ev);
+                evals.insert(m, result.1);
             } else {
                 println!("somehow, undoing failed on a game");
             }
-            println!("{}: {ev}", algebraic_from_move(m, gcopy.board(), mgen));
+            println!("{}: {}", algebraic_from_move(m, gcopy.board(), mgen), result.1);
         }
 
         evals
-    }
-
-    /// Get the best move in the position.
-    pub fn best_move(&mut self, g: &Game, mgen: &MoveGenerator) -> Move {
-        self.num_nodes_evaluated = 0;
-        self.num_transpositions = 0;
-        let tic = Instant::now();
-        let mut gcopy = g.clone();
-
-        let mut best_move = Move::BAD_MOVE;
-        let mut eval;
-        let mut eval_uncalibrated;
-        let mut highest_successful_depth = 0;
-        let mut successful_nodes_evaluated = 0;
-        for iter_depth in 0..=self.config.depth {
-            if let Ok(result) =
-                self.pvs(iter_depth as i8, 0, &mut gcopy, mgen, Eval::MIN, Eval::MAX)
-            {
-                highest_successful_depth = iter_depth;
-                successful_nodes_evaluated = self.num_nodes_evaluated;
-                best_move = result.0;
-                eval_uncalibrated = result.1;
-                eval = eval_uncalibrated * (1 - 2 * g.board().player_to_move as i32);
-                println!(
-                    "depth {iter_depth} gives {}: {eval}",
-                    algebraic_from_move(best_move, g.board(), mgen)
-                );
-            } else {
-                // timeout
-                break;
-            }
-        }
-        self.ttable.age_up(2);
-        let toc = Instant::now();
-        let nsecs = (toc - tic).as_secs_f64();
-        // Note that the print statements in iterative deepening take a
-        // significant amount of time.
-        println!(
-            "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec) with {:0} transpositions; branch factor {:.2}, hash fill rate {:.2}",
-            self.num_nodes_evaluated,
-            nsecs,
-            self.num_nodes_evaluated as f64 / nsecs,
-            self.num_transpositions,
-            branch_factor(highest_successful_depth, successful_nodes_evaluated),
-            self.ttable.fill_rate(),
-        );
-
-        best_move
     }
 
     #[inline]
     /// Helper function to check whether our search limit has decided that we
     /// are done searching.
     fn is_over(&self) -> Result<bool, ()> {
-        
-        Ok({
-            let limit = self.limit.read().map_err(|_| ())?;
-            let over = self.limit.read().map_err(|_| ())?.is_over();
-            if over {
-                println!("over!");
-                println!("{:?}", limit);
-            }
-            over
-        })
+        Ok(self.limit.read().map_err(|_| ())?.is_over())
     }
 
     #[inline]
@@ -578,12 +526,20 @@ impl PVSearch {
     fn increment_nodes(&mut self) -> Result<(), ()> {
         self.num_nodes_evaluated += 1;
         if self.num_nodes_evaluated > self.config.limit_update_increment {
-            self.limit
+            self.update_node_limits()?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    /// Copy over the number of nodes evaluated by this search into the limit 
+    /// structure, and zero out our number.
+    fn update_node_limits(&mut self) -> Result<(), ()> {
+        self.limit
                 .write()
                 .map_err(|_| ())?
                 .add_nodes(self.num_nodes_evaluated);
-            self.num_nodes_evaluated = 0;
-        }
+        self.num_nodes_evaluated = 0;
         Ok(())
     }
 }
@@ -637,25 +593,25 @@ pub mod tests {
     #[test]
     /// Try finding the best starting move in the game.
     pub fn test_get_starting_move() {
-        let mut g = Game::default();
+        let g = Game::default();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
-        e.set_depth(8);
+        e.set_depth(11);
 
-        e.best_move(&mut g, &mgen);
+        e.evaluate(&g, &mgen);
     }
 
     #[test]
     /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
-        let mut g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
+        let g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
         assert_eq!(
-            e.best_move(&mut g, &mgen),
+            e.evaluate(&g, &mgen).0,
             Move::normal(Square::D1, Square::F3)
         );
     }
@@ -683,14 +639,14 @@ pub mod tests {
     /// equal to what we expect it to be. It will check both a normal search
     /// and a search without the transposition table.
     fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
-        let mut g = Game::from_fen(fen).unwrap();
+        let g = Game::from_fen(fen).unwrap();
         let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(depth);
 
-        assert_eq!(e.evaluate(&mut g, &mgen), eval);
+        assert_eq!(e.evaluate(&g, &mgen).1, eval);
         e.config.max_transposition_depth = 0;
         e.clear();
-        assert_eq!(e.evaluate(&mut g, &mgen), eval);
+        assert_eq!(e.evaluate(&g, &mgen).1, eval);
     }
 }

@@ -83,11 +83,14 @@ impl Move {
 
     #[inline]
     /// Get the promotion type of this move.
-    pub const fn promote_type(self) -> Option<Piece> {
+    pub fn promote_type(self) -> Option<Piece> {
         let promote_bits = (self.0 >> 12) & 7u16;
         // Justification for the transmutation here:
         // We know that from the creation of a Move its promotion type must
         // always have been valid.
+        if self == Move::BAD_MOVE {
+            panic!("no promote type for bad move");
+        }
         match promote_bits {
             Move::NO_PROMOTE => None,
             x => Some(unsafe { std::mem::transmute(x as u8) }),

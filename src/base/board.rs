@@ -616,7 +616,8 @@ impl Index<Piece> for Board {
     fn index(&self, index: Piece) -> &Self::Output {
         // This will not fail because there are the same number of pieces as
         // indices on `pieces`
-        unsafe { self.pieces.get_unchecked(index as usize) }
+        // unsafe { self.pieces.get_unchecked(index as usize) }
+        &self.pieces[index as usize]
     }
 }
 
@@ -628,7 +629,8 @@ impl Index<Color> for Board {
     fn index(&self, index: Color) -> &Self::Output {
         // This will not fail because there are the same number of colors as
         // indices on `sides`
-        unsafe { self.sides.get_unchecked(index as usize) }
+        // unsafe { self.sides.get_unchecked(index as usize) }
+        &self.sides[index as usize]
     }
 }
 
@@ -774,7 +776,7 @@ pub mod tests {
         let result = Board::from_fen(fen);
         match result {
             Ok(board) => test_move_helper(board, m),
-            Err(_) => assert!(false),
+            Err(_) => panic!("could not load FEN"),
         };
     }
 
