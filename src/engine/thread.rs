@@ -10,7 +10,7 @@ pub struct MainSearch {
     main_config: SearchConfig,
     configs: Vec<SearchConfig>,
     ttable: Arc<TTable>,
-    limit: Arc<RwLock<SearchLimit>>,
+    pub limit: Arc<RwLock<SearchLimit>>,
 }
 
 impl MainSearch {
@@ -97,5 +97,10 @@ impl MainSearch {
         }
         
         best_result
+    }
+
+    pub fn set_depth(&mut self, depth: u8) {
+        self.main_config.depth = depth;
+        self.configs.iter_mut().for_each(|config| config.depth = depth);
     }
 }

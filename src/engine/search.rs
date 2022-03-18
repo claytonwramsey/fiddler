@@ -1,4 +1,3 @@
-use crate::base::algebraic::algebraic_from_move;
 use crate::base::Eval;
 use crate::base::{Game, Move, MoveGenerator};
 use crate::engine::evaluate::evaluate;
@@ -466,9 +465,6 @@ impl PVSearch {
                         search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32)
                     );
                     highest_successful_depth = iter_depth;
-                    if iter_depth > 0 {
-                        println!("depth {iter_depth} gives {}", algebraic_from_move(result.0, g.board(), mgen));
-                    }
                 },
                 Err(e) => match e {
                     SearchError::TimeoutError => break,

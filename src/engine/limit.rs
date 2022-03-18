@@ -52,7 +52,6 @@ impl SearchLimit {
         }
         if let Some(duration) = self.search_duration {
             if Instant::now() - self.start_time > duration {
-                println!("over by duration");
                 return true;
             }
         }

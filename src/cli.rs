@@ -3,7 +3,7 @@ use crate::base::Game;
 use crate::base::Move;
 use crate::base::MoveGenerator;
 use crate::engine::limit::{ArcLimit, SearchLimit};
-use crate::engine::search::PVSearch;
+use crate::engine::thread::MainSearch;
 
 use std::fmt;
 use std::io;
@@ -20,7 +20,7 @@ pub struct CrabchessApp<'a> {
     mgen: MoveGenerator,
 
     /// The currently-running engine to play against.,
-    engine: PVSearch,
+    engine: MainSearch,
 
     /// The input stream to receive messages from.
     input_stream: Box<dyn io::Read + 'a>,
@@ -310,14 +310,16 @@ impl<'a> CrabchessApp<'a> {
             .write()
             .map_err(|_| "failed to lock limit")?
             .start();
-        let m = self.engine.evaluate(&mut self.game, &self.mgen).map_err(|_| "evaluation failed")?.0;
+        let search_data = self.engine.evaluate(&mut self.game, &self.mgen).map_err(|_| "evaluation failed")?;
+
         writeln!(
             self.output_stream,
-            "the engine played {}",
-            algebraic_from_move(m, self.game.board(), &self.mgen)
+            "depth {}: the engine played {}",
+            search_data.2,
+            algebraic_from_move(search_data.0, self.game.board(), &self.mgen)
         )
         .map_err(|_| "failed to write to output")?;
-        self.game.make_move(m);
+        self.game.make_move(search_data.0);
 
         Ok(())
     }
@@ -341,12 +343,13 @@ impl<'a> Default for CrabchessApp<'a> {
         let mut app = CrabchessApp {
             game: Game::default(),
             mgen: MoveGenerator::default(),
-            engine: PVSearch::default(),
+            engine: MainSearch::new(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
             limit: arc_limit.clone(),
         };
         app.engine.limit = arc_limit.clone();
+        app.engine.set_nthreads(15);
         app
     }
 }
