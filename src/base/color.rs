@@ -86,7 +86,13 @@ mod tests {
     #[test]
     /// Test that the start ranks for pawns are correct.
     fn test_pawn_start_rank() {
-        assert_eq!(Color::White.pawn_start_rank(), Bitboard::new(0x000000000000FF00));
-        assert_eq!(Color::Black.pawn_start_rank(), Bitboard::new(0x00FF000000000000));
+        assert_eq!(
+            Color::White.pawn_start_rank(),
+            Bitboard::new(0x000000000000FF00)
+        );
+        assert_eq!(
+            Color::Black.pawn_start_rank(),
+            Bitboard::new(0x00FF000000000000)
+        );
     }
 }

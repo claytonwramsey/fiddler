@@ -460,45 +460,45 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 }
 
 /// Given some mask, create the occupancy bitboard according to this index.
-/// 
+///
 /// For instance: if `mask` repreresented a board like the following:
 ///
 /// `8 . . . . . . . .`
-/// 
+///
 /// `7 . . . . . . . .`
-/// 
+///
 /// `6 . . . . . . . .`
-/// 
+///
 /// `5 . . . . . . . .`
-/// 
+///
 /// `4 . . . . . . . .`
-/// 
+///
 /// `3 . . . . . . . .`
-/// 
+///
 /// `2 . 1 . . . . . .`
-/// 
+///
 /// `1 1 . . . . . . .`
-/// 
+///
 /// `. A B C D E F G H`
-/// 
+///
 /// and the given index were `0b10`, then the output mask would be
-/// 
+///
 /// `8 . . . . . . . .`
-/// 
+///
 /// `7 . . . . . . . .`
-/// 
+///
 /// `6 . . . . . . . .`
-/// 
+///
 /// `5 . . . . . . . .`
-/// 
+///
 /// `4 . . . . . . . .`
-/// 
+///
 /// `3 . . . . . . . .`
-/// 
+///
 /// `2 . 1 . . . . . .`
-/// 
+///
 /// `1 . . . . . . . .`
-/// 
+///
 /// `. A B C D E F G H`
 fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     let mut result = Bitboard::EMPTY;
@@ -582,13 +582,22 @@ mod tests {
     #[test]
     fn test_bishop_mask() {
         //println!("{:064b}", get_bishop_mask(A1).0);
-        assert_eq!(get_bishop_mask(Square::A1), Bitboard::new(0x0040201008040200));
+        assert_eq!(
+            get_bishop_mask(Square::A1),
+            Bitboard::new(0x0040201008040200)
+        );
 
         //println!("{:064b}", get_bishop_mask(E1).0);
-        assert_eq!(get_bishop_mask(Square::E1), Bitboard::new(0x0000000002442800));
+        assert_eq!(
+            get_bishop_mask(Square::E1),
+            Bitboard::new(0x0000000002442800)
+        );
 
         //println!("{:064b}", get_bishop_mask(E5).0);
-        assert_eq!(get_bishop_mask(Square::E5), Bitboard::new(0x0044280028440200));
+        assert_eq!(
+            get_bishop_mask(Square::E5),
+            Bitboard::new(0x0044280028440200)
+        );
     }
 
     #[test]

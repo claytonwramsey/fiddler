@@ -46,9 +46,9 @@ impl Bitboard {
     }
 
     #[inline]
-    /// Count the number of trailing zeros (i.e. empty squares between A1 and 
-    /// the first non-emtpy square) in this bitboard. Alternately, this can be 
-    /// used to construct a `Square` from the lowest-rank square in this 
+    /// Count the number of trailing zeros (i.e. empty squares between A1 and
+    /// the first non-emtpy square) in this bitboard. Alternately, this can be
+    /// used to construct a `Square` from the lowest-rank square in this
     /// bitboard.
     pub const fn trailing_zeros(&self) -> u32 {
         self.0.trailing_zeros()
