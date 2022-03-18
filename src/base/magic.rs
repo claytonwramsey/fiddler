@@ -228,6 +228,20 @@ impl MagicTable {
 
         mtable
     }
+
+    #[inline]
+    /// Get the attacks that a rook on `sq` could make with the reference table
+    /// `mtable`.
+    pub fn rook_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
+        get_attacks(occupancy, sq, &self.rook_magic)
+    }
+
+    #[inline]
+    /// Get the attacks that a bishop on `sq` could make with the reference table
+    /// `mtable`.
+    pub fn bishop_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
+        get_attacks(occupancy, sq, &self.bishop_magic)
+    }
 }
 
 impl Default for MagicTable {
@@ -322,20 +336,6 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard
     let key = compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
 
     unsafe { *magic_data.attacks.get_unchecked(key) }
-}
-
-#[inline]
-/// Get the attacks that a rook on `sq` could make with the reference table
-/// `mtable`.
-pub fn get_rook_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
-    get_attacks(occupancy, sq, &mtable.rook_magic)
-}
-
-#[inline]
-/// Get the attacks that a bishop on `sq` could make with the reference table
-/// `mtable`.
-pub fn get_bishop_attacks(occupancy: Bitboard, sq: Square, mtable: &MagicTable) -> Bitboard {
-    get_attacks(occupancy, sq, &mtable.bishop_magic)
 }
 
 #[inline]
@@ -575,7 +575,7 @@ mod tests {
         let squares = [Square::A1, Square::A1];
         let attacks = [Bitboard(0x102), Bitboard(0x102)];
         for i in 0..1 {
-            let resulting_attack = get_rook_attacks(occupancies[i], squares[i], &mtable);
+            let resulting_attack = mtable.rook_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }
@@ -639,7 +639,7 @@ mod tests {
             Bitboard(0x0000000000005000), //
         ];
         for i in 0..3 {
-            let resulting_attack = get_bishop_attacks(occupancies[i], squares[i], &mtable);
+            let resulting_attack = mtable.bishop_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }

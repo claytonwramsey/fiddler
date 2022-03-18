@@ -27,7 +27,7 @@ fn perft_search(b: &Board, mgen: &MoveGenerator, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = mgen.get_moves(b);
+    let moves = get_moves(b);
     let mut total = 0;
     let mut bcopy;
     for m in moves {

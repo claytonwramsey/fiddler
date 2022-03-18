@@ -6,10 +6,10 @@ use crate::engine::transposition::{EvalData, TTable};
 use std::cmp::{max, min};
 use std::sync::{Arc, RwLock};
 
-use super::{SearchResult, SearchError};
 use super::candidacy::candidacy;
 use super::config::SearchConfig;
 use super::limit::{ArcLimit, SearchLimit};
+use super::{SearchError, SearchResult};
 
 #[derive(Clone, Debug)]
 /// A chess engine which uses Principal Variation Search.
@@ -40,16 +40,15 @@ pub struct PVSearch {
 type PVSResult = Result<(Move, Eval), SearchError>;
 
 impl PVSearch {
-
-    /// Construct a new PVSearch using a given transposition table, 
+    /// Construct a new PVSearch using a given transposition table,
     /// configuration, and limit.
     pub fn new(ttable: Arc<TTable>, config: SearchConfig, limit: ArcLimit) -> PVSearch {
-        PVSearch { 
-            ttable, 
+        PVSearch {
+            ttable,
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
-            num_nodes_evaluated: 0, 
-            num_transpositions: 0, 
-            config, 
+            num_nodes_evaluated: 0,
+            num_transpositions: 0,
+            config,
             limit,
         }
     }
@@ -442,7 +441,7 @@ impl PVSearch {
     }
 
     #[inline]
-    /// Evaluate the given game. Return a pair containing the best move and its 
+    /// Evaluate the given game. Return a pair containing the best move and its
     /// evaluation, as well as the depth to which the evaluation was searched.
     pub fn evaluate(&mut self, g: &Game, mgen: &MoveGenerator) -> SearchResult {
         self.num_nodes_evaluated = 0;
@@ -451,26 +450,21 @@ impl PVSearch {
         let mut result = (Move::BAD_MOVE, Eval::DRAW);
         let mut highest_successful_depth = 0;
         for iter_depth in 1..=self.config.depth {
-            match self.pvs(
-                iter_depth as i8, 
-                0, 
-                &mut gcopy, 
-                mgen, 
-                Eval::MIN, 
-                Eval::MAX
-            ) {
+            match self.pvs(iter_depth as i8, 0, &mut gcopy, mgen, Eval::MIN, Eval::MAX) {
                 Ok(search_result) => {
                     result = (
                         search_result.0,
-                        search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32)
+                        search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32),
                     );
                     highest_successful_depth = iter_depth;
-                },
+                }
                 Err(e) => match e {
                     SearchError::TimeoutError => break,
                     SearchError::PoisonError => return Err(e),
-                    SearchError::JoinError => panic!("how did a single-threaded process have a join error?!"),
-                }
+                    SearchError::JoinError => {
+                        panic!("how did a single-threaded process have a join error?!")
+                    }
+                },
             };
         }
 
@@ -486,7 +480,11 @@ impl PVSearch {
     /// Helper function to check whether our search limit has decided that we
     /// are done searching.
     fn is_over(&self) -> Result<bool, SearchError> {
-        Ok(self.limit.read().map_err(|_| SearchError::PoisonError)?.is_over())
+        Ok(self
+            .limit
+            .read()
+            .map_err(|_| SearchError::PoisonError)?
+            .is_over())
     }
 
     #[inline]
@@ -501,13 +499,13 @@ impl PVSearch {
     }
 
     #[inline]
-    /// Copy over the number of nodes evaluated by this search into the limit 
+    /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
         self.limit
-                .write()
-                .map_err(|_| SearchError::PoisonError)?
-                .add_nodes(self.num_nodes_evaluated);
+            .write()
+            .map_err(|_| SearchError::PoisonError)?
+            .add_nodes(self.num_nodes_evaluated);
         self.num_nodes_evaluated = 0;
         Ok(())
     }
@@ -544,15 +542,12 @@ pub mod tests {
     /// Test PVSearch's evaluation of the start position of the game.
     pub fn test_eval_start() {
         let g = Game::default();
-        let mgen = MoveGenerator::default();
+
         let mut e = PVSearch::default();
         e.set_depth(11); // this prevents taking too long on searches
 
         let result = e.evaluate(&g, &mgen);
-        println!("best move: {} [{}]",
-            result.unwrap().0,
-            result.unwrap().1
-        );
+        println!("best move: {} [{}]", result.unwrap().0, result.unwrap().1);
     }
 
     #[test]
@@ -560,7 +555,7 @@ pub mod tests {
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
         let g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
-        let mgen = MoveGenerator::default();
+
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
@@ -594,7 +589,7 @@ pub mod tests {
     /// and a search without the transposition table.
     fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
         let g = Game::from_fen(fen).unwrap();
-        let mgen = MoveGenerator::default();
+
         let mut e = PVSearch::default();
         e.set_depth(depth);
 

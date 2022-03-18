@@ -279,7 +279,7 @@ impl<'a> CrabchessApp<'a> {
 
     /// Print out a list of the available moves in this position.
     fn list_moves(&mut self) -> CommandResult {
-        let moves = self.mgen.get_moves(self.game.board());
+        let moves = self.get_moves(self.game.board());
         for m in moves.iter() {
             writeln!(
                 self.output_stream,
@@ -310,7 +310,10 @@ impl<'a> CrabchessApp<'a> {
             .write()
             .map_err(|_| "failed to lock limit")?
             .start();
-        let search_data = self.engine.evaluate(&mut self.game, &self.mgen).map_err(|_| "evaluation failed")?;
+        let search_data = self
+            .engine
+            .evaluate(&mut self.game, &self.mgen)
+            .map_err(|_| "evaluation failed")?;
 
         writeln!(
             self.output_stream,
@@ -324,7 +327,7 @@ impl<'a> CrabchessApp<'a> {
         Ok(())
     }
 
-    /// Set the internal search limit of this CLI, and update the searcher to 
+    /// Set the internal search limit of this CLI, and update the searcher to
     /// match.
     fn set_limit(&mut self, limit: SearchLimit) {
         let arc_limit = Arc::new(RwLock::new(limit));

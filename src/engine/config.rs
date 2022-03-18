@@ -19,11 +19,11 @@ pub struct SearchConfig {
 
 impl SearchConfig {
     pub fn new() -> SearchConfig {
-        SearchConfig { 
+        SearchConfig {
             depth: 10,
-            max_transposition_depth: 8, 
-            num_early_moves: 4, 
-            limit_update_increment: 100
+            max_transposition_depth: 8,
+            num_early_moves: 4,
+            limit_update_increment: 100,
         }
     }
 }

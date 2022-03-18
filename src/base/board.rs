@@ -248,7 +248,7 @@ impl Board {
     /// In the current state, is the king (i.e. player to move) in check?
     pub fn is_king_checked(&self, mgen: &MoveGenerator) -> bool {
         let player = self.player_to_move;
-        mgen.is_square_attacked_by(
+        is_square_attacked_by(
             self,
             Square::try_from(self[Piece::King] & self[player]).unwrap(),
             !player,
@@ -402,7 +402,7 @@ impl Board {
         mgen: &crate::base::movegen::MoveGenerator,
         m: Move,
     ) -> Result<MoveResult, &'static str> {
-        let legal_moves = mgen.get_moves(self);
+        let legal_moves = get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");
         }
@@ -760,7 +760,7 @@ pub mod tests {
     /// Test that capturing a rook removes the right to castle with that rook.
     fn test_no_castle_after_capture() {
         let m = Move::new(Square::B2, Square::H8, None);
-        let mgen = MoveGenerator::default();
+
         test_fen_helper(fens::ROOK_HANGING_FEN, m);
         let mut b = Board::from_fen(fens::ROOK_HANGING_FEN).unwrap();
         b.make_move(m);
@@ -782,8 +782,6 @@ pub mod tests {
 
     /// and will fail assertions if the board's state was not changed correctly.
     pub fn test_move_helper(board: Board, m: Move) {
-        let mgen = MoveGenerator::default();
-
         //new_board will be mutated to reflect the move
         let mut new_board = board;
 

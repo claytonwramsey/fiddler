@@ -140,12 +140,12 @@ impl Game {
         }
         let b = self.board();
 
-        if mgen.has_moves(b) {
+        if has_moves(b) {
             return (false, None);
         }
 
         let king_sq = Square::try_from(b[Piece::King] & b[b.player_to_move]).unwrap();
-        match mgen.is_square_attacked_by(b, king_sq, !b.player_to_move) {
+        match is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate
         }
@@ -174,7 +174,7 @@ impl Game {
             return Vec::new();
         }
 
-        mgen.get_moves(self.board())
+        get_moves(self.board())
     }
 
     /// Get the "loud" moves, such as captures and promotions, which are legal
@@ -185,7 +185,7 @@ impl Game {
             return Vec::new();
         }
 
-        mgen.get_loud_moves(self.board())
+        get_loud_moves(self.board())
     }
 
     // no need for `is_empty` since history should always be nonempty
@@ -304,25 +304,25 @@ mod tests {
     /// Test that a mated position is in fact over.
     fn test_is_mate_over() {
         let g = Game::from_fen(SCHOLARS_MATE_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-        let moves = mgen.get_moves(g.board());
+
+        let moves = get_moves(g.board());
         for m in moves {
             println!("{m}");
         }
-        assert!(!mgen.has_moves(g.board()));
+        assert!(!has_moves(g.board()));
         assert_eq!(g.is_game_over(&mgen), (true, Some(Color::White)));
     }
 
     #[test]
     fn test_is_mate_over_2() {
         let g: Game = Game::from_fen(WHITE_MATED_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-        let moves = mgen.get_moves(g.board());
+
+        let moves = get_moves(g.board());
         println!("moves: ");
         for m in moves {
             println!("{m}");
         }
-        assert!(!mgen.has_moves(g.board()));
+        assert!(!has_moves(g.board()));
         assert_eq!(g.is_game_over(&mgen), (true, Some(Color::Black)));
     }
 
@@ -330,7 +330,6 @@ mod tests {
     /// Test that making a mate found in testing results in the game being over.
     fn test_mate_in_1() {
         let mut g = Game::from_fen(MATE_IN_1_FEN).unwrap();
-        let mgen = MoveGenerator::default();
 
         let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves(&mgen).contains(&m));
@@ -355,7 +354,7 @@ mod tests {
     /// Test that a king can escape check without capturing the checker.
     fn test_king_escape_without_capture() {
         let g = Game::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
-        let mgen = MoveGenerator::default();
+
         let moves = g.get_moves(&mgen);
         let expected_moves = vec![
             Move::normal(Square::E6, Square::D6),
