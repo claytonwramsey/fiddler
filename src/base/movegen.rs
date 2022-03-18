@@ -10,10 +10,6 @@ use crate::base::Square;
 use lazy_static::lazy_static;
 use std::convert::TryFrom;
 
-#[derive(Clone, Debug)]
-/// A struct which contains all the necessary data to create moves.
-struct MovegenData {}
-
 // Construct common lookup tables for use in move generation.
 lazy_static! {
     /// A master copy of the main magic table. Used for generating bishop,
