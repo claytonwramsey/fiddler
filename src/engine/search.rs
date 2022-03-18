@@ -474,8 +474,7 @@ impl PVSearch {
     fn is_over(&self) -> Result<bool, SearchError> {
         Ok(self
             .limit
-            .read()
-            .map_err(|_| SearchError::PoisonError)?
+            .read()?
             .is_over())
     }
 
@@ -495,8 +494,7 @@ impl PVSearch {
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
         self.limit
-            .write()
-            .map_err(|_| SearchError::PoisonError)?
+            .write()?
             .add_nodes(self.num_nodes_evaluated);
         self.num_nodes_evaluated = 0;
         Ok(())

@@ -1,3 +1,5 @@
+use std::sync::PoisonError;
+
 use crate::base::{Eval, Move};
 
 pub mod candidacy;
@@ -19,6 +21,12 @@ pub enum SearchError {
     PoisonError,
     /// This searched failed because a thread failed to join.
     JoinError,
+}
+
+impl<T> From<PoisonError<T>> for SearchError {
+    fn from(_: PoisonError<T>) -> Self {
+        SearchError::PoisonError
+    }
 }
 
 /// The result of performing a search. The `Ok` version is the tuple of (best

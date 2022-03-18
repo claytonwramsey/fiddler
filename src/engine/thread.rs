@@ -80,8 +80,7 @@ impl MainSearch {
 
         let n_nodes = self
             .limit
-            .read()
-            .map_err(|_| SearchError::PoisonError)?
+            .read()?
             .num_nodes();
 
         let toc = Instant::now();
