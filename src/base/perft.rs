@@ -1,5 +1,4 @@
 use crate::base::Board;
-use crate::base::MoveGenerator;
 
 use std::time::Instant;
 

@@ -2,7 +2,6 @@ use crate::base::algebraic::algebraic_from_move;
 use crate::base::Board;
 use crate::base::Color;
 use crate::base::Move;
-use crate::base::MoveGenerator;
 use crate::base::Piece;
 use crate::base::Square;
 

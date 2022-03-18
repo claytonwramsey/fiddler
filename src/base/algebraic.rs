@@ -1,17 +1,19 @@
 use crate::base::constants;
 use crate::base::Board;
 use crate::base::Move;
-use crate::base::MoveGenerator;
 use crate::base::Piece;
 use crate::base::Square;
 
 use std::convert::TryFrom;
 
+use super::movegen::get_moves;
+use super::movegen::is_square_attacked_by;
+
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.
 /// # Panics
 /// if the move given is illegal or otherwise invalid.
-pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
+pub fn algebraic_from_move(m: Move, b: &Board) -> String {
     //longest possible algebraic string would be something along the lines of
     //Qe4xd4# (7 chars)
     //exd8=Q#
@@ -104,10 +106,10 @@ pub fn algebraic_from_move(m: Move, b: &Board, mgen: &MoveGenerator) -> String {
 
 /// Given the string of an algebraic-notation move, get the `Move` which can be
 /// played. Will return Err if the string is invalid.
-pub fn move_from_algebraic(s: &str, b: &Board, mgen: &MoveGenerator) -> Result<Move, &'static str> {
+pub fn move_from_algebraic(s: &str, b: &Board) -> Result<Move, &'static str> {
     get_moves(b)
         .into_iter()
-        .find(|m| algebraic_from_move(*m, b, mgen).as_str() == s)
+        .find(|m| algebraic_from_move(*m, b).as_str() == s)
         .ok_or("not a legal algebraic move")
 }
 
@@ -121,82 +123,72 @@ mod tests {
     /// form.
     fn test_e4_to_algebraic() {
         let b = Board::default();
-
         let m = Move::new(Square::E2, Square::E4, None);
 
-        assert_eq!(String::from("e4"), algebraic_from_move(m, &b, &mgen));
+        assert_eq!(String::from("e4"), algebraic_from_move(m, &b));
     }
 
     #[test]
     /// Test that a mating move is correctly displayed.
     fn test_mate() {
         let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
-
         let m = Move::new(Square::B6, Square::B8, None);
 
-        println!("{b}");
-        assert_eq!(String::from("Rb8#"), algebraic_from_move(m, &b, &mgen));
+        assert_eq!(String::from("Rb8#"), algebraic_from_move(m, &b));
     }
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn test_algebraic_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
-
         let m = Move::new(Square::E4, Square::F5, None);
-
         let moves = get_moves(&b);
         for m in moves.iter() {
             println!("{m} ");
         }
 
-        assert_eq!(algebraic_from_move(m, &b, &mgen), String::from("exf5"));
+        assert_eq!(algebraic_from_move(m, &b), String::from("exf5"));
     }
 
     #[test]
     /// Test that the opening move e4 can be converted from a string to a move.
     fn test_move_from_e4() {
         let b = Board::default();
-
         let m = Move::new(Square::E2, Square::E4, None);
         let s = "e4";
 
-        assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
+        assert_eq!(move_from_algebraic(s, &b), Ok(m));
     }
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn test_move_from_pawn_capture() {
         let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
-
         let m = Move::new(Square::E4, Square::F5, None);
         let s = "exf5";
-
         let moves = get_moves(&b);
         for m in moves.iter() {
             println!("{m} ");
         }
 
-        assert_eq!(move_from_algebraic(s, &b, &mgen), Ok(m));
+        assert_eq!(move_from_algebraic(s, &b), Ok(m));
     }
 
     #[test]
     /// Test that promotions are displayed correctly.
     fn test_promotion() {
         let b = Board::from_fen(WHITE_READY_TO_PROMOTE_FEN).unwrap();
-
         let m = Move::new(Square::F7, Square::F8, Some(Piece::Queen));
         let s = "f8=Q";
-        assert_eq!(algebraic_from_move(m, &b, &mgen), s);
+        assert_eq!(algebraic_from_move(m, &b), s);
     }
 
     #[test]
     /// Test that you get an error out when you give it a bad string.
     fn test_bad_algebraic() {
         let b = Board::default();
-
         let s = "garbage";
 
-        assert!(move_from_algebraic(s, &b, &mgen).is_err());
+        assert!(move_from_algebraic(s, &b).is_err());
     }
 }

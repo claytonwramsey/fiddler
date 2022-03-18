@@ -1,7 +1,6 @@
 use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::Game;
 use crate::base::Move;
-use crate::base::MoveGenerator;
 use crate::engine::limit::{ArcLimit, SearchLimit};
 use crate::engine::thread::MainSearch;
 

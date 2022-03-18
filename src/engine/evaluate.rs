@@ -3,7 +3,6 @@ use crate::base::Bitboard;
 use crate::base::Color;
 use crate::base::Eval;
 use crate::base::Game;
-use crate::base::MoveGenerator;
 use crate::engine::greedy::greedy_evaluate;
 
 use crate::engine::pst::{ENDGAME_VALUE, MIDGAME_VALUE};

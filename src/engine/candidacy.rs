@@ -2,7 +2,6 @@ use crate::base::Color;
 use crate::base::Eval;
 use crate::base::Game;
 use crate::base::Move;
-use crate::base::MoveGenerator;
 use crate::base::Piece;
 use crate::engine::greedy;
 use crate::engine::pst::{ENDGAME_VALUE, MIDGAME_VALUE};
