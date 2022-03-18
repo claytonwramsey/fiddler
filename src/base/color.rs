@@ -23,8 +23,8 @@ impl Color {
     /// Get the promotion rank of a given color.
     pub const fn pawn_promote_rank(&self) -> Bitboard {
         match self {
-            Color::White => Bitboard(0xFF00000000000000),
-            Color::Black => Bitboard(0x00000000000000FF),
+            Color::White => Bitboard::new(0xFF00000000000000),
+            Color::Black => Bitboard::new(0x00000000000000FF),
         }
     }
 
@@ -33,8 +33,8 @@ impl Color {
     /// color.
     pub const fn pawn_start_rank(&self) -> Bitboard {
         match self {
-            Color::White => Bitboard(0x000000000000FF00),
-            Color::Black => Bitboard(0x00FF000000000000),
+            Color::White => Bitboard::new(0x000000000000FF00),
+            Color::Black => Bitboard::new(0x00FF000000000000),
         }
     }
 }
@@ -74,11 +74,11 @@ mod tests {
     /// Test that the pawn promotion rank bitboards are correct.
     fn test_pawn_promote_rank() {
         assert_eq!(
-            Bitboard(0xFF00000000000000),
+            Bitboard::new(0xFF00000000000000),
             Color::White.pawn_promote_rank()
         );
         assert_eq!(
-            Bitboard(0x00000000000000FF),
+            Bitboard::new(0x00000000000000FF),
             Color::Black.pawn_promote_rank()
         );
     }
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     /// Test that the start ranks for pawns are correct.
     fn test_pawn_start_rank() {
-        assert_eq!(Color::White.pawn_start_rank(), Bitboard(0x000000000000FF00));
-        assert_eq!(Color::Black.pawn_start_rank(), Bitboard(0x00FF000000000000));
+        assert_eq!(Color::White.pawn_start_rank(), Bitboard::new(0x000000000000FF00));
+        assert_eq!(Color::Black.pawn_start_rank(), Bitboard::new(0x00FF000000000000));
     }
 }

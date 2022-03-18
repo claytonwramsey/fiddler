@@ -26,8 +26,8 @@ pub fn greedy_evaluate(b: &Board) -> Eval {
         // Total the quantity of white and black pieces of this type, and
         // multiply their individual value to get the net effect on the eval.
         let pt_squares = b[pt];
-        let white_diff = (white_occupancy & pt_squares).0.count_ones() as i32
-            - (black_occupancy & pt_squares).0.count_ones() as i32;
+        let white_diff = (white_occupancy & pt_squares).count_ones() as i32
+            - (black_occupancy & pt_squares).count_ones() as i32;
         eval += piece_value(pt) * white_diff;
     }
 

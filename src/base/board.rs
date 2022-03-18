@@ -633,16 +633,16 @@ impl Default for Board {
     fn default() -> Board {
         let mut board = Board {
             sides: [
-                Bitboard(0x000000000000FFFF), //white
-                Bitboard(0xFFFF000000000000), //black
+                Bitboard::new(0x000000000000FFFF), //white
+                Bitboard::new(0xFFFF000000000000), //black
             ],
             pieces: [
-                Bitboard(0x00FF00000000FF00), //pawn
-                Bitboard(0x4200000000000042), //knight
-                Bitboard(0x2400000000000024), //bishop
-                Bitboard(0x8100000000000081), //rook
-                Bitboard(0x0800000000000008), //queen
-                Bitboard(0x1000000000000010), //king
+                Bitboard::new(0x00FF00000000FF00), //pawn
+                Bitboard::new(0x4200000000000042), //knight
+                Bitboard::new(0x2400000000000024), //bishop
+                Bitboard::new(0x8100000000000081), //rook
+                Bitboard::new(0x0800000000000008), //queen
+                Bitboard::new(0x1000000000000010), //king
             ],
             en_passant_square: None,
             player_to_move: Color::White,
@@ -663,16 +663,16 @@ pub mod tests {
     /// A board with the white king on A1 and the black king on H8.
     const TWO_KINGS_BOARD: Board = Board {
         sides: [
-            Bitboard(0x0000000000000001), //white
-            Bitboard(0x8000000000000000), //black
+            Bitboard::new(0x0000000000000001), //white
+            Bitboard::new(0x8000000000000000), //black
         ],
         pieces: [
-            Bitboard(0x0000000000000000), //pawn
-            Bitboard(0x0000000000000000), //knight
-            Bitboard(0x0000000000000000), //bishop
-            Bitboard(0x0000000000000000), //rook
-            Bitboard(0x0000000000000000), //queen
-            Bitboard(0x8000000000000001), //king
+            Bitboard::new(0x0000000000000000), //pawn
+            Bitboard::new(0x0000000000000000), //knight
+            Bitboard::new(0x0000000000000000), //bishop
+            Bitboard::new(0x0000000000000000), //rook
+            Bitboard::new(0x0000000000000000), //queen
+            Bitboard::new(0x8000000000000001), //king
         ],
         en_passant_square: None,
         player_to_move: Color::White,

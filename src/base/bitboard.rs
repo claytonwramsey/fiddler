@@ -11,14 +11,20 @@ use std::ops::{
 /// second-lowest represents B1, and so on, until the MSB is H8.
 /// For example, `Bitboard(3)` represents the set `{A1, B1}`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Bitboard(pub u64);
+pub struct Bitboard(u64);
 
 impl Bitboard {
     /// An empty bitboard.
-    pub const EMPTY: Bitboard = Bitboard(0);
+    pub const EMPTY: Bitboard = Bitboard::new(0);
 
     /// A bitboard containing all squares.
-    pub const ALL: Bitboard = Bitboard(!0);
+    pub const ALL: Bitboard = Bitboard::new(!0);
+
+    #[inline]
+    /// Construct a new Bitboard from a numeric literal.
+    pub const fn new(x: u64) -> Bitboard {
+        Bitboard(x)
+    }
 
     #[inline]
     /// Determine whether a square of a bitboard is occupied.
@@ -26,11 +32,26 @@ impl Bitboard {
     /// ```
     /// # use crabchess::base::Bitboard;
     /// # use crabchess::base::Square;
-    /// assert!(Bitboard(1).contains(Square::A1));
-    /// assert!(!(Bitboard(2).contains(Square::A1)));
+    /// assert!(Bitboard::new(1).contains(Square::A1));
+    /// assert!(!(Bitboard::new(2).contains(Square::A1)));
     /// ```
-    pub const fn contains(self, square: Square) -> bool {
+    pub const fn contains(&self, square: Square) -> bool {
         self.0 & (1 << square as u8) != 0
+    }
+
+    #[inline]
+    /// Count the number of ones in this bitboard.
+    pub const fn count_ones(&self) -> u32 {
+        self.0.count_ones()
+    }
+
+    #[inline]
+    /// Count the number of trailing zeros (i.e. empty squares between A1 and 
+    /// the first non-emtpy square) in this bitboard. Alternately, this can be 
+    /// used to construct a `Square` from the lowest-rank square in this 
+    /// bitboard.
+    pub const fn trailing_zeros(&self) -> u32 {
+        self.0.trailing_zeros()
     }
 }
 
@@ -44,8 +65,8 @@ impl BitAnd for Bitboard {
     /// ```
     /// # use crabchess::base::Square;
     /// # use crabchess::base::Bitboard;
-    /// let bb1 = Bitboard(7); // {A1, B1, C1}
-    /// let bb2 = Bitboard(14); // {B1, C1, D1}
+    /// let bb1 = Bitboard::new(7); // {A1, B1, C1}
+    /// let bb2 = Bitboard::new(14); // {B1, C1, D1}
     /// let intersection = bb1 & bb2; // {B1, C1}
     /// assert!(!intersection.contains(Square::A1));
     /// assert!(intersection.contains(Square::B1));
@@ -110,6 +131,15 @@ impl Shr<i8> for Bitboard {
     }
 }
 
+impl Shr<u8> for Bitboard {
+    type Output = Self;
+
+    #[inline]
+    fn shr(self, rhs: u8) -> Self::Output {
+        Bitboard(self.0 >> rhs)
+    }
+}
+
 impl Shl<i32> for Bitboard {
     type Output = Self;
 
@@ -164,6 +194,12 @@ impl From<Square> for Bitboard {
     #[inline]
     fn from(sq: Square) -> Bitboard {
         Bitboard(1 << sq as u8)
+    }
+}
+
+impl From<Bitboard> for usize {
+    fn from(bb: Bitboard) -> Self {
+        bb.0 as usize
     }
 }
 

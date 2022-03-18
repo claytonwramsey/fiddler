@@ -201,7 +201,7 @@ pub fn has_moves(board: &Board) -> bool {
 
         //King can probably get out on his own
         let king_to_sqs = king_moves(board, king_square, player);
-        let mut king_moves = Vec::with_capacity(king_to_sqs.0.count_ones() as usize);
+        let mut king_moves = Vec::with_capacity(king_to_sqs.count_ones() as usize);
         bitboard_to_moves(king_square, king_to_sqs, &mut king_moves);
         for m in king_moves {
             if !is_move_self_check(board, m) && !board.is_move_castle(m) {
@@ -211,7 +211,7 @@ pub fn has_moves(board: &Board) -> bool {
 
         //king moves could not prevent checks
         //if this is a double check, we must be mated
-        if king_attackers.0.count_ones() > 1 {
+        if king_attackers.count_ones() > 1 {
             return false;
         }
 
@@ -278,7 +278,7 @@ fn analyze_pins(board: &Board, sliders: Bitboard, sq: Square) -> (Bitboard, Bitb
     for sniper_sq in snipers {
         let between_bb = between(sq, sniper_sq);
 
-        if (between_bb & occupancy).0.count_ones() == 1 {
+        if (between_bb & occupancy).count_ones() == 1 {
             blockers |= between_bb;
             if let Some(color) = sq_color {
                 if board[color] & between_bb != Bitboard::EMPTY {
@@ -417,7 +417,7 @@ fn pseudolegal_evasions(
     let king_sq = Square::try_from(board[Piece::King] & board[board.player_to_move]).unwrap();
 
     // only look at non-king moves if we are not in double check
-    if check_info.checkers.0.count_ones() == 1 {
+    if check_info.checkers.count_ones() == 1 {
         let checker_sq = Square::try_from(check_info.checkers).unwrap();
         // Look for blocks or captures
         let target_sqs = between(king_sq, checker_sq) | check_info.checkers;
@@ -508,8 +508,8 @@ fn pawn_assistant(board: &Board, color: Color, moves: &mut Vec<Move>, target: Bi
     let rank8 = color.pawn_promote_rank();
     let not_rank8 = !rank8;
     let rank3 = match color {
-        Color::White => Bitboard(0xFF0000),
-        Color::Black => Bitboard(0xFF0000000000),
+        Color::White => Bitboard::new(0xFF0000),
+        Color::Black => Bitboard::new(0xFF0000000000),
     };
     let direction = color.pawn_direction();
     let double_direction = 2 * direction;
@@ -535,8 +535,8 @@ fn pawn_assistant(board: &Board, color: Color, moves: &mut Vec<Move>, target: Bi
     capture_mask &= target;
 
     // prevent pawns from capturing by wraparound
-    let not_westmost = Bitboard(0xFEFEFEFEFEFEFEFE);
-    let not_eastmost = Bitboard(0x7F7F7F7F7F7F7F7F);
+    let not_westmost = Bitboard::new(0xFEFEFEFEFEFEFEFE);
+    let not_eastmost = Bitboard::new(0x7F7F7F7F7F7F7F7F);
     let capture_e = ((pawns & not_eastmost) << capture_dir_e.0) & capture_mask;
     let capture_w = ((pawns & not_westmost) << capture_dir_w.0) & capture_mask;
 
@@ -594,8 +594,8 @@ fn loud_pawn_assistant(board: &Board, color: Color, moves: &mut Vec<Move>, targe
     capture_mask &= target;
 
     // prevent pawns from capturing by wraparound
-    let not_westmost = Bitboard(0xFEFEFEFEFEFEFEFE);
-    let not_eastmost = Bitboard(0x7F7F7F7F7F7F7F7F);
+    let not_westmost = Bitboard::new(0xFEFEFEFEFEFEFEFE);
+    let not_eastmost = Bitboard::new(0x7F7F7F7F7F7F7F7F);
     let capture_e = ((pawns & not_eastmost) << capture_dir_e.0) & capture_mask;
     let capture_w = ((pawns & not_westmost) << capture_dir_w.0) & capture_mask;
 
@@ -708,12 +708,12 @@ fn king_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
 
     //castling
     let kingside_castle_passthrough_sqs = match board.player_to_move {
-        Color::White => Bitboard(0x0000000000000060),
-        Color::Black => Bitboard(0x6000000000000000),
+        Color::White => Bitboard::new(0x0000000000000060),
+        Color::Black => Bitboard::new(0x6000000000000000),
     };
     let queenside_castle_passthrough_sqs = match board.player_to_move {
-        Color::White => Bitboard(0x000000000000000E),
-        Color::Black => Bitboard(0x0E00000000000000),
+        Color::White => Bitboard::new(0x000000000000000E),
+        Color::Black => Bitboard::new(0x0E00000000000000),
     };
 
     let can_kingside_castle = board
@@ -753,7 +753,7 @@ pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
 /// in the square. Exclude the steps that travel more than `max_dist` (this
 /// prevents overflow around the edges of the board).
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
-    let mut attacks = [Bitboard(0); 64];
+    let mut attacks = [Bitboard::EMPTY; 64];
     for (i, item) in attacks.iter_mut().enumerate() {
         for dir in dirs {
             let start_sq = Square::try_from(i as u8).unwrap();

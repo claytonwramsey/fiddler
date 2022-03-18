@@ -53,16 +53,16 @@ pub fn evaluate(g: &mut Game) -> Eval {
     // Add losses due to doubled pawns
     let white_occupancy = b[Color::White];
     let pawns = b[Piece::Pawn];
-    let mut col_mask = Bitboard(0x0101010101010101);
+    let mut col_mask = Bitboard::new(0x0101010101010101);
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
 
         // all ones on the A column, shifted left by the col
-        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).0.count_ones() {
+        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).count_ones() {
             0 => 0,
             x => x - 1,
         };
-        let num_white_doubled_pawns = match (white_occupancy & col_pawns).0.count_ones() {
+        let num_white_doubled_pawns = match (white_occupancy & col_pawns).count_ones() {
             0 => 0,
             x => x - 1,
         };

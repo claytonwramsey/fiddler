@@ -194,7 +194,7 @@ impl TryFrom<Bitboard> for Square {
     /// bitboard.
     #[inline]
     fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
-        Square::try_from(bb.0.trailing_zeros() as u8)
+        Square::try_from(bb.trailing_zeros() as u8)
     }
 }
 
