@@ -310,7 +310,7 @@ impl<'a> CrabchessApp<'a> {
             .write()
             .map_err(|_| "failed to lock limit")?
             .start();
-        let m = self.engine.evaluate(&mut self.game, &self.mgen).0;
+        let m = self.engine.evaluate(&mut self.game, &self.mgen).map_err(|_| "evaluation failed")?.0;
         writeln!(
             self.output_stream,
             "the engine played {}",
