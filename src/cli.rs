@@ -1,6 +1,7 @@
 use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::Game;
 use crate::base::Move;
+use crate::base::movegen::get_moves;
 use crate::engine::limit::{ArcLimit, SearchLimit};
 use crate::engine::thread::MainSearch;
 
@@ -14,9 +15,6 @@ use std::time::Duration;
 pub struct CrabchessApp<'a> {
     /// The currently-played game.
     game: Game,
-
-    /// The generator for moves.
-    mgen: MoveGenerator,
 
     /// The currently-running engine to play against.,
     engine: MainSearch,
@@ -215,7 +213,7 @@ impl<'a> CrabchessApp<'a> {
         if move_token.is_none() {
             return Err("no move given to play");
         }
-        move_from_algebraic(move_token.unwrap(), self.game.board(), &self.mgen)
+        move_from_algebraic(move_token.unwrap(), self.game.board())
     }
 
     fn execute_command(&mut self, c: Command) -> CommandResult {
@@ -268,7 +266,7 @@ impl<'a> CrabchessApp<'a> {
 
     /// Attempt to play a move.
     fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
-        self.game.try_move(&self.mgen, m)?;
+        self.game.try_move(m)?;
         if engine_reply {
             self.play_engine_move()?;
         }
@@ -278,12 +276,12 @@ impl<'a> CrabchessApp<'a> {
 
     /// Print out a list of the available moves in this position.
     fn list_moves(&mut self) -> CommandResult {
-        let moves = self.get_moves(self.game.board());
+        let moves = get_moves(self.game.board());
         for m in moves.iter() {
             writeln!(
                 self.output_stream,
                 "{}",
-                algebraic_from_move(*m, self.game.board(), &self.mgen)
+                algebraic_from_move(*m, self.game.board())
             )
             .map_err(|_| "failed to write move list")?;
         }
@@ -311,14 +309,14 @@ impl<'a> CrabchessApp<'a> {
             .start();
         let search_data = self
             .engine
-            .evaluate(&mut self.game, &self.mgen)
+            .evaluate(&mut self.game)
             .map_err(|_| "evaluation failed")?;
 
         writeln!(
             self.output_stream,
             "depth {}: the engine played {}",
             search_data.2,
-            algebraic_from_move(search_data.0, self.game.board(), &self.mgen)
+            algebraic_from_move(search_data.0, self.game.board())
         )
         .map_err(|_| "failed to write to output")?;
         self.game.make_move(search_data.0);
@@ -344,7 +342,6 @@ impl<'a> Default for CrabchessApp<'a> {
         };
         let mut app = CrabchessApp {
             game: Game::default(),
-            mgen: MoveGenerator::default(),
             engine: MainSearch::new(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),

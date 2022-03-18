@@ -37,7 +37,6 @@ pub mod moves;
 pub use crate::base::moves::Move;
 
 pub mod movegen;
-pub use crate::base::movegen::MoveGenerator;
 
 pub mod piece;
 pub use crate::base::piece::Piece;

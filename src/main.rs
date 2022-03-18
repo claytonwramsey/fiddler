@@ -1,8 +1,6 @@
 #[allow(unused_imports)]
 use crabchess::base::Game;
 #[allow(unused_imports)]
-use crabchess::base::MoveGenerator;
-#[allow(unused_imports)]
 use crabchess::engine::search::PVSearch;
 
 #[allow(unused_imports)]

@@ -13,7 +13,7 @@ use super::evaluate::blend_eval;
 /// Create an estimate for how good a move is.
 /// # Panics
 /// if the given move is illegal.
-pub fn candidacy(g: &mut Game, _mgen: &MoveGenerator, m: Move) -> Eval {
+pub fn candidacy(g: &mut Game, m: Move) -> Eval {
     let b = g.board();
     let mover_type = b.type_at_square(m.from_square()).unwrap();
     let promote_type = m.promote_type();

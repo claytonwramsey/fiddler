@@ -428,10 +428,8 @@ fn pseudolegal_evasions(
         let mut pawn_targets = target_sqs;
         if let Some(ep_sq) = board.en_passant_square {
             // can en passant save us from check?
-            let ep_target = ep_sq - color.pawn_direction();
-            if check_info.checkers.contains(ep_sq) {
-                pawn_targets |= Bitboard::from(ep_sq);
-            }
+            let ep_target = Bitboard::from(ep_sq - color.pawn_direction());
+            pawn_targets |= ep_target & check_info.checkers;
         }
 
         pawn_assistant(board, color, moves, pawn_targets);
@@ -875,7 +873,7 @@ mod tests {
     /// Test that Black cannot castle because there is a knight in the way.
     fn test_no_queenside_castle_through_knight() {
         let b = Board::from_fen(KNIGHT_PREVENTS_LONG_CASTLE_FEN).unwrap();
-        assert!(get_moves(&b).contains(&Move::normal(Square::E8, Square::C8)));
+        assert!(!get_moves(&b).contains(&Move::normal(Square::E8, Square::C8)));
     }
 
     #[test]

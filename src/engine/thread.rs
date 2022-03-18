@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    base::{Game, MoveGenerator},
+    base::Game,
     engine::{branch_factor, search::PVSearch, SearchError, SearchResult},
 };
 
@@ -43,7 +43,7 @@ impl MainSearch {
         }
     }
 
-    pub fn evaluate(&mut self, g: &Game, mgen: &MoveGenerator) -> SearchResult {
+    pub fn evaluate(&mut self, g: &Game) -> SearchResult {
         let tic = Instant::now(); // start time of the search
 
         let handles: Vec<JoinHandle<SearchResult>> = self
@@ -52,15 +52,14 @@ impl MainSearch {
             .map(|config| {
                 let mut searcher = PVSearch::new(self.ttable.clone(), *config, self.limit.clone());
                 let mut gcopy = g.clone();
-                let mgencopy = clone();
-                thread::spawn(move || searcher.evaluate(&mut gcopy, &mgencopy))
+                thread::spawn(move || searcher.evaluate(&mut gcopy))
             })
             .collect();
 
         // now it's our turn to think
         let mut main_searcher =
             PVSearch::new(self.ttable.clone(), self.main_config, self.limit.clone());
-        let mut best_result = main_searcher.evaluate(&g, &mgen);
+        let mut best_result = main_searcher.evaluate(&g);
 
         for handle in handles {
             let eval_result = handle.join().map_err(|_| SearchError::JoinError)?;
