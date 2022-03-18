@@ -1,7 +1,8 @@
 use crate::base::Board;
-use crate::base::MoveGenerator;
 
 use std::time::Instant;
+
+use super::movegen::get_moves;
 
 #[allow(dead_code)]
 /// Perform a performance test on the move generator and print out facts. The
@@ -10,7 +11,7 @@ use std::time::Instant;
 pub fn perft(fen: &str, depth: u8) -> u64 {
     let b = Board::from_fen(fen).unwrap();
     let tic = Instant::now();
-    let num_nodes = perft_search(&b, &MoveGenerator::default(), depth);
+    let num_nodes = perft_search(&b, depth);
     let toc = Instant::now();
     let time = toc - tic;
     let speed = (num_nodes as f64) / time.as_secs_f64();
@@ -23,17 +24,17 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
 }
 
 /// The core search algorithm for perft.
-fn perft_search(b: &Board, mgen: &MoveGenerator, depth: u8) -> u64 {
+fn perft_search(b: &Board, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = mgen.get_moves(b);
+    let moves = get_moves(b);
     let mut total = 0;
     let mut bcopy;
     for m in moves {
         bcopy = *b;
         bcopy.make_move(m);
-        total += perft_search(&bcopy, mgen, depth - 1);
+        total += perft_search(&bcopy, depth - 1);
     }
 
     total

@@ -1,8 +1,6 @@
 #[allow(unused_imports)]
 use crabchess::base::Game;
 #[allow(unused_imports)]
-use crabchess::base::MoveGenerator;
-#[allow(unused_imports)]
 use crabchess::engine::search::PVSearch;
 
 #[allow(unused_imports)]
@@ -14,7 +12,7 @@ fn main() {
     );*/
     /*let mut g =
         Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap();
-    let mgen = MoveGenerator::default();
+
     let mut e = PVSearch::default();
     e.set_depth(10);
 

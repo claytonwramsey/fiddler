@@ -1,6 +1,6 @@
-use std::sync::RwLock;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
+use std::sync::RwLock;
 
 use crate::base::Board;
 use crate::base::Eval;
@@ -9,7 +9,7 @@ use crate::base::Move;
 /// Convenient bad-key value which may help with debugging.
 const BAD_HASH: u64 = 0xDEADBEEF;
 
-/// The ordering in which total occupancy in the transposition table should be 
+/// The ordering in which total occupancy in the transposition table should be
 /// updated.
 const OCCUPANCY_ORDERING: Ordering = Ordering::Relaxed;
 
@@ -18,7 +18,6 @@ const OCCUPANCY_ORDERING: Ordering = Ordering::Relaxed;
 /// "old" element if another one takes its place. It behaves much like a
 /// hash-map from positions to table-entries.
 pub struct TTable {
-
     /// List of all entries in the transposition table.
     entries: Vec<RwLock<TTableEntry>>,
 
@@ -87,7 +86,7 @@ impl TTable {
         for _ in 0..capacity {
             table.entries.push(RwLock::new(TTableEntry {
                 recent: Slot::EMPTY,
-                deepest: Slot::EMPTY
+                deepest: Slot::EMPTY,
             }));
         }
 
@@ -155,7 +154,7 @@ impl TTable {
         // that the extra performance loss makes it not worth it.
 
         if entry.deepest.hash == hash_key {
-            return entry.deepest.data//&entry.deepest.data;
+            return entry.deepest.data; //&entry.deepest.data;
         }
 
         if entry.recent.hash == hash_key {
@@ -170,18 +169,20 @@ impl TTable {
         self.entries = self
             .entries
             .iter()
-            .map(|_| RwLock::new(TTableEntry {
-                recent: Slot {
-                    hash: BAD_HASH,
-                    age: 0,
-                    data: None,
-                },
-                deepest: Slot {
-                    hash: BAD_HASH,
-                    age: 0,
-                    data: None,
-                },
-            }))
+            .map(|_| {
+                RwLock::new(TTableEntry {
+                    recent: Slot {
+                        hash: BAD_HASH,
+                        age: 0,
+                        data: None,
+                    },
+                    deepest: Slot {
+                        hash: BAD_HASH,
+                        age: 0,
+                        data: None,
+                    },
+                })
+            })
             .collect();
         self.occupancy.store(0, OCCUPANCY_ORDERING);
     }

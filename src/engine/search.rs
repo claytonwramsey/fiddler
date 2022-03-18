@@ -1,15 +1,15 @@
 use crate::base::Eval;
-use crate::base::{Game, Move, MoveGenerator};
+use crate::base::{Game, Move};
 use crate::engine::evaluate::evaluate;
 use crate::engine::transposition::{EvalData, TTable};
 
 use std::cmp::{max, min};
 use std::sync::{Arc, RwLock};
 
-use super::{SearchResult, SearchError};
 use super::candidacy::candidacy;
 use super::config::SearchConfig;
 use super::limit::{ArcLimit, SearchLimit};
+use super::{SearchError, SearchResult};
 
 #[derive(Clone, Debug)]
 /// A chess engine which uses Principal Variation Search.
@@ -40,16 +40,15 @@ pub struct PVSearch {
 type PVSResult = Result<(Move, Eval), SearchError>;
 
 impl PVSearch {
-
-    /// Construct a new PVSearch using a given transposition table, 
+    /// Construct a new PVSearch using a given transposition table,
     /// configuration, and limit.
     pub fn new(ttable: Arc<TTable>, config: SearchConfig, limit: ArcLimit) -> PVSearch {
-        PVSearch { 
-            ttable, 
+        PVSearch {
+            ttable,
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
-            num_nodes_evaluated: 0, 
-            num_transpositions: 0, 
-            config, 
+            num_nodes_evaluated: 0,
+            num_transpositions: 0,
+            config,
             limit,
         }
     }
@@ -68,7 +67,6 @@ impl PVSearch {
         depth_to_go: i8,
         depth_so_far: u8,
         g: &mut Game,
-        mgen: &MoveGenerator,
         alpha_in: Eval,
         beta_in: Eval,
     ) -> PVSResult {
@@ -114,17 +112,17 @@ impl PVSearch {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce(depth_to_go, depth_so_far, g, mgen, alpha_in, beta_in);
+            return self.quiesce(depth_to_go, depth_so_far, g, alpha_in, beta_in);
         }
 
         self.increment_nodes()?;
 
-        let mut moves = g.get_moves(mgen);
+        let mut moves = g.get_moves();
 
         if moves.is_empty() {
             return Ok((
                 Move::BAD_MOVE,
-                evaluate(g, mgen) * (1 - 2 * g.board().player_to_move as i32),
+                evaluate(g) * (1 - 2 * g.board().player_to_move as i32),
             ));
         }
 
@@ -142,7 +140,7 @@ impl PVSearch {
             if *m == retrieved_killer_move {
                 return Eval::MIN + Eval::millipawns(1);
             }
-            -candidacy(g, mgen, *m)
+            -candidacy(g, *m)
         });
 
         let mut moves_iter = moves.into_iter();
@@ -157,7 +155,6 @@ impl PVSearch {
                 depth_to_go - 1,
                 depth_so_far + 1,
                 g,
-                mgen,
                 -beta.step_forward(),
                 -alpha.step_forward(),
             )?
@@ -205,7 +202,6 @@ impl PVSearch {
                     depth_to_search,
                     depth_so_far + 1,
                     g,
-                    mgen,
                     -alpha.step_forward() - Eval::millipawns(1),
                     -alpha.step_forward(),
                 )?
@@ -226,7 +222,6 @@ impl PVSearch {
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
-                        mgen,
                         -beta.step_forward(),
                         position_lower_bound,
                     )?
@@ -277,7 +272,6 @@ impl PVSearch {
         depth_to_go: i8,
         depth_so_far: u8,
         g: &mut Game,
-        mgen: &MoveGenerator,
         alpha_in: Eval,
         beta_in: Eval,
     ) -> PVSResult {
@@ -291,17 +285,17 @@ impl PVSearch {
 
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
-        if g.board().is_king_checked(mgen) {
-            return self.pvs(1, depth_so_far, g, mgen, alpha_in, beta_in);
+        if g.board().is_king_checked() {
+            return self.pvs(1, depth_so_far, g, alpha_in, beta_in);
         }
 
         self.increment_nodes()?;
 
-        let mut moves = g.get_loud_moves(mgen);
+        let mut moves = g.get_loud_moves();
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = evaluate(g, mgen);
+        let leaf_evaluation = evaluate(g);
         // (1 - 2 * us) will cause the evaluation to be positive for
         // whichever player is moving. This will cascade up the Negamax
         // inversions to make the final result at the top correct.
@@ -319,7 +313,7 @@ impl PVSearch {
             return Ok((Move::BAD_MOVE, alpha));
         }
 
-        moves.sort_by_cached_key(|m| -candidacy(g, mgen, *m));
+        moves.sort_by_cached_key(|m| -candidacy(g, *m));
         let mut moves_iter = moves.into_iter();
         let mut critical_move = Move::BAD_MOVE;
         // we must wrap with an if in case there are no captures
@@ -330,7 +324,6 @@ impl PVSearch {
                     depth_to_go - 1,
                     depth_so_far + 1,
                     g,
-                    mgen,
                     -beta.step_forward(),
                     -alpha.step_forward(),
                 )?
@@ -356,7 +349,6 @@ impl PVSearch {
                     depth_to_go - 1,
                     depth_so_far + 1,
                     g,
-                    mgen,
                     -alpha.step_forward() - Eval::millipawns(1),
                     -alpha.step_forward(),
                 )?
@@ -371,7 +363,6 @@ impl PVSearch {
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
-                        mgen,
                         -beta.step_forward(),
                         -score.step_forward(),
                     )?
@@ -442,35 +433,30 @@ impl PVSearch {
     }
 
     #[inline]
-    /// Evaluate the given game. Return a pair containing the best move and its 
+    /// Evaluate the given game. Return a pair containing the best move and its
     /// evaluation, as well as the depth to which the evaluation was searched.
-    pub fn evaluate(&mut self, g: &Game, mgen: &MoveGenerator) -> SearchResult {
+    pub fn evaluate(&mut self, g: &Game) -> SearchResult {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
         let mut gcopy = g.clone();
         let mut result = (Move::BAD_MOVE, Eval::DRAW);
         let mut highest_successful_depth = 0;
         for iter_depth in 1..=self.config.depth {
-            match self.pvs(
-                iter_depth as i8, 
-                0, 
-                &mut gcopy, 
-                mgen, 
-                Eval::MIN, 
-                Eval::MAX
-            ) {
+            match self.pvs(iter_depth as i8, 0, &mut gcopy, Eval::MIN, Eval::MAX) {
                 Ok(search_result) => {
                     result = (
                         search_result.0,
-                        search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32)
+                        search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32),
                     );
                     highest_successful_depth = iter_depth;
-                },
+                }
                 Err(e) => match e {
                     SearchError::TimeoutError => break,
                     SearchError::PoisonError => return Err(e),
-                    SearchError::JoinError => panic!("how did a single-threaded process have a join error?!"),
-                }
+                    SearchError::JoinError => {
+                        panic!("how did a single-threaded process have a join error?!")
+                    }
+                },
             };
         }
 
@@ -486,7 +472,11 @@ impl PVSearch {
     /// Helper function to check whether our search limit has decided that we
     /// are done searching.
     fn is_over(&self) -> Result<bool, SearchError> {
-        Ok(self.limit.read().map_err(|_| SearchError::PoisonError)?.is_over())
+        Ok(self
+            .limit
+            .read()
+            .map_err(|_| SearchError::PoisonError)?
+            .is_over())
     }
 
     #[inline]
@@ -501,13 +491,13 @@ impl PVSearch {
     }
 
     #[inline]
-    /// Copy over the number of nodes evaluated by this search into the limit 
+    /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
         self.limit
-                .write()
-                .map_err(|_| SearchError::PoisonError)?
-                .add_nodes(self.num_nodes_evaluated);
+            .write()
+            .map_err(|_| SearchError::PoisonError)?
+            .add_nodes(self.num_nodes_evaluated);
         self.num_nodes_evaluated = 0;
         Ok(())
     }
@@ -544,15 +534,11 @@ pub mod tests {
     /// Test PVSearch's evaluation of the start position of the game.
     pub fn test_eval_start() {
         let g = Game::default();
-        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(11); // this prevents taking too long on searches
 
-        let result = e.evaluate(&g, &mgen);
-        println!("best move: {} [{}]",
-            result.unwrap().0,
-            result.unwrap().1
-        );
+        let result = e.evaluate(&g);
+        println!("best move: {} [{}]", result.unwrap().0, result.unwrap().1);
     }
 
     #[test]
@@ -560,12 +546,11 @@ pub mod tests {
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
         let g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
-        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
         assert_eq!(
-            e.evaluate(&g, &mgen).unwrap().0,
+            e.evaluate(&g).unwrap().0,
             Move::normal(Square::D1, Square::F3)
         );
     }
@@ -594,13 +579,12 @@ pub mod tests {
     /// and a search without the transposition table.
     fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
         let g = Game::from_fen(fen).unwrap();
-        let mgen = MoveGenerator::default();
         let mut e = PVSearch::default();
         e.set_depth(depth);
 
-        assert_eq!(e.evaluate(&g, &mgen).unwrap().1, eval);
+        assert_eq!(e.evaluate(&g).unwrap().1, eval);
         e.config.max_transposition_depth = 0;
         e.clear();
-        assert_eq!(e.evaluate(&g, &mgen).unwrap().1, eval);
+        assert_eq!(e.evaluate(&g).unwrap().1, eval);
     }
 }

@@ -2,7 +2,6 @@ use crate::base::algebraic::algebraic_from_move;
 use crate::base::Board;
 use crate::base::Color;
 use crate::base::Move;
-use crate::base::MoveGenerator;
 use crate::base::Piece;
 use crate::base::Square;
 
@@ -10,6 +9,11 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
+
+use super::movegen::get_loud_moves;
+use super::movegen::get_moves;
+use super::movegen::has_moves;
+use super::movegen::is_square_attacked_by;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// A struct containing game information, which unlike a `Board`, knows about
@@ -79,8 +83,8 @@ impl Game {
     /// legal, the move will be executed and the state will change, then
     /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
     /// you that the move is illegal, and no state will be changed.
-    pub fn try_move(&mut self, mgen: &MoveGenerator, m: Move) -> Result<(), &'static str> {
-        if self.get_moves(mgen).contains(&m) {
+    pub fn try_move(&mut self, m: Move) -> Result<(), &'static str> {
+        if self.get_moves().contains(&m) {
             self.make_move(m);
             Ok(())
         } else {
@@ -134,18 +138,18 @@ impl Game {
     /// game can continue)? The return type has the first type as whether the
     /// game is over, and the second is the player which has won if the game is
     /// over. It will be `None` for a draw.
-    pub fn is_game_over(&self, mgen: &MoveGenerator) -> (bool, Option<Color>) {
+    pub fn is_game_over(&self) -> (bool, Option<Color>) {
         if self.is_drawn_historically() {
             return (true, None);
         }
         let b = self.board();
 
-        if mgen.has_moves(b) {
+        if has_moves(b) {
             return (false, None);
         }
 
         let king_sq = Square::try_from(b[Piece::King] & b[b.player_to_move]).unwrap();
-        match mgen.is_square_attacked_by(b, king_sq, !b.player_to_move) {
+        match is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate
         }
@@ -169,23 +173,23 @@ impl Game {
 
     /// Get the legal moves in this position. Will be empty if the position is
     /// drawn or the game is over.
-    pub fn get_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
+    pub fn get_moves(&self) -> Vec<Move> {
         if self.is_drawn_historically() {
             return Vec::new();
         }
 
-        mgen.get_moves(self.board())
+        get_moves(self.board())
     }
 
     /// Get the "loud" moves, such as captures and promotions, which are legal
     /// in this position. The definition of "loud" is relatively fluid at the
     /// moment, and may change.
-    pub fn get_loud_moves(&self, mgen: &MoveGenerator) -> Vec<Move> {
+    pub fn get_loud_moves(&self) -> Vec<Move> {
         if self.is_drawn_historically() {
             return Vec::new();
         }
 
-        mgen.get_loud_moves(self.board())
+        get_loud_moves(self.board())
     }
 
     // no need for `is_empty` since history should always be nonempty
@@ -211,11 +215,7 @@ impl Display for Game {
         for i in 0..self.moves.len() {
             let b = self.history[i].0;
             let m = self.moves[i];
-            write!(
-                f,
-                "{} ",
-                algebraic_from_move(m, &b, &MoveGenerator::default())
-            )?;
+            write!(f, "{} ", algebraic_from_move(m, &b))?;
         }
 
         Ok(())
@@ -304,41 +304,37 @@ mod tests {
     /// Test that a mated position is in fact over.
     fn test_is_mate_over() {
         let g = Game::from_fen(SCHOLARS_MATE_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-        let moves = mgen.get_moves(g.board());
+        let moves = get_moves(g.board());
         for m in moves {
             println!("{m}");
         }
-        assert!(!mgen.has_moves(g.board()));
-        assert_eq!(g.is_game_over(&mgen), (true, Some(Color::White)));
+        assert!(!has_moves(g.board()));
+        assert_eq!(g.is_game_over(), (true, Some(Color::White)));
     }
 
     #[test]
     fn test_is_mate_over_2() {
         let g: Game = Game::from_fen(WHITE_MATED_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-        let moves = mgen.get_moves(g.board());
+        let moves = get_moves(g.board());
         println!("moves: ");
         for m in moves {
             println!("{m}");
         }
-        assert!(!mgen.has_moves(g.board()));
-        assert_eq!(g.is_game_over(&mgen), (true, Some(Color::Black)));
+        assert!(!has_moves(g.board()));
+        assert_eq!(g.is_game_over(), (true, Some(Color::Black)));
     }
 
     #[test]
     /// Test that making a mate found in testing results in the game being over.
     fn test_mate_in_1() {
         let mut g = Game::from_fen(MATE_IN_1_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-
         let m = Move::normal(Square::B6, Square::B8);
-        assert!(g.get_moves(&mgen).contains(&m));
+        assert!(g.get_moves().contains(&m));
         g.make_move(m);
-        for m2 in g.get_moves(&mgen) {
+        for m2 in g.get_moves() {
             println!("{m2}");
         }
-        assert_eq!(g.is_game_over(&mgen), (true, Some(Color::White)));
+        assert_eq!(g.is_game_over(), (true, Some(Color::White)));
     }
 
     #[test]
@@ -355,8 +351,7 @@ mod tests {
     /// Test that a king can escape check without capturing the checker.
     fn test_king_escape_without_capture() {
         let g = Game::from_fen(KING_MUST_ESCAPE_FEN).unwrap();
-        let mgen = MoveGenerator::default();
-        let moves = g.get_moves(&mgen);
+        let moves = g.get_moves();
         let expected_moves = vec![
             Move::normal(Square::E6, Square::D6),
             Move::normal(Square::E6, Square::F7),

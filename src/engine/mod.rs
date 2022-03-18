@@ -1,14 +1,14 @@
-use crate::base::{Move, Eval};
+use crate::base::{Eval, Move};
 
 pub mod candidacy;
+pub mod config;
 pub mod evaluate;
 pub mod greedy;
 pub mod limit;
 pub mod pst;
 pub mod search;
-pub mod transposition;
 pub mod thread;
-pub mod config;
+pub mod transposition;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The types of errors which can occur during a search.
@@ -21,11 +21,10 @@ pub enum SearchError {
     JoinError,
 }
 
-/// The result of performing a search. The `Ok` version is the tuple of (best 
-/// move, evalaution, depth), while the `Err` version contains a reason why the 
+/// The result of performing a search. The `Ok` version is the tuple of (best
+/// move, evalaution, depth), while the `Err` version contains a reason why the
 /// search failed.
 pub type SearchResult = Result<(Move, Eval, u8), SearchError>;
-
 
 #[inline]
 /// Compute the effective branch factor given a given search depth and a number

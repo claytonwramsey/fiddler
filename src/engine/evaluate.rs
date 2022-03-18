@@ -3,7 +3,6 @@ use crate::base::Bitboard;
 use crate::base::Color;
 use crate::base::Eval;
 use crate::base::Game;
-use crate::base::MoveGenerator;
 use crate::engine::greedy::greedy_evaluate;
 
 use crate::engine::pst::{ENDGAME_VALUE, MIDGAME_VALUE};
@@ -12,10 +11,10 @@ use crate::engine::pst::{ENDGAME_VALUE, MIDGAME_VALUE};
 const DOUBLED_PAWN_VALUE: Eval = Eval::millipawns(100);
 
 /// Evaluate a quiet position.
-pub fn evaluate(g: &mut Game, mgen: &MoveGenerator) -> Eval {
+pub fn evaluate(g: &mut Game) -> Eval {
     let b = g.board();
 
-    match g.is_game_over(mgen) {
+    match g.is_game_over() {
         (true, Some(_)) => {
             return match b.player_to_move {
                 Color::Black => Eval::mate_in(0),

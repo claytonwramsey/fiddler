@@ -13,8 +13,9 @@ use std::hash::{Hash, Hasher};
 use std::ops::Index;
 use std::result::Result;
 
+use super::movegen::get_moves;
+use super::movegen::is_square_attacked_by;
 use super::moves::MoveResult;
-use super::MoveGenerator;
 
 #[derive(Copy, Clone, Debug, Eq)]
 /// A representation of a position. Does not handle the repetition or turn
@@ -246,9 +247,9 @@ impl Board {
 
     #[inline]
     /// In the current state, is the king (i.e. player to move) in check?
-    pub fn is_king_checked(&self, mgen: &MoveGenerator) -> bool {
+    pub fn is_king_checked(&self) -> bool {
         let player = self.player_to_move;
-        mgen.is_square_attacked_by(
+        is_square_attacked_by(
             self,
             Square::try_from(self[Piece::King] & self[player]).unwrap(),
             !player,
@@ -397,12 +398,8 @@ impl Board {
     /// Apply the given move to the board. Will *not* assume the move is legal
     /// (unlike `make_move()`). On illegal moves, will return an `Err` with a
     /// string describing the issue.
-    pub fn try_move(
-        &mut self,
-        mgen: &crate::base::movegen::MoveGenerator,
-        m: Move,
-    ) -> Result<MoveResult, &'static str> {
-        let legal_moves = mgen.get_moves(self);
+    pub fn try_move(&mut self, m: Move) -> Result<MoveResult, &'static str> {
+        let legal_moves = get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");
         }
@@ -660,7 +657,6 @@ impl Default for Board {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::base::movegen::MoveGenerator;
     use crate::base::square::*;
     use crate::fens;
 
@@ -760,12 +756,12 @@ pub mod tests {
     /// Test that capturing a rook removes the right to castle with that rook.
     fn test_no_castle_after_capture() {
         let m = Move::new(Square::B2, Square::H8, None);
-        let mgen = MoveGenerator::default();
+
         test_fen_helper(fens::ROOK_HANGING_FEN, m);
         let mut b = Board::from_fen(fens::ROOK_HANGING_FEN).unwrap();
         b.make_move(m);
         let castle_move = Move::new(Square::E8, Square::G8, None);
-        assert!(b.try_move(&mgen, castle_move).is_err());
+        assert!(b.try_move(castle_move).is_err());
     }
 
     /// A helper function which will load a board from a FEN and then try
@@ -782,12 +778,10 @@ pub mod tests {
 
     /// and will fail assertions if the board's state was not changed correctly.
     pub fn test_move_helper(board: Board, m: Move) {
-        let mgen = MoveGenerator::default();
-
         //new_board will be mutated to reflect the move
         let mut new_board = board;
 
-        let result = new_board.try_move(&mgen, m).unwrap();
+        let result = new_board.try_move(m).unwrap();
         test_move_result_helper(board, new_board, m);
         new_board.undo(&result);
         assert_eq!(new_board, board);
