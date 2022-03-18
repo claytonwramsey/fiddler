@@ -349,7 +349,7 @@ impl<'a> Default for CrabchessApp<'a> {
             limit: arc_limit.clone(),
         };
         app.engine.limit = arc_limit.clone();
-        app.engine.set_nthreads(15);
+        app.engine.set_nhelpers(15);
         app
     }
 }

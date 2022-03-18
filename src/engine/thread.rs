@@ -15,6 +15,7 @@ pub struct MainSearch {
 
 impl MainSearch {
 
+    /// Construct a new main search with only a single search thread.
     pub fn new() -> MainSearch {
         MainSearch { 
             main_config: SearchConfig::new(),
@@ -24,19 +25,15 @@ impl MainSearch {
         }
     }
 
-    /// Set the number of search threads. `nthreads` must be greater than zero.
-    /// 
-    /// # Panics
-    /// 
-    /// Panics when `nthreads` is equal to zero.
-    pub fn set_nthreads(&mut self, nthreads: usize) {
-        assert!(nthreads > 0);
-        if nthreads >= self.configs.len() {
-            for _ in 0..(nthreads - self.configs.len() - 1) {
+    /// Set the number of helper threads. If `n_helpers` is 0, then this search 
+    /// will be single-threaded.
+    pub fn set_nhelpers(&mut self, n_helpers: usize) {
+        if n_helpers >= self.configs.len() {
+            for _ in 0..(n_helpers - self.configs.len() - 1) {
                 self.configs.push(self.main_config);
             }
         } else {
-            self.configs.truncate(nthreads - 1);
+            self.configs.truncate(n_helpers - 1);
         }
     }
 
