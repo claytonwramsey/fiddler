@@ -21,6 +21,7 @@ pub struct MainSearch {
 }
 
 impl MainSearch {
+    #[allow(clippy::new_without_default)]
     /// Construct a new main search with only a single search thread.
     pub fn new() -> MainSearch {
         MainSearch {
@@ -51,22 +52,22 @@ impl MainSearch {
             .iter()
             .map(|config| {
                 let mut searcher = PVSearch::new(self.ttable.clone(), *config, self.limit.clone());
-                let mut gcopy = g.clone();
-                thread::spawn(move || searcher.evaluate(&mut gcopy))
+                let gcopy = g.clone();
+                thread::spawn(move || searcher.evaluate(gcopy))
             })
             .collect();
 
         // now it's our turn to think
         let mut main_searcher =
             PVSearch::new(self.ttable.clone(), self.main_config, self.limit.clone());
-        let mut best_result = main_searcher.evaluate(&g);
+        let mut best_result = main_searcher.evaluate(g.clone());
 
         for handle in handles {
             let eval_result = handle.join().map_err(|_| SearchError::JoinError)?;
 
             match (best_result, eval_result) {
                 // if this is our first successful thread, use its result
-                (Err(_1), Ok(_2)) => best_result = eval_result,
+                (Err(_), Ok(_)) => best_result = eval_result,
                 // if both were successful, use the deepest result
                 (Ok(best_search), Ok(new_search)) => {
                     if new_search.2 > best_search.2 {
@@ -78,10 +79,7 @@ impl MainSearch {
             };
         }
 
-        let n_nodes = self
-            .limit
-            .read()?
-            .num_nodes();
+        let n_nodes = self.limit.read()?.num_nodes();
 
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();

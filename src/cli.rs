@@ -309,7 +309,7 @@ impl<'a> CrabchessApp<'a> {
             .start();
         let search_data = self
             .engine
-            .evaluate(&mut self.game)
+            .evaluate(&self.game)
             .map_err(|_| "evaluation failed")?;
 
         writeln!(
@@ -329,7 +329,7 @@ impl<'a> CrabchessApp<'a> {
     fn set_limit(&mut self, limit: SearchLimit) {
         let arc_limit = Arc::new(RwLock::new(limit));
         self.limit = arc_limit.clone();
-        self.engine.limit = arc_limit.clone();
+        self.engine.limit = arc_limit;
     }
 }
 
@@ -347,7 +347,7 @@ impl<'a> Default for CrabchessApp<'a> {
             output_stream: Box::new(io::stdout()),
             limit: arc_limit.clone(),
         };
-        app.engine.limit = arc_limit.clone();
+        app.engine.limit = arc_limit;
         app.engine.set_nhelpers(15);
         app
     }

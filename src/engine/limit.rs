@@ -69,3 +69,9 @@ impl SearchLimit {
         self.num_nodes
     }
 }
+
+impl Default for SearchLimit {
+    fn default() -> Self {
+        SearchLimit::new()
+    }
+}

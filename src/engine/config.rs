@@ -27,3 +27,9 @@ impl SearchConfig {
         }
     }
 }
+
+impl Default for SearchConfig {
+    fn default() -> SearchConfig {
+        SearchConfig::new()
+    }
+}

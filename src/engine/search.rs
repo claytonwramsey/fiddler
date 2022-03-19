@@ -435,18 +435,17 @@ impl PVSearch {
     #[inline]
     /// Evaluate the given game. Return a pair containing the best move and its
     /// evaluation, as well as the depth to which the evaluation was searched.
-    pub fn evaluate(&mut self, g: &Game) -> SearchResult {
+    pub fn evaluate(&mut self, mut g: Game) -> SearchResult {
         self.num_nodes_evaluated = 0;
         self.num_transpositions = 0;
-        let mut gcopy = g.clone();
         let mut result = (Move::BAD_MOVE, Eval::DRAW);
         let mut highest_successful_depth = 0;
         for iter_depth in 1..=self.config.depth {
-            match self.pvs(iter_depth as i8, 0, &mut gcopy, Eval::MIN, Eval::MAX) {
+            match self.pvs(iter_depth as i8, 0, &mut g, Eval::MIN, Eval::MAX) {
                 Ok(search_result) => {
                     result = (
                         search_result.0,
-                        search_result.1 * (1 - 2 * gcopy.board().player_to_move as i32),
+                        search_result.1 * (1 - 2 * g.board().player_to_move as i32),
                     );
                     highest_successful_depth = iter_depth;
                 }
@@ -472,10 +471,7 @@ impl PVSearch {
     /// Helper function to check whether our search limit has decided that we
     /// are done searching.
     fn is_over(&self) -> Result<bool, SearchError> {
-        Ok(self
-            .limit
-            .read()?
-            .is_over())
+        Ok(self.limit.read()?.is_over())
     }
 
     #[inline]
@@ -493,9 +489,7 @@ impl PVSearch {
     /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
-        self.limit
-            .write()?
-            .add_nodes(self.num_nodes_evaluated);
+        self.limit.write()?.add_nodes(self.num_nodes_evaluated);
         self.num_nodes_evaluated = 0;
         Ok(())
     }
@@ -535,7 +529,7 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(11); // this prevents taking too long on searches
 
-        let result = e.evaluate(&g);
+        let result = e.evaluate(g);
         println!("best move: {} [{}]", result.unwrap().0, result.unwrap().1);
     }
 
@@ -548,7 +542,7 @@ pub mod tests {
         e.set_depth(6); // this prevents taking too long on searches
 
         assert_eq!(
-            e.evaluate(&g).unwrap().0,
+            e.evaluate(g).unwrap().0,
             Move::normal(Square::D1, Square::F3)
         );
     }
@@ -580,9 +574,9 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(depth);
 
-        assert_eq!(e.evaluate(&g).unwrap().1, eval);
+        assert_eq!(e.evaluate(g.clone()).unwrap().1, eval);
         e.config.max_transposition_depth = 0;
         e.clear();
-        assert_eq!(e.evaluate(&g).unwrap().1, eval);
+        assert_eq!(e.evaluate(g).unwrap().1, eval);
     }
 }
