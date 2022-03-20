@@ -488,7 +488,8 @@ fn loud_pseudolegal_moves(board: &Board, _check_info: &CheckInfo, moves: &mut Ve
         );
     }
     for sq in board[Piece::King] & board[player] {
-        bitboard_to_moves(sq, king_moves(board, sq, player) & target_sqs, moves);
+        // castle is illegal in check, just look at walking
+        bitboard_to_moves(sq, KING_MOVES[sq as usize] & target_sqs, moves);
     }
 }
 
