@@ -1,4 +1,4 @@
-use crate::base::piece::Piece;
+use crate::base::Piece;
 use crate::base::Bitboard;
 use crate::base::Color;
 use crate::base::Eval;

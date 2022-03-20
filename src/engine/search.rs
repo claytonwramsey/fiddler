@@ -518,8 +518,8 @@ impl Default for PVSearch {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::base::moves::Move;
-    use crate::base::square::*;
+    use crate::base::Move;
+    use crate::base::Square;
     use crate::fens::*;
 
     #[test]
