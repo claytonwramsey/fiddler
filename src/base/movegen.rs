@@ -190,6 +190,8 @@ pub fn has_moves(board: &Board) -> bool {
     let player = board.player_to_move;
     let player_occupancy = board[player];
     let opponent = !player;
+    let occupancy = player_occupancy | board[opponent];
+    let legal_targets = !player_occupancy;
     let king_square = Square::try_from(board[Piece::King] & player_occupancy).unwrap();
     let king_attackers = square_attackers(board, king_square, opponent);
 
@@ -232,12 +234,16 @@ pub fn has_moves(board: &Board) -> bool {
         for from_sq in board[pt] & player_occupancy {
             let to_bb = match pt {
                 Piece::Pawn => pawn_moves(board, from_sq, player),
-                Piece::Bishop => bishop_moves(board, from_sq, player),
-                Piece::Rook => rook_moves(board, from_sq, player),
+                Piece::Bishop => 
+                    MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
+                Piece::Rook => 
+                    MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
                 Piece::Queen => {
-                    bishop_moves(board, from_sq, player) | rook_moves(board, from_sq, player)
+                    (MAGIC.bishop_attacks(occupancy, from_sq) 
+                    | MAGIC.rook_attacks(occupancy, from_sq) & legal_targets) 
+                    & legal_targets
                 }
-                Piece::Knight => knight_moves(board, from_sq, player),
+                Piece::Knight => KNIGHT_MOVES[from_sq as usize] & legal_targets,
                 _ => Bitboard::EMPTY,
             };
 
@@ -347,6 +353,12 @@ fn validate(board: &Board, check_info: &CheckInfo, m: Move) -> bool {
     }
 
     let king_sq = Square::try_from(board[Piece::King] & board[board.player_to_move]).unwrap();
+
+    // the move is valid if the piece is not pinned, or if the piece is pinned 
+    // and stays on the same line as it was pinned on.
+    // 
+    // it is reasonable to use `aligned()` here because there's no way a piece 
+    // can stay aligned in a move without keeping the pin appeased.
     (pinned & from_bb == Bitboard::EMPTY) || aligned(m.from_square(), m.to_square(), king_sq)
 }
 
@@ -442,13 +454,39 @@ fn pseudolegal_evasions(
 fn loud_pseudolegal_moves(board: &Board, _check_info: &CheckInfo, moves: &mut Vec<Move>) {
     let player = board.player_to_move;
     let target_sqs = board[!player];
+    let from_sqs = board[player];
+    let occupancy = target_sqs | from_sqs;
+    let queens = board[Piece::Queen];
+    let rook_movers = (board[Piece::Rook] | queens) & from_sqs;
+    let bishop_movers = (board[Piece::Bishop] | queens) & from_sqs;
+    
     let mut pawn_targets = target_sqs | player.pawn_promote_rank();
     if let Some(sq) = board.en_passant_square {
         pawn_targets |= Bitboard::from(sq);
     }
 
-    normal_piece_assistant(board, player, moves, target_sqs);
     loud_pawn_assistant(board, player, moves, pawn_targets);
+    for sq in board[Piece::Knight] & board[player] {
+        bitboard_to_moves(
+            sq, 
+            KNIGHT_MOVES[sq as usize] & target_sqs,
+            moves
+        );
+    }
+    for sq in bishop_movers {
+        bitboard_to_moves(
+            sq,
+            MAGIC.bishop_attacks(occupancy, sq) & target_sqs,
+            moves
+        );
+    }
+    for sq in rook_movers {
+        bitboard_to_moves(
+            sq,
+            MAGIC.rook_attacks(occupancy, sq) & target_sqs,
+            moves
+        );
+    }
     for sq in board[Piece::King] & board[player] {
         bitboard_to_moves(sq, king_moves(board, sq, player) & target_sqs, moves);
     }
@@ -624,18 +662,32 @@ fn loud_pawn_assistant(board: &Board, color: Color, moves: &mut Vec<Move>, targe
 /// up on the target.
 fn normal_piece_assistant(board: &Board, color: Color, moves: &mut Vec<Move>, target: Bitboard) {
     let color_occupancy = board[color];
+    let legal_targets = !color_occupancy;
+    let occupancy = color_occupancy | board[!color];
     let queens = board[Piece::Queen];
     let rook_movers = (board[Piece::Rook] | queens) & color_occupancy;
     let bishop_movers = (board[Piece::Bishop] | queens) & color_occupancy;
 
     for sq in board[Piece::Knight] & color_occupancy {
-        bitboard_to_moves(sq, knight_moves(board, sq, color) & target, moves);
+        bitboard_to_moves(
+            sq, 
+            KNIGHT_MOVES[sq as usize] & legal_targets & target, 
+            moves
+        );
     }
     for sq in bishop_movers {
-        bitboard_to_moves(sq, bishop_moves(board, sq, color) & target, moves);
+        bitboard_to_moves(
+            sq, 
+            MAGIC.bishop_attacks(occupancy, sq) & legal_targets & target,
+            moves
+        );
     }
     for sq in rook_movers {
-        bitboard_to_moves(sq, rook_moves(board, sq, color) & target, moves);
+        bitboard_to_moves(
+            sq, 
+            MAGIC.rook_attacks(occupancy, sq) & legal_targets & target,
+            moves
+        );
     }
 }
 
@@ -662,6 +714,7 @@ fn pawn_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
     target_squares
 }
 
+#[inline]
 /// Get the captures a pawn can make in the current position. The given
 /// color is the color that a pawn would be to generate the captures from
 /// this square. `color` is the color of the piece at `sq`. The result is a
@@ -673,30 +726,6 @@ fn pawn_captures(board: &Board, sq: Square, color: Color) -> Bitboard {
     }
 
     PAWN_ATTACKS[color as usize][sq as usize] & capture_mask
-}
-
-#[inline]
-/// Get the pseudolegal moves that a knight on the square `sq` could make in
-/// this position. `color` is the color of the piece at `sq`.
-/// bob seger.
-fn knight_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
-    KNIGHT_MOVES[sq as usize] & !board[color]
-}
-
-#[inline]
-/// Get the pseudolegal moves that a bishop on square `sq` could make in
-/// this position, expressed as a `Bitboard` with 1's at every valid target
-/// square. `color` is the color of the piece at `sq`.
-fn bishop_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
-    MAGIC.bishop_attacks(board.occupancy(), sq) & !board[color]
-}
-
-#[inline]
-/// Get the pseudolegal moves that a rook on square `sq` could make in
-/// this position, expressed as a `Bitboard` with 1's at every valid target
-/// square. `color` is the color of the piece at `sq`.
-fn rook_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
-    MAGIC.rook_attacks(board.occupancy(), sq) & !board[color]
 }
 
 #[inline]
