@@ -59,6 +59,11 @@ pub mod perft;
 mod piece;
 pub use piece::Piece;
 
+/// A module for storing a position, which is a board as well as useful 
+/// metadata about a board.
+mod position;
+pub use position::Position;
+
 /// A module used for defining squares.
 mod square;
 pub use square::Square;

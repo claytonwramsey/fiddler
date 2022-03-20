@@ -92,7 +92,7 @@ lazy_static! {
     ];
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A struct containing information for generating moves without self-checking,
 /// such as the necessary pieces to block the king. When a `Game` makes a move,
 /// this information is expected to be lost.

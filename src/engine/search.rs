@@ -71,7 +71,7 @@ impl PVSearch {
         beta_in: Eval,
     ) -> PVSResult {
         if self.is_over()? {
-            return Err(SearchError::TimeoutError);
+            return Err(SearchError::Timeout);
         }
 
         if alpha_in >= Eval::mate_in(1) {
@@ -450,9 +450,9 @@ impl PVSearch {
                     highest_successful_depth = iter_depth;
                 }
                 Err(e) => match e {
-                    SearchError::TimeoutError => break,
-                    SearchError::PoisonError => return Err(e),
-                    SearchError::JoinError => {
+                    SearchError::Timeout => break,
+                    SearchError::Poison => return Err(e),
+                    SearchError::Join => {
                         panic!("how did a single-threaded process have a join error?!")
                     }
                 },
@@ -461,7 +461,7 @@ impl PVSearch {
 
         if result.0 == Move::BAD_MOVE {
             // search timed out before it could come up with any good moves.
-            return Err(SearchError::TimeoutError);
+            return Err(SearchError::Timeout);
         }
 
         Ok((result.0, result.1, highest_successful_depth))

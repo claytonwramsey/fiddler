@@ -63,7 +63,7 @@ impl MainSearch {
         let mut best_result = main_searcher.evaluate(g.clone());
 
         for handle in handles {
-            let eval_result = handle.join().map_err(|_| SearchError::JoinError)?;
+            let eval_result = handle.join().map_err(|_| SearchError::Join)?;
 
             match (best_result, eval_result) {
                 // if this is our first successful thread, use its result
