@@ -462,44 +462,33 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 /// Given some mask, create the occupancy bitboard according to this index.
 ///
 /// For instance: if `mask` repreresented a board like the following:
-///
-/// `8 . . . . . . . .`
-///
-/// `7 . . . . . . . .`
-///
-/// `6 . . . . . . . .`
-///
-/// `5 . . . . . . . .`
-///
-/// `4 . . . . . . . .`
-///
-/// `3 . . . . . . . .`
-///
-/// `2 . 1 . . . . . .`
-///
-/// `1 1 . . . . . . .`
-///
-/// `. A B C D E F G H`
+/// ```ignore
+/// 8 | . . . . . . . .
+/// 7 | . . . . . . . .
+/// 6 | . . . . . . . .
+/// 5 | . . . . . . . .
+/// 4 | . . . . . . . .
+/// 3 | . . . . . . . .
+/// 2 | . 1 . . . . . .
+/// 1 | 1 . . . . . . .
+/// - + - - - - - - - -
+/// . | A B C D E F G H
+/// ```
 ///
 /// and the given index were `0b10`, then the output mask would be
 ///
-/// `8 . . . . . . . .`
-///
-/// `7 . . . . . . . .`
-///
-/// `6 . . . . . . . .`
-///
-/// `5 . . . . . . . .`
-///
-/// `4 . . . . . . . .`
-///
-/// `3 . . . . . . . .`
-///
-/// `2 . 1 . . . . . .`
-///
-/// `1 . . . . . . . .`
-///
-/// `. A B C D E F G H`
+/// ```ignore
+/// 8 | . . . . . . . .
+/// 7 | . . . . . . . .
+/// 6 | . . . . . . . .
+/// 5 | . . . . . . . .
+/// 4 | . . . . . . . .
+/// 3 | . . . . . . . .
+/// 2 | . 1 . . . . . .
+/// 1 | . . . . . . . .
+/// - + - - - - - - - -
+/// . | A B C D E F G H
+/// ```
 fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     let mut result = Bitboard::EMPTY;
     let num_points = mask.count_ones();
