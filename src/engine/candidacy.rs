@@ -8,7 +8,7 @@ use std::cmp::max;
 
 use super::evaluate::blend_eval;
 
-/// Create an estimate for how good a move is. `delta` is the PST difference 
+/// Create an estimate for how good a move is. `delta` is the PST difference
 /// created by this move.
 /// # Panics
 /// if the given move is illegal.

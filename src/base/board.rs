@@ -25,7 +25,6 @@ pub struct Board {
     sides: [Bitboard; 2],
 
     /// The squares occupied by (in order) pawns, knights, bishops, rooks,
-
     /// queens, and kings.
     pieces: [Bitboard; Piece::NUM_TYPES],
 
@@ -81,13 +80,15 @@ impl Board {
             if (r, c) == (0, 8) {
                 break;
             }
-            let chr = fen_chrs.next()
+            let chr = fen_chrs
+                .next()
                 .ok_or("reached end of FEN before board was fully parsed")?;
             let is_white = chr.is_uppercase();
-            let pt = match chr.to_uppercase().next() {
-                Some(c) => Piece::from_code(c),
-                None => None,
-            };
+            let pt = chr
+                .to_uppercase()
+                .next()
+                .map(|c| Piece::from_code(c))
+                .flatten();
             let color = match is_white {
                 true => Color::White,
                 false => Color::Black,
@@ -102,8 +103,7 @@ impl Board {
                 c = 0;
             } else {
                 //number stating number of blank spaces in this row
-                let num_blanks = chr.to_digit(10)
-                    .ok_or("expected number of blanks")?;
+                let num_blanks = chr.to_digit(10).ok_or("expected number of blanks")?;
                 //advance the square under review by the number of blanks
                 c += num_blanks as usize;
             }
@@ -115,7 +115,8 @@ impl Board {
         };
 
         //now compute player to move
-        let player_to_move_chr = fen_chrs.next()
+        let player_to_move_chr = fen_chrs
+            .next()
             .ok_or("reached end of string while parsing for player to move")?;
         board.player_to_move = match player_to_move_chr {
             'w' => Color::White,
@@ -129,7 +130,8 @@ impl Board {
         }
 
         //determine castle rights
-        let mut castle_chr = fen_chrs.next()
+        let mut castle_chr = fen_chrs
+            .next()
             .ok_or("reached end of string while parsing castle rights")?;
         while castle_chr != ' ' {
             //this may accept some technically illegal FENS, but that's ok
@@ -143,17 +145,20 @@ impl Board {
                 '-' => CastleRights::NO_RIGHTS,
                 _ => Err("unrecognized castle rights character")?,
             };
-            castle_chr = fen_chrs.next()
+            castle_chr = fen_chrs
+                .next()
                 .ok_or("reached end of string while parsing castle rights")?;
         }
 
         //castle rights searching ate the space, so no need to check for it
 
         //en passant square
-        let ep_file_chr = fen_chrs.next()
+        let ep_file_chr = fen_chrs
+            .next()
             .ok_or("reached EOF while parsing en passant characters")?;
         if ep_file_chr != '-' {
-            let ep_rank_chr = fen_chrs.next()
+            let ep_rank_chr = fen_chrs
+                .next()
                 .ok_or("reached end of string while parsing en passant rank")?;
             let mut s = String::from(ep_file_chr);
             s.push(ep_rank_chr);

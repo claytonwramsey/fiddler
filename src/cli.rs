@@ -161,13 +161,14 @@ impl<'a> CrabchessApp<'a> {
                     Ok(Command::LoadFen(fen_str))
                 }
                 "u" | "undo" => {
-                    let num_undo = token_iter.next()
+                    let num_undo = token_iter
+                        .next()
                         .map(|s| s.parse::<usize>())
                         .unwrap_or(Ok(1)) // no token given -> assune you wanted to undo 1
                         .or(Err("could not parse number to undo"))?;
                     match num_undo {
                         0 => Err(String::from("cannot undo 0 moves")),
-                        n => Ok(Command::Undo(n))
+                        n => Ok(Command::Undo(n)),
                     }
                 }
                 "m" | "move" => Ok(Command::EngineMove),
@@ -178,13 +179,13 @@ impl<'a> CrabchessApp<'a> {
                             engine_reply: false,
                         })
                 }
-                "t" | "timeout" => {
-                    Ok(Command::SetTimeout(
-                        token_iter
+                "t" | "timeout" => Ok(Command::SetTimeout(
+                    token_iter
                         .next()
-                        .ok_or("required number of milliseconds until timeout")?.parse::<u64>().or(Err("failed to parse timeout"))?
-                    ))
-                }
+                        .ok_or("required number of milliseconds until timeout")?
+                        .parse::<u64>()
+                        .or(Err("failed to parse timeout"))?,
+                )),
                 "list" => Ok(Command::ListMoves),
                 "h" | "history" => Ok(Command::PrintHistory),
                 _ => Err("unrecognized command")?,
@@ -227,14 +228,14 @@ impl<'a> CrabchessApp<'a> {
                 Ok(()) => Ok(()),
                 Err(_) => Err(String::from("write failed")),
             },
-            _ => writeln!(self.output_stream, "the command type `{c}` is unsupported").or(Err(String::from("write failed")))
+            _ => writeln!(self.output_stream, "the command type `{c}` is unsupported")
+                .or(Err(String::from("write failed"))),
         }
     }
 
     /// Echo out an error string to the user.
     fn echo_error(&mut self, s: &str) -> CommandResult {
-        writeln!(self.output_stream, "error: {s}")
-            .or(Err(String::from("write failed")))
+        writeln!(self.output_stream, "error: {s}").or(Err(String::from("write failed")))
     }
 
     /// Attempt to load a FEN string into the game.
@@ -245,10 +246,7 @@ impl<'a> CrabchessApp<'a> {
 
     /// Attempt to play a move.
     fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
-        self.game.try_move(
-            m,
-            pst_delta(self.game.board(), m)
-        )?;
+        self.game.try_move(m, pst_delta(self.game.board(), m))?;
         if engine_reply {
             self.play_engine_move()?;
         }
@@ -302,10 +300,8 @@ impl<'a> CrabchessApp<'a> {
             search_data.1
         )
         .map_err(|_| "failed to write to output")?;
-        self.game.make_move(
-            search_data.0, 
-            pst_delta(self.game.board(), search_data.0)
-        );
+        self.game
+            .make_move(search_data.0, pst_delta(self.game.board(), search_data.0));
 
         Ok(())
     }
@@ -389,7 +385,11 @@ mod tests {
         );
         assert_eq!(
             app.game,
-            Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", pst_evaluate).unwrap()
+            Game::from_fen(
+                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+                pst_evaluate
+            )
+            .unwrap()
         );
     }
 

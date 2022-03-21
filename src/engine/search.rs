@@ -118,7 +118,8 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves: Vec<(Move, (Eval, Eval))> = g.get_moves()
+        let mut moves: Vec<(Move, (Eval, Eval))> = g
+            .get_moves()
             .into_iter()
             .map(|m| (m, pst_delta(g.board(), m)))
             .collect();
@@ -295,7 +296,8 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves: Vec<(Move, (Eval, Eval))> = g.get_loud_moves()
+        let mut moves: Vec<(Move, (Eval, Eval))> = g
+            .get_loud_moves()
             .into_iter()
             .map(|m| (m, pst_delta(g.board(), m)))
             .collect();

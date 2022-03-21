@@ -10,13 +10,13 @@ use std::convert::TryFrom;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 
-use super::Eval;
 use super::movegen::get_loud_moves;
 use super::movegen::get_moves;
 use super::movegen::has_moves;
 use super::movegen::is_square_attacked_by;
-use super::Position;
 use super::position::PSTEvaluator;
+use super::Eval;
+use super::Position;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// A struct containing game information, which unlike a `Board`, knows about
@@ -64,18 +64,19 @@ impl Game {
 
     /// Make a move, assuming said move is illegal. If the history is empty
     /// (this should never happen if normal operations occurred), the move will
-    /// be made from the default state of a `Board`. `pst_delta` is the 
-    /// expected gain in evaluation for the player making the move. Typically, 
+    /// be made from the default state of a `Board`. `pst_delta` is the
+    /// expected gain in evaluation for the player making the move. Typically,
     /// `pst_delta` wil always be positive.
     pub fn make_move(&mut self, m: Move, pst_delta: (Eval, Eval)) {
         let previous_state = self.history.last().unwrap();
         let mut new_pos = previous_state.0;
 
-        let move_timeout =
-            match new_pos.board.is_move_capture(m) || new_pos.board[Piece::Pawn].contains(m.from_square()) {
-                true => 0,
-                false => previous_state.1 + 1,
-            };
+        let move_timeout = match new_pos.board.is_move_capture(m)
+            || new_pos.board[Piece::Pawn].contains(m.from_square())
+        {
+            true => 0,
+            false => previous_state.1 + 1,
+        };
         new_pos.make_move(m, pst_delta);
 
         let num_reps = self.repetitions.entry(new_pos.board.hash).or_insert(0);
@@ -110,9 +111,7 @@ impl Game {
             Some(p) => p.0,
             None => return Err("no boards in history"),
         };
-        let num_reps = self.repetitions
-            .entry(pos_removed.board.hash)
-            .or_insert(1);
+        let num_reps = self.repetitions.entry(pos_removed.board.hash).or_insert(1);
         *num_reps -= 1;
         if *num_reps == 0 {
             self.repetitions.remove(&pos_removed.board.hash);
@@ -142,7 +141,7 @@ impl Game {
     }
 
     #[inline]
-    /// Get the position representing the current state of the game. Will panic 
+    /// Get the position representing the current state of the game. Will panic
     /// if there is no history, but this should never happen.
     pub fn position(&self) -> &Position {
         &self.history.last().unwrap().0
@@ -257,8 +256,8 @@ mod tests {
         let m = Move::normal(Square::E2, Square::E4);
         let old_board = *g.board();
         g.make_move(
-            Move::normal(Square::E2, Square::E4), 
-            (Eval::DRAW, Eval::DRAW)
+            Move::normal(Square::E2, Square::E4),
+            (Eval::DRAW, Eval::DRAW),
         );
         let new_board = g.board();
         board::tests::test_move_result_helper(old_board, *new_board, m);
@@ -269,10 +268,7 @@ mod tests {
     fn test_undo_move() {
         let mut g = Game::default();
         let m = Move::normal(Square::E2, Square::E4);
-        g.make_move(
-            m,
-            (Eval::DRAW, Eval::DRAW)
-        );
+        g.make_move(m, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(*g.board(), Board::default());
     }
@@ -291,14 +287,8 @@ mod tests {
         let mut g = Game::default();
         let m0 = Move::normal(Square::E2, Square::E4);
         let m1 = Move::normal(Square::E7, Square::E5);
-        g.make_move(
-            m0,
-            (Eval::DRAW, Eval::DRAW),
-        );
-        g.make_move(
-            m1,
-            (Eval::DRAW, Eval::DRAW)
-        );
+        g.make_move(m0, (Eval::DRAW, Eval::DRAW));
+        g.make_move(m1, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.undo_n(2), Ok(()));
         assert_eq!(*g.board(), Board::default());
     }
@@ -310,7 +300,7 @@ mod tests {
         let mut g = Game::default();
         g.make_move(
             Move::normal(Square::E2, Square::E4),
-            (Eval::DRAW, Eval::DRAW)
+            (Eval::DRAW, Eval::DRAW),
         );
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::default());
@@ -321,10 +311,7 @@ mod tests {
     fn test_undo_fried_liver() {
         let mut g = Game::from_fen(FRIED_LIVER_FEN, no_eval).unwrap();
         let m = Move::normal(Square::D1, Square::F3);
-        g.make_move(
-            m,
-            (Eval::DRAW, Eval::DRAW)
-        );
+        g.make_move(m, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN, no_eval).unwrap());
         assert_eq!(g.board(), &Board::from_fen(FRIED_LIVER_FEN).unwrap());
@@ -380,8 +367,8 @@ mod tests {
     fn test_clear_board() {
         let mut g = Game::default();
         g.make_move(
-            Move::normal(Square::E2, Square::E4), 
-            (Eval::DRAW, Eval::DRAW)
+            Move::normal(Square::E2, Square::E4),
+            (Eval::DRAW, Eval::DRAW),
         );
         g.clear();
         assert_eq!(g, Game::default());
