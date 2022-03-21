@@ -4,6 +4,8 @@ use crate::base::Eval;
 use crate::base::Game;
 use crate::base::Piece;
 
+use super::greedy::greedy_evaluate;
+
 /// The value of having an opponent's pawn doubled.
 const DOUBLED_PAWN_VALUE: Eval = Eval::millipawns(100);
 
@@ -27,7 +29,10 @@ pub fn evaluate(g: &mut Game) -> Eval {
     let pos = g.position();
     let b = &pos.board;
 
-    let (mg_eval, mut eg_eval) = pos.pst_val;
+    let (mut mg_eval, mut eg_eval) = pos.pst_val;
+    let material = greedy_evaluate(b);
+    mg_eval += material;
+    eg_eval += material;
 
     // Add losses due to doubled pawns
     let white_occupancy = b[Color::White];
