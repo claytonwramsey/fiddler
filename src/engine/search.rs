@@ -526,6 +526,8 @@ impl Default for PVSearch {
 
 #[cfg(test)]
 pub mod tests {
+    use std::time::Instant;
+
     use super::*;
     use crate::base::Move;
     use crate::base::Square;
@@ -549,11 +551,24 @@ pub mod tests {
     fn test_fried_liver() {
         let g = Game::from_fen(FRIED_LIVER_FEN, pst_evaluate).unwrap();
         let mut e = PVSearch::default();
-        e.set_depth(6); // this prevents taking too long on searches
+        e.set_depth(10); // this prevents taking too long on searches
+        let m = Move::normal(Square::D1, Square::F3);
 
-        assert_eq!(
-            e.evaluate(g).unwrap().0,
-            Move::normal(Square::D1, Square::F3)
+        let mut tic = Instant::now();
+        assert_eq!(e.evaluate(g.clone()).unwrap().0, m);
+        let mut toc = Instant::now();
+        println!(
+            "with transposition table: {:.3} secs",
+            (toc - tic).as_secs_f64()
+        );
+        e.config.max_transposition_depth = 0;
+        e.clear();
+        tic = Instant::now();
+        assert_eq!(e.evaluate(g).unwrap().0, m);
+        toc = Instant::now();
+        println!(
+            "no transposition table: {:.3} secs",
+            (toc - tic).as_secs_f64()
         );
     }
 
@@ -584,9 +599,21 @@ pub mod tests {
         let mut e = PVSearch::default();
         e.set_depth(depth);
 
+        let mut tic = Instant::now();
         assert_eq!(e.evaluate(g.clone()).unwrap().1, eval);
+        let mut toc = Instant::now();
+        println!(
+            "with transposition table: {:.3} secs",
+            (toc - tic).as_secs_f64()
+        );
         e.config.max_transposition_depth = 0;
         e.clear();
+        tic = Instant::now();
         assert_eq!(e.evaluate(g).unwrap().1, eval);
+        toc = Instant::now();
+        println!(
+            "no transposition table: {:.3} secs",
+            (toc - tic).as_secs_f64()
+        );
     }
 }
