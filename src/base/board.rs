@@ -84,11 +84,7 @@ impl Board {
                 .next()
                 .ok_or("reached end of FEN before board was fully parsed")?;
             let is_white = chr.is_uppercase();
-            let pt = chr
-                .to_uppercase()
-                .next()
-                .map(|c| Piece::from_code(c))
-                .flatten();
+            let pt = chr.to_uppercase().next().and_then(Piece::from_code);
             let color = match is_white {
                 true => Color::White,
                 false => Color::Black,
@@ -111,7 +107,7 @@ impl Board {
 
         //now a space
         if fen_chrs.next() != Some(' ') {
-            Err("expected space after board array section of FEN")?;
+            return Err("expected space after board array section of FEN".into());
         };
 
         //now compute player to move
@@ -121,12 +117,12 @@ impl Board {
         board.player_to_move = match player_to_move_chr {
             'w' => Color::White,
             'b' => Color::Black,
-            _ => Err("unrecognized player to move")?,
+            _ => return Err("unrecognized player to move".into()),
         };
 
         //now a space
         if fen_chrs.next() != Some(' ') {
-            Err("expected space after player to move section of FEN")?;
+            return Err("expected space after player to move section of FEN".into());
         }
 
         //determine castle rights
@@ -143,7 +139,7 @@ impl Board {
                 'k' => CastleRights::king_castle(Color::Black),
                 'q' => CastleRights::queen_castle(Color::Black),
                 '-' => CastleRights::NO_RIGHTS,
-                _ => Err("unrecognized castle rights character")?,
+                _ => return Err("unrecognized castle rights character".into()),
             };
             castle_chr = fen_chrs
                 .next()
@@ -166,7 +162,7 @@ impl Board {
         }
         board.recompute_hash();
         if !(board.is_valid()) {
-            Err("board state after loading was illegal")?;
+            return Err("board state after loading was illegal".into());
         }
         //Ignore move clocks
         Ok(board)

@@ -153,11 +153,11 @@ impl<'a> CrabchessApp<'a> {
             match command_name {
                 "q" | "quit" => Ok(Command::Quit),
                 "e" | "engine" => {
-                    let engine_opt = String::from(s[command_block.len()..].trim());
+                    let engine_opt = s[command_block.len()..].trim().into();
                     Ok(Command::EngineSelect(engine_opt))
                 }
                 "l" | "load" => {
-                    let fen_str = String::from(s[command_block.len()..].trim());
+                    let fen_str = s[command_block.len()..].trim().into();
                     Ok(Command::LoadFen(fen_str))
                 }
                 "u" | "undo" => {
@@ -165,9 +165,9 @@ impl<'a> CrabchessApp<'a> {
                         .next()
                         .map(|s| s.parse::<usize>())
                         .unwrap_or(Ok(1)) // no token given -> assune you wanted to undo 1
-                        .or(Err("could not parse number to undo"))?;
+                        .map_err(|_| "could not parse number to undo")?;
                     match num_undo {
-                        0 => Err(String::from("cannot undo 0 moves")),
+                        0 => Err("cannot undo 0 moves".into()),
                         n => Ok(Command::Undo(n)),
                     }
                 }
@@ -184,11 +184,11 @@ impl<'a> CrabchessApp<'a> {
                         .next()
                         .ok_or("required number of milliseconds until timeout")?
                         .parse::<u64>()
-                        .or(Err("failed to parse timeout"))?,
+                        .map_err(|_| "failed to parse timeout")?,
                 )),
                 "list" => Ok(Command::ListMoves),
                 "h" | "history" => Ok(Command::PrintHistory),
-                _ => Err("unrecognized command")?,
+                _ => return Err("unrecognized command".into()),
             }
         } else {
             //this is a move
@@ -214,7 +214,7 @@ impl<'a> CrabchessApp<'a> {
             Command::LoadFen(fen) => self.load_fen(&fen),
             Command::PlayMove { m, engine_reply } => self.try_move(m, engine_reply),
             Command::ListMoves => self.list_moves(),
-            Command::Undo(n) => self.game.undo_n(n).map_err(|s| String::from(s)),
+            Command::Undo(n) => self.game.undo_n(n).map_err(String::from),
             Command::EngineSelect(s) => self.select_engine(s),
             Command::EngineMove => self.play_engine_move(),
             Command::SetTimeout(num) => {
@@ -226,16 +226,16 @@ impl<'a> CrabchessApp<'a> {
             }
             Command::PrintHistory => match writeln!(self.output_stream, "{}", self.game) {
                 Ok(()) => Ok(()),
-                Err(_) => Err(String::from("write failed")),
+                Err(_) => Err("write failed".into()),
             },
             _ => writeln!(self.output_stream, "the command type `{c}` is unsupported")
-                .or(Err(String::from("write failed"))),
+                .map_err(|_| "write failed".into()),
         }
     }
 
     /// Echo out an error string to the user.
     fn echo_error(&mut self, s: &str) -> CommandResult {
-        writeln!(self.output_stream, "error: {s}").or(Err(String::from("write failed")))
+        writeln!(self.output_stream, "error: {s}").map_err(|_| "write failed".into())
     }
 
     /// Attempt to load a FEN string into the game.
@@ -272,13 +272,12 @@ impl<'a> CrabchessApp<'a> {
     fn select_engine(&mut self, opts: String) -> CommandResult {
         // For now, we just use it to set the depth, as there are no engines to
         // select.
-        match opts.parse::<u8>() {
-            Ok(num) => {
-                self.engine.set_depth(num);
-                Ok(())
-            }
-            Err(_) => Err("could not parse engine selection")?,
-        }
+        self.engine.set_depth(
+            opts.parse()
+                .map_err(|_| "could not parse engine selection")?,
+        );
+
+        Ok(())
     }
 
     /// Have the engine play a move.
@@ -367,9 +366,9 @@ mod tests {
         let app = CrabchessApp::default();
         assert_eq!(
             app.parse_command("/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"),
-            Ok(Command::LoadFen(String::from(
-                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
-            )))
+            Ok(Command::LoadFen(
+                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7".into()
+            ))
         );
     }
 
@@ -378,9 +377,9 @@ mod tests {
     fn test_execute_load() {
         let mut app = CrabchessApp::default();
         assert_eq!(
-            app.execute_command(Command::LoadFen(String::from(
-                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
-            ))),
+            app.execute_command(Command::LoadFen(
+                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7".into()
+            )),
             Ok(())
         );
         assert_eq!(
@@ -399,7 +398,7 @@ mod tests {
         let app = CrabchessApp::default();
         assert_eq!(
             app.parse_command("/e m 8"),
-            Ok(Command::EngineSelect(String::from("m 8")))
+            Ok(Command::EngineSelect("m 8".into()))
         );
     }
 

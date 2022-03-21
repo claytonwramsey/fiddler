@@ -16,7 +16,7 @@ pub fn parse_line(line: &str) -> UciParseResult {
         "debug" => match tokens.next() {
             Some("on") | None => Ok(UciCommand::Debug(true)),
             Some("off") => Ok(UciCommand::Debug(false)),
-            _ => Err(String::from("unrecognized option")),
+            _ => Err("unrecognized option".into()),
         },
         "isready" => Ok(UciCommand::IsReady),
         "setoption" => parse_set_option(&mut tokens),
@@ -26,7 +26,7 @@ pub fn parse_line(line: &str) -> UciParseResult {
         "stop" => Ok(UciCommand::Stop),
         "ponderhit" => Ok(UciCommand::PonderHit),
         "quit" => Ok(UciCommand::Quit),
-        _ => Err(String::from("unrecognized UCI command")),
+        _ => Err("unrecognized UCI command".into()),
     }
 }
 
@@ -191,7 +191,7 @@ fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 /// given `None`.
 fn parse_int(x: Option<&str>) -> Result<u64, String> {
     match x {
-        None => Err(String::from("reached EOF while parsing int")),
+        None => Err("reached EOF while parsing int".into()),
         Some(s) => s
             .parse()
             .map_err(|e| format!("could not parse int due to error: {e}")),
@@ -223,9 +223,7 @@ mod tests {
                 "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n"
             ),
             Ok(UciCommand::Position {
-                fen: Some(String::from(
-                    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
-                )),
+                fen: Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1".into()),
                 moves: Vec::new()
             })
         );
@@ -237,7 +235,7 @@ mod tests {
         assert_eq!(
             parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n"), 
             Ok(UciCommand::Position {
-                fen: Some(String::from("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")), 
+                fen: Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1".into()), 
                 moves: vec![
                     Move::normal(Square::C7, Square::C5),
                     Move::normal(Square::G1, Square::F3)
@@ -252,7 +250,7 @@ mod tests {
         assert_eq!(
             parse_line("setoption name MyOption\n"),
             Ok(UciCommand::SetOption {
-                name: String::from("MyOption"),
+                name: "MyOption".into(),
                 value: None
             })
         );
@@ -264,8 +262,8 @@ mod tests {
         assert_eq!(
             parse_line("setoption name my option value 4 or 5\n"),
             Ok(UciCommand::SetOption {
-                name: String::from("my option"),
-                value: Some(String::from("4 or 5"))
+                name: "my option".into(),
+                value: Some("4 or 5".into())
             })
         );
     }

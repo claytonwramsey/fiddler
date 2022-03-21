@@ -125,7 +125,7 @@ mod tests {
         let b = Board::default();
         let m = Move::new(Square::E2, Square::E4, None);
 
-        assert_eq!(String::from("e4"), algebraic_from_move(m, &b));
+        assert_eq!("e4", algebraic_from_move(m, &b));
     }
 
     #[test]
@@ -134,7 +134,7 @@ mod tests {
         let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
         let m = Move::new(Square::B6, Square::B8, None);
 
-        assert_eq!(String::from("Rb8#"), algebraic_from_move(m, &b));
+        assert_eq!("Rb8#", algebraic_from_move(m, &b));
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod tests {
             println!("{m} ");
         }
 
-        assert_eq!(algebraic_from_move(m, &b), String::from("exf5"));
+        assert_eq!(algebraic_from_move(m, &b), "exf5");
     }
 
     #[test]

@@ -19,8 +19,8 @@ pub fn build_message(message: &UciMessage) -> String {
             }
             result
         }
-        UciMessage::UciOk => String::from("uciok\n"),
-        UciMessage::ReadyOk => String::from("readyok\n"),
+        UciMessage::UciOk => "uciok\n".into(),
+        UciMessage::ReadyOk => "readyok\n".into(),
         UciMessage::Option { name, opt } => build_option(name, opt),
         UciMessage::BestMove { m, ponder } => {
             let mut result = format!("bestmove {m} ");
@@ -144,7 +144,7 @@ mod tests {
                 EngineInfo::CurrMove(Move::normal(Square::E2, Square::E4)),
                 EngineInfo::CurrMoveNumber(1),
             ])),
-            String::from("info currmove e2e4 currmovenumber 1 \n")
+            "info currmove e2e4 currmovenumber 1 \n"
         );
     }
 
@@ -157,7 +157,7 @@ mod tests {
                 EngineInfo::CurrMove(Move::promoting(Square::E7, Square::E8, Piece::Queen)),
                 EngineInfo::CurrMoveNumber(7),
             ])),
-            String::from("info currmove e7e8q currmovenumber 7 \n")
+            "info currmove e7e8q currmovenumber 7 \n"
         );
     }
 
@@ -182,9 +182,7 @@ mod tests {
                     Move::normal(Square::G1, Square::F3),
                 ]),
             ])),
-            String::from(
-                "info depth 2 score cp 214 time 1242 nodes 2124 nps 34928 pv e2e4 e7e5 g1f3 \n"
-            )
+            "info depth 2 score cp 214 time 1242 nodes 2124 nps 34928 pv e2e4 e7e5 g1f3 \n"
         )
     }
 
@@ -193,10 +191,10 @@ mod tests {
     fn test_id() {
         assert_eq!(
             build_message(&UciMessage::Id {
-                name: Some(String::from("Crabchess")),
-                author: Some(String::from("Clayton Ramsey")),
+                name: Some("Crabchess".into()),
+                author: Some("Clayton Ramsey".into()),
             }),
-            String::from("id name Crabchess\nid author Clayton Ramsey\n")
+            "id name Crabchess\nid author Clayton Ramsey\n"
         )
     }
 
@@ -205,10 +203,10 @@ mod tests {
     fn test_option_check() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: String::from("Nullmove"),
+                name: "Nullmove".into(),
                 opt: OptionType::Check(Some(true)),
             }),
-            String::from("option name Nullmove type check default true \n")
+            "option name Nullmove type check default true \n"
         );
     }
 
@@ -217,14 +215,14 @@ mod tests {
     fn test_option_spin() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: String::from("Selectivity"),
+                name: "Selectivity".into(),
                 opt: OptionType::Spin {
                     default: 2,
                     min: 0,
                     max: 4
                 },
             }),
-            String::from("option name Selectivity type spin default 2 min 0 max 4\n")
+            "option name Selectivity type spin default 2 min 0 max 4\n"
         )
     }
 
@@ -233,19 +231,13 @@ mod tests {
     fn test_option_combo() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: String::from("Style"),
+                name: "Style".into(),
                 opt: OptionType::Combo {
-                    default: Some(String::from("Normal")),
-                    vars: vec![
-                        String::from("Solid"),
-                        String::from("Normal"),
-                        String::from("Risky"),
-                    ],
+                    default: Some("Normal".into()),
+                    vars: vec!["Solid".into(), "Normal".into(), "Risky".into(),],
                 }
             }),
-            String::from(
-                "option name Style type combo default Normal var Solid var Normal var Risky \n"
-            )
+            "option name Style type combo default Normal var Solid var Normal var Risky \n"
         )
     }
 
@@ -254,10 +246,10 @@ mod tests {
     fn test_option_string() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: String::from("NalimovPath"),
-                opt: OptionType::String(Some(String::from("c:\\"))),
+                name: "NalimovPath".into(),
+                opt: OptionType::String(Some("c:\\".into())),
             }),
-            String::from("option name NalimovPath type string default c:\\ \n")
+            "option name NalimovPath type string default c:\\ \n"
         )
     }
 
@@ -266,10 +258,10 @@ mod tests {
     fn test_option_button() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: String::from("Clear Hash"),
+                name: "Clear Hash".into(),
                 opt: OptionType::Button,
             }),
-            String::from("option name Clear Hash type button \n")
+            "option name Clear Hash type button \n"
         )
     }
 }
