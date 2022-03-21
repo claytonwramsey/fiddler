@@ -9,6 +9,7 @@ use std::sync::{Arc, RwLock};
 use super::candidacy::candidacy;
 use super::config::SearchConfig;
 use super::limit::{ArcLimit, SearchLimit};
+use super::pst::pst_delta;
 use super::{SearchError, SearchResult};
 
 #[derive(Clone, Debug)]
@@ -117,7 +118,10 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves = g.get_moves();
+        let mut moves: Vec<(Move, (Eval, Eval))> = g.get_moves()
+            .into_iter()
+            .map(|m| (m, pst_delta(g.board(), m)))
+            .collect();
 
         if moves.is_empty() {
             return Ok((
@@ -133,23 +137,23 @@ impl PVSearch {
         if can_use_killers {
             retrieved_killer_move = self.killer_moves[killer_index];
         }
-        moves.sort_by_cached_key(|m| {
-            if *m == stored_move {
+        moves.sort_by_cached_key(|&(m, delta)| {
+            if m == stored_move {
                 return Eval::MIN;
             }
-            if *m == retrieved_killer_move {
+            if m == retrieved_killer_move {
                 return Eval::MIN + Eval::millipawns(1);
             }
-            -candidacy(g, *m)
+            -candidacy(g, m, delta)
         });
 
         let mut moves_iter = moves.into_iter();
 
         // This should always have a move since this was not a "terminal"
         // position of the game
-        let mut critical_move = moves_iter.next().unwrap();
+        let (mut critical_move, delta) = moves_iter.next().unwrap();
 
-        g.make_move(critical_move);
+        g.make_move(critical_move, delta);
         let mut score = -self
             .pvs(
                 depth_to_go - 1,
@@ -187,11 +191,11 @@ impl PVSearch {
 
         let mut num_moves_checked = 1;
 
-        for m in moves_iter {
+        for (m, delta) in moves_iter {
             let late_move = num_moves_checked > self.config.num_early_moves
                 && !g.board().is_move_capture(m)
                 && m.promote_type().is_none();
-            g.make_move(m);
+            g.make_move(m, delta);
             // zero-window search
             let depth_to_search = match late_move {
                 true => depth_to_go - 2,
@@ -291,7 +295,10 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves = g.get_loud_moves();
+        let mut moves: Vec<(Move, (Eval, Eval))> = g.get_loud_moves()
+            .into_iter()
+            .map(|m| (m, pst_delta(g.board(), m)))
+            .collect();
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
@@ -313,12 +320,12 @@ impl PVSearch {
             return Ok((Move::BAD_MOVE, alpha));
         }
 
-        moves.sort_by_cached_key(|m| -candidacy(g, *m));
+        moves.sort_by_cached_key(|&(m, delta)| -candidacy(g, m, delta));
         let mut moves_iter = moves.into_iter();
         let mut critical_move = Move::BAD_MOVE;
         // we must wrap with an if in case there are no captures
-        if let Some(critical_move) = moves_iter.next() {
-            g.make_move(critical_move);
+        if let Some((critical_move, delta)) = moves_iter.next() {
+            g.make_move(critical_move, delta);
             score = -self
                 .quiesce(
                     depth_to_go - 1,
@@ -341,8 +348,8 @@ impl PVSearch {
             }
         }
 
-        for m in moves_iter {
-            g.make_move(m);
+        for (m, delta) in moves_iter {
+            g.make_move(m, delta);
             // zero-window search
             score = -self
                 .quiesce(
@@ -520,6 +527,7 @@ pub mod tests {
     use super::*;
     use crate::base::Move;
     use crate::base::Square;
+    use crate::engine::pst::pst_evaluate;
     use crate::fens::*;
 
     #[test]
@@ -537,7 +545,7 @@ pub mod tests {
     /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
-        let g = Game::from_fen(FRIED_LIVER_FEN).unwrap();
+        let g = Game::from_fen(FRIED_LIVER_FEN, pst_evaluate).unwrap();
         let mut e = PVSearch::default();
         e.set_depth(6); // this prevents taking too long on searches
 
@@ -570,7 +578,7 @@ pub mod tests {
     /// equal to what we expect it to be. It will check both a normal search
     /// and a search without the transposition table.
     fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
-        let g = Game::from_fen(fen).unwrap();
+        let g = Game::from_fen(fen, pst_evaluate).unwrap();
         let mut e = PVSearch::default();
         e.set_depth(depth);
 

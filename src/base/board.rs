@@ -71,7 +71,7 @@ impl Board {
     /// Create a Board populated from some FEN and load it.
     /// Will return `Err` if the FEN is invalid with a string describing why it
     /// failed.
-    pub fn from_fen(fen: &str) -> Result<Board, &'static str> {
+    pub fn from_fen(fen: &str) -> Result<Board, String> {
         let mut board = Board::empty();
         let mut fen_chrs = fen.chars();
         let mut r = 7; //current row parsed
@@ -81,10 +81,8 @@ impl Board {
             if (r, c) == (0, 8) {
                 break;
             }
-            let chr = match fen_chrs.next() {
-                Some(chr) => chr,
-                None => return Err("reached end of FEN before board was fully parsed"),
-            };
+            let chr = fen_chrs.next()
+                .ok_or("reached end of FEN before board was fully parsed")?;
             let is_white = chr.is_uppercase();
             let pt = match chr.to_uppercase().next() {
                 Some(c) => Piece::from_code(c),
@@ -104,10 +102,8 @@ impl Board {
                 c = 0;
             } else {
                 //number stating number of blank spaces in this row
-                let num_blanks = match chr.to_digit(10) {
-                    Some(num) => num,
-                    None => return Err("expected number of blanks"),
-                };
+                let num_blanks = chr.to_digit(10)
+                    .ok_or("expected number of blanks")?;
                 //advance the square under review by the number of blanks
                 c += num_blanks as usize;
             }
@@ -115,30 +111,26 @@ impl Board {
 
         //now a space
         if fen_chrs.next() != Some(' ') {
-            return Err("expected space after board array section of FEN");
+            Err("expected space after board array section of FEN")?;
         };
 
         //now compute player to move
-        let player_to_move_chr = match fen_chrs.next() {
-            Some(c) => c,
-            None => return Err("reached end of string while parsing for player to move"),
-        };
+        let player_to_move_chr = fen_chrs.next()
+            .ok_or("reached end of string while parsing for player to move")?;
         board.player_to_move = match player_to_move_chr {
             'w' => Color::White,
             'b' => Color::Black,
-            _ => return Err("unrecognized player to move"),
+            _ => Err("unrecognized player to move")?,
         };
 
         //now a space
         if fen_chrs.next() != Some(' ') {
-            return Err("expected space after player to move section of FEN");
+            Err("expected space after player to move section of FEN")?;
         }
 
         //determine castle rights
-        let mut castle_chr = match fen_chrs.next() {
-            Some(c) => c,
-            None => return Err("reached end of string while parsing castle rights"),
-        };
+        let mut castle_chr = fen_chrs.next()
+            .ok_or("reached end of string while parsing castle rights")?;
         while castle_chr != ' ' {
             //this may accept some technically illegal FENS, but that's ok
             //note: hash was not updated, so will need to be rewritten by the
@@ -149,36 +141,27 @@ impl Board {
                 'k' => CastleRights::king_castle(Color::Black),
                 'q' => CastleRights::queen_castle(Color::Black),
                 '-' => CastleRights::NO_RIGHTS,
-                _ => return Err("unrecognized castle rights character"),
+                _ => Err("unrecognized castle rights character")?,
             };
-            castle_chr = match fen_chrs.next() {
-                Some(c) => c,
-                None => return Err("reached end of string while parsing castle rights"),
-            };
+            castle_chr = fen_chrs.next()
+                .ok_or("reached end of string while parsing castle rights")?;
         }
 
         //castle rights searching ate the space, so no need to check for it
 
         //en passant square
-        let ep_file_chr = match fen_chrs.next() {
-            Some(c) => c,
-            None => return Err("illegal character in en passant square"),
-        };
+        let ep_file_chr = fen_chrs.next()
+            .ok_or("reached EOF while parsing en passant characters")?;
         if ep_file_chr != '-' {
-            let ep_rank_chr = match fen_chrs.next() {
-                Some(c) => c,
-                None => return Err("reached end of string while parsing en passant rank"),
-            };
+            let ep_rank_chr = fen_chrs.next()
+                .ok_or("reached end of string while parsing en passant rank")?;
             let mut s = String::from(ep_file_chr);
             s.push(ep_rank_chr);
-            board.en_passant_square = match Square::from_algebraic(&s) {
-                Ok(sq) => Some(sq),
-                Err(e) => return Err(e),
-            };
+            board.en_passant_square = Some(Square::from_algebraic(&s)?);
         }
         board.recompute_hash();
         if !(board.is_valid()) {
-            return Err("board state after loading was illegal");
+            Err("board state after loading was illegal")?;
         }
         //Ignore move clocks
         Ok(board)

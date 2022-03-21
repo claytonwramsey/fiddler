@@ -3,6 +3,7 @@ use crate::base::movegen::get_moves;
 use crate::base::Game;
 use crate::base::Move;
 use crate::engine::limit::{ArcLimit, SearchLimit};
+use crate::engine::pst::{pst_delta, pst_evaluate};
 use crate::engine::thread::MainSearch;
 
 use std::fmt;
@@ -36,7 +37,7 @@ enum Command {
     Quit,
 
     /// Echo an error message to the output stream.
-    EchoError(&'static str),
+    EchoError(String),
 
     /// Select an engine to play against.
     EngineSelect(String),
@@ -89,9 +90,9 @@ impl fmt::Display for Command {
     }
 }
 
-type CommandResult = Result<(), &'static str>;
+type CommandResult = Result<(), String>;
 
-type ParseResult = Result<Command, &'static str>;
+type ParseResult = Result<Command, String>;
 
 impl<'a> CrabchessApp<'a> {
     /// Run the command line application.
@@ -146,7 +147,7 @@ impl<'a> CrabchessApp<'a> {
             panic!();
         }
         let command_block = first_token.ok_or("no token given")?;
-        let result = if command_block.starts_with('/') {
+        let result: ParseResult = if command_block.starts_with('/') {
             let command_name = command_block.get(1..).ok_or("no command specified")?;
 
             match command_name {
@@ -160,18 +161,13 @@ impl<'a> CrabchessApp<'a> {
                     Ok(Command::LoadFen(fen_str))
                 }
                 "u" | "undo" => {
-                    let num_undo_token = token_iter.next();
-                    match num_undo_token {
-                        None => Ok(Command::Undo(1)),
-                        Some(num_undo_str) => match num_undo_str.parse::<usize>() {
-                            Ok(num) => {
-                                if num > 0 {
-                                    return Ok(Command::Undo(num));
-                                }
-                                Err("cannot undo 0 moves")
-                            }
-                            Err(_) => Err("could not parse number of moves to undo"),
-                        },
+                    let num_undo = token_iter.next()
+                        .map(|s| s.parse::<usize>())
+                        .unwrap_or(Ok(1)) // no token given -> assune you wanted to undo 1
+                        .or(Err("could not parse number to undo"))?;
+                    match num_undo {
+                        0 => Err(String::from("cannot undo 0 moves")),
+                        n => Ok(Command::Undo(n))
                     }
                 }
                 "m" | "move" => Ok(Command::EngineMove),
@@ -183,18 +179,15 @@ impl<'a> CrabchessApp<'a> {
                         })
                 }
                 "t" | "timeout" => {
-                    let n_msecs_token = token_iter.next();
-                    match n_msecs_token {
-                        None => Err("required number of milliseconds until timeout"),
-                        Some(t) => match t.parse::<u64>() {
-                            Ok(num) => Ok(Command::SetTimeout(num)),
-                            Err(_) => Err("no number given for timeout"),
-                        },
-                    }
+                    Ok(Command::SetTimeout(
+                        token_iter
+                        .next()
+                        .ok_or("required number of milliseconds until timeout")?.parse::<u64>().or(Err("failed to parse timeout"))?
+                    ))
                 }
                 "list" => Ok(Command::ListMoves),
                 "h" | "history" => Ok(Command::PrintHistory),
-                _ => Err("unrecognized command"),
+                _ => Err("unrecognized command")?,
             }
         } else {
             //this is a move
@@ -209,20 +202,18 @@ impl<'a> CrabchessApp<'a> {
     }
 
     /// Parse a token for an algebraic move. Returns
-    fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, &'static str> {
-        if move_token.is_none() {
-            return Err("no move given to play");
-        }
-        move_from_algebraic(move_token.unwrap(), self.game.board())
+    fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, String> {
+        let m_str = move_token.ok_or("no move token given")?;
+        Ok(move_from_algebraic(m_str, self.game.board())?)
     }
 
     fn execute_command(&mut self, c: Command) -> CommandResult {
         match c {
-            Command::EchoError(s) => self.echo_error(s),
-            Command::LoadFen(fen) => self.load_fen(fen),
+            Command::EchoError(s) => self.echo_error(&s),
+            Command::LoadFen(fen) => self.load_fen(&fen),
             Command::PlayMove { m, engine_reply } => self.try_move(m, engine_reply),
             Command::ListMoves => self.list_moves(),
-            Command::Undo(n) => self.game.undo_n(n),
+            Command::Undo(n) => self.game.undo_n(n).map_err(|s| String::from(s)),
             Command::EngineSelect(s) => self.select_engine(s),
             Command::EngineMove => self.play_engine_move(),
             Command::SetTimeout(num) => {
@@ -234,39 +225,30 @@ impl<'a> CrabchessApp<'a> {
             }
             Command::PrintHistory => match writeln!(self.output_stream, "{}", self.game) {
                 Ok(()) => Ok(()),
-                Err(_) => Err("write failed"),
+                Err(_) => Err(String::from("write failed")),
             },
-            _ => {
-                if writeln!(self.output_stream, "the command type `{c}` is unsupported").is_err() {
-                    return Err("write failed");
-                }
-                Ok(())
-            }
+            _ => writeln!(self.output_stream, "the command type `{c}` is unsupported").or(Err(String::from("write failed")))
         }
     }
 
     /// Echo out an error string to the user.
     fn echo_error(&mut self, s: &str) -> CommandResult {
-        if writeln!(self.output_stream, "error: {s}").is_err() {
-            return Err("failed to write error to output stream");
-        }
-        Ok(())
+        writeln!(self.output_stream, "error: {s}")
+            .or(Err(String::from("write failed")))
     }
 
     /// Attempt to load a FEN string into the game.
-    fn load_fen(&mut self, fen: String) -> CommandResult {
-        match Game::from_fen(fen.as_str()) {
-            Ok(game) => {
-                self.game = game;
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+    fn load_fen(&mut self, fen: &str) -> CommandResult {
+        self.game = Game::from_fen(fen, pst_evaluate)?;
+        Ok(())
     }
 
     /// Attempt to play a move.
     fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
-        self.game.try_move(m)?;
+        self.game.try_move(
+            m,
+            pst_delta(self.game.board(), m)
+        )?;
         if engine_reply {
             self.play_engine_move()?;
         }
@@ -297,7 +279,7 @@ impl<'a> CrabchessApp<'a> {
                 self.engine.set_depth(num);
                 Ok(())
             }
-            Err(_) => Err("could not parse engine selection"),
+            Err(_) => Err("could not parse engine selection")?,
         }
     }
 
@@ -314,12 +296,16 @@ impl<'a> CrabchessApp<'a> {
 
         writeln!(
             self.output_stream,
-            "depth {}: the engine played {}",
+            "depth {}: the engine played {}: {}",
             search_data.2,
-            algebraic_from_move(search_data.0, self.game.board())
+            algebraic_from_move(search_data.0, self.game.board()),
+            search_data.1
         )
         .map_err(|_| "failed to write to output")?;
-        self.game.make_move(search_data.0);
+        self.game.make_move(
+            search_data.0, 
+            pst_delta(self.game.board(), search_data.0)
+        );
 
         Ok(())
     }
@@ -403,7 +389,7 @@ mod tests {
         );
         assert_eq!(
             app.game,
-            Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap()
+            Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", pst_evaluate).unwrap()
         );
     }
 

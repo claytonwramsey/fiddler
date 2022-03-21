@@ -234,14 +234,12 @@ pub fn has_moves(board: &Board) -> bool {
         for from_sq in board[pt] & player_occupancy {
             let to_bb = match pt {
                 Piece::Pawn => pawn_moves(board, from_sq, player),
-                Piece::Bishop => 
-                    MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
-                Piece::Rook => 
-                    MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
+                Piece::Bishop => MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
+                Piece::Rook => MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
                 Piece::Queen => {
-                    (MAGIC.bishop_attacks(occupancy, from_sq) 
-                    | MAGIC.rook_attacks(occupancy, from_sq) & legal_targets) 
-                    & legal_targets
+                    (MAGIC.bishop_attacks(occupancy, from_sq)
+                        | MAGIC.rook_attacks(occupancy, from_sq) & legal_targets)
+                        & legal_targets
                 }
                 Piece::Knight => KNIGHT_MOVES[from_sq as usize] & legal_targets,
                 _ => Bitboard::EMPTY,
@@ -354,10 +352,10 @@ fn validate(board: &Board, check_info: &CheckInfo, m: Move) -> bool {
 
     let king_sq = Square::try_from(board[Piece::King] & board[board.player_to_move]).unwrap();
 
-    // the move is valid if the piece is not pinned, or if the piece is pinned 
+    // the move is valid if the piece is not pinned, or if the piece is pinned
     // and stays on the same line as it was pinned on.
-    // 
-    // it is reasonable to use `aligned()` here because there's no way a piece 
+    //
+    // it is reasonable to use `aligned()` here because there's no way a piece
     // can stay aligned in a move without keeping the pin appeased.
     (pinned & from_bb == Bitboard::EMPTY) || aligned(m.from_square(), m.to_square(), king_sq)
 }
@@ -459,7 +457,7 @@ fn loud_pseudolegal_moves(board: &Board, _check_info: &CheckInfo, moves: &mut Ve
     let queens = board[Piece::Queen];
     let rook_movers = (board[Piece::Rook] | queens) & from_sqs;
     let bishop_movers = (board[Piece::Bishop] | queens) & from_sqs;
-    
+
     let mut pawn_targets = target_sqs | player.pawn_promote_rank();
     if let Some(sq) = board.en_passant_square {
         pawn_targets |= Bitboard::from(sq);
@@ -467,25 +465,13 @@ fn loud_pseudolegal_moves(board: &Board, _check_info: &CheckInfo, moves: &mut Ve
 
     loud_pawn_assistant(board, player, moves, pawn_targets);
     for sq in board[Piece::Knight] & board[player] {
-        bitboard_to_moves(
-            sq, 
-            KNIGHT_MOVES[sq as usize] & target_sqs,
-            moves
-        );
+        bitboard_to_moves(sq, KNIGHT_MOVES[sq as usize] & target_sqs, moves);
     }
     for sq in bishop_movers {
-        bitboard_to_moves(
-            sq,
-            MAGIC.bishop_attacks(occupancy, sq) & target_sqs,
-            moves
-        );
+        bitboard_to_moves(sq, MAGIC.bishop_attacks(occupancy, sq) & target_sqs, moves);
     }
     for sq in rook_movers {
-        bitboard_to_moves(
-            sq,
-            MAGIC.rook_attacks(occupancy, sq) & target_sqs,
-            moves
-        );
+        bitboard_to_moves(sq, MAGIC.rook_attacks(occupancy, sq) & target_sqs, moves);
     }
     for sq in board[Piece::King] & board[player] {
         // castle is illegal in check, just look at walking
@@ -671,23 +657,23 @@ fn normal_piece_assistant(board: &Board, color: Color, moves: &mut Vec<Move>, ta
 
     for sq in board[Piece::Knight] & color_occupancy {
         bitboard_to_moves(
-            sq, 
-            KNIGHT_MOVES[sq as usize] & legal_targets & target, 
-            moves
+            sq,
+            KNIGHT_MOVES[sq as usize] & legal_targets & target,
+            moves,
         );
     }
     for sq in bishop_movers {
         bitboard_to_moves(
-            sq, 
+            sq,
             MAGIC.bishop_attacks(occupancy, sq) & legal_targets & target,
-            moves
+            moves,
         );
     }
     for sq in rook_movers {
         bitboard_to_moves(
-            sq, 
+            sq,
             MAGIC.rook_attacks(occupancy, sq) & legal_targets & target,
-            moves
+            moves,
         );
     }
 }

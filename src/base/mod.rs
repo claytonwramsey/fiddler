@@ -35,12 +35,12 @@ pub use direction::Direction;
 mod eval;
 pub use eval::Eval;
 
-/// A module containing a game, with the history of positions as well as their 
+/// A module containing a game, with the history of positions as well as their
 /// current state.
 mod game;
 pub use game::Game;
 
-/// A module for magic bitboards, used in move generation in bishops, rooks, 
+/// A module for magic bitboards, used in move generation in bishops, rooks,
 /// and queens.
 mod magic;
 pub use magic::MagicTable;
@@ -59,7 +59,7 @@ pub mod perft;
 mod piece;
 pub use piece::Piece;
 
-/// A module for storing a position, which is a board as well as useful 
+/// A module for storing a position, which is a board as well as useful
 /// metadata about a board.
 mod position;
 pub use position::Position;
