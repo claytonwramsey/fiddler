@@ -1,6 +1,9 @@
 use std::convert::TryFrom;
 
-use super::{movegen::{CheckInfo, get_moves}, Board, Color, Eval, Move, Square, Piece};
+use super::{
+    movegen::{get_moves, CheckInfo},
+    Board, Color, Eval, Move, Piece, Square,
+};
 
 /// A function which can get the PST value of a position.
 pub type PSTEvaluator = fn(&Board) -> (Eval, Eval);
@@ -28,16 +31,14 @@ impl Position {
             board,
             check_info: CheckInfo::about(&board),
             king_sqs: [
-                Square::try_from(board[Piece::King] & board[Color::White])
-                    .unwrap(),
-                Square::try_from(board[Piece::King] & board[Color::Black])
-                    .unwrap(),
+                Square::try_from(board[Piece::King] & board[Color::White]).unwrap(),
+                Square::try_from(board[Piece::King] & board[Color::Black]).unwrap(),
             ],
             pst_val: pst_evaluator(&board),
         })
     }
 
-    /// Helper function for initializing boards if you do not care about the 
+    /// Helper function for initializing boards if you do not care about the
     /// PST value of a board.
     pub fn no_eval(_: &Board) -> (Eval, Eval) {
         (Eval::DRAW, Eval::DRAW)
@@ -69,7 +70,7 @@ impl Position {
     /// Apply the given move to the board. Will *not* assume the move is legal
     /// (unlike `make_move()`). On illegal moves, will return an `Err` with a
     /// string describing the issue.
-    pub fn try_move(&mut self, m: Move, pst_delta: (Eval, Eval)) -> Result<(), &str>{
+    pub fn try_move(&mut self, m: Move, pst_delta: (Eval, Eval)) -> Result<(), &str> {
         let legal_moves = get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");

@@ -162,9 +162,7 @@ impl Game {
         }
 
         // we trust that the board is valid here and this will not lead to UB
-        let king_sq = unsafe {
-            Square::unsafe_from(b[Piece::King] & b[b.player_to_move])
-        };
+        let king_sq = unsafe { Square::unsafe_from(b[Piece::King] & b[b.player_to_move]) };
         match is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate
@@ -311,7 +309,10 @@ mod tests {
         let m = Move::normal(Square::D1, Square::F3);
         g.make_move(m, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.undo(), Ok(m));
-        assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap());
+        assert_eq!(
+            g,
+            Game::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap()
+        );
         assert_eq!(g.board(), &Board::from_fen(FRIED_LIVER_FEN).unwrap());
     }
 

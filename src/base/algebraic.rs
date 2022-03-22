@@ -1,13 +1,10 @@
 use crate::base::constants;
 use crate::base::Move;
 use crate::base::Piece;
-use crate::base::Square;
 
-use std::convert::TryFrom;
-
-use super::Position;
 use super::movegen::get_moves;
 use super::movegen::is_square_attacked_by;
+use super::Position;
 
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.
@@ -93,7 +90,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     // Determine if the move was a check or a mate.
     let mut poscopy = *pos;
     let player_color = b.player_to_move;
-    let enemy_king_sq = Square::try_from(b[Piece::King] & b[!player_color]).unwrap();
+    let enemy_king_sq = pos.king_sqs[!player_color as usize];
     poscopy.make_move(m, Position::NO_DELTA);
     if is_square_attacked_by(&poscopy.board, enemy_king_sq, player_color) {
         if get_moves(&poscopy).is_empty() {
@@ -108,10 +105,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
 
 /// Given the string of an algebraic-notation move, get the `Move` which can be
 /// played. Will return Err if the string is invalid.
-pub fn move_from_algebraic(
-    s: &str, 
-    pos: &Position
-) -> Result<Move, &'static str> {
+pub fn move_from_algebraic(s: &str, pos: &Position) -> Result<Move, &'static str> {
     get_moves(pos)
         .into_iter()
         .find(|m| algebraic_from_move(*m, pos).as_str() == s)

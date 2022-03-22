@@ -118,27 +118,23 @@ pub struct CheckInfo {
 }
 
 impl CheckInfo {
-    /// Create a new `CheckInfo` describing the given board. Requires that the 
+    /// Create a new `CheckInfo` describing the given board. Requires that the
     /// board `b` is valid (i.e. only has one king of each color).
     pub fn about(b: &Board) -> CheckInfo {
         let kings = b[Piece::King];
         // we trust the board is valid here
-        let (white_king_sq, black_king_sq, king_sq) = unsafe {(
-            Square::unsafe_from(kings & b[Color::White]),
-            Square::unsafe_from(kings & b[Color::Black]),
-            Square::unsafe_from(kings & b[b.player_to_move]),
-        )};
+        let (white_king_sq, black_king_sq, king_sq) = unsafe {
+            (
+                Square::unsafe_from(kings & b[Color::White]),
+                Square::unsafe_from(kings & b[Color::Black]),
+                Square::unsafe_from(kings & b[b.player_to_move]),
+            )
+        };
 
-        let (blockers_white, pinners_black) = CheckInfo::analyze_pins(
-            b, 
-            b[Color::Black], 
-            white_king_sq
-        );
-        let (blockers_black, pinners_white) = CheckInfo::analyze_pins(
-            b, 
-            b[Color::White], 
-            black_king_sq
-        );
+        let (blockers_white, pinners_black) =
+            CheckInfo::analyze_pins(b, b[Color::Black], white_king_sq);
+        let (blockers_black, pinners_white) =
+            CheckInfo::analyze_pins(b, b[Color::White], black_king_sq);
 
         // TODO this ignores checks by retreating the rook?
         let bishop_check_sqs = MAGIC.bishop_attacks(b.occupancy(), king_sq);
@@ -200,7 +196,6 @@ impl CheckInfo {
 #[inline]
 /// Get all the legal moves on a board.
 pub fn get_moves(pos: &Position) -> Vec<Move> {
-
     let mut moves = Vec::with_capacity(218);
     let in_check = pos.check_info.checkers != Bitboard::EMPTY;
 
@@ -210,14 +205,11 @@ pub fn get_moves(pos: &Position) -> Vec<Move> {
     };
 
     // Eliminate moves that would put us in check.
-    moves
-        .into_iter()
-        .filter(|&m| validate(pos, m))
-        .collect()
+    moves.into_iter().filter(|&m| validate(pos, m)).collect()
 }
 
 #[inline]
-/// Get moves which are "loud," i.e. captures or checks. The king must not be 
+/// Get moves which are "loud," i.e. captures or checks. The king must not be
 /// in check in this position.
 pub fn get_loud_moves(pos: &Position) -> Vec<Move> {
     assert!(
@@ -230,13 +222,10 @@ pub fn get_loud_moves(pos: &Position) -> Vec<Move> {
     loud_pseudolegal_moves(pos, &mut moves);
 
     // Eliminate moves that would put us in check.
-    moves
-        .into_iter()
-        .filter(|&m| validate(pos, m))
-        .collect()
+    moves.into_iter().filter(|&m| validate(pos, m)).collect()
 }
 
-/// Does the player to move have any legal moves in this position? Requires 
+/// Does the player to move have any legal moves in this position? Requires
 /// that the board is legal (i.e. has one of each king) to be correct.
 pub fn has_moves(pos: &Position) -> bool {
     let b = &pos.board;
@@ -245,8 +234,6 @@ pub fn has_moves(pos: &Position) -> bool {
     let opponent = !player;
     let occupancy = player_occupancy | b[opponent];
     let legal_targets = !player_occupancy;
-    // Recommend this for debugging
-    // let king_square = Square::try_from(board[Piece::King] & player_occupancy).unwrap();
     let king_square = pos.king_sqs[player as usize];
     let king_attackers = square_attackers(b, king_square, opponent);
 
@@ -261,7 +248,7 @@ pub fn has_moves(pos: &Position) -> bool {
         let mut king_moves = Vec::with_capacity(king_to_sqs.count_ones() as usize);
         bitboard_to_moves(king_square, king_to_sqs, &mut king_moves);
         for m in king_moves {
-            if !is_move_self_check(b, m) && !b.is_move_castle(m) {
+            if !is_move_self_check(pos, m) && !b.is_move_castle(m) {
                 return true;
             }
         }
@@ -279,7 +266,7 @@ pub fn has_moves(pos: &Position) -> bool {
 
         bitboard_to_moves(king_square, to_bb, &mut move_vec);
         for m in move_vec.drain(..) {
-            if !is_move_self_check(b, m) {
+            if !is_move_self_check(pos, m) {
                 return true;
             }
         }
@@ -303,7 +290,7 @@ pub fn has_moves(pos: &Position) -> bool {
             // we need not handle promotion because pawn promotion also
             bitboard_to_moves(from_sq, to_bb, &mut move_vec);
             for m in move_vec.drain(..) {
-                if !is_move_self_check(b, m) {
+                if !is_move_self_check(pos, m) {
                     return true;
                 }
             }
@@ -312,7 +299,6 @@ pub fn has_moves(pos: &Position) -> bool {
 
     false
 }
-
 
 /// Determine whether a move is valid in the position on the board, given
 /// that it was generated during the `get_moves` process.
@@ -325,7 +311,6 @@ fn validate(pos: &Position, m: Move) -> bool {
     let from_bb = Bitboard::from(from_sq);
     let to_sq = m.to_square();
     let to_bb = Bitboard::from(to_sq);
-
 
     // verify that taking en passant does not result in self-check
     if b.is_move_en_passant(m) {
@@ -362,18 +347,13 @@ fn validate(pos: &Position, m: Move) -> bool {
         }
     }
 
-    
     let king_sq = pos.king_sqs[player as usize];
 
     // Other king moves must make sure they don't step into check
     if from_sq == king_sq {
         let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
-        return square_attackers_occupancy(
-            b,
-            to_sq,
-            !b.player_to_move,
-            new_occupancy,
-        ) == Bitboard::EMPTY;
+        return square_attackers_occupancy(b, to_sq, !b.player_to_move, new_occupancy)
+            == Bitboard::EMPTY;
     }
 
     // the move is valid if the piece is not pinned, or if the piece is pinned
@@ -386,21 +366,23 @@ fn validate(pos: &Position, m: Move) -> bool {
 
 /// In a given board state, is a move illegal because it would be a
 /// self-check?
-pub fn is_move_self_check(board: &Board, m: Move) -> bool {
+pub fn is_move_self_check(pos: &Position, m: Move) -> bool {
+    let board = &pos.board;
+    let from_sq = m.from_square();
+    let to_sq = m.to_square();
     let player = board.player_to_move;
-    let player_king_bb = board[Piece::King] & board[player];
-    let is_king_move = player_king_bb.contains(m.from_square());
     // Square where the king will be after this move ends.
-    let mut king_square = Square::try_from(player_king_bb).unwrap();
+    let mut king_square = pos.king_sqs[player as usize];
+    let is_king_move = king_square == from_sq;
     let opponent = !player;
 
     if is_king_move {
-        if is_square_attacked_by(board, m.to_square(), opponent) {
+        if is_square_attacked_by(board, from_sq, opponent) {
             return true;
         }
         // The previous check skips moves where the king blocks himself. We
         // can use magic bitboards to find out the rest.
-        king_square = m.to_square();
+        king_square = to_sq;
     }
     // Self checks can only happen by discovery (including by moving the
     // king "out of its own way"), or by doing nothing about a check.
@@ -409,12 +391,12 @@ pub fn is_move_self_check(board: &Board, m: Move) -> bool {
     // out the squares which were emptied, and then seeing which attacks
     // went through using magic bitboards.
 
-    let mut squares_emptied = Bitboard::from(m.from_square());
+    let mut squares_emptied = Bitboard::from(from_sq);
     if board.is_move_en_passant(m) {
         squares_emptied |=
             Bitboard::from(board.en_passant_square.unwrap() + opponent.pawn_direction());
     }
-    let occupancy = (board.occupancy() & !squares_emptied) | Bitboard::from(m.to_square());
+    let occupancy = (board.occupancy() & !squares_emptied) | Bitboard::from(from_sq);
 
     let attackers = square_attackers_occupancy(board, king_square, opponent, occupancy);
 
@@ -443,10 +425,7 @@ fn pseudolegal_moves(pos: &Position, moves: &mut Vec<Move>) {
 #[inline]
 /// Enumerate the pseudolegal evasions in a position, in case the king is in
 /// check. Will not give all legal moves if the king is not in check.
-fn pseudolegal_evasions(
-    pos: &Position,
-    moves: &mut Vec<Move>,
-) {
+fn pseudolegal_evasions(pos: &Position, moves: &mut Vec<Move>) {
     let b = &pos.board;
     let player = b.player_to_move;
     let king_sq = pos.king_sqs[player as usize];
@@ -454,7 +433,7 @@ fn pseudolegal_evasions(
     // only look at non-king moves if we are not in double check
     if pos.check_info.checkers.count_ones() == 1 {
         // this unsafe is fine because we already checked
-        let checker_sq = unsafe {Square::unsafe_from(pos.check_info.checkers)};
+        let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
         // Look for blocks or captures
         let target_sqs = between(king_sq, checker_sq) | pos.check_info.checkers;
         let mut pawn_targets = target_sqs;
@@ -501,11 +480,7 @@ fn loud_pseudolegal_moves(pos: &Position, moves: &mut Vec<Move>) {
         bitboard_to_moves(sq, MAGIC.rook_attacks(occupancy, sq) & target_sqs, moves);
     }
     // castle is illegal in check, just look at walking
-    bitboard_to_moves(
-        king_sq, 
-        KING_MOVES[king_sq as usize] & target_sqs, 
-        moves
-    );
+    bitboard_to_moves(king_sq, KING_MOVES[king_sq as usize] & target_sqs, moves);
 }
 
 #[inline]
@@ -980,7 +955,11 @@ mod tests {
     /// Test that a pawn cannot en passant if doing so would put the king in
     /// check.
     fn test_en_passant_pinned() {
-        let pos = Position::from_fen("8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2", Position::no_eval).unwrap();
+        let pos = Position::from_fen(
+            "8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2",
+            Position::no_eval,
+        )
+        .unwrap();
         let moves = get_moves(&pos);
         assert!(!moves.contains(&Move::normal(Square::F4, Square::E3)));
     }
@@ -989,7 +968,11 @@ mod tests {
     /// Test that a pinned piece cannot make a capture if it does not defend
     /// against the pin.
     fn test_pinned_knight_capture() {
-        let pos = Position::from_fen("r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8", Position::no_eval).unwrap();
+        let pos = Position::from_fen(
+            "r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8",
+            Position::no_eval,
+        )
+        .unwrap();
         let illegal_move = Move::normal(Square::D5, Square::C3);
 
         assert!(!get_moves(&pos).contains(&illegal_move));
@@ -1010,7 +993,11 @@ mod tests {
     #[test]
     /// Test that a position where a rook is horizontal to the king is mate.
     fn test_horizontal_rook_mate() {
-        let pos = Position::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32", Position::no_eval).unwrap();
+        let pos = Position::from_fen(
+            "r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32",
+            Position::no_eval,
+        )
+        .unwrap();
 
         assert!(get_moves(&pos).is_empty());
         assert!(!has_moves(&pos));

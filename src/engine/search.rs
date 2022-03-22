@@ -1,4 +1,4 @@
-use crate::base::{Eval, Bitboard};
+use crate::base::{Bitboard, Eval};
 use crate::base::{Game, Move};
 use crate::engine::evaluate::evaluate;
 use crate::engine::transposition::{EvalData, TTable};

@@ -264,9 +264,9 @@ const ENDGAME_VALUE: Pst = expand_table([
 mod tests {
 
     use super::*;
-    use crate::base::Position;
     use crate::base::movegen::get_moves;
     use crate::base::Bitboard;
+    use crate::base::Position;
     use crate::base::Square;
     use crate::fens::FRIED_LIVER_FEN;
 

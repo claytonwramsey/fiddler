@@ -233,7 +233,7 @@ impl Board {
         let player = self.player_to_move;
         is_square_attacked_by(
             self,
-            unsafe {Square::unsafe_from(self[Piece::King] & self[player])},
+            unsafe { Square::unsafe_from(self[Piece::King] & self[player]) },
             !player,
         )
     }
