@@ -1,9 +1,12 @@
-use crate::base::Square;
-use std::fmt::{Display, Formatter, Result};
-use std::iter::Iterator;
-use std::mem::transmute;
-use std::ops::{
-    AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr,
+use super::Square;
+
+use std::{
+    fmt::{Display, Formatter, Result},
+    iter::Iterator,
+    mem::transmute,
+    ops::{
+        AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr,
+    }
 };
 
 /// A bitboard to express sets of `Square`s.

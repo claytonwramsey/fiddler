@@ -1,10 +1,13 @@
-use crate::base::constants;
-use crate::base::Move;
-use crate::base::Piece;
-
-use super::movegen::get_moves;
-use super::movegen::is_square_attacked_by;
-use super::Position;
+use super::{
+    constants, 
+    Move, 
+    movegen::{
+        get_moves,
+        is_square_attacked_by
+    },
+    Piece, 
+    Position
+};
 
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.

@@ -1,19 +1,12 @@
-use crate::base::piece::Piece;
-use crate::base::zobrist;
-use crate::base::Bitboard;
-use crate::base::CastleRights;
-use crate::base::Color;
-use crate::base::Move;
-use crate::base::Square;
+use super::{Bitboard, CastleRights, Color, Move, movegen::is_square_attacked_by, Piece, Square, zobrist};
 
-use std::convert::TryFrom;
-use std::default::Default;
-use std::fmt::{Display, Formatter};
-use std::hash::{Hash, Hasher};
-use std::ops::Index;
-use std::result::Result;
-
-use super::movegen::is_square_attacked_by;
+use std::{
+    convert::TryFrom,
+    default::Default,
+    fmt::{Display, Formatter},
+    hash::{Hash, Hasher},
+    ops::Index,
+};
 
 #[derive(Copy, Clone, Debug, Eq)]
 /// A representation of a position. Does not handle the repetition or turn
