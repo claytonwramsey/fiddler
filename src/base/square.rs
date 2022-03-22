@@ -146,6 +146,19 @@ impl Square {
         // will not fail because we have already validated the rank and file
         Ok(Square::new(rank - 1, file).unwrap())
     }
+
+    /// Unsafely convert a `Bitboard` to a `Square` by creating the square 
+    /// representing its lowest occupied bit. Will result in undefined behavior 
+    /// (most likely a `Square` whose enum value is not in 0..64) if the given 
+    /// board is empty.
+    /// 
+    /// # Safety
+    /// 
+    /// This function will behave safely if `bb` is nonzero. It will result in 
+    /// undefined behavior if `bb` is equal to `Bitboard::EMPTY`.
+    pub unsafe fn unsafe_from(bb: Bitboard) -> Square {
+        transmute(bb.trailing_zeros() as u8)
+    }
 }
 
 impl Add<Direction> for Square {

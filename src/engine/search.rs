@@ -1,4 +1,4 @@
-use crate::base::Eval;
+use crate::base::{Eval, Bitboard};
 use crate::base::{Game, Move};
 use crate::engine::evaluate::evaluate;
 use crate::engine::transposition::{EvalData, TTable};
@@ -290,7 +290,7 @@ impl PVSearch {
 
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
-        if g.board().is_king_checked() {
+        if g.position().check_info.checkers != Bitboard::EMPTY {
             return self.pvs(1, depth_so_far, g, alpha_in, beta_in);
         }
 

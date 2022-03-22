@@ -220,7 +220,7 @@ impl Iterator for Bitboard {
         }
         // This will not cause UB because we already accounted for the empty
         // board case.
-        let result = Some(unsafe { transmute(self.0.trailing_zeros() as u8) });
+        let result = Some(unsafe { transmute(self.trailing_zeros() as u8) });
         self.0 &= self.0 - 1;
         result
     }

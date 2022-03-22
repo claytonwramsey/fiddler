@@ -6,7 +6,6 @@ use crate::base::Piece;
 use crate::base::Square;
 
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 
@@ -155,13 +154,17 @@ impl Game {
         if self.is_drawn_historically() {
             return (true, None);
         }
+        let pos = self.position();
         let b = self.board();
 
-        if has_moves(b) {
+        if has_moves(pos) {
             return (false, None);
         }
 
-        let king_sq = Square::try_from(b[Piece::King] & b[b.player_to_move]).unwrap();
+        // we trust that the board is valid here and this will not lead to UB
+        let king_sq = unsafe {
+            Square::unsafe_from(b[Piece::King] & b[b.player_to_move])
+        };
         match is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate
@@ -191,7 +194,7 @@ impl Game {
             return Vec::new();
         }
 
-        get_moves(self.board())
+        get_moves(self.position())
     }
 
     /// Get the "loud" moves, such as captures and promotions, which are legal
@@ -202,7 +205,7 @@ impl Game {
             return Vec::new();
         }
 
-        get_loud_moves(self.board())
+        get_loud_moves(self.position())
     }
 
     // no need for `is_empty` since history should always be nonempty
@@ -226,9 +229,9 @@ impl Default for Game {
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for i in 0..self.moves.len() {
-            let b = &self.history[i].0.board;
+            let pos = &self.history[i].0;
             let m = self.moves[i];
-            write!(f, "{} ", algebraic_from_move(m, b))?;
+            write!(f, "{} ", algebraic_from_move(m, pos))?;
         }
 
         Ok(())
@@ -242,11 +245,6 @@ mod tests {
     use crate::base::moves::Move;
     use crate::base::Square;
     use crate::fens::*;
-
-    /// Helper function for initializing boards
-    fn no_eval(_: &Board) -> (Eval, Eval) {
-        (Eval::DRAW, Eval::DRAW)
-    }
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board
@@ -309,11 +307,11 @@ mod tests {
     #[test]
     /// Test that undoing a move results in the previous position.
     fn test_undo_fried_liver() {
-        let mut g = Game::from_fen(FRIED_LIVER_FEN, no_eval).unwrap();
+        let mut g = Game::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap();
         let m = Move::normal(Square::D1, Square::F3);
         g.make_move(m, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.undo(), Ok(m));
-        assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN, no_eval).unwrap());
+        assert_eq!(g, Game::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap());
         assert_eq!(g.board(), &Board::from_fen(FRIED_LIVER_FEN).unwrap());
     }
 
@@ -327,31 +325,31 @@ mod tests {
     #[test]
     /// Test that a mated position is in fact over.
     fn test_is_mate_over() {
-        let g = Game::from_fen(SCHOLARS_MATE_FEN, no_eval).unwrap();
-        let moves = get_moves(g.board());
+        let g = Game::from_fen(SCHOLARS_MATE_FEN, Position::no_eval).unwrap();
+        let moves = get_moves(g.position());
         for m in moves {
             println!("{m}");
         }
-        assert!(!has_moves(g.board()));
+        assert!(!has_moves(g.position()));
         assert_eq!(g.is_game_over(), (true, Some(Color::White)));
     }
 
     #[test]
     fn test_is_mate_over_2() {
-        let g: Game = Game::from_fen(WHITE_MATED_FEN, no_eval).unwrap();
-        let moves = get_moves(g.board());
+        let g: Game = Game::from_fen(WHITE_MATED_FEN, Position::no_eval).unwrap();
+        let moves = get_moves(g.position());
         println!("moves: ");
         for m in moves {
             println!("{m}");
         }
-        assert!(!has_moves(g.board()));
+        assert!(!has_moves(g.position()));
         assert_eq!(g.is_game_over(), (true, Some(Color::Black)));
     }
 
     #[test]
     /// Test that making a mate found in testing results in the game being over.
     fn test_mate_in_1() {
-        let mut g = Game::from_fen(MATE_IN_1_FEN, no_eval).unwrap();
+        let mut g = Game::from_fen(MATE_IN_1_FEN, Position::no_eval).unwrap();
         let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves().contains(&m));
         g.make_move(m, (Eval::DRAW, Eval::DRAW));
@@ -377,7 +375,7 @@ mod tests {
     #[test]
     /// Test that a king can escape check without capturing the checker.
     fn test_king_escape_without_capture() {
-        let g = Game::from_fen(KING_MUST_ESCAPE_FEN, no_eval).unwrap();
+        let g = Game::from_fen(KING_MUST_ESCAPE_FEN, Position::no_eval).unwrap();
         let moves = g.get_moves();
         let expected_moves = vec![
             Move::normal(Square::E6, Square::D6),

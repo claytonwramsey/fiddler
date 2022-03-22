@@ -264,6 +264,7 @@ const ENDGAME_VALUE: Pst = expand_table([
 mod tests {
 
     use super::*;
+    use crate::base::Position;
     use crate::base::movegen::get_moves;
     use crate::base::Bitboard;
     use crate::base::Square;
@@ -291,13 +292,13 @@ mod tests {
     /// Test that adding deltas matches the same result as taking the PST value
     /// from scratch.
     fn test_pst_delta_equals_base_result() {
-        let b = Board::from_fen(FRIED_LIVER_FEN).unwrap();
-        let pst_original = pst_evaluate(&b);
+        let pos = Position::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap();
+        let pst_original = pst_evaluate(&pos.board);
 
-        for m in get_moves(&b) {
-            let delta = pst_delta(&b, m);
+        for m in get_moves(&pos) {
+            let delta = pst_delta(&pos.board, m);
             let delta_eval = (pst_original.0 + delta.0, pst_original.1 + delta.1);
-            let mut bcopy = b;
+            let mut bcopy = pos.board;
             bcopy.make_move(m);
             assert_eq!(delta_eval, pst_evaluate(&bcopy));
         }

@@ -5,8 +5,6 @@ use std::{
     mem::transmute,
 };
 
-use crate::base::CastleRights;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// The information of one move, containing its from- and to-squares, as well as
 /// its promote type, in one integer.
@@ -16,24 +14,6 @@ use crate::base::CastleRights;
 /// * 6 bits: from-square
 /// 6 bits: to-square
 pub struct Move(u16);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-/// A struct containing enough information to undo a move on a `Board` (but not
-/// a `Game`).
-pub struct MoveResult {
-    /// The move which was made to yield this result.
-    pub m: Move,
-
-    /// The piece which was captured by this move. Will be `None` if no piece
-    /// was captured.
-    pub capturee: Option<Piece>,
-
-    /// The castling rights before this move was made.
-    pub rights: CastleRights,
-
-    /// The en passant square before this move was made.
-    pub ep_square: Option<Square>,
-}
 
 impl Move {
     /// A sentinel value for a move which is illegal, or otherwise

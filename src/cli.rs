@@ -205,7 +205,7 @@ impl<'a> CrabchessApp<'a> {
     /// Parse a token for an algebraic move. Returns
     fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, String> {
         let m_str = move_token.ok_or("no move token given")?;
-        Ok(move_from_algebraic(m_str, self.game.board())?)
+        Ok(move_from_algebraic(m_str, self.game.position())?)
     }
 
     fn execute_command(&mut self, c: Command) -> CommandResult {
@@ -256,12 +256,12 @@ impl<'a> CrabchessApp<'a> {
 
     /// Print out a list of the available moves in this position.
     fn list_moves(&mut self) -> CommandResult {
-        let moves = get_moves(self.game.board());
+        let moves = get_moves(self.game.position());
         for m in moves.iter() {
             writeln!(
                 self.output_stream,
                 "{}",
-                algebraic_from_move(*m, self.game.board())
+                algebraic_from_move(*m, self.game.position())
             )
             .map_err(|_| "failed to write move list")?;
         }
@@ -295,7 +295,7 @@ impl<'a> CrabchessApp<'a> {
             self.output_stream,
             "depth {}: the engine played {}: {}",
             search_data.2,
-            algebraic_from_move(search_data.0, self.game.board()),
+            algebraic_from_move(search_data.0, self.game.position()),
             search_data.1
         )
         .map_err(|_| "failed to write to output")?;

@@ -1,11 +1,11 @@
 use crate::base::constants;
-use crate::base::Board;
 use crate::base::Move;
 use crate::base::Piece;
 use crate::base::Square;
 
 use std::convert::TryFrom;
 
+use super::Position;
 use super::movegen::get_moves;
 use super::movegen::is_square_attacked_by;
 
@@ -13,12 +13,14 @@ use super::movegen::is_square_attacked_by;
 /// algebraic-notation version of the move. Assumes the move was legal.
 /// # Panics
 /// if the move given is illegal or otherwise invalid.
-pub fn algebraic_from_move(m: Move, b: &Board) -> String {
+pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     //longest possible algebraic string would be something along the lines of
     //Qe4xd4# (7 chars)
     //exd8=Q#
     //O-O-O+
     let mut s = String::with_capacity(7);
+    let b = &pos.board;
+    assert!(b.is_valid());
 
     if b.is_move_castle(m) {
         if m.to_square().file() > m.from_square().file() {
@@ -30,7 +32,7 @@ pub fn algebraic_from_move(m: Move, b: &Board) -> String {
     } else {
         let mover_type = b.type_at_square(m.from_square()).unwrap();
         let is_move_capture = b.is_move_capture(m);
-        let other_moves = get_moves(b);
+        let other_moves = get_moves(pos);
         let from_sq = m.from_square();
 
         // Resolution of un-clarity on mover location
@@ -89,12 +91,12 @@ pub fn algebraic_from_move(m: Move, b: &Board) -> String {
     }
 
     // Determine if the move was a check or a mate.
-    let mut bcopy = *b;
+    let mut poscopy = *pos;
     let player_color = b.player_to_move;
     let enemy_king_sq = Square::try_from(b[Piece::King] & b[!player_color]).unwrap();
-    bcopy.make_move(m);
-    if is_square_attacked_by(&bcopy, enemy_king_sq, player_color) {
-        if get_moves(&bcopy).is_empty() {
+    poscopy.make_move(m, Position::NO_DELTA);
+    if is_square_attacked_by(&poscopy.board, enemy_king_sq, player_color) {
+        if get_moves(&poscopy).is_empty() {
             s += "#";
         } else {
             s += "+";
@@ -106,10 +108,13 @@ pub fn algebraic_from_move(m: Move, b: &Board) -> String {
 
 /// Given the string of an algebraic-notation move, get the `Move` which can be
 /// played. Will return Err if the string is invalid.
-pub fn move_from_algebraic(s: &str, b: &Board) -> Result<Move, &'static str> {
-    get_moves(b)
+pub fn move_from_algebraic(
+    s: &str, 
+    pos: &Position
+) -> Result<Move, &'static str> {
+    get_moves(pos)
         .into_iter()
-        .find(|m| algebraic_from_move(*m, b).as_str() == s)
+        .find(|m| algebraic_from_move(*m, pos).as_str() == s)
         .ok_or("not a legal algebraic move")
 }
 
@@ -122,73 +127,69 @@ mod tests {
     /// Test that playing e4 can be successfully converted to its algebraic
     /// form.
     fn test_e4_to_algebraic() {
-        let b = Board::default();
+        let pos = Position::default();
         let m = Move::new(Square::E2, Square::E4, None);
 
-        assert_eq!("e4", algebraic_from_move(m, &b));
+        assert_eq!("e4", algebraic_from_move(m, &pos));
     }
 
     #[test]
     /// Test that a mating move is correctly displayed.
     fn test_mate() {
-        let b = Board::from_fen(MATE_IN_1_FEN).unwrap();
+        let pos = Position::from_fen(MATE_IN_1_FEN, Position::no_eval).unwrap();
         let m = Move::new(Square::B6, Square::B8, None);
 
-        assert_eq!("Rb8#", algebraic_from_move(m, &b));
+        assert_eq!("Rb8#", algebraic_from_move(m, &pos));
     }
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn test_algebraic_from_pawn_capture() {
-        let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
+        let pos = Position::from_fen(PAWN_CAPTURE_FEN, Position::no_eval).unwrap();
         let m = Move::new(Square::E4, Square::F5, None);
-        let moves = get_moves(&b);
+        let moves = get_moves(&pos);
         for m in moves.iter() {
             println!("{m} ");
         }
 
-        assert_eq!(algebraic_from_move(m, &b), "exf5");
+        assert_eq!(algebraic_from_move(m, &pos), "exf5");
     }
 
     #[test]
     /// Test that the opening move e4 can be converted from a string to a move.
     fn test_move_from_e4() {
-        let b = Board::default();
+        let pos = Position::default();
         let m = Move::new(Square::E2, Square::E4, None);
         let s = "e4";
 
-        assert_eq!(move_from_algebraic(s, &b), Ok(m));
+        assert_eq!(move_from_algebraic(s, &pos), Ok(m));
     }
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn test_move_from_pawn_capture() {
-        let b = Board::from_fen(PAWN_CAPTURE_FEN).unwrap();
+        let pos = Position::from_fen(PAWN_CAPTURE_FEN, Position::no_eval).unwrap();
         let m = Move::new(Square::E4, Square::F5, None);
         let s = "exf5";
-        let moves = get_moves(&b);
-        for m in moves.iter() {
-            println!("{m} ");
-        }
 
-        assert_eq!(move_from_algebraic(s, &b), Ok(m));
+        assert_eq!(move_from_algebraic(s, &pos), Ok(m));
     }
 
     #[test]
     /// Test that promotions are displayed correctly.
     fn test_promotion() {
-        let b = Board::from_fen(WHITE_READY_TO_PROMOTE_FEN).unwrap();
+        let pos = Position::from_fen(WHITE_READY_TO_PROMOTE_FEN, Position::no_eval).unwrap();
         let m = Move::new(Square::F7, Square::F8, Some(Piece::Queen));
         let s = "f8=Q";
-        assert_eq!(algebraic_from_move(m, &b), s);
+        assert_eq!(algebraic_from_move(m, &pos), s);
     }
 
     #[test]
     /// Test that you get an error out when you give it a bad string.
     fn test_bad_algebraic() {
-        let b = Board::default();
+        let pos = Position::default();
         let s = "garbage";
 
-        assert!(move_from_algebraic(s, &b).is_err());
+        assert!(move_from_algebraic(s, &pos).is_err());
     }
 }
