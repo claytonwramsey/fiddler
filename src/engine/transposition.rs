@@ -8,10 +8,6 @@ use crate::base::Move;
 /// Convenient bad-key value which may help with debugging.
 const BAD_HASH: u64 = 0xDEADBEEF;
 
-/// The ordering in which total occupancy in the transposition table should be
-/// updated.
-const OCCUPANCY_ORDERING: Ordering = Ordering::Relaxed;
-
 #[derive(Debug)]
 /// A table which stores transposition data. It will automatically evict an
 /// "old" element if another one takes its place. It behaves much like a
@@ -191,21 +187,21 @@ impl TTable {
                 deepest: Slot::EMPTY,
             })
             .collect();
-        self.occupancy.store(0, OCCUPANCY_ORDERING);
+        self.occupancy.store(0, Ordering::Relaxed);
     }
 
     #[inline]
     /// Get the fill proportion of this transposition table. The fill
     /// proportion is 0 for an empty table and 1 for a completely full one.
     pub fn fill_rate(&self) -> f32 {
-        (self.occupancy.load(OCCUPANCY_ORDERING) as f32) / (2. * self.entries.len() as f32)
+        (self.occupancy.load(Ordering::Relaxed) as f32) / (2. * self.entries.len() as f32)
     }
 
     #[inline]
     /// Get the fill rate proportion of this transposition table out of 1000.
     /// Typically used for UCI.
     pub fn fill_rate_permill(&self) -> u16 {
-        (self.occupancy.load(OCCUPANCY_ORDERING) * 500 / self.entries.len()) as u16
+        (self.occupancy.load(Ordering::Relaxed) * 500 / self.entries.len()) as u16
     }
 }
 
