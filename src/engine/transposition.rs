@@ -1,8 +1,7 @@
+use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::sync::RwLock;
 
-use crate::base::Board;
 use crate::base::Eval;
 use crate::base::Move;
 
@@ -19,7 +18,7 @@ const OCCUPANCY_ORDERING: Ordering = Ordering::Relaxed;
 /// hash-map from positions to table-entries.
 pub struct TTable {
     /// List of all entries in the transposition table.
-    entries: Vec<RwLock<TTableEntry>>,
+    entries: Vec<TTableEntry>,
 
     /// Number of occupied slots. Since each entry has two slots (for most
     /// recent and deepest), this can be at most double the length of `entries`.
@@ -43,7 +42,7 @@ pub struct EvalData {
     pub critical_move: Move,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 ///  An entry in the transposition table.
 struct TTableEntry {
     /// The most recently entered data in this entry.
@@ -53,25 +52,21 @@ struct TTableEntry {
     pub deepest: Slot,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 struct Slot {
     /// The hash which caused this entry. Used as a speedy way to avoid
-    /// comparing a whole board.
-    pub hash: u64,
+    /// comparing a whole board. The hash has been xor'd with the data to allow 
+    /// for lockless access. Will be equal to `BAD_HASH` for empty entries.
+    pub hash: AtomicU64,
 
-    /// The age of this slot. Initialized to zero, and then incremented every
-    /// time the transposition table is aged up.
-    pub age: u8,
-
-    /// The data for this slot.
-    pub data: Option<EvalData>,
+    /// The corresponding data for this slot, including its age.
+    pub data: AtomicU64,
 }
 
 impl Slot {
     pub const EMPTY: Slot = Slot {
-        hash: BAD_HASH,
-        age: 0,
-        data: None,
+        hash: AtomicU64::new(BAD_HASH),
+        data: AtomicU64::new(0),
     };
 }
 
@@ -84,10 +79,10 @@ impl TTable {
         };
 
         for _ in 0..capacity {
-            table.entries.push(RwLock::new(TTableEntry {
+            table.entries.push(TTableEntry {
                 recent: Slot::EMPTY,
                 deepest: Slot::EMPTY,
-            }));
+            });
         }
 
         table
@@ -96,47 +91,69 @@ impl TTable {
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
     pub fn age_up(&mut self, max_age: u8) {
-        for lock in self.entries.iter_mut() {
-            let mut entry = lock.write().unwrap();
-            // do not alter the most recent one since it will be overwritten
-            // anyway if needed
-            if entry.deepest.data.is_some() {
-                entry.deepest.age += 1;
-                if entry.deepest.age >= max_age {
-                    self.occupancy.fetch_sub(1, OCCUPANCY_ORDERING);
-                    entry.deepest = Slot::EMPTY;
+        for entry in self.entries.iter_mut() {
+            // no need to age up recent since it will be overwritten anyway
+            let hash = entry.deepest.hash.load(Ordering::Relaxed);
+            let datum = entry.deepest.data.load(Ordering::Relaxed);
+            if hash != BAD_HASH {
+                let new_age = unpack_age(datum) + 1;
+                if new_age < max_age {
+                    // the entry is not too old
+                    let new_datum = (datum & 0x00FFFFFFFFFFFFFF) | ((new_age as u64)<< 56);
+                    let new_hash = hash ^ datum ^ new_datum;
+                    entry.deepest.hash.store(new_hash, Ordering::Relaxed);
+                    entry.deepest.data.store(new_datum, Ordering::Relaxed);
+                } else {
+                    // the entry is too old, evict it
+                    entry.deepest.hash.store(BAD_HASH, Ordering::Relaxed);
+                    entry.deepest.data.store(0, Ordering::Relaxed);
+                    self.occupancy.fetch_add(1, Ordering::Relaxed);
                 }
             }
         }
     }
 
     /// Store some evaluation data in the transposition table.
-    pub fn store(&self, key: Board, value: EvalData) {
-        let index = key.hash as usize % self.entries.len();
-        let mut entry = unsafe {
+    pub fn store(&self, key: u64, value: EvalData) {
+        let index = key as usize % self.entries.len();
+        let entry = unsafe {
             // We trust that this is safe since we modulo'd by the length.
-            self.entries.get_unchecked(index).write().unwrap()
+            self.entries.get_unchecked(index)
         };
-        let new_slot = Slot {
-            hash: key.hash,
-            age: 0,
-            data: Some(value),
-        };
-        let overwrite_deepest = match entry.deepest.data {
-            Some(data) => value.depth >= data.depth,
-            None => {
-                // increment occupancy because we are overwriting None
-                self.occupancy.fetch_add(1, OCCUPANCY_ORDERING);
-                true
+        let packed_data = pack(
+            0, 
+            value.depth,
+            value.upper_bound,
+            value.lower_bound,
+            value.critical_move,
+        );
+        let modulated_hash = key ^ packed_data;
+
+        // check if we can overwrite the deepest entry
+        // don't overwrite the most recent entry if we don't have to
+        let slot_to_overwrite = {
+            let deepest_hash = entry.deepest.hash.load(Ordering::Relaxed);
+            if deepest_hash == BAD_HASH {
+                // overwriting an empty entry, increment occupancy
+                self.occupancy.fetch_add(1, Ordering::Relaxed);
+                &entry.deepest
+            } else {
+                let deepest_datum = entry.deepest.data.load(Ordering::Relaxed);
+                if unpack_depth(deepest_datum) <= value.depth {
+                    &entry.deepest
+                } else {
+                    if entry.recent.hash.load(Ordering::Relaxed) == BAD_HASH {
+                        // overwriting an empty entry, increment occupancy
+                        self.occupancy.fetch_add(1, Ordering::Relaxed);
+                    }
+                    &entry.recent
+                }
             }
         };
-        if overwrite_deepest {
-            entry.deepest = new_slot;
-        }
-        if entry.recent.data.is_none() {
-            self.occupancy.fetch_add(1, OCCUPANCY_ORDERING);
-        }
-        entry.recent = new_slot;
+
+        slot_to_overwrite.hash.store(modulated_hash, Ordering::Relaxed);
+        slot_to_overwrite.data.store(packed_data, Ordering::Relaxed);
+        
     }
 
     /// Get the evaluation data stored by this table for a given key, if it
@@ -146,19 +163,18 @@ impl TTable {
         let entry = unsafe {
             // We trust that this will not lead to a memory error because index
             // was modulo'd by the length of entries.
-            self.entries.get_unchecked(index).read().unwrap()
+            self.entries.get_unchecked(index)
         };
 
-        // Theoretically, we would need to check for key equality (such as the
-        // original board) here, but in practice key collisions are so rare
-        // that the extra performance loss makes it not worth it.
-
-        if entry.deepest.hash == hash_key {
-            return entry.deepest.data; //&entry.deepest.data;
-        }
-
-        if entry.recent.hash == hash_key {
-            return entry.recent.data;
+        for slot in [&entry.deepest, &entry.recent] {
+            let value = slot.data.load(Ordering::Relaxed);
+            // check that the hash key would be stored as the same one which is 
+            // already stored
+            // theoretically, this could result in an error due to hash 
+            // collision, but we accept that this is rare enough
+            if value ^ hash_key == slot.hash.load(Ordering::Relaxed) {
+                return Some(unpack_data(value));
+            }
         }
 
         None
@@ -170,18 +186,10 @@ impl TTable {
             .entries
             .iter()
             .map(|_| {
-                RwLock::new(TTableEntry {
-                    recent: Slot {
-                        hash: BAD_HASH,
-                        age: 0,
-                        data: None,
-                    },
-                    deepest: Slot {
-                        hash: BAD_HASH,
-                        age: 0,
-                        data: None,
-                    },
-                })
+                TTableEntry {
+                    recent: Slot::EMPTY,
+                    deepest: Slot::EMPTY,
+                }
             })
             .collect();
         self.occupancy.store(0, OCCUPANCY_ORDERING);
@@ -208,9 +216,45 @@ impl Default for TTable {
     }
 }
 
+/// Given a packed entry in the transposition table, get the age of the entry.
+const fn unpack_age(packed: u64) -> u8 {
+    (packed >> 56) as u8
+}
+
+/// Given a packed entry in the transposition table, get the age of the entry.
+const fn unpack_depth(packed: u64) -> i8 {
+    ((packed >> 48) & 0xFF) as i8
+}
+
+/// Unpack some data which was stored in the transposition table. 
+const fn unpack_data(packed: u64) -> EvalData {
+    EvalData { 
+        depth: unpack_depth(packed), 
+        lower_bound: Eval::centipawns(((packed >> 32) & 0xFFFF) as i16), 
+        upper_bound: Eval::centipawns(((packed >> 16) & 0xFFFF) as i16), 
+        critical_move: Move::from_val((packed & 0xFFFF) as u16),
+    }
+}
+
+/// Pack some data to be stored in the transposition table.
+const fn pack(
+    age: u8,
+    depth: i8,
+    upper_bound: Eval,
+    lower_bound: Eval,
+    critical_move: Move
+) -> u64 {
+    (age as u64) << 56
+    | (depth as u64) << 48
+    | (upper_bound.centipawn_val() as u64) << 32
+    | (lower_bound.centipawn_val() as u64) << 16
+    | (critical_move.value() as u64)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::base::Board;
 
     #[test]
     fn test_not_already_in() {
@@ -228,7 +272,7 @@ mod tests {
             lower_bound: Eval::DRAW,
             critical_move: Move::BAD_MOVE,
         };
-        ttable.store(b, data);
+        ttable.store(b.hash, data);
         assert_eq!(ttable.get(b.hash), Some(data));
     }
 }

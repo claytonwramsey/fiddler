@@ -127,7 +127,7 @@ impl PVSearch {
         if moves.is_empty() {
             return Ok((
                 Move::BAD_MOVE,
-                evaluate(g) * (1 - 2 * g.board().player_to_move as i32),
+                evaluate(g) * (1 - 2 * g.board().player_to_move as i16),
             ));
         }
 
@@ -143,7 +143,7 @@ impl PVSearch {
                 return Eval::MIN;
             }
             if m == retrieved_killer_move {
-                return Eval::MIN + Eval::millipawns(1);
+                return Eval::MIN + Eval::centipawns(1);
             }
             -candidacy(g, m, delta)
         });
@@ -207,7 +207,7 @@ impl PVSearch {
                     depth_to_search,
                     depth_so_far + 1,
                     g,
-                    -alpha.step_forward() - Eval::millipawns(1),
+                    -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
                 )?
                 .1
@@ -311,7 +311,7 @@ impl PVSearch {
         // This step must also be done at the top level so that positions
         // with Black to move are evaluated as negative when faced
         // outwardly.
-        let mut score = leaf_evaluation * (1 - 2 * player as i32);
+        let mut score = leaf_evaluation * (1 - 2 * player as i16);
         let mut alpha = alpha_in;
         let beta = beta_in;
 
@@ -358,7 +358,7 @@ impl PVSearch {
                     depth_to_go - 1,
                     depth_so_far + 1,
                     g,
-                    -alpha.step_forward() - Eval::millipawns(1),
+                    -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
                 )?
                 .1
@@ -421,7 +421,7 @@ impl PVSearch {
             false => Eval::MIN,
         };
         self.ttable.store(
-            *g.board(),
+            g.board().hash,
             EvalData {
                 depth,
                 lower_bound,
@@ -454,7 +454,7 @@ impl PVSearch {
                 Ok(search_result) => {
                     result = (
                         search_result.0,
-                        search_result.1 * (1 - 2 * g.board().player_to_move as i32),
+                        search_result.1 * (1 - 2 * g.board().player_to_move as i16),
                     );
                     highest_successful_depth = iter_depth;
                 }

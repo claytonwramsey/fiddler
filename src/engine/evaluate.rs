@@ -7,7 +7,7 @@ use crate::base::Piece;
 use super::greedy::greedy_evaluate;
 
 /// The value of having an opponent's pawn doubled.
-const DOUBLED_PAWN_VALUE: Eval = Eval::millipawns(100);
+const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(10);
 
 /// Evaluate a quiet position.
 pub fn evaluate(g: &mut Game) -> Eval {

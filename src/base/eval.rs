@@ -9,11 +9,11 @@ use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 /// pawn (so if the internal value is +2000, the position is +2 pawns for White)
 /// .
 ///
-/// Values > 999,000 are reserved for mates. 1,000,000 is White to mate in
-/// 0 (i.e. White has won the game), 999,999 is White to mate in 1 (White will
-/// play their move and mate), 999,998 is White to mate in 1, with Black to
+/// Values > 29,000 are reserved for mates. 30,000 is White to mate in
+/// 0 (i.e. White has won the game), 29,999 is White to mate in 1 (White will
+/// play their move and mate), 29,998 is White to mate in 1, with Black to
 /// move (Black will play their move, then White will play their move to mate)
-/// and so on. Values of < -999,000 are reserved for black mates, likewise.
+/// and so on. Values of < -29,000 are reserved for black mates, likewise.
 ///
 /// # Examples
 ///
@@ -23,14 +23,14 @@ use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 /// let draw_eval = Eval::DRAW;
 /// assert!(mate_eval > draw_eval);
 /// ```
-pub struct Eval(i32);
+pub struct Eval(i16);
 
 impl Eval {
     /// An evaluation which is smaller than every other "normal" evaluation.
-    pub const MIN: Eval = Eval(-2 * Eval::MATE_0_VAL);
+    pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1);
 
     /// An evaluation which is larger than every other "normal" evaluation.
-    pub const MAX: Eval = Eval(2 * Eval::MATE_0_VAL);
+    pub const MAX: Eval = Eval(Eval::MATE_0_VAL + 1);
 
     /// An evaluation where Black has won the game by mate.
     pub const BLACK_MATE: Eval = Eval(-Eval::MATE_0_VAL);
@@ -43,24 +43,23 @@ impl Eval {
 
     /// The internal evaluation of a mate in 0 for White (i.e. White made the
     /// mating move on the previous ply).
-    const MATE_0_VAL: i32 = 1_000_000;
+    const MATE_0_VAL: i16 = 30_000;
 
     /// The highest value of a position which is not a mate.
-    const MATE_CUTOFF: i32 = 999_000;
+    const MATE_CUTOFF: i16 = 29_000;
 
     /// The value of one pawn.
-    const PAWN_VALUE: i32 = 1_000;
+    const PAWN_VALUE: i16 = 100;
 
     #[inline]
     /// Get an evaluation equivalent to the given pawn value.
     pub fn pawns(x: f64) -> Eval {
-        Eval((x * Eval::PAWN_VALUE as f64) as i32)
+        Eval((x * Eval::PAWN_VALUE as f64) as i16)
     }
 
     #[inline]
-    /// Get an evaluation equivalent to the given number of thousandths of a
-    /// pawn.
-    pub const fn millipawns(x: i32) -> Eval {
+    /// Construct an `Eval` with the given value in centipawns.
+    pub const fn centipawns(x: i16) -> Eval {
         Eval(x)
     }
 
@@ -69,7 +68,7 @@ impl Eval {
     /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
     /// plies.
     pub const fn mate_in(nplies: u16) -> Eval {
-        Eval(Eval::MATE_0_VAL - (nplies as i32))
+        Eval(Eval::MATE_0_VAL - (nplies as i16))
     }
 
     #[inline]
@@ -128,8 +127,10 @@ impl Eval {
     }
 
     #[inline]
-    pub const fn centipawn_val(&self) -> i32 {
-        self.0 / 10
+    /// Get the value in centipawns of this evaluation. Will return a number 
+    /// with magnitude greater than 29000 for mates.
+    pub const fn centipawn_val(&self) -> i16 {
+        self.0
     }
 }
 
@@ -156,14 +157,14 @@ impl Mul<u32> for Eval {
     type Output = Self;
     #[inline]
     fn mul(self, rhs: u32) -> Self::Output {
-        Eval(self.0 * rhs as i32)
+        Eval(self.0 * rhs as i16)
     }
 }
 
-impl Mul<i32> for Eval {
+impl Mul<i16> for Eval {
     type Output = Self;
     #[inline]
-    fn mul(self, rhs: i32) -> Self::Output {
+    fn mul(self, rhs: i16) -> Self::Output {
         Eval(self.0 * rhs)
     }
 }
@@ -172,13 +173,13 @@ impl Mul<f32> for Eval {
     type Output = Self;
     #[inline]
     fn mul(self, rhs: f32) -> Self::Output {
-        Eval((self.0 as f32 * rhs) as i32)
+        Eval((self.0 as f32 * rhs) as i16)
     }
 }
 
-impl MulAssign<i32> for Eval {
+impl MulAssign<i16> for Eval {
     #[inline]
-    fn mul_assign(&mut self, rhs: i32) {
+    fn mul_assign(&mut self, rhs: i16) {
         self.0 *= rhs;
     }
 }

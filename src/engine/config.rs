@@ -21,7 +21,7 @@ impl SearchConfig {
     pub fn new() -> SearchConfig {
         SearchConfig {
             depth: 10,
-            max_transposition_depth: 8,
+            max_transposition_depth: 7,
             num_early_moves: 4,
             limit_update_increment: 100,
         }
