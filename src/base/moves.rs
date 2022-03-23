@@ -110,20 +110,19 @@ impl Move {
     }
 
     #[inline]
-    /// Get a number representing this move uniquely. The value may change from 
+    /// Get a number representing this move uniquely. The value may change from
     /// version to version.
     pub const fn value(&self) -> u16 {
         self.0
     }
 
     #[inline]
-    /// Reconstruct a move based on its `value`. Should only be used with 
+    /// Reconstruct a move based on its `value`. Should only be used with
     /// values returned from `Move::value()`.
     pub const fn from_val(val: u16) -> Move {
         Move(val)
     }
- 
- }
+}
 
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

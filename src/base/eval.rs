@@ -127,7 +127,7 @@ impl Eval {
     }
 
     #[inline]
-    /// Get the value in centipawns of this evaluation. Will return a number 
+    /// Get the value in centipawns of this evaluation. Will return a number
     /// with magnitude greater than 29000 for mates.
     pub const fn centipawn_val(&self) -> i16 {
         self.0

@@ -6,7 +6,7 @@ use std::{
     mem::transmute,
     ops::{
         AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr,
-    }
+    },
 };
 
 /// A bitboard to express sets of `Square`s.

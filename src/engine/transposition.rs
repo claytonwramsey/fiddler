@@ -55,7 +55,7 @@ struct TTableEntry {
 #[derive(Debug)]
 struct Slot {
     /// The hash which caused this entry. Used as a speedy way to avoid
-    /// comparing a whole board. The hash has been xor'd with the data to allow 
+    /// comparing a whole board. The hash has been xor'd with the data to allow
     /// for lockless access. Will be equal to `BAD_HASH` for empty entries.
     pub hash: AtomicU64,
 
@@ -99,7 +99,7 @@ impl TTable {
                 let new_age = unpack_age(datum) + 1;
                 if new_age < max_age {
                     // the entry is not too old
-                    let new_datum = (datum & 0x00FFFFFFFFFFFFFF) | ((new_age as u64)<< 56);
+                    let new_datum = (datum & 0x00FFFFFFFFFFFFFF) | ((new_age as u64) << 56);
                     let new_hash = hash ^ datum ^ new_datum;
                     entry.deepest.hash.store(new_hash, Ordering::Relaxed);
                     entry.deepest.data.store(new_datum, Ordering::Relaxed);
@@ -121,7 +121,7 @@ impl TTable {
             self.entries.get_unchecked(index)
         };
         let packed_data = pack(
-            0, 
+            0,
             value.depth,
             value.upper_bound,
             value.lower_bound,
@@ -151,9 +151,10 @@ impl TTable {
             }
         };
 
-        slot_to_overwrite.hash.store(modulated_hash, Ordering::Relaxed);
+        slot_to_overwrite
+            .hash
+            .store(modulated_hash, Ordering::Relaxed);
         slot_to_overwrite.data.store(packed_data, Ordering::Relaxed);
-        
     }
 
     /// Get the evaluation data stored by this table for a given key, if it
@@ -168,9 +169,9 @@ impl TTable {
 
         for slot in [&entry.deepest, &entry.recent] {
             let value = slot.data.load(Ordering::Relaxed);
-            // check that the hash key would be stored as the same one which is 
+            // check that the hash key would be stored as the same one which is
             // already stored
-            // theoretically, this could result in an error due to hash 
+            // theoretically, this could result in an error due to hash
             // collision, but we accept that this is rare enough
             if value ^ hash_key == slot.hash.load(Ordering::Relaxed) {
                 return Some(unpack_data(value));
@@ -185,11 +186,9 @@ impl TTable {
         self.entries = self
             .entries
             .iter()
-            .map(|_| {
-                TTableEntry {
-                    recent: Slot::EMPTY,
-                    deepest: Slot::EMPTY,
-                }
+            .map(|_| TTableEntry {
+                recent: Slot::EMPTY,
+                deepest: Slot::EMPTY,
             })
             .collect();
         self.occupancy.store(0, OCCUPANCY_ORDERING);
@@ -226,12 +225,12 @@ const fn unpack_depth(packed: u64) -> i8 {
     ((packed >> 48) & 0xFF) as i8
 }
 
-/// Unpack some data which was stored in the transposition table. 
+/// Unpack some data which was stored in the transposition table.
 const fn unpack_data(packed: u64) -> EvalData {
-    EvalData { 
-        depth: unpack_depth(packed), 
-        lower_bound: Eval::centipawns(((packed >> 32) & 0xFFFF) as i16), 
-        upper_bound: Eval::centipawns(((packed >> 16) & 0xFFFF) as i16), 
+    EvalData {
+        depth: unpack_depth(packed),
+        lower_bound: Eval::centipawns(((packed >> 32) & 0xFFFF) as i16),
+        upper_bound: Eval::centipawns(((packed >> 16) & 0xFFFF) as i16),
         critical_move: Move::from_val((packed & 0xFFFF) as u16),
     }
 }
@@ -242,13 +241,13 @@ const fn pack(
     depth: i8,
     upper_bound: Eval,
     lower_bound: Eval,
-    critical_move: Move
+    critical_move: Move,
 ) -> u64 {
     (age as u64) << 56
-    | (depth as u64) << 48
-    | (upper_bound.centipawn_val() as u64) << 32
-    | (lower_bound.centipawn_val() as u64) << 16
-    | (critical_move.value() as u64)
+        | (depth as u64) << 48
+        | (upper_bound.centipawn_val() as u64) << 32
+        | (lower_bound.centipawn_val() as u64) << 16
+        | (critical_move.value() as u64)
 }
 
 #[cfg(test)]

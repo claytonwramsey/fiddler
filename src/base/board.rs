@@ -1,4 +1,6 @@
-use super::{Bitboard, CastleRights, Color, Move, movegen::is_square_attacked_by, Piece, Square, zobrist};
+use super::{
+    movegen::is_square_attacked_by, zobrist, Bitboard, CastleRights, Color, Move, Piece, Square,
+};
 
 use std::{
     convert::TryFrom,

@@ -1,12 +1,7 @@
 use super::{
-    constants, 
-    Move, 
-    movegen::{
-        get_moves,
-        is_square_attacked_by
-    },
-    Piece, 
-    Position
+    constants,
+    movegen::{get_moves, is_square_attacked_by},
+    Move, Piece, Position,
 };
 
 /// Given a `Move` and the `Board` it was played on, construct the
