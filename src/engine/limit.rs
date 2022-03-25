@@ -69,7 +69,7 @@ impl SearchLimit {
     pub fn update_time(&self) -> Result<bool, SearchError> {
         if let Some(end) = *self.end_time.lock().map_err(|_| SearchError::Poison)? {
             if Instant::now() > end {
-                self.over.store(false, Ordering::Relaxed);
+                self.over.store(true, Ordering::Relaxed);
                 return Ok(true);
             }
         }
