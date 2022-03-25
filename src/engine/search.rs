@@ -4,11 +4,11 @@ use crate::engine::evaluate::evaluate;
 use crate::engine::transposition::{EvalData, TTable};
 
 use std::cmp::{max, min};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use super::candidacy::candidacy;
 use super::config::SearchConfig;
-use super::limit::{ArcLimit, SearchLimit};
+use super::limit::SearchLimit;
 use super::pst::pst_delta;
 use super::{SearchError, SearchResult};
 
@@ -33,7 +33,10 @@ pub struct PVSearch {
     pub config: SearchConfig,
 
     /// The limit to this search.
-    pub limit: ArcLimit,
+    pub limit: Arc<SearchLimit>,
+
+    /// Whether this search is the main search.
+    is_main: bool,
 }
 
 /// The output type of a search. An `Err` may be given if, for instance,
@@ -42,8 +45,14 @@ type PVSResult = Result<(Move, Eval), SearchError>;
 
 impl PVSearch {
     /// Construct a new PVSearch using a given transposition table,
-    /// configuration, and limit.
-    pub fn new(ttable: Arc<TTable>, config: SearchConfig, limit: ArcLimit) -> PVSearch {
+    /// configuration, and limit. `is_main` is whether the thread is a main
+    /// search, responsible for certain synchronization activities.
+    pub fn new(
+        ttable: Arc<TTable>,
+        config: SearchConfig,
+        limit: Arc<SearchLimit>,
+        is_main: bool,
+    ) -> PVSearch {
         PVSearch {
             ttable,
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
@@ -51,6 +60,7 @@ impl PVSearch {
             num_transpositions: 0,
             config,
             limit,
+            is_main,
         }
     }
 
@@ -71,8 +81,12 @@ impl PVSearch {
         alpha_in: Eval,
         beta_in: Eval,
     ) -> PVSResult {
-        if self.is_over()? {
+        if self.limit.is_over() {
             return Err(SearchError::Timeout);
+        }
+
+        if self.is_main {
+            self.limit.update_time()?;
         }
 
         if alpha_in >= Eval::mate_in(1) {
@@ -477,13 +491,6 @@ impl PVSearch {
     }
 
     #[inline]
-    /// Helper function to check whether our search limit has decided that we
-    /// are done searching.
-    fn is_over(&self) -> Result<bool, SearchError> {
-        Ok(self.limit.read()?.is_over())
-    }
-
-    #[inline]
     /// Increment the number of nodes searched, copying over the value into the
     /// search limit if it is too high.
     fn increment_nodes(&mut self) -> Result<(), SearchError> {
@@ -498,7 +505,7 @@ impl PVSearch {
     /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
-        self.limit.write()?.add_nodes(self.num_nodes_evaluated);
+        self.limit.add_nodes(self.num_nodes_evaluated);
         self.num_nodes_evaluated = 0;
         Ok(())
     }
@@ -517,7 +524,8 @@ impl Default for PVSearch {
                 num_early_moves: 4,
                 limit_update_increment: 100,
             },
-            limit: Arc::new(RwLock::new(SearchLimit::new())),
+            limit: Arc::new(SearchLimit::new()),
+            is_main: true,
         };
         searcher.set_depth(5);
         searcher

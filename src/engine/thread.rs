@@ -1,5 +1,5 @@
 use std::{
-    sync::{Arc, RwLock},
+    sync::Arc,
     thread::{self, JoinHandle},
     time::Instant,
 };
@@ -17,7 +17,7 @@ pub struct MainSearch {
     main_config: SearchConfig,
     configs: Vec<SearchConfig>,
     ttable: Arc<TTable>,
-    pub limit: Arc<RwLock<SearchLimit>>,
+    pub limit: Arc<SearchLimit>,
 }
 
 impl MainSearch {
@@ -28,7 +28,7 @@ impl MainSearch {
             main_config: SearchConfig::new(),
             configs: Vec::new(),
             ttable: Arc::new(TTable::default()),
-            limit: Arc::new(RwLock::new(SearchLimit::new())),
+            limit: Arc::new(SearchLimit::new()),
         }
     }
 
@@ -51,15 +51,20 @@ impl MainSearch {
             .configs
             .iter()
             .map(|config| {
-                let mut searcher = PVSearch::new(self.ttable.clone(), *config, self.limit.clone());
+                let mut searcher =
+                    PVSearch::new(self.ttable.clone(), *config, self.limit.clone(), false);
                 let gcopy = g.clone();
                 thread::spawn(move || searcher.evaluate(gcopy))
             })
             .collect();
 
         // now it's our turn to think
-        let mut main_searcher =
-            PVSearch::new(self.ttable.clone(), self.main_config, self.limit.clone());
+        let mut main_searcher = PVSearch::new(
+            self.ttable.clone(),
+            self.main_config,
+            self.limit.clone(),
+            true,
+        );
         let mut best_result = main_searcher.evaluate(g.clone());
 
         for handle in handles {
@@ -79,7 +84,7 @@ impl MainSearch {
             };
         }
 
-        let n_nodes = self.limit.read()?.num_nodes();
+        let n_nodes = self.limit.num_nodes();
 
         let toc = Instant::now();
         let nsecs = (toc - tic).as_secs_f64();

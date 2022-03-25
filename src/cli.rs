@@ -2,14 +2,14 @@ use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
 use crate::base::movegen::get_moves;
 use crate::base::Game;
 use crate::base::Move;
-use crate::engine::limit::{ArcLimit, SearchLimit};
+use crate::engine::limit::SearchLimit;
 use crate::engine::pst::{pst_delta, pst_evaluate};
 use crate::engine::thread::MainSearch;
 
 use std::fmt;
 use std::io;
 use std::io::BufRead;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// A text-based application for running CrabChess.
@@ -27,7 +27,7 @@ pub struct CrabchessApp<'a> {
     output_stream: Box<dyn io::Write + 'a>,
 
     /// The condition on which search will stop.
-    limit: ArcLimit,
+    limit: Arc<SearchLimit>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -220,7 +220,7 @@ impl<'a> CrabchessApp<'a> {
             Command::SetTimeout(num) => {
                 println!("{num} milliseconds");
                 let mut limit = SearchLimit::new();
-                limit.search_duration = Some(Duration::from_millis(num));
+                limit.search_duration = Mutex::new(Some(Duration::from_millis(num)));
                 self.set_limit(limit);
                 Ok(())
             }
@@ -283,9 +283,8 @@ impl<'a> CrabchessApp<'a> {
     /// Have the engine play a move.
     fn play_engine_move(&mut self) -> CommandResult {
         self.limit
-            .write()
-            .map_err(|_| "failed to lock limit")?
-            .start();
+            .start()
+            .map_err(|_| String::from("poisoned limit locks"))?;
         let search_data = self
             .engine
             .evaluate(&self.game)
@@ -308,7 +307,7 @@ impl<'a> CrabchessApp<'a> {
     /// Set the internal search limit of this CLI, and update the searcher to
     /// match.
     fn set_limit(&mut self, limit: SearchLimit) {
-        let arc_limit = Arc::new(RwLock::new(limit));
+        let arc_limit = Arc::new(limit);
         self.limit = arc_limit.clone();
         self.engine.limit = arc_limit;
     }
@@ -318,8 +317,8 @@ impl<'a> Default for CrabchessApp<'a> {
     fn default() -> CrabchessApp<'a> {
         let arc_limit = {
             let mut limit = SearchLimit::new();
-            limit.search_duration = Some(Duration::from_secs(5));
-            Arc::new(RwLock::new(limit))
+            limit.search_duration = Mutex::new(Some(Duration::from_secs(5)));
+            Arc::new(limit)
         };
         let mut app = CrabchessApp {
             game: Game::default(),

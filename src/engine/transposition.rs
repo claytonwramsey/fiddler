@@ -154,7 +154,7 @@ impl TTable {
     }
 
     /// Get the evaluation data stored by this table for a given key, if it
-    /// exists. Returns `&None` if no such key exists.
+    /// exists. Returns `None` if no such key exists.
     pub fn get(&self, hash_key: u64) -> Option<EvalData> {
         let index = hash_key as usize % self.entries.len();
         let entry = unsafe {
@@ -211,16 +211,19 @@ impl Default for TTable {
     }
 }
 
+#[inline]
 /// Given a packed entry in the transposition table, get the age of the entry.
 const fn unpack_age(packed: u64) -> u8 {
     (packed >> 56) as u8
 }
 
-/// Given a packed entry in the transposition table, get the age of the entry.
+#[inline]
+/// Given a packed entry in the transposition table, get the depth of the entry.
 const fn unpack_depth(packed: u64) -> i8 {
     ((packed >> 48) & 0xFF) as i8
 }
 
+#[inline]
 /// Unpack some data which was stored in the transposition table.
 const fn unpack_data(packed: u64) -> EvalData {
     EvalData {
@@ -231,6 +234,7 @@ const fn unpack_data(packed: u64) -> EvalData {
     }
 }
 
+#[inline]
 /// Pack some data to be stored in the transposition table.
 const fn pack(
     age: u8,
