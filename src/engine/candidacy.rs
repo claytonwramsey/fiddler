@@ -12,7 +12,7 @@ use super::evaluate::blend_eval;
 /// created by this move.
 /// # Panics
 /// if the given move is illegal.
-pub fn candidacy(g: &mut Game, m: Move, delta: (Eval, Eval)) -> Eval {
+pub fn candidacy(g: &Game, m: Move, delta: (Eval, Eval)) -> Eval {
     let b = g.board();
     let mover_type = b.type_at_square(m.from_square()).unwrap();
     let promote_type = m.promote_type();

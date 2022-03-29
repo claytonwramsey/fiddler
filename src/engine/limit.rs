@@ -24,7 +24,7 @@ pub struct SearchLimit {
     /// The time at which the search will end. Will be `None` if the search is
     /// untimed.
     end_time: Mutex<Option<Instant>>,
-    /// The durection of the search. If the duration is `None`, then there is
+    /// The duration of the search. If the duration is `None`, then there is
     /// no limit to the duration of the search.
     pub search_duration: Mutex<Option<Duration>>,
 }
