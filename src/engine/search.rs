@@ -1,3 +1,4 @@
+use crate::base::movegen::is_legal;
 use crate::base::{Bitboard, Eval};
 use crate::base::{Game, Move};
 use crate::engine::evaluate::evaluate;
@@ -9,6 +10,7 @@ use std::sync::Arc;
 use super::candidacy::candidacy;
 use super::config::SearchConfig;
 use super::limit::SearchLimit;
+use super::pick::MovePicker;
 use super::pst::pst_delta;
 use super::{SearchError, SearchResult};
 
@@ -99,6 +101,16 @@ impl PVSearch {
         let mut alpha = alpha_in;
         // Upper bound on evaluation.
         let mut beta = beta_in;
+        // best score on the evaluation
+        let mut best_score = Eval::MIN;
+        // best move on the evaluation
+        let mut best_move = Move::BAD_MOVE;
+        // the number of moves in this node which have been checked.
+        let mut num_moves_checked = 0;
+        let mut ignored_moves = [Move::BAD_MOVE; 2];
+
+        let killer_index = depth_so_far as usize;
+        let can_use_killers = depth_so_far < self.config.depth;
 
         // Retrieve transposition data and use it to improve our estimate on
         // the position
@@ -123,6 +135,35 @@ impl PVSearch {
                     alpha = max(alpha, edata.lower_bound);
                     beta = min(beta, edata.upper_bound);
                 }
+                if stored_move != Move::BAD_MOVE {
+                    best_move = stored_move;
+                    ignored_moves[0] = stored_move;
+                    num_moves_checked += 1;
+                    // try playing the stored move
+                    g.make_move(stored_move, pst_delta(g.board(), stored_move));
+                    best_score = -self
+                        .pvs(
+                            depth_to_go - 1,
+                            depth_so_far + 1,
+                            g,
+                            -beta.step_forward(),
+                            -alpha.step_forward(),
+                        )?
+                        .1
+                        .step_back();
+                    #[allow(unused_must_use)]
+                    {
+                        g.undo();
+                    }
+                    alpha = max(alpha, best_score);
+                    if alpha >= beta {
+                        // Beta cutoff, we have found a better line somewhere else
+                        if can_use_killers {
+                            self.killer_moves[killer_index] = stored_move;
+                        }
+                        return Ok((stored_move, alpha));
+                    }
+                }
             }
         }
 
@@ -132,79 +173,84 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves: Vec<(Move, (Eval, Eval))> = g
-            .get_moves()
-            .into_iter()
-            .map(|m| (m, pst_delta(g.board(), m)))
-            .collect();
-
-        if moves.is_empty() {
-            return Ok((
-                Move::BAD_MOVE,
-                evaluate(g) * (1 - 2 * g.board().player_to_move as i16),
-            ));
-        }
-
-        // Sort moves so that the most promising move is evaluated first
-        let killer_index = depth_so_far as usize;
-        let can_use_killers = depth_so_far < self.config.depth;
-        let mut retrieved_killer_move = Move::BAD_MOVE;
-        if can_use_killers {
-            retrieved_killer_move = self.killer_moves[killer_index];
-        }
-        moves.sort_by_cached_key(|&(m, delta)| {
-            if m == stored_move {
-                return Eval::MIN;
-            }
-            if m == retrieved_killer_move {
-                return Eval::MIN + Eval::centipawns(1);
-            }
-            -candidacy(g, m, delta)
-        });
-
-        let mut moves_iter = moves.into_iter();
-
-        // This should always have a move since this was not a "terminal"
-        // position of the game
-        let (mut critical_move, delta) = moves_iter.next().unwrap();
-
-        g.make_move(critical_move, delta);
-        let mut score = -self
-            .pvs(
-                depth_to_go - 1,
-                depth_so_far + 1,
-                g,
-                -beta.step_forward(),
-                -alpha.step_forward(),
-            )?
-            .1
-            .step_back();
-        #[allow(unused_must_use)]
+        let killer_move = match can_use_killers {
+            true => self.killer_moves[killer_index],
+            false => Move::BAD_MOVE,
+        };
+        if killer_move != Move::BAD_MOVE
+            && killer_move != stored_move
+            && is_legal(killer_move, g.position())
         {
-            g.undo();
-        }
-        let mut best_score_this_position = score;
-
-        alpha = max(alpha, score);
-        if alpha >= beta {
-            // Beta cutoff, we have found a better line somewhere else
-            if can_use_killers {
-                self.killer_moves[killer_index] = critical_move;
-            }
-            if depth_so_far <= self.config.max_transposition_depth {
-                self.ttable_store(
+            ignored_moves[1] = killer_move;
+            num_moves_checked += 1;
+            let delta = pst_delta(g.board(), killer_move);
+            // try playing the killer move and see if it causes a cutoff
+            g.make_move(killer_move, delta);
+            let score = -self
+                .pvs(
+                    depth_to_go - 1,
+                    depth_so_far + 1,
                     g,
-                    depth_to_go,
-                    alpha,
-                    beta,
-                    best_score_this_position,
-                    critical_move,
-                );
+                    -beta.step_forward(),
+                    -alpha.step_forward(),
+                )?
+                .1
+                .step_back();
+            #[allow(unused_must_use)]
+            {
+                g.undo();
             }
-            return Ok((critical_move, alpha));
+            if score > best_score {
+                best_score = score;
+                best_move = killer_move;
+                alpha = max(alpha, score);
+                if alpha >= beta {
+                    // beta cutoff
+                    if depth_so_far <= self.config.max_transposition_depth {
+                        self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
+                    }
+                    return Ok((best_move, alpha));
+                }
+            }
         }
 
-        let mut num_moves_checked = 1;
+        let mut moves_iter = MovePicker::new(g, &ignored_moves);
+
+        if best_score == Eval::MIN {
+            // perform one search to satisfy PVS
+
+            // since no other moves were searched, there must be something left
+            // in the move picker for us unless we are mated
+            let (m, delta) = match moves_iter.next() {
+                Some(x) => x,
+                None => return Ok((Move::BAD_MOVE, Eval::BLACK_MATE)),
+            };
+            best_move = m;
+            g.make_move(m, delta);
+            best_score = -self
+                .pvs(
+                    depth_to_go - 1,
+                    depth_so_far + 1,
+                    g,
+                    -beta.step_forward(),
+                    -alpha.step_forward(),
+                )?
+                .1
+                .step_back();
+            #[allow(unused_must_use)]
+            {
+                g.undo();
+            }
+            alpha = max(best_score, alpha);
+            if alpha >= beta {
+                if can_use_killers {
+                    self.killer_moves[killer_index] = m;
+                }
+                if depth_so_far <= self.config.max_transposition_depth {
+                    self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
+                }
+            }
+        }
 
         for (m, delta) in moves_iter {
             let late_move = num_moves_checked > self.config.num_early_moves
@@ -216,7 +262,7 @@ impl PVSearch {
                 true => depth_to_go - 2,
                 false => depth_to_go - 1,
             };
-            score = -self
+            let mut score = -self
                 .pvs(
                     depth_to_search,
                     depth_so_far + 1,
@@ -251,34 +297,27 @@ impl PVSearch {
             {
                 g.undo();
             }
-            if score > best_score_this_position {
-                critical_move = m;
-                best_score_this_position = score;
+            if score > best_score {
+                best_move = m;
+                best_score = score;
                 alpha = max(score, alpha);
-            }
-            if alpha >= beta {
-                // Beta cutoff, we have  found a better line somewhere else
-                if can_use_killers {
-                    self.killer_moves[killer_index] = m;
+                if alpha >= beta {
+                    // Beta cutoff, we have  found a better line somewhere else
+                    if can_use_killers {
+                        self.killer_moves[killer_index] = m;
+                    }
+                    break;
                 }
-                break;
             }
 
             num_moves_checked += 1;
         }
 
         if depth_so_far <= self.config.max_transposition_depth {
-            self.ttable_store(
-                g,
-                depth_to_go,
-                alpha,
-                beta,
-                best_score_this_position,
-                critical_move,
-            );
+            self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
         }
 
-        Ok((critical_move, alpha))
+        Ok((best_move, alpha))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -337,34 +376,9 @@ impl PVSearch {
         }
 
         moves.sort_by_cached_key(|&(m, delta)| -candidacy(g, m, delta));
-        let mut moves_iter = moves.into_iter();
-        let mut critical_move = Move::BAD_MOVE;
-        // we must wrap with an if in case there are no captures
-        if let Some((critical_move, delta)) = moves_iter.next() {
-            g.make_move(critical_move, delta);
-            score = -self
-                .quiesce(
-                    depth_to_go - 1,
-                    depth_so_far + 1,
-                    g,
-                    -beta.step_forward(),
-                    -alpha.step_forward(),
-                )?
-                .1
-                .step_back();
-            #[allow(unused_must_use)]
-            {
-                g.undo();
-            }
+        let mut best_move = Move::BAD_MOVE;
 
-            alpha = max(alpha, score);
-            if alpha >= beta {
-                // Beta cutoff, we have found a better line somewhere else
-                return Ok((critical_move, alpha));
-            }
-        }
-
-        for (m, delta) in moves_iter {
+        for (m, delta) in moves {
             g.make_move(m, delta);
             // zero-window search
             score = -self
@@ -391,7 +405,7 @@ impl PVSearch {
                     )?
                     .1
                     .step_back();
-                critical_move = m;
+                best_move = m;
             }
             #[allow(unused_must_use)]
             {
@@ -404,7 +418,7 @@ impl PVSearch {
             }
         }
 
-        Ok((critical_move, alpha))
+        Ok((best_move, alpha))
     }
 
     /// Clear out internal data.
@@ -424,7 +438,7 @@ impl PVSearch {
         alpha: Eval,
         beta: Eval,
         score: Eval,
-        critical_move: Move,
+        best_move: Move,
     ) {
         let upper_bound = match score < beta {
             true => score,
@@ -440,7 +454,7 @@ impl PVSearch {
                 depth,
                 lower_bound,
                 upper_bound,
-                critical_move,
+                critical_move: best_move,
             },
         );
     }

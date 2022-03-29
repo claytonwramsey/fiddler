@@ -27,10 +27,10 @@ pub struct Eval(i16);
 
 impl Eval {
     /// An evaluation which is smaller than every other "normal" evaluation.
-    pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1);
+    pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1000);
 
     /// An evaluation which is larger than every other "normal" evaluation.
-    pub const MAX: Eval = Eval(Eval::MATE_0_VAL + 1);
+    pub const MAX: Eval = Eval(Eval::MATE_0_VAL + 1000);
 
     /// An evaluation where Black has won the game by mate.
     pub const BLACK_MATE: Eval = Eval(-Eval::MATE_0_VAL);

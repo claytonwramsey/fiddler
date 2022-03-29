@@ -275,7 +275,8 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                     let checker_sq = Square::try_from(pos.check_info.checkers).unwrap();
                     let player_idx = pos.board.player_to_move as usize;
                     let king_idx = pos.king_sqs[player_idx] as usize;
-                    let targets = BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
+                    let targets =
+                        BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
 
                     if !targets.contains(to_sq) {
                         return false;
