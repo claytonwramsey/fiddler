@@ -7,11 +7,11 @@ pub mod config;
 pub mod evaluate;
 pub mod greedy;
 pub mod limit;
+pub mod pick;
 pub mod pst;
 pub mod search;
 pub mod thread;
 pub mod transposition;
-pub mod pick;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The types of errors which can occur during a search.

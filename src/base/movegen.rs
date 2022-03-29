@@ -193,6 +193,103 @@ impl CheckInfo {
     }
 }
 
+/// Determine whether any given move is legal, given a position in which it
+/// could be played. Requires that the move must have been legal on *some*
+/// board, but not necessarily the given one.
+pub fn is_legal(m: Move, pos: &Position) -> bool {
+    let n_checkers = pos.check_info.checkers.count_ones();
+    let from_sq = m.from_square();
+    let to_sq = m.to_square();
+    let player = pos.board.player_to_move;
+    let allies = pos.board[player];
+    let enemies = pos.board[!player];
+    let occupancy = allies | enemies;
+    if allies.contains(to_sq) {
+        // cannot move to square occupied by our piece
+        return false;
+    }
+    match pos.board.type_at_square(from_sq) {
+        Some(Piece::King) => {
+            if m.promote_type().is_some() {
+                // cannot promote non-pawn
+                return false;
+            }
+            // check for pseudolegality
+            let pseudolegal_bb = match n_checkers {
+                0 => king_moves(&pos.board, from_sq, player),
+                _ => KING_MOVES[from_sq as usize],
+            };
+            pseudolegal_bb.contains(to_sq) && validate(pos, m)
+        }
+        Some(pt) => {
+            if n_checkers == 2 {
+                return false;
+            }
+            if pt != Piece::Pawn && m.promote_type().is_some() {
+                // cannot promote non-pawn
+                return false;
+            }
+
+            // first, validate pseudolegality
+            if !match pt {
+                Piece::Pawn => {
+                    let pawn_dir = player.pawn_direction();
+                    let singlemove_sq = from_sq + pawn_dir;
+                    let pattacks = PAWN_ATTACKS[player as usize][from_sq as usize];
+
+                    (!occupancy.contains(singlemove_sq)
+                        && (to_sq == singlemove_sq //singlemove
+                        || (to_sq == singlemove_sq + pawn_dir //doublemove
+                            && player.pawn_start_rank().contains(from_sq)
+                            && !occupancy.contains(to_sq))))
+                        || (pattacks
+                            & (enemies
+                                | match pos.board.en_passant_square {
+                                    Some(sq) => Bitboard::from(sq),
+                                    None => Bitboard::EMPTY,
+                                }))
+                        .contains(to_sq)
+                }
+                Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
+                Piece::Bishop => MAGIC
+                    .bishop_attacks(allies | enemies, from_sq)
+                    .contains(to_sq),
+                Piece::Rook => MAGIC
+                    .rook_attacks(allies | enemies, from_sq)
+                    .contains(to_sq),
+                Piece::Queen => {
+                    let occupancy = allies | enemies;
+                    (MAGIC.bishop_attacks(occupancy, from_sq)
+                        | MAGIC.rook_attacks(occupancy, from_sq))
+                    .contains(to_sq)
+                }
+                Piece::King => unreachable!(),
+            } {
+                return false;
+            };
+
+            // check that the move is not a self check
+            match n_checkers {
+                0 => (),
+                1 => {
+                    let checker_sq = Square::try_from(pos.check_info.checkers).unwrap();
+                    let player_idx = pos.board.player_to_move as usize;
+                    let king_idx = pos.king_sqs[player_idx] as usize;
+                    let targets = BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
+
+                    if !targets.contains(to_sq) {
+                        return false;
+                    }
+                }
+                _ => unreachable!(),
+            };
+
+            validate(pos, m)
+        }
+        None => false,
+    }
+}
+
 #[inline]
 /// Get all the legal moves on a board.
 pub fn get_moves(pos: &Position) -> Vec<Move> {
@@ -832,6 +929,9 @@ mod tests {
         let pos = Position::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap();
         let moves = get_moves(&pos);
         assert!(moves.contains(&m));
+        for m in moves {
+            assert!(is_legal(m, &pos));
+        }
     }
 
     #[test]
@@ -841,6 +941,7 @@ mod tests {
         let m = Move::new(Square::E4, Square::F5, None);
         for m in get_moves(&pos) {
             println!("{}", m);
+            assert!(is_legal(m, &pos));
         }
         assert!(get_moves(&pos).contains(&m));
         assert!(get_loud_moves(&pos).contains(&m));
@@ -855,6 +956,7 @@ mod tests {
 
         for m2 in moves.iter() {
             println!("{m2}");
+            assert!(is_legal(*m2, &pos));
         }
     }
 
@@ -866,6 +968,7 @@ mod tests {
         let moves = get_moves(&pos);
         for m in moves {
             print!("{m}, ");
+            assert!(is_legal(m, &pos));
         }
         assert!(get_moves(&pos).is_empty());
     }
@@ -876,20 +979,26 @@ mod tests {
         let pos = Position::from_fen(KING_HAS_ONE_MOVE_FEN, Position::no_eval).unwrap();
         assert!(has_moves(&pos));
         assert!(get_moves(&pos).len() == 1);
+        assert!(is_legal(Move::normal(Square::C8, Square::B8), &pos));
     }
 
     #[test]
     /// Test that queenside castling actually works.
     fn test_queenside_castle() {
         let pos = Position::from_fen(BLACKQUEENSIDE_CASTLE_READY_FEN, Position::no_eval).unwrap();
-        assert!(get_moves(&pos).contains(&Move::normal(Square::E8, Square::C8)));
+        let m = Move::normal(Square::E8, Square::C8);
+        assert!(get_moves(&pos).contains(&m));
+        assert!(is_legal(m, &pos));
     }
 
     #[test]
     /// Test that Black cannot castle because there is a knight in the way.
     fn test_no_queenside_castle_through_knight() {
         let pos = Position::from_fen(KNIGHT_PREVENTS_LONG_CASTLE_FEN, Position::no_eval).unwrap();
-        assert!(!get_moves(&pos).contains(&Move::normal(Square::E8, Square::C8)));
+        let m = Move::normal(Square::E8, Square::C8);
+        assert!(!get_moves(&pos).contains(&m));
+
+        assert!(!is_legal(m, &pos));
     }
 
     #[test]
@@ -933,10 +1042,12 @@ mod tests {
         for m in moves.iter() {
             println!("has {m}");
             assert!(expected_moves.contains(m));
+            assert!(is_legal(*m, &pos));
         }
         for em in expected_moves.iter() {
             println!("expect {em}");
             assert!(moves.contains(em));
+            assert!(is_legal(*em, &pos));
         }
     }
 
@@ -946,7 +1057,8 @@ mod tests {
         let pos = Position::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1", Position::no_eval).unwrap();
         let moves = get_moves(&pos);
         for m in moves.iter() {
-            print!("{m}, ")
+            print!("{m}, ");
+            assert!(is_legal(*m, &pos));
         }
         assert!(moves.contains(&Move::promoting(Square::E2, Square::E1, Piece::Queen)));
     }
@@ -961,7 +1073,9 @@ mod tests {
         )
         .unwrap();
         let moves = get_moves(&pos);
-        assert!(!moves.contains(&Move::normal(Square::F4, Square::E3)));
+        let m = Move::normal(Square::F4, Square::E3);
+        assert!(!moves.contains(&m));
+        assert!(!is_legal(m, &pos));
     }
 
     #[test]
@@ -977,6 +1091,7 @@ mod tests {
 
         assert!(!get_moves(&pos).contains(&illegal_move));
         assert!(!get_loud_moves(&pos).contains(&illegal_move));
+        assert!(!is_legal(illegal_move, &pos));
     }
 
     #[test]
@@ -988,6 +1103,7 @@ mod tests {
 
         assert!(get_moves(&pos).contains(&m));
         assert!(get_loud_moves(&pos).contains(&m));
+        assert!(is_legal(m, &pos));
     }
 
     #[test]
@@ -1018,6 +1134,7 @@ mod tests {
         }
 
         for normal_move in moves.iter() {
+            assert!(is_legal(*normal_move, &pos));
             if pos.board.is_move_capture(*normal_move) {
                 assert!(loud_moves.contains(normal_move));
             }
