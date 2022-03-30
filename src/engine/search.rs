@@ -189,6 +189,7 @@ impl PVSearch {
             if depth_so_far <= self.config.max_transposition_depth {
                 self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
             }
+            return Ok((best_move, best_score));
         }
 
         for (m, delta) in moves_iter {
