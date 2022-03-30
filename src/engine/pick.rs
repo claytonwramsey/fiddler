@@ -43,19 +43,19 @@ impl MovePicker {
         MovePicker {
             move_buffer: Vec::new(),
             index: 0,
-            ignored: {
-                let mut ignored = Vec::new();
-                for m in [transposition_move, killer_move] {
-                    if m != Move::BAD_MOVE && !ignored.contains(&m) {
-                        ignored.push(m);
-                    }
-                }
-                ignored
-            },
+            ignored: Vec::new(),
             pos,
             phase: PickPhase::Transposition,
             transposition_move,
             killer_move,
+        }
+    }
+
+    /// Add a move to the set of moves that should be ignored. Requires that 
+    /// `m` is not `Move::BAD_MOVE`.
+    fn ignore(&mut self, m: Move) {
+        if !self.ignored.contains(&m) {
+            self.ignored.push(m);
         }
     }
 }
@@ -70,16 +70,23 @@ impl Iterator for MovePicker {
                 self.phase = PickPhase::Killer;
                 match self.transposition_move {
                     Move::BAD_MOVE => self.next(),
-                    m => Some((m, pst_delta(&self.pos.board, m))),
+                    m => {
+                        self.ignore(m);
+                        Some((m, pst_delta(&self.pos.board, m)))
+                    },
                 }
             }
             PickPhase::Killer => {
                 self.phase = PickPhase::PreGeneral;
+                //self.next() //temporary for debugging
                 match self.killer_move {
                     Move::BAD_MOVE => self.next(),
                     m => match is_legal(m, &self.pos) {
-                        true => Some((m, pst_delta(&self.pos.board, m))),
-                        false => self.next(),
+                        true => {
+                            self.ignore(m);
+                            Some((m, pst_delta(&self.pos.board, m)))
+                        },
+                        false => self.next()
                     }
                 }
             }

@@ -81,6 +81,7 @@ impl PVSearch {
         g: &mut Game,
         alpha_in: Eval,
         beta_in: Eval,
+        allow_reduction: bool,
     ) -> PVSResult {
         if self.limit.is_over() {
             return Err(SearchError::Timeout);
@@ -172,6 +173,7 @@ impl PVSearch {
                 g,
                 -beta.step_forward(),
                 -alpha.step_forward(),
+                allow_reduction
             )?
             .1
             .step_back();
@@ -192,7 +194,8 @@ impl PVSearch {
         for (m, delta) in moves_iter {
             let late_move = num_moves_checked > self.config.num_early_moves
                 && !g.board().is_move_capture(m)
-                && m.promote_type().is_none();
+                && m.promote_type().is_none()
+                && allow_reduction;
             g.make_move(m, delta);
             // zero-window search
             let depth_to_search = match late_move {
@@ -206,6 +209,7 @@ impl PVSearch {
                     g,
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
+                    allow_reduction
                 )?
                 .1
                 .step_back();
@@ -226,6 +230,7 @@ impl PVSearch {
                         g,
                         -beta.step_forward(),
                         position_lower_bound,
+                        allow_reduction
                     )?
                     .1
                     .step_back();
@@ -281,7 +286,7 @@ impl PVSearch {
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if g.position().check_info.checkers != Bitboard::EMPTY {
-            return self.pvs(1, depth_so_far, g, alpha_in, beta_in);
+            return self.pvs(1, depth_so_far, g, alpha_in, beta_in, false);
         }
 
         self.increment_nodes()?;
@@ -295,6 +300,9 @@ impl PVSearch {
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
         let leaf_evaluation = evaluate(g);
+        /*if g.is_over().0 {
+            println!("{g}: {leaf_evaluation}");
+        }*/
         // (1 - 2 * us) will cause the evaluation to be positive for
         // whichever player is moving. This will cascade up the Negamax
         // inversions to make the final result at the top correct.
@@ -415,7 +423,7 @@ impl PVSearch {
         let mut result = (Move::BAD_MOVE, Eval::DRAW);
         let mut highest_successful_depth = 0;
         for iter_depth in 1..=self.config.depth {
-            match self.pvs(iter_depth as i8, 0, &mut g, Eval::MIN, Eval::MAX) {
+            match self.pvs(iter_depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true) {
                 Ok(search_result) => {
                     result = (
                         search_result.0,

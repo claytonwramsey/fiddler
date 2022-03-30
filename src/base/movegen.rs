@@ -208,6 +208,9 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
         // cannot move to square occupied by our piece
         return false;
     }
+    if !allies.contains(from_sq) {
+        return false;
+    }
     match pos.board.type_at_square(from_sq) {
         Some(Piece::King) => {
             if m.promote_type().is_some() {
