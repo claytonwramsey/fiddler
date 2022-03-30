@@ -1,4 +1,7 @@
-use crate::base::{movegen::{get_moves, is_legal}, Eval, Move, Position};
+use crate::base::{
+    movegen::{get_moves, is_legal},
+    Eval, Move, Position,
+};
 
 use super::{candidacy::candidacy, pst::pst_delta};
 
@@ -51,7 +54,7 @@ impl MovePicker {
         }
     }
 
-    /// Add a move to the set of moves that should be ignored. Requires that 
+    /// Add a move to the set of moves that should be ignored. Requires that
     /// `m` is not `Move::BAD_MOVE`.
     fn ignore(&mut self, m: Move) {
         if !self.ignored.contains(&m) {
@@ -73,7 +76,7 @@ impl Iterator for MovePicker {
                     m => {
                         self.ignore(m);
                         Some((m, pst_delta(&self.pos.board, m)))
-                    },
+                    }
                 }
             }
             PickPhase::Killer => {
@@ -84,9 +87,9 @@ impl Iterator for MovePicker {
                         true => {
                             self.ignore(m);
                             Some((m, pst_delta(&self.pos.board, m)))
-                        },
-                        false => self.next()
-                    }
+                        }
+                        false => self.next(),
+                    },
                 }
             }
             PickPhase::PreGeneral => {
@@ -109,7 +112,7 @@ impl Iterator for MovePicker {
                 let (mut best, mut best_eval) = self.move_buffer[self.index];
                 for i in (self.index + 1)..self.move_buffer.len() {
                     // insertion sort to get the best move.
-                    // insertion sort is slower if we need to see every move, 
+                    // insertion sort is slower if we need to see every move,
                     // but often we don't due to beta cutoff
                     let (mp, ev) = self.move_buffer[i];
                     if ev > best_eval {
@@ -119,7 +122,7 @@ impl Iterator for MovePicker {
                     }
                 }
                 for &ignored in self.ignored.iter() {
-                    // if we encounter an ignored move, skip our best move and 
+                    // if we encounter an ignored move, skip our best move and
                     // move on.
                     if ignored == best.0 {
                         self.index += 1;

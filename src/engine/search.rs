@@ -162,7 +162,12 @@ impl PVSearch {
         // in the move picker for us unless the game is over
         let (m, delta) = match moves_iter.next() {
             Some(x) => x,
-            None => return Ok((Move::BAD_MOVE, evaluate(g))),
+            None => {
+                return Ok((
+                    Move::BAD_MOVE,
+                    evaluate(g) * (1 - 2 * g.board().player_to_move as i16),
+                ))
+            }
         };
         best_move = m;
         g.make_move(m, delta);
@@ -173,7 +178,7 @@ impl PVSearch {
                 g,
                 -beta.step_forward(),
                 -alpha.step_forward(),
-                allow_reduction
+                allow_reduction,
             )?
             .1
             .step_back();
@@ -210,7 +215,7 @@ impl PVSearch {
                     g,
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
-                    allow_reduction
+                    allow_reduction,
                 )?
                 .1
                 .step_back();
@@ -231,7 +236,7 @@ impl PVSearch {
                         g,
                         -beta.step_forward(),
                         position_lower_bound,
-                        allow_reduction
+                        allow_reduction,
                     )?
                     .1
                     .step_back();
