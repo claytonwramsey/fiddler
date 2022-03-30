@@ -1,7 +1,7 @@
 use crate::base::Eval;
-use crate::base::Game;
 use crate::base::Move;
 use crate::base::Piece;
+use crate::base::Position;
 use crate::engine::greedy;
 
 use std::cmp::max;
@@ -12,12 +12,12 @@ use super::evaluate::blend_eval;
 /// created by this move.
 /// # Panics
 /// if the given move is illegal.
-pub fn candidacy(g: &Game, m: Move, delta: (Eval, Eval)) -> Eval {
-    let b = g.board();
+pub fn candidacy(pos: &Position, m: Move, delta: (Eval, Eval)) -> Eval {
+    let b = &pos.board;
     let mover_type = b.type_at_square(m.from_square()).unwrap();
     let promote_type = m.promote_type();
     let capture_type = b.type_at_square(m.to_square());
-    let pos_delta = blend_eval(g.len(), delta.0, delta.1);
+    let pos_delta = blend_eval(b, delta.0, delta.1);
 
     // Best case, we keep the piece we captured
     let mut best_case_material = match capture_type {

@@ -150,7 +150,7 @@ impl Game {
     /// game can continue)? The return type has the first type as whether the
     /// game is over, and the second is the player which has won if the game is
     /// over. It will be `None` for a draw.
-    pub fn is_game_over(&self) -> (bool, Option<Color>) {
+    pub fn is_over(&self) -> (bool, Option<Color>) {
         if self.is_drawn_historically() {
             return (true, None);
         }
@@ -171,7 +171,7 @@ impl Game {
 
     /// Has this game been drawn due to its move history (i.e. due to the 50
     /// move rule or due to repetition)?
-    fn is_drawn_historically(&self) -> bool {
+    pub fn is_drawn_historically(&self) -> bool {
         let num_reps = *self.repetitions.get(&self.board().hash).unwrap_or(&0);
         if num_reps >= 3 {
             // draw by repetition
@@ -332,7 +332,7 @@ mod tests {
             println!("{m}");
         }
         assert!(!has_moves(g.position()));
-        assert_eq!(g.is_game_over(), (true, Some(Color::White)));
+        assert_eq!(g.is_over(), (true, Some(Color::White)));
     }
 
     #[test]
@@ -344,7 +344,7 @@ mod tests {
             println!("{m}");
         }
         assert!(!has_moves(g.position()));
-        assert_eq!(g.is_game_over(), (true, Some(Color::Black)));
+        assert_eq!(g.is_over(), (true, Some(Color::Black)));
     }
 
     #[test]
@@ -357,7 +357,7 @@ mod tests {
         for m2 in g.get_moves() {
             println!("{m2}");
         }
-        assert_eq!(g.is_game_over(), (true, Some(Color::White)));
+        assert_eq!(g.is_over(), (true, Some(Color::White)));
     }
 
     #[test]

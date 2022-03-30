@@ -1,10 +1,15 @@
+use std::cmp::max;
+use std::cmp::min;
+
 use crate::base::Bitboard;
+use crate::base::Board;
 use crate::base::Color;
 use crate::base::Eval;
 use crate::base::Game;
 use crate::base::Piece;
 
 use super::greedy::greedy_evaluate;
+use super::greedy::piece_value;
 
 /// The value of having an opponent's pawn doubled.
 const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(10);
@@ -13,7 +18,7 @@ const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(10);
 pub fn evaluate(g: &mut Game) -> Eval {
     let b = g.board();
 
-    match g.is_game_over() {
+    match g.is_over() {
         (true, Some(_)) => {
             return match b.player_to_move {
                 Color::Black => Eval::mate_in(0),
@@ -57,18 +62,30 @@ pub fn evaluate(g: &mut Game) -> Eval {
         col_mask <<= 1;
     }
 
-    blend_eval(g.len(), mg_eval, eg_eval)
+    blend_eval(g.board(), mg_eval, eg_eval)
+}
+
+/// Get a blending float describing the current phase of the game. Will range
+/// from 0 (full endgame) to 1 (full midgame).
+fn phase_of(b: &Board) -> f32 {
+    const MG_LIMIT: Eval = Eval::centipawns(1500);
+    const EG_LIMIT: Eval = Eval::centipawns(800);
+    let npm = {
+        let mut total = Eval::DRAW;
+        for pt in Piece::NON_PAWN_TYPES {
+            total += piece_value(pt) * b[pt].count_ones();
+        }
+        total
+    };
+    // 15+ points for midgame, 4- points for endgame of NPM.
+    let bounded_npm = max(MG_LIMIT, min(EG_LIMIT, npm));
+
+    (bounded_npm - EG_LIMIT).float_val() / (MG_LIMIT - EG_LIMIT).float_val()
 }
 
 #[inline]
 /// Blend the evaluation of a position between the midgame and endgame.
-pub fn blend_eval(turn_id: usize, mg_eval: Eval, eg_eval: Eval) -> Eval {
-    match turn_id {
-        l if l < 20 => mg_eval,
-        l if l > 80 => eg_eval,
-        _ => {
-            let eg_scale_factor = (turn_id as f32 - 20.) / 60.;
-            mg_eval * (1. - eg_scale_factor) + eg_eval * eg_scale_factor
-        }
-    }
+pub fn blend_eval(b: &Board, mg_eval: Eval, eg_eval: Eval) -> Eval {
+    let phase = phase_of(b);
+    mg_eval * phase + eg_eval * (1. - phase)
 }
