@@ -78,7 +78,6 @@ impl Iterator for MovePicker {
             }
             PickPhase::Killer => {
                 self.phase = PickPhase::PreGeneral;
-                //self.next() //temporary for debugging
                 match self.killer_move {
                     Move::BAD_MOVE => self.next(),
                     m => match is_legal(m, &self.pos) {
@@ -110,8 +109,8 @@ impl Iterator for MovePicker {
                 let (mut best, mut best_eval) = self.move_buffer[self.index];
                 for i in (self.index + 1)..self.move_buffer.len() {
                     // insertion sort to get the best move.
-                    // insertion sort is slower if we need to see every move, but often
-                    // we don't due to beta cutoff
+                    // insertion sort is slower if we need to see every move, 
+                    // but often we don't due to beta cutoff
                     let (mp, ev) = self.move_buffer[i];
                     if ev > best_eval {
                         // swap out the next-best move
@@ -120,7 +119,8 @@ impl Iterator for MovePicker {
                     }
                 }
                 for &ignored in self.ignored.iter() {
-                    // if we encounter an ignored move, skip our best move and move on.
+                    // if we encounter an ignored move, skip our best move and 
+                    // move on.
                     if ignored == best.0 {
                         self.index += 1;
                         return self.next();

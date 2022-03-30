@@ -159,10 +159,10 @@ impl PVSearch {
         // perform one search to satisfy PVS
 
         // since no other moves were searched, there must be something left
-        // in the move picker for us unless we are mated
+        // in the move picker for us unless the game is over
         let (m, delta) = match moves_iter.next() {
             Some(x) => x,
-            None => return Ok((Move::BAD_MOVE, Eval::BLACK_MATE)),
+            None => return Ok((Move::BAD_MOVE, evaluate(g))),
         };
         best_move = m;
         g.make_move(m, delta);
@@ -519,7 +519,7 @@ pub mod tests {
     fn test_fried_liver() {
         let g = Game::from_fen(FRIED_LIVER_FEN, pst_evaluate).unwrap();
         let mut e = PVSearch::default();
-        e.set_depth(8); // this prevents taking too long on searches
+        e.set_depth(10); // this prevents taking too long on searches
         let m = Move::normal(Square::D1, Square::F3);
 
         let mut tic = Instant::now();
