@@ -1,4 +1,4 @@
-use crate::base::{Bitboard, Eval};
+use crate::base::{Bitboard, Eval, Score};
 use crate::base::{Game, Move};
 use crate::engine::evaluate::evaluate;
 use crate::engine::transposition::{EvalData, TTable};
@@ -297,7 +297,7 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves: Vec<(Move, (Eval, Eval))> = g
+        let mut moves: Vec<(Move, Score)> = g
             .get_loud_moves()
             .into_iter()
             .map(|m| (m, pst_delta(g.board(), m)))

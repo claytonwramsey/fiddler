@@ -34,6 +34,7 @@ pub use direction::Direction;
 /// A module containing information for storing evaluations of positions.
 mod eval;
 pub use eval::Eval;
+pub use eval::Score;
 
 /// A module containing a game, with the history of positions as well as their
 /// current state.

@@ -1,6 +1,6 @@
 use crate::base::{
     movegen::{get_moves, is_legal},
-    Eval, Move, Position,
+    Eval, Move, Position, Score,
 };
 
 use super::{candidacy::candidacy, pst::pst_delta};
@@ -9,7 +9,7 @@ use super::{candidacy::candidacy, pst::pst_delta};
 pub struct MovePicker {
     /// The buffer of moves to select from, paired with their PST deltas and
     /// then their final candidacies.
-    move_buffer: Vec<((Move, (Eval, Eval)), Eval)>,
+    move_buffer: Vec<((Move, Score), Eval)>,
     /// The index in the move buffer of the next move to give
     /// (initialized to 0).
     index: usize,
@@ -64,7 +64,7 @@ impl MovePicker {
 }
 
 impl Iterator for MovePicker {
-    type Item = (Move, (Eval, Eval));
+    type Item = (Move, Score);
 
     /// Get the next move which the move picker wants.
     fn next(&mut self) -> Option<Self::Item> {

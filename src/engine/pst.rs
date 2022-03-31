@@ -1,7 +1,7 @@
 //! A module containing the information for Piece-Square Tables (PSTs). A PST
 //! is given for both the early and endgame.
 
-use crate::base::{Board, Color, Eval, Move, Piece, Square};
+use crate::base::{Board, Color, Eval, Move, Piece, Square, Score};
 
 /// A lookup table for piece values. The outer index is the type of the piece
 /// (in order of Pawn, Knight, Bishop, Rook, Queen, and King)
@@ -17,7 +17,7 @@ type CentiPst = [[i16; 64]; Piece::NUM_TYPES];
 /// conditions it is recommended to use `pst_delta()` instead if you are making
 /// moves. The first value in the return type is the midgame difference, and
 /// the second is the endgame difference.
-pub fn pst_evaluate(board: &Board) -> (Eval, Eval) {
+pub fn pst_evaluate(board: &Board) -> Score {
     let mut mg_eval = Eval::DRAW;
     let mut eg_eval = Eval::DRAW;
 
@@ -48,7 +48,7 @@ pub fn pst_evaluate(board: &Board) -> (Eval, Eval) {
 /// # Panics
 ///
 /// if the move given is invalid
-pub fn pst_delta(board: &Board, m: Move) -> (Eval, Eval) {
+pub fn pst_delta(board: &Board, m: Move) -> Score {
     let from_sq = m.from_square();
     let to_sq = m.to_square();
     let mover_type = board.type_at_square(m.from_square()).unwrap();
@@ -264,28 +264,8 @@ mod tests {
 
     use super::*;
     use crate::base::movegen::get_moves;
-    use crate::base::Bitboard;
     use crate::base::Position;
-    use crate::base::Square;
     use crate::fens::FRIED_LIVER_FEN;
-
-    #[test]
-    /// Test that the PST value of the pieces has left-right symmetry.
-    fn test_left_right_symmetry() {
-        for pt in Piece::NON_PAWN_TYPES {
-            for sq1 in Bitboard::ALL {
-                let sq2 = Square::new(sq1.rank(), 7 - sq1.file()).unwrap();
-                assert_eq!(
-                    MIDGAME_VALUE[pt as usize][sq1 as usize],
-                    MIDGAME_VALUE[pt as usize][sq2 as usize]
-                );
-                assert_eq!(
-                    ENDGAME_VALUE[pt as usize][sq1 as usize],
-                    ENDGAME_VALUE[pt as usize][sq2 as usize]
-                );
-            }
-        }
-    }
 
     #[test]
     /// Test that adding deltas matches the same result as taking the PST value

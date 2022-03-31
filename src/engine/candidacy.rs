@@ -2,6 +2,7 @@ use crate::base::Eval;
 use crate::base::Move;
 use crate::base::Piece;
 use crate::base::Position;
+use crate::base::Score;
 use crate::engine::greedy;
 
 use std::cmp::max;
@@ -12,7 +13,7 @@ use super::evaluate::blend_eval;
 /// created by this move.
 /// # Panics
 /// if the given move is illegal.
-pub fn candidacy(pos: &Position, m: Move, delta: (Eval, Eval)) -> Eval {
+pub fn candidacy(pos: &Position, m: Move, delta: Score) -> Eval {
     let b = &pos.board;
     let mover_type = b.type_at_square(m.from_square()).unwrap();
     let promote_type = m.promote_type();

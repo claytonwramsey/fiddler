@@ -2,11 +2,11 @@ use std::convert::TryFrom;
 
 use super::{
     movegen::{get_moves, CheckInfo},
-    Board, Color, Eval, Move, Piece, Square,
+    Board, Color, Eval, Move, Piece, Square, Score,
 };
 
 /// A function which can get the PST value of a position.
-pub type PSTEvaluator = fn(&Board) -> (Eval, Eval);
+pub type PSTEvaluator = fn(&Board) -> Score;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A structure describing one board, plus useful metadata about that board.
@@ -18,11 +18,11 @@ pub struct Position {
     /// The location of the White and Black kings, respectively.
     pub king_sqs: [Square; 2],
     /// The PST evaluation for the middlegame and endgame, respectively.
-    pub pst_val: (Eval, Eval),
+    pub pst_val: Score,
 }
 
 impl Position {
-    pub const NO_DELTA: (Eval, Eval) = (Eval::DRAW, Eval::DRAW);
+    pub const NO_DELTA: Score = (Eval::DRAW, Eval::DRAW);
 
     /// Construct a position from a FEN.
     pub fn from_fen(fen: &str, pst_evaluator: PSTEvaluator) -> Result<Position, String> {
@@ -40,7 +40,7 @@ impl Position {
 
     /// Helper function for initializing boards if you do not care about the
     /// PST value of a board.
-    pub fn no_eval(_: &Board) -> (Eval, Eval) {
+    pub fn no_eval(_: &Board) -> Score {
         (Eval::DRAW, Eval::DRAW)
     }
 
@@ -49,7 +49,7 @@ impl Position {
     /// needed. `pst_delta` is the expected gain in PST evaluation that will
     /// occur from this move. It will be higher for moves which are better for
     /// the player.
-    pub fn make_move(&mut self, m: Move, pst_delta: (Eval, Eval)) {
+    pub fn make_move(&mut self, m: Move, pst_delta: Score) {
         // reduce evaluation for goot moves for Black
         match self.board.player_to_move {
             Color::White => {
@@ -70,7 +70,7 @@ impl Position {
     /// Apply the given move to the board. Will *not* assume the move is legal
     /// (unlike `make_move()`). On illegal moves, will return an `Err` with a
     /// string describing the issue.
-    pub fn try_move(&mut self, m: Move, pst_delta: (Eval, Eval)) -> Result<(), &str> {
+    pub fn try_move(&mut self, m: Move, pst_delta: Score) -> Result<(), &str> {
         let legal_moves = get_moves(self);
         if !legal_moves.contains(&m) {
             return Err("not contained in the set of legal moves");

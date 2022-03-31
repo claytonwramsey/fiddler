@@ -25,6 +25,11 @@ use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 /// ```
 pub struct Eval(i16);
 
+/// A `Score` is a pair of `Eval`s. The first element in the score is the 
+/// midgame evaluation, and the second is the endgame evaluation. At evaluation 
+/// time, the two evaluations are blended to produce a final evaluation.
+pub type Score = (Eval, Eval);
+
 impl Eval {
     /// An evaluation which is smaller than every other "normal" evaluation.
     pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1000);

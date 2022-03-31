@@ -9,12 +9,12 @@ use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 
+use super::Score;
 use super::movegen::get_loud_moves;
 use super::movegen::get_moves;
 use super::movegen::has_moves;
 use super::movegen::is_square_attacked_by;
 use super::position::PSTEvaluator;
-use super::Eval;
 use super::Position;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -66,7 +66,7 @@ impl Game {
     /// be made from the default state of a `Board`. `pst_delta` is the
     /// expected gain in evaluation for the player making the move. Typically,
     /// `pst_delta` wil always be positive.
-    pub fn make_move(&mut self, m: Move, pst_delta: (Eval, Eval)) {
+    pub fn make_move(&mut self, m: Move, pst_delta: Score) {
         let previous_state = self.history.last().unwrap();
         let mut new_pos = previous_state.0;
 
@@ -88,7 +88,7 @@ impl Game {
     /// legal, the move will be executed and the state will change, then
     /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
     /// you that the move is illegal, and no state will be changed.
-    pub fn try_move(&mut self, m: Move, pst_delta: (Eval, Eval)) -> Result<(), &'static str> {
+    pub fn try_move(&mut self, m: Move, pst_delta: Score) -> Result<(), &'static str> {
         if self.get_moves().contains(&m) {
             self.make_move(m, pst_delta);
             Ok(())
@@ -239,7 +239,7 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::board;
+    use crate::base::{board, Eval};
     use crate::base::moves::Move;
     use crate::base::Square;
     use crate::fens::*;
