@@ -8,6 +8,7 @@ authors = ["Clayton Ramsey"]
 # Random number generator for creating magic bitboards.
 rand = "0.8.4" 
 lazy_static = "1.4.0"
+libm = "0.1.4"
 
 [profile.test]
 debug = true

@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use super::{
     movegen::{get_moves, CheckInfo},
-    Board, Color, Eval, Move, Piece, Square, Score,
+    Board, Color, Eval, Move, Piece, Score, Square,
 };
 
 /// A function which can get the PST value of a position.

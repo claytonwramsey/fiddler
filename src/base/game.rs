@@ -9,13 +9,13 @@ use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 
-use super::Score;
 use super::movegen::get_loud_moves;
 use super::movegen::get_moves;
 use super::movegen::has_moves;
 use super::movegen::is_square_attacked_by;
 use super::position::PSTEvaluator;
 use super::Position;
+use super::Score;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// A struct containing game information, which unlike a `Board`, knows about
@@ -239,9 +239,9 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::{board, Eval};
     use crate::base::moves::Move;
     use crate::base::Square;
+    use crate::base::{board, Eval};
     use crate::fens::*;
 
     #[test]

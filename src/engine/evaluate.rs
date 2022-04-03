@@ -67,7 +67,7 @@ pub fn evaluate(g: &mut Game) -> Eval {
 
 /// Get a blending float describing the current phase of the game. Will range
 /// from 0 (full endgame) to 1 (full midgame).
-fn phase_of(b: &Board) -> f32 {
+pub fn phase_of(b: &Board) -> f32 {
     const MG_LIMIT: Eval = Eval::centipawns(2200);
     const EG_LIMIT: Eval = Eval::centipawns(1000);
     let npm = {
@@ -77,7 +77,6 @@ fn phase_of(b: &Board) -> f32 {
         }
         total
     };
-    // 15+ points for midgame, 4- points for endgame of NPM.
     let bounded_npm = max(MG_LIMIT, min(EG_LIMIT, npm));
 
     (bounded_npm - EG_LIMIT).float_val() / (MG_LIMIT - EG_LIMIT).float_val()
