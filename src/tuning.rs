@@ -1,14 +1,73 @@
+use std::{path::Path, sync::Arc, time::Instant};
+
 use crate::{
-    base::{Bitboard, Board, Color, Eval, Piece},
+    base::{Board, Color, Piece, Square},
     engine::evaluate::phase_of,
 };
 use libm::expf;
+use rand::{thread_rng, Rng};
+use rusqlite::Connection;
 
 /// The dimension of the feature vector.
 const FEATURE_DIM: usize = 772;
 
-fn main(args: &[String]) {
-    
+struct TrainingDatum {
+    fen: String,
+    eval: f32,
+}
+
+/// Run the main training function.
+///
+/// # Panics
+///
+/// Panics if we are unable to locate the database file.
+pub fn main(args: &[String]) -> rusqlite::Result<()> {
+    // first two arguments are the program and the operating mode
+    let db = Connection::open(Path::new(&args[2..].join(" ")))?;
+    let mut weights = vec![3., 3., 5., 9.];
+    let mut rng = thread_rng();
+    for _ in 4..FEATURE_DIM {
+        weights.push(rng.gen_range(-0.5..0.5));
+    }
+    let mut learn_rate = 1.0;
+    let beta = 0.6;
+
+    let nthreads = 8;
+    let tic = Instant::now();
+    // construct the datasets.
+    // Outermost vector: each element for one thread
+    // Middle vector: each element for one datum
+    // Inner vector: each element for one piece-square pair
+    let mut input_sets = vec![];
+    let mut statement = db.prepare("SELECT fen, eval FROM evaluations")?;
+    let data = statement
+        .query_map([], |row| {
+            Ok(TrainingDatum {
+                fen: row.get(0)?,
+                eval: row.get(1)?,
+            })
+        })?
+        .map(|res| res.unwrap());
+    for datum in data {
+        input_sets.push((extract(&Board::from_fen(&datum.fen).unwrap()), datum.eval));
+    }
+    let input_arc = Arc::new(input_sets);
+    let toc = Instant::now();
+    println!("extracted data in {} secs", (toc - tic).as_secs());
+    for _ in 0..100 {
+        weights = train_step(
+            input_arc.clone(),
+            Arc::new(weights),
+            learn_rate,
+            beta,
+            nthreads,
+        );
+        learn_rate *= 0.99;
+    }
+
+    print_weights(&weights);
+
+    Ok(())
 }
 
 /// Perform one step of PST training, and update the weights to reflect this.
@@ -16,17 +75,115 @@ fn main(args: &[String]) {
 /// evaluation. `weights` is the weight vector to train on. `sigmoid_scale` is
 /// the x-scaling of the sigmoid activation function, and `learn_rate` is a
 /// coefficient on the speed at which the engine learns. Each element of
-/// `inputs` must be the same length as `weights`.
+/// `inputs` must be the same length as `weights`. Returns the MSE of the
+/// current epoch.
 fn train_step(
-    inputs: &[(&[f32], Eval)],
-    weights: &mut Vec<f32>,
-    sigmoid_scale: f32,
+    inputs: Arc<Vec<(Vec<(usize, f32)>, f32)>>,
+    weights: Arc<Vec<f32>>,
     learn_rate: f32,
-) {
-    for feature_vec in inputs {
-        let eval = evaluate(feature_vec.0, weights);
-        let sigmoid = 2. / (1. + expf(-eval)) - 1.; // ranges from -1 to 1
+    sigmoid_scale: f32,
+    nthreads: usize,
+) -> Vec<f32> {
+    let tic = Instant::now();
+    let mut grads = Vec::new();
+
+    let chunk_size = inputs.len() / nthreads;
+    for thread_id in 0..nthreads {
+        // start the parallel work
+        let start = chunk_size * thread_id;
+        let inclone = inputs.clone();
+        let wclone = weights.clone();
+        grads.push(std::thread::spawn(move || {
+            train_thread(&inclone[start..start + chunk_size], &wclone, sigmoid_scale)
+        }));
     }
+    let mut new_weights: Vec<f32> = weights.to_vec().clone();
+    let mut sum_se = 0.;
+    for grad_handle in grads {
+        let (sub_grad, se) = grad_handle.join().unwrap();
+        sum_se += se;
+        for i in 0..new_weights.len() {
+            new_weights[i] -= learn_rate * sub_grad[i] / chunk_size as f32;
+        }
+    }
+    let toc = Instant::now();
+    println!(
+        "{} nodes in {} sec: {:.0} nodes/sec; mse {}",
+        inputs.len(),
+        (toc - tic).as_secs(),
+        inputs.len() as f32 / (toc - tic).as_secs_f32(),
+        sum_se / inputs.len() as f32
+    );
+
+    new_weights
+}
+
+/// Construct the gradient vector for a subset of the input data. Also provides
+/// the sum of the squared error.
+fn train_thread(
+    input: &[(Vec<(usize, f32)>, f32)],
+    weights: &[f32],
+    sigmoid_scale: f32,
+) -> (Vec<f32>, f32) {
+    let mut grad = vec![0.; weights.len()];
+    let mut sum_se = 0.;
+    for datum in input {
+        let features = &datum.0;
+        let expected = zero_sigmoid(datum.1, sigmoid_scale);
+        let eval = zero_sigmoid(evaluate(&features, weights), sigmoid_scale);
+        let err = eval - expected;
+        sum_se += err * err;
+        let coeff = err * sigmoid_scale * eval * (1. - eval);
+        // gradient descent
+        for &(idx, feat_val) in features {
+            grad[idx] += feat_val * coeff;
+        }
+    }
+
+    (grad, sum_se)
+}
+
+#[inline]
+/// Compute the zero-intersecting sigmoid function of a variable. `beta` is the
+/// horizontal scaling of the sigmoid.
+fn zero_sigmoid(x: f32, beta: f32) -> f32 {
+    2. / (1. + expf(-x * beta)) - 1.
+}
+
+/// Print out a weights vector so it can be used as code.
+fn print_weights(weights: &[f32]) {
+    let piece_val = |name: &str, val: f32| {
+        println!(
+            "const {name}_VAL: Eval = Eval::centipawns({})",
+            (val * 100.) as i16
+        );
+    };
+
+    piece_val("PAWN", 1.);
+    piece_val("KNIGHT", weights[0]);
+    piece_val("BISHOP", weights[1]);
+    piece_val("ROOK", weights[2]);
+    piece_val("QUEEN", weights[3]);
+
+    println!("const PTABLE: Pst = expand_table([");
+    for pt in Piece::ALL_TYPES {
+        println!("\t[ // {pt}");
+        let pt_idx = 4 + (128 * pt as usize);
+        for rank in 0..8 {
+            print!("\t\t");
+            for file in 0..8 {
+                let sq = Square::new(rank, file).unwrap();
+                let mg_idx = pt_idx + (2 * sq as usize);
+                let eg_idx = mg_idx + 1;
+                let mg_val = (weights[mg_idx] * 100.) as i16;
+                let eg_val = (weights[eg_idx] * 100.) as i16;
+                print!("({}, {}), ", mg_val, eg_val);
+            }
+            println!("// rank {rank}");
+        }
+        println!("\t],");
+    }
+    println!("])");
 }
 
 /// Extract a feature vector from a board. The resulting vector will have
@@ -49,29 +206,36 @@ fn train_step(
 /// * 644..772: King PST
 ///
 /// Ranges given above are lower-bound inclusive.
-fn extract(b: &Board) -> Vec<f32> {
-    let mut features = Vec::new();
+/// The representation is sparse, so each usize corresponds to an index in the
+/// true vector. Zero entries will not be in the output.
+fn extract(b: &Board) -> Vec<(usize, f32)> {
+    let mut features: Vec<(usize, f32)> = Vec::new();
     // Indices 0..4: non-king piece values
     for pt in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
         let n_white = (b[pt] & b[Color::White]).count_ones() as i8;
         let n_black = (b[pt] & b[Color::Black]).count_ones() as i8;
-        features.push((n_white - n_black) as f32);
+        features.push((pt as usize - 1, (n_white - n_black) as f32));
     }
 
     let offset = 4; // offset added to PST positions
     let phase = phase_of(b);
 
-    features.extend([0.; 64 * 2 * 6]);
-    for sq in Bitboard::ALL {
-        if let Some(pt) = b.type_at_square(sq) {
-            let (sq_idx, increment) = match b.color_at_square(sq).unwrap() {
-                Color::White => (sq as usize, 1.),
-                Color::Black => (sq.opposite() as usize, -1.),
+    let bocc = b[Color::Black];
+    let wocc = b[Color::White];
+
+    for pt in Piece::ALL_TYPES {
+        let pt_idx = pt as usize;
+        for sq in b[pt] {
+            let alt_sq = sq.opposite();
+            let increment = match (wocc.contains(sq), bocc.contains(alt_sq)) {
+                (true, false) => 1.,
+                (false, true) => -1.,
+                _ => continue,
             };
-            let pt_idx = pt as usize;
-            let idx = offset + 128 * pt_idx + 2 * sq_idx;
-            features[idx] += phase * increment;
-            features[idx + 1] += (1. - phase) * increment;
+            let idx = offset + 128 * pt_idx + 2 * (sq as usize);
+
+            features.push((idx, phase * increment));
+            features.push((idx + 1, (1. - phase) * increment));
         }
     }
 
@@ -85,12 +249,6 @@ fn extract(b: &Board) -> Vec<f32> {
 /// # Panics
 ///
 /// if `features` and `weights` are not the same length.
-fn evaluate(features: &[f32], weights: &[f32]) -> f32 {
-    assert_eq!(features.len(), weights.len());
-
-    features
-        .iter()
-        .zip(weights.iter())
-        .map(|(f_i, w_i)| f_i * w_i)
-        .sum()
+fn evaluate(features: &[(usize, f32)], weights: &[f32]) -> f32 {
+    features.iter().map(|&(idx, val)| val * weights[idx]).sum()
 }

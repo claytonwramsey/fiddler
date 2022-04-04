@@ -1,10 +1,11 @@
 use std::env;
 
-use crabchess::base::Game;
 use crabchess::base::perft::perft;
+use crabchess::base::Game;
 use crabchess::cli::CrabchessApp;
 use crabchess::engine::pst::pst_evaluate;
 use crabchess::engine::thread::MainSearch;
+use crabchess::tuning;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -19,7 +20,7 @@ fn main() {
                 } else {
                     println!("please specify a depth and a FEN");
                 }
-            },
+            }
             "cli" => {
                 // Run the CLI application.
                 let mut app = CrabchessApp::default();
@@ -34,13 +35,16 @@ fn main() {
                     pst_evaluate,
                 )
                 .unwrap();
-            
+
                 let mut e = MainSearch::new();
                 e.set_depth(9);
                 e.set_nhelpers(15);
-            
+
                 let r = e.evaluate(&g);
                 println!("{:?}", r);
+            }
+            "train" => {
+                tuning::main(&args).unwrap();
             }
             _ => {
                 println!("unrecognized mode of operation {:?}", args[0]);

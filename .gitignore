@@ -4,3 +4,4 @@ Cargo.lock
 perf.*
 *.svg
 stacks.folded
+*.db
