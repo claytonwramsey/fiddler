@@ -60,10 +60,12 @@ struct Slot {
 }
 
 impl Slot {
-    pub const EMPTY: Slot = Slot {
-        hash: AtomicU64::new(BAD_HASH),
-        data: AtomicU64::new(0),
-    };
+    fn empty() -> Slot {
+        Slot { 
+            hash: AtomicU64::new(BAD_HASH), 
+            data: AtomicU64::new(0)
+        }
+    }
 }
 
 impl TTable {
@@ -76,8 +78,8 @@ impl TTable {
 
         for _ in 0..capacity {
             table.entries.push(TTableEntry {
-                recent: Slot::EMPTY,
-                deepest: Slot::EMPTY,
+                recent: Slot::empty(),
+                deepest: Slot::empty(),
             });
         }
 
@@ -183,8 +185,8 @@ impl TTable {
             .entries
             .iter()
             .map(|_| TTableEntry {
-                recent: Slot::EMPTY,
-                deepest: Slot::EMPTY,
+                recent: Slot::empty(),
+                deepest: Slot::empty(),
             })
             .collect();
         self.occupancy.store(0, Ordering::Relaxed);

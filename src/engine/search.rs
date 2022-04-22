@@ -149,9 +149,6 @@ impl PVSearch {
 
         let mut moves_iter = MovePicker::new(*g.position(), stored_move, killer_move);
 
-        // the number of moves in this node which have been checked.
-        let mut num_moves_checked = 0;
-
         // perform one search to satisfy PVS
 
         // since no other moves were searched, there must be something left
@@ -195,8 +192,8 @@ impl PVSearch {
             return Ok((best_move, best_score));
         }
 
-        for (m, delta) in moves_iter {
-            let late_move = num_moves_checked > self.config.num_early_moves
+        for (idx, (m, delta)) in moves_iter.enumerate() {
+            let late_move = idx > self.config.num_early_moves
                 && !g.board().is_move_capture(m)
                 && m.promote_type().is_none()
                 && allow_reduction;
@@ -255,8 +252,6 @@ impl PVSearch {
                     break;
                 }
             }
-
-            num_moves_checked += 1;
         }
 
         if depth_so_far <= self.config.max_transposition_depth {

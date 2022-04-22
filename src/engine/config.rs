@@ -10,7 +10,7 @@ pub struct SearchConfig {
 
     /// The number of moves at each layer which will be searched to a full
     /// depth, as opposed to a lower-than-target depth.
-    pub num_early_moves: u8,
+    pub num_early_moves: usize,
 
     /// The number of nodes which have to be searched before it is worthwhile
     /// to update the search limit with this information.
