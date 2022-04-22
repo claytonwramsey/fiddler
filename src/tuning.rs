@@ -1,6 +1,6 @@
-use std::{path::Path, sync::Arc, time::Instant};
+use std::{env, path::Path, sync::Arc, time::Instant};
 
-use crate::{
+use fiddler::{
     base::{Board, Color, Piece, Square},
     engine::evaluate::phase_of,
 };
@@ -21,9 +21,10 @@ struct TrainingDatum {
 /// # Panics
 ///
 /// Panics if we are unable to locate the database file.
-pub fn main(args: &[String]) -> rusqlite::Result<()> {
+pub fn main() {
+    let args: Vec<String> = env::args().collect();
     // first two arguments are the program and the operating mode
-    let db = Connection::open(Path::new(&args[2..].join(" ")))?;
+    let db = Connection::open(Path::new(&args[2..].join(" "))).unwrap();
     let mut weights = vec![3., 3., 5., 9.];
     let mut rng = thread_rng();
     for _ in 4..FEATURE_DIM {
@@ -39,14 +40,15 @@ pub fn main(args: &[String]) -> rusqlite::Result<()> {
     // Middle vector: each element for one datum
     // Inner vector: each element for one piece-square pair
     let mut input_sets = vec![];
-    let mut statement = db.prepare("SELECT fen, eval FROM evaluations")?;
+    let mut statement = db.prepare("SELECT fen, eval FROM evaluations").unwrap();
     let data = statement
         .query_map([], |row| {
             Ok(TrainingDatum {
                 fen: row.get(0)?,
                 eval: row.get(1)?,
             })
-        })?
+        })
+        .unwrap()
         .map(|res| res.unwrap());
     for datum in data {
         input_sets.push((extract(&Board::from_fen(&datum.fen).unwrap()), datum.eval));
@@ -66,8 +68,6 @@ pub fn main(args: &[String]) -> rusqlite::Result<()> {
     }
 
     print_weights(&weights);
-
-    Ok(())
 }
 
 /// Perform one step of PST training, and update the weights to reflect this.
@@ -177,7 +177,7 @@ fn print_weights(weights: &[f32]) {
                 let eg_idx = mg_idx + 1;
                 let mg_val = (weights[mg_idx] * 100.) as i16;
                 let eg_val = (weights[eg_idx] * 100.) as i16;
-                print!("({}, {}), ", mg_val, eg_val);
+                print!("({mg_val}, {eg_val}), ");
             }
             println!("// rank {rank}");
         }

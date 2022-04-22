@@ -1,11 +1,10 @@
 use std::env;
 
-use crabchess::base::perft::perft;
-use crabchess::base::Game;
-use crabchess::cli::CrabchessApp;
-use crabchess::engine::pst::pst_evaluate;
-use crabchess::engine::thread::MainSearch;
-use crabchess::tuning;
+use fiddler::base::perft::perft;
+use fiddler::base::Game;
+use fiddler::cli::FiddlerApp;
+use fiddler::engine::pst::pst_evaluate;
+use fiddler::engine::thread::MainSearch;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -23,7 +22,7 @@ fn main() {
             }
             "cli" => {
                 // Run the CLI application.
-                let mut app = CrabchessApp::default();
+                let mut app = FiddlerApp::default();
                 if app.run().is_err() {
                     println!("app failed!");
                 }
@@ -42,9 +41,6 @@ fn main() {
 
                 let r = e.evaluate(&g);
                 println!("{:?}", r);
-            }
-            "train" => {
-                tuning::main(&args).unwrap();
             }
             _ => {
                 println!("unrecognized mode of operation {:?}", args[0]);

@@ -12,8 +12,8 @@ use std::io::BufRead;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-/// A text-based application for running CrabChess.
-pub struct CrabchessApp<'a> {
+/// A text-based application for running Fiddler.
+pub struct FiddlerApp<'a> {
     /// The currently-played game.
     game: Game,
 
@@ -94,7 +94,7 @@ type CommandResult = Result<(), String>;
 
 type ParseResult = Result<Command, String>;
 
-impl<'a> CrabchessApp<'a> {
+impl<'a> FiddlerApp<'a> {
     /// Run the command line application.
     /// Will continue running until the user specifies to quit.
     pub fn run(&mut self) -> std::io::Result<()> {
@@ -313,14 +313,14 @@ impl<'a> CrabchessApp<'a> {
     }
 }
 
-impl<'a> Default for CrabchessApp<'a> {
-    fn default() -> CrabchessApp<'a> {
+impl<'a> Default for FiddlerApp<'a> {
+    fn default() -> FiddlerApp<'a> {
         let arc_limit = {
             let mut limit = SearchLimit::new();
             limit.search_duration = Mutex::new(Some(Duration::from_secs(5)));
             Arc::new(limit)
         };
-        let mut app = CrabchessApp {
+        let mut app = FiddlerApp {
             game: Game::default(),
             engine: MainSearch::new(),
             input_stream: Box::new(io::stdin()),
@@ -341,14 +341,14 @@ mod tests {
     #[test]
     /// Test that the quit input yields a quit command.
     fn test_parse_quit() {
-        let app = CrabchessApp::default();
+        let app = FiddlerApp::default();
         assert_eq!(app.parse_command("/q"), Ok(Command::Quit));
     }
 
     #[test]
     /// Test that move input yields a move command.
     fn test_parse_move() {
-        let app = CrabchessApp::default();
+        let app = FiddlerApp::default();
 
         assert_eq!(
             app.parse_command("e4"),
@@ -362,7 +362,7 @@ mod tests {
     #[test]
     /// Test that load input yields a load fen command.
     fn test_parse_load() {
-        let app = CrabchessApp::default();
+        let app = FiddlerApp::default();
         assert_eq!(
             app.parse_command("/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"),
             Ok(Command::LoadFen(
@@ -374,7 +374,7 @@ mod tests {
     #[test]
     /// Test that executing a FEN load is successful.
     fn test_execute_load() {
-        let mut app = CrabchessApp::default();
+        let mut app = FiddlerApp::default();
         assert_eq!(
             app.execute_command(Command::LoadFen(
                 "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7".into()
@@ -394,7 +394,7 @@ mod tests {
     #[test]
     /// Test that we can parse an engine selection command.
     fn test_parse_engine() {
-        let app = CrabchessApp::default();
+        let app = FiddlerApp::default();
         assert_eq!(
             app.parse_command("/e m 8"),
             Ok(Command::EngineSelect("m 8".into()))
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     /// Test that a garbage input does not parse correctly.
     fn test_garbage_failure() {
-        let app = CrabchessApp::default();
+        let app = FiddlerApp::default();
         assert!(app.parse_command("garbage").is_err());
     }
 }

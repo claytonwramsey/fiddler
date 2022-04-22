@@ -191,10 +191,10 @@ mod tests {
     fn test_id() {
         assert_eq!(
             build_message(&UciMessage::Id {
-                name: Some("Crabchess".into()),
+                name: Some("Fiddler".into()),
                 author: Some("Clayton Ramsey".into()),
             }),
-            "id name Crabchess\nid author Clayton Ramsey\n"
+            "id name Fiddler\nid author Clayton Ramsey\n"
         )
     }
 

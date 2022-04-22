@@ -154,7 +154,7 @@ impl TTable {
     }
 
     /// Get the evaluation data stored by this table for a given key, if it
-    /// exists. Returns `None` if no such key exists.
+    /// exists. Returns `None` if no data corresponding to the key exists.
     pub fn get(&self, hash_key: u64) -> Option<EvalData> {
         let index = hash_key as usize % self.entries.len();
         let entry = unsafe {

@@ -149,10 +149,6 @@ impl PVSearch {
 
         let mut moves_iter = MovePicker::new(*g.position(), stored_move, killer_move);
 
-        // best score on the evaluation
-        let mut best_score;
-        // best move on the evaluation
-        let mut best_move;
         // the number of moves in this node which have been checked.
         let mut num_moves_checked = 0;
 
@@ -169,9 +165,11 @@ impl PVSearch {
                 ))
             }
         };
-        best_move = m;
+        // best move found so far
+        let mut best_move = m;
         g.make_move(m, delta);
-        best_score = -self
+        // best score so far
+        let mut best_score = -self
             .pvs(
                 depth_to_go - 1,
                 depth_so_far + 1,

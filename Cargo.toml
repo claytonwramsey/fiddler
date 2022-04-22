@@ -1,8 +1,11 @@
 [package]
-name = "crabchess"
+name = "fiddler"
 version = "0.1.0"
 edition = "2018"
 authors = ["Clayton Ramsey"]
+
+[features]
+tune = ["dep:rusqlite", "dep:libm"]
 
 [dependencies]
 # Random number generator for creating magic bitboards.
@@ -11,8 +14,12 @@ rand = "0.8.4"
 lazy_static = "1.4.0"
 
 # Used only for tuning
-libm = "0.1.4"
-rusqlite = { version = "0.27.0", features = ["bundled"] }
+libm = { version = "0.1.4", optional = true }
+rusqlite = { version = "0.27.0", features = ["bundled"], optional = true }
+
+[[bin]]
+name = "tune"
+required_features = ["tune"]
 
 [profile.test]
 debug = true
