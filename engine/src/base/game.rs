@@ -27,12 +27,10 @@ pub struct Game {
     /// half of the tuple is the number of moves since a pawn-move or capture
     /// was made, and should start at 0.
     history: Vec<(Position, u8)>,
-
     /// The list, in order, of all moves made in the game. They should all be
     /// valid moves. The length of `moves` should always be one less than the
     /// length of `history`.
     moves: Vec<Move>,
-
     /// Stores the number of times a position has been reached in the course of
     /// this game. It is used for three-move-rule draws. The keys are the
     /// Zobrist hashes of the boards previously visited.

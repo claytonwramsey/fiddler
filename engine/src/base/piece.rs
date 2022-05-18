@@ -17,6 +17,7 @@ impl Piece {
     /// Total number of piece types.
     pub const NUM_TYPES: usize = 6;
 
+    /// Array containing all piece types.
     pub const ALL_TYPES: [Piece; Piece::NUM_TYPES] = [
         Piece::Pawn,
         Piece::Knight,
@@ -26,6 +27,7 @@ impl Piece {
         Piece::King,
     ];
 
+    /// Array containing piece types which are not pawns.
     pub const NON_PAWN_TYPES: [Piece; Piece::NUM_TYPES - 1] = [
         Piece::Knight,
         Piece::Bishop,
@@ -34,6 +36,7 @@ impl Piece {
         Piece::King,
     ];
 
+    /// Array containing piece types which are not kings.
     pub const NON_KING_TYPES: [Piece; Piece::NUM_TYPES - 1] = [
         Piece::Pawn,
         Piece::Knight,
@@ -41,10 +44,6 @@ impl Piece {
         Piece::Rook,
         Piece::Queen,
     ];
-
-    pub const NUM_PROMOTE_TYPES: usize = 4;
-
-    pub const PROMOTE_TYPES: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
     /// Get the FEN code of this piece as an uppercase string.
     pub const fn code(self) -> &'static str {

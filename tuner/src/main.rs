@@ -11,8 +11,11 @@ use rusqlite::Connection;
 /// The dimension of the feature vector.
 const FEATURE_DIM: usize = 772;
 
+/// A datum of training data.
 struct TrainingDatum {
+    /// The string describing the FEN of the position.
     fen: String,
+    /// The evaluation of the position. 
     eval: f32,
 }
 

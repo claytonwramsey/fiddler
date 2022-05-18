@@ -15,7 +15,6 @@ const BAD_HASH: u64 = 0xDEADBEEF;
 pub struct TTable {
     /// List of all entries in the transposition table.
     entries: Vec<TTableEntry>,
-
     /// Number of occupied slots. Since each entry has two slots (for most
     /// recent and deepest), this can be at most double the length of `entries`.
     occupancy: AtomicUsize,
@@ -26,13 +25,10 @@ pub struct TTable {
 pub struct EvalData {
     /// The depth to which the position was evaluated.
     pub depth: i8,
-
     /// A lower bound on the evaluation of the position.
     pub lower_bound: Eval,
-
     /// An upper bound on the evaluation of the position.
     pub upper_bound: Eval,
-
     /// The critical move in the position. Will be `Move::BAD_MOVE` if the
     /// critical move is unknown.
     pub critical_move: Move,
@@ -43,7 +39,6 @@ pub struct EvalData {
 struct TTableEntry {
     /// The most recently entered data in this entry.
     pub recent: Slot,
-
     /// The data with the deepest evaluation ever requested in this entry.
     pub deepest: Slot,
 }
@@ -54,7 +49,6 @@ struct Slot {
     /// comparing a whole board. The hash has been xor'd with the data to allow
     /// for lockless access. Will be equal to `BAD_HASH` for empty entries.
     pub hash: AtomicU64,
-
     /// The corresponding data for this slot, including its age.
     pub data: AtomicU64,
 }

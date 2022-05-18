@@ -4,8 +4,11 @@ use std::ops::Not;
 
 #[repr(usize)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// An enum representing the possible colors that a piece or player can be.
 pub enum Color {
+    /// The white player, a.k.a. the first player to move in a game.
     White = 0,
+    /// The black player, a.k.a. the second player to move in a game.
     Black = 1,
 }
 

@@ -16,16 +16,12 @@ use std::time::Duration;
 pub struct FiddlerApp<'a> {
     /// The currently-played game.
     game: Game,
-
     /// The currently-running engine to play against.,
     engine: MainSearch,
-
     /// The input stream to receive messages from.
     input_stream: Box<dyn io::Read + 'a>,
-
     /// The output stream to send messages to.
     output_stream: Box<dyn io::Write + 'a>,
-
     /// The condition on which search will stop.
     limit: Arc<SearchLimit>,
 }
@@ -35,13 +31,10 @@ pub struct FiddlerApp<'a> {
 enum Command {
     /// Quit the currently-running application.
     Quit,
-
     /// Echo an error message to the output stream.
     EchoError(String),
-
     /// Select an engine to play against.
     EngineSelect(String),
-
     /// Play a move.
     PlayMove {
         /// The move to play.
@@ -49,23 +42,17 @@ enum Command {
         /// Whether the engine should make an immediate reply to the move.
         engine_reply: bool,
     },
-
     /// Load a FEN (Forsyth-Edwards Notation) string of a board.
     LoadFen(String),
-
     /// Undo the most recent moves.
     Undo(usize),
-
     /// List the available moves to the user.
     ListMoves,
-
     /// Request that the engine play the next move.
     EngineMove,
-
     /// Set the amount of time for which an engine can run. The number is the
     /// number of milliseconds on the timeout.
     SetTimeout(u64),
-
     /// Print out the history of the game currently being played.
     PrintHistory,
 }
@@ -202,12 +189,15 @@ impl<'a> FiddlerApp<'a> {
         result
     }
 
-    /// Parse a token for an algebraic move. Returns
+    /// Parse a token for an algebraic move. Returns `Ok` if it was able to 
+    /// correctly parse the move, or a string describing the error if it fails.
     fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, String> {
         let m_str = move_token.ok_or("no move token given")?;
         Ok(move_from_algebraic(m_str, self.game.position())?)
     }
 
+    /// Execute a CLI command. Returns a `CommandResult` describing the success 
+    /// or failure of the engine.
     fn execute_command(&mut self, c: Command) -> CommandResult {
         match c {
             Command::EchoError(s) => self.echo_error(&s),

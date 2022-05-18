@@ -16,27 +16,23 @@ use std::{
 pub struct Board {
     /// The squares ocupied by White and Black, respectively.
     sides: [Bitboard; 2],
-
     /// The squares occupied by (in order) pawns, knights, bishops, rooks,
     /// queens, and kings.
     pieces: [Bitboard; Piece::NUM_TYPES],
-
     /// The color of the player to move.
     pub player_to_move: Color,
-
     /// The square which can be moved to by a pawn in en passant. Will be
     /// `None` when a pawn has not moved two squares in the previous move.
     pub en_passant_square: Option<Square>,
-
     /// The rights of this piece for castling.
     pub castle_rights: CastleRights,
-
     /// A saved internal hash. If the board is valid, the this value must ALWAYS
     /// be equal to the output of `Board.get_fresh_hash()`.
     pub hash: u64,
 }
 
 impl Board {
+    
     /// A "bad" board value which can be used as a debug value.
     pub const BAD_BOARD: Board = Board {
         sides: [Bitboard::EMPTY; 2],
@@ -46,6 +42,7 @@ impl Board {
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 0,
     };
+
     /// Create an empty board with no pieces or castle rights.
     pub fn empty() -> Board {
         let mut board = Board {

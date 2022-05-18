@@ -22,6 +22,7 @@ pub struct Position {
 }
 
 impl Position {
+    /// An evaluation delta which causes no change.
     pub const NO_DELTA: Score = (Eval::DRAW, Eval::DRAW);
 
     /// Construct a position from a FEN.

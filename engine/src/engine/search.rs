@@ -18,24 +18,18 @@ use super::{SearchError, SearchResult};
 pub struct PVSearch {
     /// The transposition table.
     pub ttable: Arc<TTable>,
-
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
     killer_moves: Vec<Move>,
-
     /// The cumulative number of nodes evaluated in this evaluation event since
     /// the search limit was last updated.
     num_nodes_evaluated: u64,
-
     /// The cumulative number of transpositions.
     num_transpositions: u64,
-
     /// The configuration of this search.
     pub config: SearchConfig,
-
     /// The limit to this search.
     pub limit: Arc<SearchLimit>,
-
     /// Whether this search is the main search.
     is_main: bool,
 }

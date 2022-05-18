@@ -102,16 +102,13 @@ pub struct CheckInfo {
     /// The locations of pieces which are checking the king in the current
     /// position.
     pub checkers: Bitboard,
-
     /// The locations of pieces that are blocking would-be checkers from the
     /// opponent.
     pub king_blockers: [Bitboard; 2],
-
     #[allow(unused)]
     /// The locations of pieces which are pinning their corresponding blockers
     /// in `king_blockers`.
     pub pinners: [Bitboard; 2],
-
     #[allow(unused)]
     /// The squares which each piece could move to to check the opposing king.
     pub check_squares: [Bitboard; Piece::NUM_TYPES],

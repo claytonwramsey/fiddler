@@ -47,7 +47,7 @@ pub fn pst_evaluate(board: &Board) -> Score {
 ///
 /// # Panics
 ///
-/// if the move given is invalid
+/// `pst_delta` will panic if the given move is invalid.
 pub fn pst_delta(board: &Board, m: Move) -> Score {
     let from_sq = m.from_square();
     let to_sq = m.to_square();

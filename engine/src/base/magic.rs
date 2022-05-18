@@ -257,13 +257,10 @@ pub struct Magic {
     /// A mask which, when &ed with the occupancy bitboard, will give only the
     /// bits that matter when computing moves.
     pub mask: Bitboard,
-
     /// The magic number to multiply to hash the current board effectively.
     pub magic: Bitboard,
-
     /// A lookup vector of squares attacked.
     pub attacks: Vec<Bitboard>,
-
     /// The shift related to this square.
     pub shift: u8,
 }
