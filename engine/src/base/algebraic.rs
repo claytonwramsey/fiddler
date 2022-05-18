@@ -113,7 +113,7 @@ pub fn move_from_algebraic(s: &str, pos: &Position) -> Result<Move, &'static str
 mod tests {
     use super::*;
     use crate::base::square::*;
-    use crate::fens::*;
+
     #[test]
     /// Test that playing e4 can be successfully converted to its algebraic
     /// form.
@@ -127,7 +127,9 @@ mod tests {
     #[test]
     /// Test that a mating move is correctly displayed.
     fn test_mate() {
-        let pos = Position::from_fen(MATE_IN_1_FEN, Position::no_eval).unwrap();
+        // Rb8# is the winning move
+        let pos =
+            Position::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
         let m = Move::new(Square::B6, Square::B8, None);
 
         assert_eq!("Rb8#", algebraic_from_move(m, &pos));
@@ -136,7 +138,12 @@ mod tests {
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn test_algebraic_from_pawn_capture() {
-        let pos = Position::from_fen(PAWN_CAPTURE_FEN, Position::no_eval).unwrap();
+        // exf5 is legal here
+        let pos = Position::from_fen(
+            "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
+            Position::no_eval,
+        )
+        .unwrap();
         let m = Move::new(Square::E4, Square::F5, None);
         let moves = get_moves(&pos);
         for m in moves.iter() {
@@ -159,7 +166,11 @@ mod tests {
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn test_move_from_pawn_capture() {
-        let pos = Position::from_fen(PAWN_CAPTURE_FEN, Position::no_eval).unwrap();
+        let pos = Position::from_fen(
+            "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
+            Position::no_eval,
+        )
+        .unwrap();
         let m = Move::new(Square::E4, Square::F5, None);
         let s = "exf5";
 
@@ -169,7 +180,8 @@ mod tests {
     #[test]
     /// Test that promotions are displayed correctly.
     fn test_promotion() {
-        let pos = Position::from_fen(WHITE_READY_TO_PROMOTE_FEN, Position::no_eval).unwrap();
+        // f7 pawn can promote
+        let pos = Position::from_fen("8/5P2/2k5/4K3/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
         let m = Move::new(Square::F7, Square::F8, Some(Piece::Queen));
         let s = "f8=Q";
         assert_eq!(algebraic_from_move(m, &pos), s);

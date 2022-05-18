@@ -552,7 +552,6 @@ impl Default for Board {
 pub mod tests {
     use super::*;
     use crate::base::square::*;
-    use crate::fens;
 
     /// A board with the white king on A1 and the black king on H8.
     const TWO_KINGS_BOARD: Board = Board {
@@ -577,7 +576,7 @@ pub mod tests {
     #[test]
     /// Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
     fn test_load_two_kings_fen() {
-        let result = Board::from_fen(fens::TWO_KINGS_BOARD_FEN);
+        let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
         assert_eq!(result, Ok(TWO_KINGS_BOARD));
     }
 
@@ -599,15 +598,18 @@ pub mod tests {
     /// Test that a board with an en passant square can be loaded from a FEN
     /// correctly.
     fn test_load_en_passant() {
-        let b = Board::from_fen(fens::EN_PASSANT_READY_FEN).unwrap();
+        // exf6 is en passant here
+        let b = Board::from_fen("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
+            .unwrap();
         assert_eq!(b.en_passant_square, Some(Square::F6));
     }
 
     #[test]
     /// Test that we can capture en passant.
     fn test_en_passant() {
+        // exf6 is en passant here
         test_fen_helper(
-            fens::EN_PASSANT_READY_FEN,
+            "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
             Move::normal(Square::E5, Square::F6),
         );
     }
@@ -616,7 +618,7 @@ pub mod tests {
     /// Test that White can castle kingside.
     fn test_white_kingide_castle() {
         test_fen_helper(
-            fens::WHITE_KINGSIDE_CASTLE_READY_FEN,
+            "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             Move::normal(Square::E1, Square::G1),
         );
     }
@@ -624,8 +626,9 @@ pub mod tests {
     #[test]
     /// Test that White can promote their pawn to a queen
     fn test_white_promote_queen() {
+        // f7 pawn can promote
         test_fen_helper(
-            fens::WHITE_READY_TO_PROMOTE_FEN,
+            "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1",
             Move::promoting(Square::F7, Square::F8, Piece::Queen),
         );
     }
@@ -634,8 +637,11 @@ pub mod tests {
     /// Test that capturing a rook removes the right to castle with that rook.
     fn test_no_castle_after_capture() {
         let m = Move::new(Square::B2, Square::H8, None);
-
-        test_fen_helper(fens::ROOK_HANGING_FEN, m);
+        // capturing the rook on h8 prevents castle rights
+        test_fen_helper(
+            "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5",
+            m,
+        );
     }
 
     /// A helper function which will load a board from a FEN and then try

@@ -56,8 +56,8 @@ mod tests {
     }
 
     #[test]
-    /// Test the perft values for the 
-    /// [Kiwipete](https://www.chessprogramming.org/Perft_Results#Position_2) 
+    /// Test the perft values for the
+    /// [Kiwipete](https://www.chessprogramming.org/Perft_Results#Position_2)
     /// position.
     fn test_perft_kiwipete() {
         perft_assistant(
@@ -70,7 +70,7 @@ mod tests {
     fn test_perft_endgame() {
         // https://www.chessprogramming.org/Perft_Results#Position_3
         perft_assistant(
-            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ", 
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ",
             &[1, 14, 191, 2_812, 43_238, 674_624, 11_030_083, 178_633_661],
         );
     }

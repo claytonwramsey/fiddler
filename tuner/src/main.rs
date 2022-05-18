@@ -73,7 +73,7 @@ pub fn main() {
     print_weights(&weights);
 }
 
-/// The input feature set of a board. Each element is a (key, value) pair where 
+/// The input feature set of a board. Each element is a (key, value) pair where
 /// the key is the index of the value in the full feature vector.
 type BoardFeatures = Vec<(usize, f32)>;
 

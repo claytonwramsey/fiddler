@@ -492,7 +492,6 @@ pub mod tests {
     use crate::base::Move;
     use crate::base::Square;
     use crate::engine::pst::pst_evaluate;
-    use crate::fens::*;
 
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.
@@ -509,7 +508,11 @@ pub mod tests {
     /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
-        let g = Game::from_fen(FRIED_LIVER_FEN, pst_evaluate).unwrap();
+        let g = Game::from_fen(
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+            pst_evaluate,
+        )
+        .unwrap();
         let mut e = PVSearch::default();
         e.set_depth(10); // this prevents taking too long on searches
         let m = Move::normal(Square::D1, Square::F3);
@@ -535,20 +538,25 @@ pub mod tests {
     #[test]
     /// A test that the engine can find a mate in 1 move.
     fn test_mate_in_1() {
-        test_eval_helper(MATE_IN_1_FEN, Eval::mate_in(1), 2);
+        // Rb8# is mate in one
+        test_eval_helper("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Eval::mate_in(1), 2);
     }
 
     #[test]
     /// A test that shows the engine can find a mate in 4 plies, given enough
     /// depth.
     fn test_mate_in_4_ply() {
-        test_eval_helper(MATE_IN_4_FEN, Eval::mate_in(4), 5);
+        test_eval_helper("3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1", Eval::mate_in(4), 5);
     }
 
     #[test]
     /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
-    fn test_my_special_puzzle() {
-        test_eval_helper(MY_PUZZLE_FEN, Eval::mate_in(9), 9);
+    fn test_mate_in_9_ply() {
+        test_eval_helper(
+            "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
+            Eval::mate_in(9),
+            9,
+        );
     }
 
     /// A helper function which ensures that the evaluation of a position is

@@ -265,13 +265,16 @@ mod tests {
     use super::*;
     use crate::base::movegen::get_moves;
     use crate::base::Position;
-    use crate::fens::FRIED_LIVER_FEN;
 
     #[test]
     /// Test that adding deltas matches the same result as taking the PST value
     /// from scratch.
     fn test_pst_delta_equals_base_result() {
-        let pos = Position::from_fen(FRIED_LIVER_FEN, Position::no_eval).unwrap();
+        let pos = Position::from_fen(
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+            Position::no_eval,
+        )
+        .unwrap();
         let pst_original = pst_evaluate(&pos.board);
 
         for m in get_moves(&pos) {

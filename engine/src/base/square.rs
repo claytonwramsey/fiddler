@@ -159,7 +159,7 @@ impl Square {
         transmute(bb.trailing_zeros() as u8)
     }
 
-    /// Get the name of the file of this square. For instance, the square 
+    /// Get the name of the file of this square. For instance, the square
     /// representing A1 will have the name "a".
     pub fn file_name(&self) -> &str {
         match self.file() {
