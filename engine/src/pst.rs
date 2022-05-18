@@ -1,7 +1,7 @@
 //! A module containing the information for Piece-Square Tables (PSTs). A PST
 //! is given for both the early and endgame.
 
-use crate::base::{Board, Color, Eval, Move, Piece, Score, Square};
+use fiddler_base::{Board, Color, Eval, Move, Piece, Score, Square};
 
 /// A lookup table for piece values. The outer index is the type of the piece
 /// (in order of Pawn, Knight, Bishop, Rook, Queen, and King)
@@ -263,8 +263,8 @@ const ENDGAME_VALUE: Pst = expand_table([
 mod tests {
 
     use super::*;
-    use crate::base::movegen::get_moves;
-    use crate::base::Position;
+    use fiddler_base::movegen::get_moves;
+    use fiddler_base::Position;
 
     #[test]
     /// Test that adding deltas matches the same result as taking the PST value

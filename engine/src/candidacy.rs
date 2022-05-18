@@ -1,9 +1,9 @@
-use crate::base::Eval;
-use crate::base::Move;
-use crate::base::Piece;
-use crate::base::Position;
-use crate::base::Score;
-use crate::engine::greedy;
+use fiddler_base::Eval;
+use fiddler_base::Move;
+use fiddler_base::Piece;
+use fiddler_base::Position;
+use fiddler_base::Score;
+use crate::greedy;
 
 use std::cmp::max;
 

@@ -1,9 +1,9 @@
-use crate::base::algebraic::algebraic_from_move;
-use crate::base::Board;
-use crate::base::Color;
-use crate::base::Move;
-use crate::base::Piece;
-use crate::base::Square;
+use crate::algebraic::algebraic_from_move;
+use crate::Board;
+use crate::Color;
+use crate::Move;
+use crate::Piece;
+use crate::Square;
 
 use std::collections::HashMap;
 use std::default::Default;
@@ -237,9 +237,9 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::moves::Move;
-    use crate::base::Square;
-    use crate::base::{board, Eval};
+    use crate::moves::Move;
+    use crate::Square;
+    use crate::{board, Eval};
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board

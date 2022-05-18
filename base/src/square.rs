@@ -1,5 +1,5 @@
-use crate::base::Bitboard;
-use crate::base::Direction;
+use crate::Bitboard;
+use crate::Direction;
 
 use std::cmp::max;
 use std::convert::TryFrom;
@@ -117,7 +117,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::base::Square;
+    /// use fiddler_base::Square;
     /// let sq1 = Square::A1;
     /// let sq2 = sq1.opposite();
     /// assert_eq!(sq2, Square::A8);
@@ -244,7 +244,7 @@ impl TryFrom<u8> for Square {
 mod tests {
 
     use super::*;
-    use crate::base::Direction;
+    use crate::Direction;
 
     #[test]
     fn test_add_square_and_direction() {

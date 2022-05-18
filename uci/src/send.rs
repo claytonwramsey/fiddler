@@ -1,6 +1,6 @@
-use crate::base::Eval;
-use crate::uci::OptionType;
-use crate::uci::UciMessage;
+use fiddler_base::Eval;
+use crate::OptionType;
+use crate::UciMessage;
 
 use super::EngineInfo;
 
@@ -129,10 +129,10 @@ fn build_info(infos: &[EngineInfo]) -> String {
 mod tests {
     use super::*;
 
-    use crate::base::Eval;
-    use crate::base::Move;
-    use crate::base::Piece;
-    use crate::base::Square;
+    use fiddler_base::Eval;
+    use fiddler_base::Move;
+    use fiddler_base::Piece;
+    use fiddler_base::Square;
 
     use std::time::Duration;
 

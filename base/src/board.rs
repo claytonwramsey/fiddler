@@ -551,7 +551,7 @@ impl Default for Board {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::base::square::*;
+    use crate::square::*;
 
     /// A board with the white king on A1 and the black king on H8.
     const TWO_KINGS_BOARD: Board = Board {

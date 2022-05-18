@@ -1,5 +1,5 @@
-use crate::base::square::Square;
-use crate::base::Piece;
+use crate::square::Square;
+use crate::Piece;
 use std::{
     fmt::{Display, Formatter},
     mem::transmute,

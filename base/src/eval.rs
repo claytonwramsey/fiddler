@@ -18,7 +18,7 @@ use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 /// # Examples
 ///
 /// ```
-/// use fiddler_engine::base::Eval;
+/// use fiddler_base::Eval;
 /// let mate_eval = Eval::mate_in(3);
 /// let draw_eval = Eval::DRAW;
 /// assert!(mate_eval > draw_eval);
@@ -83,7 +83,7 @@ impl Eval {
     /// behavior.
     /// # Examples
     /// ```
-    /// use fiddler_engine::base::Eval;
+    /// use fiddler_base::Eval;
     /// let current_eval = Eval::mate_in(0);
     /// let previous_ply_eval = current_eval.step_back();
     /// assert_eq!(previous_ply_eval, Eval::mate_in(1));
@@ -110,7 +110,7 @@ impl Eval {
     /// Get the number of moves until a mated position, assuming perfect play.
     /// # Examples
     /// ```
-    /// use fiddler_engine::base::Eval;
+    /// use fiddler_base::Eval;
     /// let ev1 = Eval::pawns(2.5);
     /// let ev2 = Eval::mate_in(3);
     /// assert_eq!(ev1.moves_to_mate(), None);

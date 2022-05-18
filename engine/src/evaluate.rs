@@ -1,12 +1,12 @@
 use std::cmp::max;
 use std::cmp::min;
 
-use crate::base::Bitboard;
-use crate::base::Board;
-use crate::base::Color;
-use crate::base::Eval;
-use crate::base::Game;
-use crate::base::Piece;
+use fiddler_base::Bitboard;
+use fiddler_base::Board;
+use fiddler_base::Color;
+use fiddler_base::Eval;
+use fiddler_base::Game;
+use fiddler_base::Piece;
 
 use super::greedy::greedy_evaluate;
 use super::greedy::piece_value;

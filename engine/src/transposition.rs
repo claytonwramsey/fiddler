@@ -2,8 +2,8 @@ use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use crate::base::Eval;
-use crate::base::Move;
+use fiddler_base::Eval;
+use fiddler_base::Move;
 
 /// Convenient bad-key value which may help with debugging.
 const BAD_HASH: u64 = 0xDEADBEEF;
@@ -249,7 +249,7 @@ const fn pack(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::Board;
+    use fiddler_base::Board;
 
     #[test]
     fn test_not_already_in() {

@@ -1,6 +1,6 @@
-use crate::base::direction::Direction;
-use crate::base::Bitboard;
-use crate::base::Square;
+use crate::direction::Direction;
+use crate::Bitboard;
+use crate::Square;
 
 use rand::thread_rng;
 use rand::Rng;
@@ -551,7 +551,7 @@ fn random_sparse_bitboard() -> Bitboard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::Square;
+    use crate::Square;
 
     #[test]
     fn test_rook_mask() {

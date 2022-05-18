@@ -1,7 +1,7 @@
-use crate::base::{Bitboard, Eval, Score};
-use crate::base::{Game, Move};
-use crate::engine::evaluate::evaluate;
-use crate::engine::transposition::{EvalData, TTable};
+use fiddler_base::{Bitboard, Eval, Score};
+use fiddler_base::{Game, Move};
+use crate::evaluate::evaluate;
+use crate::transposition::{EvalData, TTable};
 
 use std::cmp::{max, min};
 use std::sync::Arc;
@@ -489,9 +489,9 @@ pub mod tests {
     use std::time::Instant;
 
     use super::*;
-    use crate::base::Move;
-    use crate::base::Square;
-    use crate::engine::pst::pst_evaluate;
+    use fiddler_base::Move;
+    use fiddler_base::Square;
+    use crate::pst::pst_evaluate;
 
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.

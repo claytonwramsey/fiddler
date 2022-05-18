@@ -1,6 +1,6 @@
-use crate::base::Color;
-use crate::base::Piece;
-use crate::base::Square;
+use crate::Color;
+use crate::Piece;
+use crate::Square;
 
 #[inline]
 /// Get the Zobrist key for a given key, type, and square.

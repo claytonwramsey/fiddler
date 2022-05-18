@@ -1,14 +1,15 @@
 [package]
-name="fiddler_tuner"
+name = "fiddler_base"
 version = "0.1.0"
 edition = "2018"
 authors = ["Clayton Ramsey"]
 
+[lib]
+
 [dependencies]
-fiddler_engine = {path = "../engine"}
-fiddler_base = {path = "../base"}
-libm = "0.1.4"
-rusqlite = "0.27.0"
-rand = "0.8.4"
+# Random number generator for creating magic bitboards.
+rand = "0.8.4" 
+# Handy macro, mostly used for movegen lookup tables.
+lazy_static = "1.4.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

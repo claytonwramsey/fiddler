@@ -1,11 +1,11 @@
-use crate::base::magic::MagicTable;
-use crate::base::moves::Move;
-use crate::base::Bitboard;
-use crate::base::Board;
-use crate::base::Color;
-use crate::base::Direction;
-use crate::base::Piece;
-use crate::base::Square;
+use crate::magic::MagicTable;
+use crate::moves::Move;
+use crate::Bitboard;
+use crate::Board;
+use crate::Color;
+use crate::Direction;
+use crate::Piece;
+use crate::Square;
 
 use lazy_static::lazy_static;
 use std::convert::TryFrom;

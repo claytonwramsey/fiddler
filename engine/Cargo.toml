@@ -4,20 +4,13 @@ version = "0.1.0"
 edition = "2018"
 authors = ["Clayton Ramsey"]
 
+[lib]
+
 [dependencies]
 # Random number generator for creating magic bitboards.
 rand = "0.8.4" 
 # Handy macro, mostly used for movegen lookup tables.
 lazy_static = "1.4.0"
-
-[profile.test]
-debug = true
-# must be highly optimized for speed, since searching and perft is done in tests
-opt-level = 3 
-
-[profile.release]
-opt-level = 3
-debug = true
-lto = true
+fiddler_base = {path = "../base"}
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

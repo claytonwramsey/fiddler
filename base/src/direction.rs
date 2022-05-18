@@ -1,4 +1,4 @@
-use crate::base::Square;
+use crate::Square;
 use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

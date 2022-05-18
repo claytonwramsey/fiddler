@@ -1,9 +1,7 @@
 use std::{env, path::Path, sync::Arc, time::Instant};
 
-use fiddler_engine::{
-    base::{Board, Color, Piece, Square},
-    engine::evaluate::phase_of,
-};
+use fiddler_base::{Board, Color, Piece, Square};
+use fiddler_engine::evaluate::phase_of;
 use libm::expf;
 use rand::{thread_rng, Rng};
 use rusqlite::Connection;

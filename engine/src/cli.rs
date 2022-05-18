@@ -1,10 +1,10 @@
-use crate::base::algebraic::{algebraic_from_move, move_from_algebraic};
-use crate::base::movegen::get_moves;
-use crate::base::Game;
-use crate::base::Move;
-use crate::engine::limit::SearchLimit;
-use crate::engine::pst::{pst_delta, pst_evaluate};
-use crate::engine::thread::MainSearch;
+use fiddler_base::algebraic::{algebraic_from_move, move_from_algebraic};
+use fiddler_base::movegen::get_moves;
+use fiddler_base::Game;
+use fiddler_base::Move;
+use crate::limit::SearchLimit;
+use crate::pst::{pst_delta, pst_evaluate};
+use crate::thread::MainSearch;
 
 use std::fmt;
 use std::io;
@@ -326,7 +326,7 @@ impl<'a> Default for FiddlerApp<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::Square;
+    use fiddler_base::Square;
 
     #[test]
     /// Test that the quit input yields a quit command.

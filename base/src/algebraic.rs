@@ -112,7 +112,7 @@ pub fn move_from_algebraic(s: &str, pos: &Position) -> Result<Move, &'static str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::square::*;
+    use crate::square::*;
 
     #[test]
     /// Test that playing e4 can be successfully converted to its algebraic

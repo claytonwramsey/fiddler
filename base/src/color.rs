@@ -1,5 +1,5 @@
-use crate::base::Bitboard;
-use crate::base::Direction;
+use crate::Bitboard;
+use crate::Direction;
 use std::ops::Not;
 
 #[repr(usize)]

@@ -6,7 +6,7 @@ pub mod algebraic;
 /// squares on the board as a single 64-bit integer, which allows for O(1) set
 /// operations.
 mod bitboard;
-pub use crate::base::bitboard::Bitboard;
+pub use crate::bitboard::Bitboard;
 
 /// A module containing all the functionality of a board. A board contains all
 /// the necessary information to play a move in "the moment," but is memoryless:

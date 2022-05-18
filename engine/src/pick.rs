@@ -1,4 +1,4 @@
-use crate::base::{
+use fiddler_base::{
     movegen::{get_moves, is_legal},
     Eval, Move, Position, Score,
 };

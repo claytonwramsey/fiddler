@@ -1,11 +1,11 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::base::Eval;
-use crate::base::Move;
+use fiddler_base::Eval;
+use fiddler_base::Move;
 
 mod send;
-pub use crate::uci::send::*;
+pub use crate::send::*;
 
 pub mod parse;
 

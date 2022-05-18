@@ -4,10 +4,8 @@ use std::{
     time::Instant,
 };
 
-use crate::{
-    base::Game,
-    engine::{branch_factor, search::PVSearch, SearchError, SearchResult},
-};
+use fiddler_base::Game;
+use crate::{branch_factor, search::PVSearch, SearchError, SearchResult};
 
 use super::{config::SearchConfig, limit::SearchLimit, transposition::TTable};
 
