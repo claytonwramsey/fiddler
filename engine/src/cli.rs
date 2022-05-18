@@ -189,14 +189,14 @@ impl<'a> FiddlerApp<'a> {
         result
     }
 
-    /// Parse a token for an algebraic move. Returns `Ok` if it was able to 
+    /// Parse a token for an algebraic move. Returns `Ok` if it was able to
     /// correctly parse the move, or a string describing the error if it fails.
     fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, String> {
         let m_str = move_token.ok_or("no move token given")?;
         Ok(move_from_algebraic(m_str, self.game.position())?)
     }
 
-    /// Execute a CLI command. Returns a `CommandResult` describing the success 
+    /// Execute a CLI command. Returns a `CommandResult` describing the success
     /// or failure of the engine.
     fn execute_command(&mut self, c: Command) -> CommandResult {
         match c {

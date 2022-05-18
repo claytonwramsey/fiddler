@@ -15,7 +15,7 @@ const FEATURE_DIM: usize = 772;
 struct TrainingDatum {
     /// The string describing the FEN of the position.
     fen: String,
-    /// The evaluation of the position. 
+    /// The evaluation of the position.
     eval: f32,
 }
 

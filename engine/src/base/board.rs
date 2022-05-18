@@ -32,7 +32,6 @@ pub struct Board {
 }
 
 impl Board {
-    
     /// A "bad" board value which can be used as a debug value.
     pub const BAD_BOARD: Board = Board {
         sides: [Bitboard::EMPTY; 2],
