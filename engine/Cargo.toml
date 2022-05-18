@@ -3,6 +3,7 @@ name = "fiddler_engine"
 version = "0.1.0"
 edition = "2018"
 authors = ["Clayton Ramsey"]
+default-run = "fiddler_engine"
 
 [lib]
 
