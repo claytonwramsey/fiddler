@@ -133,7 +133,7 @@ impl CheckInfo {
         let (blockers_black, pinners_white) =
             CheckInfo::analyze_pins(b, b[Color::White], black_king_sq);
 
-        // TODO this ignores checks by retreating the rook?
+        // we assume that we were not in check before
         let bishop_check_sqs = MAGIC.bishop_attacks(b.occupancy(), king_sq);
         let rook_check_sqs = MAGIC.rook_attacks(b.occupancy(), king_sq);
 
@@ -275,8 +275,15 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                     let checker_sq = Square::try_from(pos.check_info.checkers).unwrap();
                     let player_idx = pos.board.player_to_move as usize;
                     let king_idx = pos.king_sqs[player_idx] as usize;
-                    let targets =
+                    let mut targets =
                         BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
+
+                    if let Some(ep_sq) = pos.board.en_passant_square {
+                        if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
+                            // allow en passants that let us escape check
+                            targets |= Bitboard::from(ep_sq);
+                        }
+                    }
 
                     if !targets.contains(to_sq) {
                         return false;
@@ -537,8 +544,10 @@ fn pseudolegal_evasions(pos: &Position, moves: &mut Vec<Move>) {
         let mut pawn_targets = target_sqs;
         if let Some(ep_sq) = b.en_passant_square {
             // can en passant save us from check?
-            let ep_target = Bitboard::from(ep_sq - player.pawn_direction());
-            pawn_targets |= ep_target & pos.check_info.checkers;
+            let ep_attacker_sq = ep_sq - player.pawn_direction();
+            if pos.check_info.checkers.contains(ep_attacker_sq) {
+                pawn_targets |= Bitboard::from(ep_sq);
+            }
         }
 
         pawn_assistant(b, player, moves, pawn_targets);
@@ -1105,6 +1114,20 @@ mod tests {
         assert!(get_moves(&pos).contains(&m));
         assert!(get_loud_moves(&pos).contains(&m));
         assert!(is_legal(m, &pos));
+    }
+
+    #[test]
+    /// Test that a player can en passant out of check if it results in a 
+    /// checking pawn being captured.
+    fn test_en_passant_out_of_check() {
+        // bxc6 should be legal here
+        let pos = Position::from_fen("8/8/8/1Ppp3r/1KR2p1k/8/4P1P1/8 w - c6 0 3", Position::no_eval).unwrap();
+
+        let m = Move::normal(Square::B5, Square::C6);
+
+        assert!(get_moves(&pos).contains(&m));
+        assert!(is_legal(m, &pos));
+        assert!(has_moves(&pos));
     }
 
     #[test]

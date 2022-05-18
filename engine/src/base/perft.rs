@@ -9,7 +9,7 @@ use super::{movegen::get_moves, Position};
 pub fn perft(fen: &str, depth: u8) -> u64 {
     let pos = Position::from_fen(fen, Position::no_eval).unwrap();
     let tic = Instant::now();
-    let num_nodes = perft_search(&pos, depth);
+    let num_nodes = perft_search(&pos, depth, true);
     let toc = Instant::now();
     let time = toc - tic;
     let speed = (num_nodes as f64) / time.as_secs_f64();
@@ -22,7 +22,7 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
 }
 
 /// The core search algorithm for perft.
-fn perft_search(pos: &Position, depth: u8) -> u64 {
+fn perft_search(pos: &Position, depth: u8, divide: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -32,7 +32,11 @@ fn perft_search(pos: &Position, depth: u8) -> u64 {
     for m in moves {
         pcopy = *pos;
         pcopy.make_move(m, Position::NO_DELTA);
-        total += perft_search(&pcopy, depth - 1);
+        let perft_count = perft_search(&pcopy, depth - 1, false);
+        if divide {
+            println!("{m}: {perft_count}");
+        }
+        total += perft_count;
     }
 
     total
@@ -41,17 +45,20 @@ fn perft_search(pos: &Position, depth: u8) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fens::BOARD_START_FEN;
 
     #[test]
+    /// Test the perft values for the board starting position.
     fn test_perft_start_position() {
         perft_assistant(
-            BOARD_START_FEN,
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             &[1, 20, 400, 8_902, 197_281, 4_865_609, 119_060_324],
         );
     }
 
     #[test]
+    /// Test the perft values for the 
+    /// [Kiwipete](https://www.chessprogramming.org/Perft_Results#Position_2) 
+    /// position.
     fn test_perft_kiwipete() {
         perft_assistant(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
@@ -60,6 +67,17 @@ mod tests {
     }
 
     #[test]
+    fn test_perft_endgame() {
+        // https://www.chessprogramming.org/Perft_Results#Position_3
+        perft_assistant(
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ", 
+            &[1, 14, 191, 2_812, 43_238, 674_624, 11_030_083, 178_633_661],
+        );
+    }
+
+    #[test]
+    /// Test the perft values for an unbalanced position. Uses results from
+    /// [the CPW wiki](https://www.chessprogramming.org/Perft_Results#Position_4).
     fn test_perft_unbalanced() {
         perft_assistant(
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
@@ -69,9 +87,19 @@ mod tests {
 
     #[test]
     fn test_perft_edwards() {
+        // https://www.chessprogramming.org/Perft_Results#Position_5
         perft_assistant(
             "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
             &[1, 44, 1_486, 62_379, 2_103_487, 89_941_194],
+        );
+    }
+
+    #[test]
+    fn test_perft_edwards2() {
+        // https://www.chessprogramming.org/Perft_Results#Position_6
+        perft_assistant(
+            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            &[1, 46, 2_079, 89_890, 3_894_594, 164_075_551],
         );
     }
 

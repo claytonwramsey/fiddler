@@ -585,7 +585,7 @@ pub mod tests {
     /// Test that the start position of a normal chess game can be loaded from
     /// its FEN.
     fn test_start_fen() {
-        let result = Board::from_fen(fens::BOARD_START_FEN);
+        let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         assert_eq!(result, Ok(Board::default()));
     }
 
