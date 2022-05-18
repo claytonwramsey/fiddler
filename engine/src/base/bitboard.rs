@@ -33,8 +33,8 @@ impl Bitboard {
     /// Determine whether a square of a bitboard is occupied.
     /// # Examples
     /// ```
-    /// # use fiddler::base::Bitboard;
-    /// # use fiddler::base::Square;
+    /// # use fiddler_engine::base::Bitboard;
+    /// # use fiddler_engine::base::Square;
     /// assert!(Bitboard::new(1).contains(Square::A1));
     /// assert!(!(Bitboard::new(2).contains(Square::A1)));
     /// ```
@@ -66,8 +66,8 @@ impl BitAnd for Bitboard {
     /// the right-hand side.
     /// # Examples
     /// ```
-    /// # use fiddler::base::Square;
-    /// # use fiddler::base::Bitboard;
+    /// # use fiddler_engine::base::Square;
+    /// # use fiddler_engine::base::Bitboard;
     /// let bb1 = Bitboard::new(7); // {A1, B1, C1}
     /// let bb2 = Bitboard::new(14); // {B1, C1, D1}
     /// let intersection = bb1 & bb2; // {B1, C1}

@@ -1,6 +1,6 @@
 use std::{env, path::Path, sync::Arc, time::Instant};
 
-use fiddler::{
+use fiddler_engine::{
     base::{Board, Color, Piece, Square},
     engine::evaluate::phase_of,
 };

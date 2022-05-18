@@ -1,35 +1,6 @@
-[package]
-name = "fiddler"
-version = "0.1.0"
-edition = "2018"
-authors = ["Clayton Ramsey"]
+[workspace]
 
-[features]
-tune = ["dep:rusqlite", "dep:libm"]
-
-[dependencies]
-# Random number generator for creating magic bitboards.
-rand = "0.8.4" 
-# Handy macro, mostly used for movegen lookup tables.
-lazy_static = "1.4.0"
-
-# Used only for tuning
-libm = { version = "0.1.4", optional = true }
-rusqlite = { version = "0.27.0", features = ["bundled"], optional = true }
-
-[[bin]]
-name = "tune"
-# feature requirement currently commented out, but may rework this later
-# required_features = ["tune"]
-
-[profile.test]
-debug = true
-# must be highly optimized for speed, since searching and perft is done in tests
-opt-level = 3 
-
-[profile.release]
-opt-level = 3
-debug = true
-lto = true
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "engine",
+    "tuner",
+]

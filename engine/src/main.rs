@@ -1,10 +1,10 @@
 use std::env;
 
-use fiddler::base::perft::perft;
-use fiddler::base::Game;
-use fiddler::cli::FiddlerApp;
-use fiddler::engine::pst::pst_evaluate;
-use fiddler::engine::thread::MainSearch;
+use fiddler_engine::base::perft::perft;
+use fiddler_engine::base::Game;
+use fiddler_engine::cli::FiddlerApp;
+use fiddler_engine::engine::pst::pst_evaluate;
+use fiddler_engine::engine::thread::MainSearch;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

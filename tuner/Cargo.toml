@@ -1,0 +1,23 @@
+[package]
+name="fiddler_tuner"
+version = "0.1.0"
+edition = "2018"
+authors = ["Clayton Ramsey"]
+
+[dependencies]
+fiddler_engine = {path = "../engine"}
+libm = "0.1.4"
+rusqlite = "0.27.0"
+rand = "0.8.4"
+
+[profile.test]
+debug = true
+# must be highly optimized for speed, since searching and perft is done in tests
+opt-level = 3 
+
+[profile.release]
+opt-level = 3
+debug = true
+lto = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

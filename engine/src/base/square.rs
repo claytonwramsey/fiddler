@@ -118,7 +118,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::Square;
+    /// use fiddler_engine::base::Square;
     /// let sq1 = Square::A1;
     /// let sq2 = sq1.opposite();
     /// assert_eq!(sq2, Square::A8);
