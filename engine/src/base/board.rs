@@ -578,15 +578,7 @@ pub mod tests {
     /// Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
     fn test_load_two_kings_fen() {
         let result = Board::from_fen(fens::TWO_KINGS_BOARD_FEN);
-        match result {
-            Ok(b) => {
-                assert_eq!(b, TWO_KINGS_BOARD);
-            }
-            Err(e) => {
-                println!("{e}");
-                assert!(false);
-            }
-        };
+        assert_eq!(result, Ok(TWO_KINGS_BOARD));
     }
 
     #[test]
@@ -594,15 +586,7 @@ pub mod tests {
     /// its FEN.
     fn test_start_fen() {
         let result = Board::from_fen(fens::BOARD_START_FEN);
-        match result {
-            Ok(b) => {
-                assert_eq!(b, Board::default());
-            }
-            Err(e) => {
-                println!("{}", e);
-                assert!(false);
-            }
-        };
+        assert_eq!(result, Ok(Board::default()));
     }
 
     #[test]

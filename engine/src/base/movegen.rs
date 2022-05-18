@@ -1130,7 +1130,7 @@ mod tests {
 
         for loud_move in loud_moves.iter() {
             println!("{loud_move}");
-            assert!(moves.contains(&loud_move));
+            assert!(moves.contains(loud_move));
             assert!(pos.board.is_move_capture(*loud_move));
         }
 

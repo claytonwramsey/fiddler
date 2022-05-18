@@ -1,4 +1,3 @@
-use crate::base::constants::{FILE_NAMES, RANK_NAMES};
 use crate::base::Bitboard;
 use crate::base::Direction;
 
@@ -159,6 +158,23 @@ impl Square {
     pub unsafe fn unsafe_from(bb: Bitboard) -> Square {
         transmute(bb.trailing_zeros() as u8)
     }
+
+    /// Get the name of the file of this square. For instance, the square 
+    /// representing A1 will have the name "a".
+    pub fn file_name(&self) -> &str {
+        match self.file() {
+            0 => "a",
+            1 => "b",
+            2 => "c",
+            3 => "d",
+            4 => "e",
+            5 => "f",
+            6 => "g",
+            7 => "h",
+            // files are only from 0..8
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl Add<Direction> for Square {
@@ -180,7 +196,7 @@ impl AddAssign<Direction> for Square {
 impl Display for Square {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", FILE_NAMES[self.file()], RANK_NAMES[self.rank()])
+        write!(f, "{}{}", self.file_name(), self.rank() + 1)
     }
 }
 

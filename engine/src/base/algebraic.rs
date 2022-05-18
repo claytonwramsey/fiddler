@@ -1,5 +1,4 @@
 use super::{
-    constants,
     movegen::{get_moves, is_square_attacked_by},
     Move, Piece, Position,
 };
@@ -62,10 +61,10 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
         if is_unclear {
             if !is_unclear_rank {
                 //we can specify the mover by its file
-                s += constants::FILE_NAMES[from_sq.file()];
+                s += from_sq.file_name();
             } else if !is_unclear_file {
                 //we can specify the mover by its rank
-                s += constants::RANK_NAMES[from_sq.rank()];
+                s = format!("{}{}", s, from_sq.rank());
             } else {
                 //we need the complete square to specify the location of the mover
                 s += &from_sq.to_string();

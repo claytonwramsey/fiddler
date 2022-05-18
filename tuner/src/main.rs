@@ -73,6 +73,10 @@ pub fn main() {
     print_weights(&weights);
 }
 
+/// The input feature set of a board. Each element is a (key, value) pair where 
+/// the key is the index of the value in the full feature vector.
+type BoardFeatures = Vec<(usize, f32)>;
+
 /// Perform one step of PST training, and update the weights to reflect this.
 /// `inputs` is a vector containing the input vector and the expected
 /// evaluation. `weights` is the weight vector to train on. `sigmoid_scale` is
@@ -81,7 +85,7 @@ pub fn main() {
 /// `inputs` must be the same length as `weights`. Returns the MSE of the
 /// current epoch.
 fn train_step(
-    inputs: Arc<Vec<(Vec<(usize, f32)>, f32)>>,
+    inputs: Arc<Vec<(BoardFeatures, f32)>>,
     weights: Arc<Vec<f32>>,
     learn_rate: f32,
     sigmoid_scale: f32,
@@ -100,7 +104,7 @@ fn train_step(
             train_thread(&inclone[start..start + chunk_size], &wclone, sigmoid_scale)
         }));
     }
-    let mut new_weights: Vec<f32> = weights.to_vec().clone();
+    let mut new_weights: Vec<f32> = weights.to_vec();
     let mut sum_se = 0.;
     for grad_handle in grads {
         let (sub_grad, se) = grad_handle.join().unwrap();
@@ -133,7 +137,7 @@ fn train_thread(
     for datum in input {
         let features = &datum.0;
         let expected = zero_sigmoid(datum.1, sigmoid_scale);
-        let eval = zero_sigmoid(evaluate(&features, weights), sigmoid_scale);
+        let eval = zero_sigmoid(evaluate(features, weights), sigmoid_scale);
         let err = eval - expected;
         sum_se += err * err;
         let coeff = err * sigmoid_scale * eval * (1. - eval);
