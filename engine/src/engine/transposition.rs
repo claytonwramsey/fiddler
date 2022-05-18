@@ -61,9 +61,9 @@ struct Slot {
 
 impl Slot {
     fn empty() -> Slot {
-        Slot { 
-            hash: AtomicU64::new(BAD_HASH), 
-            data: AtomicU64::new(0)
+        Slot {
+            hash: AtomicU64::new(BAD_HASH),
+            data: AtomicU64::new(0),
         }
     }
 }
