@@ -23,9 +23,6 @@ pub use castling::CastleRights;
 mod color;
 pub use color::Color;
 
-/// The set of common constants used in chess.
-pub mod constants;
-
 /// A module for managing directions, which represent the differences between
 /// two squares.
 pub mod direction;
