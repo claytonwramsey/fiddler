@@ -1,13 +1,7 @@
-use fiddler_base::Eval;
-use fiddler_base::Move;
-use fiddler_base::Piece;
-use fiddler_base::Position;
-use fiddler_base::Score;
-use crate::greedy;
+use super::{evaluate::blend_eval, greedy};
+use fiddler_base::{Eval, Move, Piece, Position, Score};
 
 use std::cmp::max;
-
-use super::evaluate::blend_eval;
 
 /// Create an estimate for how good a move is. `delta` is the PST difference
 /// created by this move.

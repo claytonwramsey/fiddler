@@ -1,5 +1,7 @@
-use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::{
+    fmt::{Display, Formatter},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 /// A wrapper for the evaluation of a position.

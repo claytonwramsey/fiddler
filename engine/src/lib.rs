@@ -2,8 +2,8 @@ use std::sync::PoisonError;
 
 use fiddler_base::{Eval, Move};
 
-pub mod cli;
 pub mod candidacy;
+pub mod cli;
 pub mod config;
 pub mod evaluate;
 pub mod greedy;

@@ -1,17 +1,18 @@
-use fiddler_base::{Bitboard, Eval, Score};
-use fiddler_base::{Game, Move};
-use crate::evaluate::evaluate;
-use crate::transposition::{EvalData, TTable};
+use fiddler_base::{Bitboard, Eval, Game, Move, Score};
+
+use super::{
+    candidacy::candidacy,
+    config::SearchConfig,
+    evaluate::evaluate,
+    limit::SearchLimit,
+    pick::MovePicker,
+    pst::pst_delta,
+    transposition::{EvalData, TTable},
+    SearchError, SearchResult,
+};
 
 use std::cmp::{max, min};
 use std::sync::Arc;
-
-use super::candidacy::candidacy;
-use super::config::SearchConfig;
-use super::limit::SearchLimit;
-use super::pick::MovePicker;
-use super::pst::pst_delta;
-use super::{SearchError, SearchResult};
 
 #[derive(Clone, Debug)]
 /// A chess engine which uses Principal Variation Search.
@@ -489,9 +490,9 @@ pub mod tests {
     use std::time::Instant;
 
     use super::*;
+    use crate::pst::pst_evaluate;
     use fiddler_base::Move;
     use fiddler_base::Square;
-    use crate::pst::pst_evaluate;
 
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.

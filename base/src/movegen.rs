@@ -1,16 +1,9 @@
-use crate::magic::MagicTable;
-use crate::moves::Move;
-use crate::Bitboard;
-use crate::Board;
-use crate::Color;
-use crate::Direction;
-use crate::Piece;
-use crate::Square;
+use super::{
+    magic::MagicTable, moves::Move, Bitboard, Board, Color, Direction, Piece, Position, Square,
+};
 
 use lazy_static::lazy_static;
 use std::convert::TryFrom;
-
-use super::Position;
 
 // Construct common lookup tables for use in move generation.
 lazy_static! {

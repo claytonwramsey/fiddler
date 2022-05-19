@@ -155,7 +155,7 @@ fn train_thread(
 #[inline]
 /// Compute the  sigmoid function of a variable. `beta` is the
 /// horizontal scaling of the sigmoid.
-/// 
+///
 /// The mathematical function is given by the LaTeX expression
 /// `f(x) = \frac{1}{1 - \exp (- \beta x)}`.
 fn sigmoid(x: f32, beta: f32) -> f32 {

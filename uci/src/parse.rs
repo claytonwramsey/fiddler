@@ -1,7 +1,6 @@
 use fiddler_base::Move;
-use crate::UciCommand;
 
-use super::GoOption;
+use super::{GoOption, UciCommand};
 
 /// The result type for processing a line from a UCI command. According to the
 /// UCI protocol, these errors should generally be logged or ignored.

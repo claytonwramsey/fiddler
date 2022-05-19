@@ -1,7 +1,4 @@
-use fiddler_base::Board;
-use fiddler_base::Color;
-use fiddler_base::Eval;
-use fiddler_base::Piece;
+use fiddler_base::{Board, Color, Eval, Piece};
 
 /// Get the value of one piece by its type.
 pub fn piece_value(pt: Piece) -> Eval {

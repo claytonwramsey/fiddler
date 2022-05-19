@@ -1,13 +1,11 @@
-use crate::direction::Direction;
-use crate::Bitboard;
-use crate::Square;
+use super::{Bitboard, Direction, Square};
 
-use rand::thread_rng;
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
-use std::convert::TryFrom;
-use std::mem::{transmute, MaybeUninit};
-use std::vec::Vec;
+use std::{
+    convert::TryFrom,
+    mem::{transmute, MaybeUninit},
+};
 
 /// The number of times to try generating magics.
 const NUM_MAGIC_TRIES: u64 = 1_000_000;

@@ -1,8 +1,5 @@
+use super::{EngineInfo, OptionType, UciMessage};
 use fiddler_base::Eval;
-use crate::OptionType;
-use crate::UciMessage;
-
-use super::EngineInfo;
 
 /// Construct a UCI message string from the engine to the GUI.
 /// The message may be split into multiple lines (such as when handling

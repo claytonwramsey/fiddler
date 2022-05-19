@@ -1,13 +1,12 @@
-use std::fmt;
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
-use fiddler_base::Eval;
-use fiddler_base::Move;
+use fiddler_base::{Eval, Move};
 
 mod send;
-pub use crate::send::*;
+pub use crate::send::build_message;
 
-pub mod parse;
+mod parse;
+pub use parse::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 /// An enum representing the set of all commands that the GUI can send to the

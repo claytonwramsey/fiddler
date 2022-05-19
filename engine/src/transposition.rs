@@ -1,9 +1,6 @@
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use fiddler_base::Eval;
-use fiddler_base::Move;
+use fiddler_base::{Eval, Move};
 
 /// Convenient bad-key value which may help with debugging.
 const BAD_HASH: u64 = 0xDEADBEEF;

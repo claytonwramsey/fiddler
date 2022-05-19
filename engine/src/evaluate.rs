@@ -1,15 +1,8 @@
-use std::cmp::max;
-use std::cmp::min;
+use std::cmp::{max, min};
 
-use fiddler_base::Bitboard;
-use fiddler_base::Board;
-use fiddler_base::Color;
-use fiddler_base::Eval;
-use fiddler_base::Game;
-use fiddler_base::Piece;
+use fiddler_base::{Bitboard, Board, Color, Eval, Game, Piece};
 
-use super::greedy::greedy_evaluate;
-use super::greedy::piece_value;
+use super::greedy::{greedy_evaluate, piece_value};
 
 /// The value of having an opponent's pawn doubled.
 const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(10);

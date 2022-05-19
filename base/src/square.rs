@@ -1,11 +1,12 @@
-use crate::Bitboard;
-use crate::Direction;
+use super::{Bitboard, Direction};
 
-use std::cmp::max;
-use std::convert::TryFrom;
-use std::fmt::{Display, Formatter};
-use std::mem::transmute;
-use std::ops::{Add, AddAssign, Sub};
+use std::{
+    cmp::max,
+    convert::TryFrom,
+    fmt::{Display, Formatter},
+    mem::transmute,
+    ops::{Add, AddAssign, Sub},
+};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

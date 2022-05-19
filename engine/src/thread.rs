@@ -5,9 +5,11 @@ use std::{
 };
 
 use fiddler_base::Game;
-use crate::{branch_factor, search::PVSearch, SearchError, SearchResult};
 
-use super::{config::SearchConfig, limit::SearchLimit, transposition::TTable};
+use super::{
+    branch_factor, config::SearchConfig, limit::SearchLimit, search::PVSearch,
+    transposition::TTable, SearchError, SearchResult,
+};
 
 #[derive(Clone, Debug)]
 /// The primary search thread for an engine.

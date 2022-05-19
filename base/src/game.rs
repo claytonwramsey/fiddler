@@ -1,21 +1,15 @@
-use crate::algebraic::algebraic_from_move;
-use crate::Board;
-use crate::Color;
-use crate::Move;
-use crate::Piece;
-use crate::Square;
+use super::{
+    algebraic::algebraic_from_move,
+    movegen::{get_loud_moves, get_moves, has_moves, is_square_attacked_by},
+    position::PSTEvaluator,
+    Board, Color, Move, Piece, Position, Score, Square,
+};
 
-use std::collections::HashMap;
-use std::default::Default;
-use std::fmt::{Display, Formatter};
-
-use super::movegen::get_loud_moves;
-use super::movegen::get_moves;
-use super::movegen::has_moves;
-use super::movegen::is_square_attacked_by;
-use super::position::PSTEvaluator;
-use super::Position;
-use super::Score;
+use std::{
+    collections::HashMap,
+    default::Default,
+    fmt::{Display, Formatter},
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// A struct containing game information, which unlike a `Board`, knows about
@@ -237,9 +231,7 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::moves::Move;
-    use crate::Square;
-    use crate::{board, Eval};
+    use crate::{Board, Eval, Move, Square};
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board
@@ -253,7 +245,7 @@ mod tests {
             (Eval::DRAW, Eval::DRAW),
         );
         let new_board = g.board();
-        board::tests::test_move_result_helper(old_board, *new_board, m);
+        crate::board::tests::test_move_result_helper(old_board, *new_board, m);
     }
 
     #[test]
