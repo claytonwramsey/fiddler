@@ -24,14 +24,17 @@ struct TrainingDatum {
 /// Panics if we are unable to locate the database file.
 pub fn main() {
     let args: Vec<String> = env::args().collect();
-    // first two arguments are the program and the operating mode
-    let db = Connection::open(Path::new(&args[2..].join(" "))).unwrap();
+    // first argument is the name of the binary
+    let path_str = &args[1..].join(" ");
+    println!("path is `{path_str}`");
+    let path = Path::new(path_str);
+    let db = Connection::open(path).unwrap();
     let mut weights = vec![3., 3., 5., 9.];
     let mut rng = thread_rng();
     for _ in 4..FEATURE_DIM {
-        weights.push(rng.gen_range(-0.5..0.5));
+        weights.push(rng.gen_range(-0.1..0.1));
     }
-    let mut learn_rate = 1.0;
+    let mut learn_rate = 10.;
     let beta = 0.6;
 
     let nthreads = 8;
@@ -57,7 +60,7 @@ pub fn main() {
     let input_arc = Arc::new(input_sets);
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for _ in 0..100 {
+    for i in 0..10000 {
         weights = train_step(
             input_arc.clone(),
             Arc::new(weights),
@@ -65,7 +68,8 @@ pub fn main() {
             beta,
             nthreads,
         );
-        learn_rate *= 0.99;
+        learn_rate *= 0.999;
+        println!("iteration {i}...")
     }
 
     print_weights(&weights);
@@ -134,25 +138,28 @@ fn train_thread(
     let mut sum_se = 0.;
     for datum in input {
         let features = &datum.0;
-        let expected = zero_sigmoid(datum.1, sigmoid_scale);
-        let eval = zero_sigmoid(evaluate(features, weights), sigmoid_scale);
-        let err = eval - expected;
-        sum_se += err * err;
-        let coeff = err * sigmoid_scale * eval * (1. - eval);
+        let sigm_expected = sigmoid(datum.1, sigmoid_scale);
+        let sigm_eval = sigmoid(evaluate(features, weights), sigmoid_scale);
+        let err = 2. * (sigm_expected - sigm_eval);
+        let coeff = -sigmoid_scale * sigm_eval * (1. - sigm_eval) * err;
         // gradient descent
         for &(idx, feat_val) in features {
             grad[idx] += feat_val * coeff;
         }
+        sum_se += err * err;
     }
 
     (grad, sum_se)
 }
 
 #[inline]
-/// Compute the zero-intersecting sigmoid function of a variable. `beta` is the
+/// Compute the  sigmoid function of a variable. `beta` is the
 /// horizontal scaling of the sigmoid.
-fn zero_sigmoid(x: f32, beta: f32) -> f32 {
-    2. / (1. + expf(-x * beta)) - 1.
+/// 
+/// The mathematical function is given by the LaTeX expression
+/// `f(x) = \frac{1}{1 - \exp (- \beta x)}`.
+fn sigmoid(x: f32, beta: f32) -> f32 {
+    1. / (1. + expf(-x * beta))
 }
 
 /// Print out a weights vector so it can be used as code.
