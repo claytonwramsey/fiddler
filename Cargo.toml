@@ -4,6 +4,7 @@ members = [
     "base",
     "engine",
     "tuner",
+    "cli",
 ]
 
 [profile.test]

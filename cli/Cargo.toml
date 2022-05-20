@@ -1,0 +1,9 @@
+[package]
+name = "fiddler_cli"
+version = "0.1.0"
+edition = "2018"
+authors = ["Clayton Ramsey"]
+
+[dependencies]
+fiddler_base = {path = "../base"}
+fiddler_engine = {path = "../engine"}

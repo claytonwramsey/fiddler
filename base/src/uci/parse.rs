@@ -201,7 +201,7 @@ fn parse_int(x: Option<&str>) -> Result<u64, String> {
 mod tests {
     use super::*;
     use crate::Square;
-    
+
     #[test]
     /// Test that an ordinary "startpos" UCI position command is parsed
     /// correctly.

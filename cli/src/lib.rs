@@ -1,16 +1,20 @@
-use crate::limit::SearchLimit;
-use crate::pst::{pst_delta, pst_evaluate};
-use crate::thread::MainSearch;
-use fiddler_base::algebraic::{algebraic_from_move, move_from_algebraic};
-use fiddler_base::movegen::get_moves;
-use fiddler_base::Game;
-use fiddler_base::Move;
+use fiddler_base::{
+    algebraic::{algebraic_from_move, move_from_algebraic},
+    movegen::get_moves,
+    Game, Move,
+};
+use fiddler_engine::{
+    limit::SearchLimit,
+    pst::{pst_delta, pst_evaluate},
+    thread::MainSearch,
+};
 
-use std::fmt;
-use std::io;
-use std::io::BufRead;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::{
+    fmt,
+    io::{self, BufRead},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 /// A text-based application for running Fiddler.
 pub struct FiddlerApp<'a> {
