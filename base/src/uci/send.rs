@@ -1,5 +1,5 @@
 use super::{EngineInfo, OptionType, UciMessage};
-use fiddler_base::Eval;
+use crate::Eval;
 
 /// Construct a UCI message string from the engine to the GUI.
 /// The message may be split into multiple lines (such as when handling
@@ -126,10 +126,7 @@ fn build_info(infos: &[EngineInfo]) -> String {
 mod tests {
     use super::*;
 
-    use fiddler_base::Eval;
-    use fiddler_base::Move;
-    use fiddler_base::Piece;
-    use fiddler_base::Square;
+    use crate::{Eval, Move, Piece, Square};
 
     use std::time::Duration;
 

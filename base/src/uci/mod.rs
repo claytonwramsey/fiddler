@@ -1,9 +1,9 @@
 use std::{fmt, time::Duration};
 
-use fiddler_base::{Eval, Move};
+use crate::{Eval, Move};
 
 mod send;
-pub use crate::send::build_message;
+pub use send::build_message;
 
 mod parse;
 pub use parse::*;

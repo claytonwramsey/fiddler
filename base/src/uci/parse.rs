@@ -1,4 +1,4 @@
-use fiddler_base::Move;
+use crate::Move;
 
 use super::{GoOption, UciCommand};
 
@@ -200,7 +200,8 @@ fn parse_int(x: Option<&str>) -> Result<u64, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::Square;
+    use crate::Square;
+    
     #[test]
     /// Test that an ordinary "startpos" UCI position command is parsed
     /// correctly.
