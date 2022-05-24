@@ -1,7 +1,7 @@
 use super::{Bitboard, Direction};
 use std::ops::Not;
 
-#[repr(usize)]
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 /// An enum representing the possible colors that a piece or player can be.
 pub enum Color {
