@@ -81,17 +81,16 @@ fn main() {
                     Err(e) => debug_info(&format!("error: unable to load FEN: `{}`", e), debug),
                 },
             },
-            UciCommand::Go(opts) => 
-            {
+            UciCommand::Go(opts) => {
                 let mut ponder = false; // whether the last move given in the position should be considered the ponder-move
 
                 // time remaining for players
-                let (mut wtime, mut btime) = (None, None); 
+                let (mut wtime, mut btime) = (None, None);
 
                 // increments
                 let (mut winc, mut binc) = (None, None);
 
-                // number of moves until increment achieved. if `None`, there 
+                // number of moves until increment achieved. if `None`, there
                 // is no increment.
                 let mut movestogo = None;
 
@@ -102,45 +101,42 @@ fn main() {
                 *searcher.limit.nodes_cap.lock().unwrap() = None;
                 for opt in opts {
                     match opt {
-                        GoOption::SearchMoves(_) => unimplemented!("no implementation of searching move subsets"),
+                        GoOption::SearchMoves(_) => {
+                            unimplemented!("no implementation of searching move subsets")
+                        }
                         Ponder => todo!(),
                         GoOption::WhiteTime(time) => {
                             wtime = Some(time);
-                        },
+                        }
                         GoOption::BlackTime(time) => {
                             btime = Some(time);
-                        },
+                        }
                         GoOption::WhiteInc(inc) => {
                             winc = Some(inc);
-                        },
+                        }
                         GoOption::BlackInc(inc) => {
                             binc = Some(inc);
-                        },
+                        }
                         GoOption::MovesToGo(n) => {
                             movestogo = Some(n);
-                        },
+                        }
                         GoOption::Depth(d) => {
                             searcher.set_depth(d);
-                        },
+                        }
                         GoOption::Nodes(num) => {
                             *searcher.limit.nodes_cap.lock().unwrap() = Some(num);
-                            
-                        },
+                        }
                         GoOption::Mate(_) => unimplemented!(),
                         GoOption::MoveTime(msecs) => {
-                            movetime = Some(
-                                Duration::from_millis(msecs as u64)
-                            );
-                        },
+                            movetime = Some(Duration::from_millis(msecs as u64));
+                        }
                         GoOption::Infinite => {
                             infinite = true;
-                        },
+                        }
                     }
                 }
-            },
-            UciCommand::Stop => {
-
-            },
+            }
+            UciCommand::Stop => {}
             UciCommand::PonderHit => todo!(),
             UciCommand::Quit => todo!(),
         }

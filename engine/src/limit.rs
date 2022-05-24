@@ -78,7 +78,7 @@ impl SearchLimit {
     }
 
     #[inline]
-    /// Increment the total number of nodes searched. If a lock acquisition 
+    /// Increment the total number of nodes searched. If a lock acquisition
     /// failure occurs, will return an error.
     pub fn add_nodes(&self, nodes: u64) -> Result<(), SearchError> {
         self.num_nodes.fetch_add(nodes, Ordering::Relaxed);

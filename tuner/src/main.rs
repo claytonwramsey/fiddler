@@ -39,13 +39,12 @@ pub fn main() {
 
     let nthreads = 8;
     let tic = Instant::now();
-    // construct the datasets.
-    // Outermost vector: each element for one thread
-    // Middle vector: each element for one datum
-    // Inner vector: each element for one piece-square pair
-    let mut input_sets = vec![];
     let mut statement = db.prepare("SELECT fen, eval FROM evaluations").unwrap();
-    let data = statement
+
+    // construct the datasets.
+    // Outer vector: each element for one datum
+    // Inner vector: each element for one piece-square pair
+    let input_sets: Vec<(Vec<(usize, f32)>, f32)> = statement
         .query_map([], |row| {
             Ok(TrainingDatum {
                 fen: row.get(0)?,
@@ -53,10 +52,10 @@ pub fn main() {
             })
         })
         .unwrap()
-        .map(|res| res.unwrap());
-    for datum in data {
-        input_sets.push((extract(&Board::from_fen(&datum.fen).unwrap()), datum.eval));
-    }
+        .map(|res| res.unwrap())
+        .map(|datum| (extract(&Board::from_fen(&datum.fen).unwrap()), datum.eval))
+        .collect();
+
     let input_arc = Arc::new(input_sets);
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
