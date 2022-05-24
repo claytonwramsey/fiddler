@@ -458,7 +458,7 @@ impl PVSearch {
     /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
-        self.limit.add_nodes(self.num_nodes_evaluated);
+        self.limit.add_nodes(self.num_nodes_evaluated)?;
         self.num_nodes_evaluated = 0;
         Ok(())
     }

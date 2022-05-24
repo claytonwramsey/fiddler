@@ -18,7 +18,7 @@ pub struct SearchLimit {
     num_nodes: AtomicU64,
     /// A cap on the total number of nodes to search. If the cap is `None`,
     /// then there is no limit to the number of nodes to search.
-    nodes_cap: Option<u64>,
+    pub nodes_cap: Mutex<Option<u64>>,
     /// The time at which the search was started.
     start_time: Mutex<Instant>,
     /// The time at which the search will end. Will be `None` if the search is
@@ -35,7 +35,7 @@ impl SearchLimit {
         SearchLimit {
             over: AtomicBool::new(false),
             num_nodes: AtomicU64::new(0),
-            nodes_cap: None,
+            nodes_cap: Mutex::new(None),
             start_time: Mutex::new(Instant::now()),
             end_time: Mutex::new(None),
             search_duration: Mutex::new(None),
@@ -78,14 +78,16 @@ impl SearchLimit {
     }
 
     #[inline]
-    /// Increment the total number of nodes searched.
-    pub fn add_nodes(&self, nodes: u64) {
+    /// Increment the total number of nodes searched. If a lock acquisition 
+    /// failure occurs, will return an error.
+    pub fn add_nodes(&self, nodes: u64) -> Result<(), SearchError> {
         self.num_nodes.fetch_add(nodes, Ordering::Relaxed);
-        if let Some(max_nodes) = self.nodes_cap {
+        if let Some(max_nodes) = *self.nodes_cap.lock()? {
             if self.num_nodes.load(Ordering::Relaxed) > max_nodes {
                 self.over.store(true, Ordering::Relaxed);
             }
         }
+        Ok(())
     }
 
     #[inline]

@@ -105,14 +105,14 @@ pub enum GoOption {
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 /// The set of messages that the engine can send to the GUI.
-pub enum UciMessage {
+pub enum UciMessage<'a> {
     /// The engine identifies itself. Must be sent after receiving a
     /// `UciCommand::Uci` message.
     Id {
         /// The name of the engine.
-        name: Option<String>,
+        name: Option<&'a str>,
         /// The author of the engine.
-        author: Option<String>,
+        author: Option<&'a str>,
     },
     /// Sent after `id` and additional options are given to inform the GUI that
     /// the engine is ready in UCI mode.
@@ -123,7 +123,7 @@ pub enum UciMessage {
     ReadyOk,
     /// Request that the GUI display an option to the user.
     /// Not to be confused with the standard `Option`.
-    Option { name: String, opt: OptionType },
+    Option { name: &'a str, opt: OptionType<'a> },
     /// Inform the GUI that the engine has found a move. `m` is the best move
     /// that it found, and `ponder` may optionally be the opponent's reply to
     /// the best move that the engine would like to think about. Directly
@@ -131,10 +131,10 @@ pub enum UciMessage {
     /// final search information.
     BestMove { m: Move, ponder: Option<Move> },
     /// Give the GUI some information about what the engine is thinking.
-    Info(Vec<EngineInfo>),
+    Info(&'a [EngineInfo<'a>]),
 }
 
-impl fmt::Display for UciMessage {
+impl<'a> fmt::Display for UciMessage<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", build_message(self))
     }
@@ -142,7 +142,7 @@ impl fmt::Display for UciMessage {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 /// Information about an engine's search state.
-pub enum EngineInfo {
+pub enum EngineInfo<'a> {
     /// The depth to which this information was created.
     Depth(u8),
     /// The selective search depth.
@@ -152,7 +152,7 @@ pub enum EngineInfo {
     /// The number of nodes searched.
     Nodes(u64),
     /// The principal variation.
-    Pv(Vec<Move>),
+    Pv(&'a [Move]),
     /// Optional. The number of principal variations given.
     MultiPv(u8),
     /// The evaluation of the position.
@@ -175,26 +175,26 @@ pub enum EngineInfo {
     NodeSpeed(u64),
     /// Any string which should be displayed to the GUI. The string may not
     /// contain any newlines (`\n`).
-    String(String),
+    String(&'a str),
     /* Other infos omitted for now */
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum OptionType {
+pub enum OptionType<'a> {
     /// A spin box which takes an integer. The internal value is its default
     /// parameter.
     Spin { default: i64, min: i64, max: i64 },
     /// A string which the user can input. The default is the given value.
-    String(Option<String>),
+    String(Option<&'a str>),
     /// A checkbox which will either be true (checked) or false (unchecked).
     Check(Option<bool>),
     /// A set of selectable options for a mode.
     Combo {
         /// The default selection on the combination box.
-        default: Option<String>,
+        default: Option<&'a str>,
         /// The variations on the combinations. Need not include the value of
         /// the `default` part of this struct.
-        vars: Vec<String>,
+        vars: &'a [&'a str],
     },
     /// A button which can be pressed to send a command.
     Button,

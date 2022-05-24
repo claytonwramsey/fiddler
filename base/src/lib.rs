@@ -69,6 +69,3 @@ pub use square::Square;
 /// A module for storing the hashes of positions in a computationally efficient
 /// manner.
 mod zobrist;
-
-/// UCI-compliant parser and data structures.
-pub mod uci;

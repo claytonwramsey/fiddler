@@ -8,10 +8,6 @@ default-run = "fiddler_engine"
 [lib]
 
 [dependencies]
-# Random number generator for creating magic bitboards.
-rand = "0.8.4" 
-# Handy macro, mostly used for movegen lookup tables.
-lazy_static = "1.4.0"
 fiddler_base = {path = "../base"}
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

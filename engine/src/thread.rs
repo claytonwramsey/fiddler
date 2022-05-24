@@ -14,7 +14,7 @@ use super::{
 #[derive(Clone, Debug)]
 /// The primary search thread for an engine.
 pub struct MainSearch {
-    main_config: SearchConfig,
+    pub main_config: SearchConfig,
     configs: Vec<SearchConfig>,
     ttable: Arc<TTable>,
     pub limit: Arc<SearchLimit>,

@@ -200,7 +200,7 @@ fn parse_int(x: Option<&str>) -> Result<u64, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Square;
+    use fiddler_base::Square;
 
     #[test]
     /// Test that an ordinary "startpos" UCI position command is parsed

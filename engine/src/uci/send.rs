@@ -9,10 +9,14 @@ pub fn build_message(message: &UciMessage) -> String {
         UciMessage::Id { name, author } => {
             let mut result = String::new();
             if let Some(n) = name {
-                result += &format!("id name {n}\n");
+                result += "id name ";
+                result += n;
+                result += "\n";
             }
             if let Some(a) = author {
-                result += &format!("id author {a}\n");
+                result += "id author ";
+                result += a;
+                result += "\n";
             }
             result
         }
@@ -55,7 +59,7 @@ fn build_option(name: &str, opt: &OptionType) -> String {
             if let Some(def_opt) = default {
                 result += &format!("default {def_opt} ");
             }
-            for var in vars {
+            for var in vars.iter() {
                 result += &format!("var {var} ");
             }
         }
@@ -84,7 +88,7 @@ fn build_info(infos: &[EngineInfo]) -> String {
             EngineInfo::Nodes(n) => result += &format!("nodes {n} "),
             EngineInfo::Pv(pv) => {
                 result += "pv ";
-                for m in pv {
+                for m in pv.iter() {
                     result += &format!("{} ", m.to_uci());
                 }
             }
@@ -126,7 +130,7 @@ fn build_info(infos: &[EngineInfo]) -> String {
 mod tests {
     use super::*;
 
-    use crate::{Eval, Move, Piece, Square};
+    use fiddler_base::{Eval, Move, Piece, Square};
 
     use std::time::Duration;
 
@@ -134,7 +138,7 @@ mod tests {
     /// Test an info message describing the current move.
     fn test_info_currmove() {
         assert_eq!(
-            build_message(&UciMessage::Info(vec![
+            build_message(&UciMessage::Info(&[
                 EngineInfo::CurrMove(Move::normal(Square::E2, Square::E4)),
                 EngineInfo::CurrMoveNumber(1),
             ])),
@@ -147,7 +151,7 @@ mod tests {
     /// promotion.
     fn test_info_currmove_promotion() {
         assert_eq!(
-            build_message(&UciMessage::Info(vec![
+            build_message(&UciMessage::Info(&[
                 EngineInfo::CurrMove(Move::promoting(Square::E7, Square::E8, Piece::Queen)),
                 EngineInfo::CurrMoveNumber(7),
             ])),
@@ -160,7 +164,7 @@ mod tests {
     /// information.
     fn test_info_composed() {
         assert_eq!(
-            build_message(&UciMessage::Info(vec![
+            build_message(&UciMessage::Info(&[
                 EngineInfo::Depth(2),
                 EngineInfo::Score {
                     eval: Eval::pawns(2.14),
@@ -170,7 +174,7 @@ mod tests {
                 EngineInfo::Time(Duration::from_millis(1242)),
                 EngineInfo::Nodes(2124),
                 EngineInfo::NodeSpeed(34928),
-                EngineInfo::Pv(vec![
+                EngineInfo::Pv(&[
                     Move::normal(Square::E2, Square::E4),
                     Move::normal(Square::E7, Square::E5),
                     Move::normal(Square::G1, Square::F3),
@@ -185,8 +189,8 @@ mod tests {
     fn test_id() {
         assert_eq!(
             build_message(&UciMessage::Id {
-                name: Some("Fiddler".into()),
-                author: Some("Clayton Ramsey".into()),
+                name: Some("Fiddler"),
+                author: Some("Clayton Ramsey"),
             }),
             "id name Fiddler\nid author Clayton Ramsey\n"
         )
@@ -197,7 +201,7 @@ mod tests {
     fn test_option_check() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: "Nullmove".into(),
+                name: "Nullmove",
                 opt: OptionType::Check(Some(true)),
             }),
             "option name Nullmove type check default true \n"
@@ -209,7 +213,7 @@ mod tests {
     fn test_option_spin() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: "Selectivity".into(),
+                name: "Selectivity",
                 opt: OptionType::Spin {
                     default: 2,
                     min: 0,
@@ -225,10 +229,10 @@ mod tests {
     fn test_option_combo() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: "Style".into(),
+                name: "Style",
                 opt: OptionType::Combo {
-                    default: Some("Normal".into()),
-                    vars: vec!["Solid".into(), "Normal".into(), "Risky".into(),],
+                    default: Some("Normal"),
+                    vars: &["Solid", "Normal", "Risky"],
                 }
             }),
             "option name Style type combo default Normal var Solid var Normal var Risky \n"
@@ -240,8 +244,8 @@ mod tests {
     fn test_option_string() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: "NalimovPath".into(),
-                opt: OptionType::String(Some("c:\\".into())),
+                name: "NalimovPath",
+                opt: OptionType::String(Some("c:\\")),
             }),
             "option name NalimovPath type string default c:\\ \n"
         )
@@ -252,7 +256,7 @@ mod tests {
     fn test_option_button() {
         assert_eq!(
             build_message(&UciMessage::Option {
-                name: "Clear Hash".into(),
+                name: "Clear Hash",
                 opt: OptionType::Button,
             }),
             "option name Clear Hash type button \n"

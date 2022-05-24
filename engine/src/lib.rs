@@ -13,6 +13,9 @@ pub mod search;
 pub mod thread;
 pub mod transposition;
 
+/// UCI-compliant parser and data structures.
+pub mod uci;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The types of errors which can occur during a search.
 pub enum SearchError {
