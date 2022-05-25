@@ -10,8 +10,11 @@ const BAD_HASH: u64 = 0xDEADBEEF;
 /// "old" element if another one takes its place. It behaves much like a
 /// hash-map from positions to table-entries.
 pub struct TTable {
-    /// List of all entries in the transposition table.
+    /// List of all entries in the transposition table. The length of `entries` 
+    /// must always be a power of two.
     entries: Vec<TTableEntry>,
+    /// The mask used to convert a hash into the entry set. 
+    mask: usize,
     /// Number of occupied slots. Since each entry has two slots (for most
     /// recent and deepest), this can be at most double the length of `entries`.
     occupancy: AtomicUsize,
@@ -60,21 +63,18 @@ impl Slot {
 }
 
 impl TTable {
-    /// Create a transposition table with a fixed capacity.
-    pub fn with_capacity(capacity: usize) -> TTable {
-        let mut table = TTable {
-            entries: Vec::new(),
-            occupancy: AtomicUsize::new(0),
-        };
-
-        for _ in 0..capacity {
-            table.entries.push(TTableEntry {
+    /// Create a transposition table with a fixed capacity. The capacity is 
+    /// *not* the number of entries, but rather log_2 of the number of entries.
+    pub fn with_capacity(capacity_log2: usize) -> TTable {
+        let size = 1 << capacity_log2;
+        TTable { 
+            entries: (0..size).map(|_| TTableEntry {
                 recent: Slot::empty(),
                 deepest: Slot::empty(),
-            });
+            }).collect(), 
+            mask: (1 << capacity_log2) - 1,
+            occupancy: AtomicUsize::new(0),
         }
-
-        table
     }
 
     /// Age up all the entries in this table, and for any slot which is at
@@ -104,7 +104,7 @@ impl TTable {
 
     /// Store some evaluation data in the transposition table.
     pub fn store(&self, key: u64, value: EvalData) {
-        let index = key as usize % self.entries.len();
+        let index = key as usize & self.mask;
         let entry = unsafe {
             // We trust that this is safe since we modulo'd by the length.
             self.entries.get_unchecked(index)
@@ -149,7 +149,7 @@ impl TTable {
     /// Get the evaluation data stored by this table for a given key, if it
     /// exists. Returns `None` if no data corresponding to the key exists.
     pub fn get(&self, hash_key: u64) -> Option<EvalData> {
-        let index = hash_key as usize % self.entries.len();
+        let index = hash_key as usize & self.mask;
         let entry = unsafe {
             // We trust that this will not lead to a memory error because index
             // was modulo'd by the length of entries.
@@ -200,7 +200,7 @@ impl TTable {
 
 impl Default for TTable {
     fn default() -> TTable {
-        TTable::with_capacity(1 << 18)
+        TTable::with_capacity(18)
     }
 }
 
