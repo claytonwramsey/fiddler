@@ -11,5 +11,7 @@ authors = ["Clayton Ramsey"]
 rand = "0.8.4" 
 # Handy macro, mostly used for movegen lookup tables.
 lazy_static = "1.4.0"
+# More efficient hash map for move repetition checking
+rustc-hash = "1.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

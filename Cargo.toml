@@ -15,4 +15,6 @@ opt-level = 3
 [profile.release]
 opt-level = 3
 lto = true
+overflow-checks = false
+panic = "abort"
 debug = 1 # used for profiling

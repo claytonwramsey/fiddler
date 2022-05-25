@@ -5,8 +5,9 @@ use super::{
     Board, Color, Move, Piece, Position, Score, Square,
 };
 
+use rustc_hash::FxHashMap;
+
 use std::{
-    collections::HashMap,
     default::Default,
     fmt::{Display, Formatter},
 };
@@ -28,7 +29,7 @@ pub struct Game {
     /// Stores the number of times a position has been reached in the course of
     /// this game. It is used for three-move-rule draws. The keys are the
     /// Zobrist hashes of the boards previously visited.
-    repetitions: HashMap<u64, u64>,
+    repetitions: FxHashMap<u64, u64>,
 }
 
 impl Game {
@@ -38,7 +39,11 @@ impl Game {
         Ok(Game {
             history: vec![(pos, 0)],
             moves: Vec::new(),
-            repetitions: HashMap::from([(pos.board.hash, 1)]),
+            repetitions: {
+                let mut map = FxHashMap::default();
+                map.insert(pos.board.hash, 1);
+                map
+            }
         })
     }
 
@@ -211,7 +216,11 @@ impl Default for Game {
         Game {
             history: vec![(Position::default(), 0)],
             moves: Vec::new(),
-            repetitions: HashMap::from([(Board::default().hash, 1)]),
+            repetitions: {
+                let mut map = FxHashMap::default();
+                map.insert(Board::default().hash, 1);
+                map
+            }
         }
     }
 }
