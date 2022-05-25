@@ -333,38 +333,33 @@ pub fn has_moves(pos: &Position) -> bool {
     let occupancy = player_occupancy | b[opponent];
     let legal_targets = !player_occupancy;
     let king_square = pos.king_sqs[player as usize];
-    let king_attackers = square_attackers(b, king_square, opponent);
+    let king_attackers = pos.check_info.checkers;
 
-    // moves which can be generated from a given from-square
-    // 28 is the maximum number of moves that a single piece can make
-    let mut move_vec = Vec::with_capacity(28);
     if king_attackers != Bitboard::EMPTY {
-        //king is in check
+        // king is in check
 
-        //King can probably get out on his own
+        // King can probably get out on his own
         let king_to_sqs = king_moves(b, king_square, player);
-        let mut king_moves = Vec::with_capacity(king_to_sqs.count_ones() as usize);
-        bitboard_to_moves(king_square, king_to_sqs, &mut king_moves);
-        for m in king_moves {
+        for to_sq in king_to_sqs {
+            let m = Move::normal(king_square, to_sq);
             if !is_move_self_check(pos, m) && !b.is_move_castle(m) {
                 return true;
             }
         }
 
-        //king moves could not prevent checks
-        //if this is a double check, we must be mated
+        // king moves could not prevent checks
+        // if this is a double check, we must be mated
         if king_attackers.count_ones() > 1 {
             return false;
         }
 
-        //only blocks can save us from checks
+        // only blocks can save us from checks
     } else {
         // examine king moves normally
         let to_bb = king_moves(b, king_square, player);
 
-        bitboard_to_moves(king_square, to_bb, &mut move_vec);
-        for m in move_vec.drain(..) {
-            if !is_move_self_check(pos, m) {
+        for to_sq in to_bb {
+            if !is_move_self_check(pos, Move::normal(king_square, to_sq)) {
                 return true;
             }
         }
@@ -385,10 +380,10 @@ pub fn has_moves(pos: &Position) -> bool {
                 _ => Bitboard::EMPTY,
             };
 
-            // we need not handle promotion because pawn promotion also
-            bitboard_to_moves(from_sq, to_bb, &mut move_vec);
-            for m in move_vec.drain(..) {
-                if !is_move_self_check(pos, m) {
+            // we need not handle promotion because pawn promotion also can
+            // block
+            for to_sq in to_bb {
+                if !is_move_self_check(pos, Move::normal(from_sq, to_sq)) {
                     return true;
                 }
             }

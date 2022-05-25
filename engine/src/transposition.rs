@@ -10,10 +10,10 @@ const BAD_HASH: u64 = 0xDEADBEEF;
 /// "old" element if another one takes its place. It behaves much like a
 /// hash-map from positions to table-entries.
 pub struct TTable {
-    /// List of all entries in the transposition table. The length of `entries` 
+    /// List of all entries in the transposition table. The length of `entries`
     /// must always be a power of two.
     entries: Vec<TTableEntry>,
-    /// The mask used to convert a hash into the entry set. 
+    /// The mask used to convert a hash into the entry set.
     mask: usize,
     /// Number of occupied slots. Since each entry has two slots (for most
     /// recent and deepest), this can be at most double the length of `entries`.
@@ -63,15 +63,17 @@ impl Slot {
 }
 
 impl TTable {
-    /// Create a transposition table with a fixed capacity. The capacity is 
+    /// Create a transposition table with a fixed capacity. The capacity is
     /// *not* the number of entries, but rather log_2 of the number of entries.
     pub fn with_capacity(capacity_log2: usize) -> TTable {
         let size = 1 << capacity_log2;
-        TTable { 
-            entries: (0..size).map(|_| TTableEntry {
-                recent: Slot::empty(),
-                deepest: Slot::empty(),
-            }).collect(), 
+        TTable {
+            entries: (0..size)
+                .map(|_| TTableEntry {
+                    recent: Slot::empty(),
+                    deepest: Slot::empty(),
+                })
+                .collect(),
             mask: (1 << capacity_log2) - 1,
             occupancy: AtomicUsize::new(0),
         }
