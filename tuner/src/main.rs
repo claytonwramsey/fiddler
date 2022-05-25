@@ -170,11 +170,11 @@ fn print_weights(weights: &[f32]) {
         );
     };
 
-    piece_val("PAWN", 1.);
     piece_val("KNIGHT", weights[0]);
     piece_val("BISHOP", weights[1]);
     piece_val("ROOK", weights[2]);
     piece_val("QUEEN", weights[3]);
+    piece_val("PAWN", 1.);
 
     println!("const PTABLE: Pst = expand_table([");
     for pt in Piece::ALL_TYPES {

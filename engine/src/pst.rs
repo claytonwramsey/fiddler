@@ -122,17 +122,6 @@ const fn expand_table(centi_table: CentiPst) -> Pst {
 /// A PST for the value of pawns in the middlegame.
 const MIDGAME_VALUE: Pst = expand_table([
     [
-        // pawns. ranks 1 and 8 are inconsequential
-        0, 0, 0, 0, 0, 0, 0, 0, // rank 1
-        98, 134, 61, 95, 68, 126, 34, -11, // rank 2
-        -6, 7, 26, 31, 65, 56, 25, -20, // rank 3
-        -14, 13, 6, 21, 23, 12, 17, -23, // rank 4
-        -27, -2, -5, 12, 17, 6, 10, -25, // rank 5
-        -26, -4, -4, -10, 3, 3, 33, -12, // rank 6
-        -35, -1, -20, -23, -15, 24, 38, -22, // rank 7
-        0, 0, 0, 0, 0, 0, 0, 0, // rank 8
-    ],
-    [
         // knights
         -167, -89, -34, -49, 61, -97, -15, -107, // rank 1
         -73, -41, 72, 36, 23, 62, 7, -17, // rank 2
@@ -177,6 +166,17 @@ const MIDGAME_VALUE: Pst = expand_table([
         -1, -18, -9, 10, -15, -25, -31, -50, // rank 8
     ],
     [
+        // pawns. ranks 1 and 8 are inconsequential
+        0, 0, 0, 0, 0, 0, 0, 0, // rank 1
+        98, 134, 61, 95, 68, 126, 34, -11, // rank 2
+        -6, 7, 26, 31, 65, 56, 25, -20, // rank 3
+        -14, 13, 6, 21, 23, 12, 17, -23, // rank 4
+        -27, -2, -5, 12, 17, 6, 10, -25, // rank 5
+        -26, -4, -4, -10, 3, 3, 33, -12, // rank 6
+        -35, -1, -20, -23, -15, 24, 38, -22, // rank 7
+        0, 0, 0, 0, 0, 0, 0, 0, // rank 8
+    ],
+    [
         // kings
         -65, 23, 16, -15, -56, -34, 2, 13, // rank 1
         29, -1, -20, -7, -8, -4, -38, -29, // rank 2
@@ -191,17 +191,6 @@ const MIDGAME_VALUE: Pst = expand_table([
 
 /// The PST for pieces in the endgame.
 const ENDGAME_VALUE: Pst = expand_table([
-    [
-        // pawns. ranks 1 and 8 are inconsequential
-        0, 0, 0, 0, 0, 0, 0, 0, // rank 1
-        178, 173, 158, 134, 147, 132, 165, 187, // rank 2
-        94, 100, 85, 67, 56, 53, 82, 84, // rank 3
-        32, 24, 13, 5, -2, 4, 17, 17, // rank 4
-        13, 9, -3, -7, -7, -8, 3, -1, // rank 5
-        4, 7, -6, 1, 0, -5, -1, -8, // rank 6
-        13, 8, 8, 10, 13, 0, 2, -7, // rank 7
-        0, 0, 0, 0, 0, 0, 0, 0, // rank 8
-    ],
     [
         // knights
         -58, -38, -13, -28, -31, -27, -63, -99, // rank 1
@@ -245,6 +234,17 @@ const ENDGAME_VALUE: Pst = expand_table([
         -16, -27, 15, 6, 9, 17, 10, 5, // rank 6
         -22, -23, -30, -16, -16, -23, -36, -32, // rank 7
         -33, -28, -22, -43, -5, -32, -20, -41, // rank 8
+    ],
+    [
+        // pawns. ranks 1 and 8 are inconsequential
+        0, 0, 0, 0, 0, 0, 0, 0, // rank 1
+        178, 173, 158, 134, 147, 132, 165, 187, // rank 2
+        94, 100, 85, 67, 56, 53, 82, 84, // rank 3
+        32, 24, 13, 5, -2, 4, 17, 17, // rank 4
+        13, 9, -3, -7, -7, -8, 3, -1, // rank 5
+        4, 7, -6, 1, 0, -5, -1, -8, // rank 6
+        13, 8, 8, 10, 13, 0, 2, -7, // rank 7
+        0, 0, 0, 0, 0, 0, 0, 0, // rank 8
     ],
     [
         // kings

@@ -16,8 +16,8 @@ use std::{
 pub struct Board {
     /// The squares ocupied by White and Black, respectively.
     sides: [Bitboard; 2],
-    /// The squares occupied by (in order) pawns, knights, bishops, rooks,
-    /// queens, and kings.
+    /// The squares occupied by (in order) knights, bishops, rooks,
+    /// queens, pawns, and kings.
     pieces: [Bitboard; Piece::NUM_TYPES],
     /// The color of the player to move.
     pub player_to_move: Color,
@@ -531,11 +531,11 @@ impl Default for Board {
                 Bitboard::new(0xFFFF000000000000), //black
             ],
             pieces: [
-                Bitboard::new(0x00FF00000000FF00), //pawn
                 Bitboard::new(0x4200000000000042), //knight
                 Bitboard::new(0x2400000000000024), //bishop
                 Bitboard::new(0x8100000000000081), //rook
                 Bitboard::new(0x0800000000000008), //queen
+                Bitboard::new(0x00FF00000000FF00), //pawn
                 Bitboard::new(0x1000000000000010), //king
             ],
             en_passant_square: None,

@@ -7,7 +7,6 @@ use super::{
 
 use nohash_hasher::IntMap;
 
-
 use std::{
     default::Default,
     fmt::{Display, Formatter},
@@ -44,7 +43,7 @@ impl Game {
                 let mut map = IntMap::default();
                 map.insert(pos.board.hash, 1);
                 map
-            }
+            },
         })
     }
 
@@ -59,7 +58,7 @@ impl Game {
         self.repetitions.entry(start_pos.board.hash).or_insert(1);
     }
 
-    /// Make a move, assuming said move is illegal. If the history is empty
+    /// Make a move, assuming said move is legal. If the history is empty
     /// (this should never happen if normal operations occurred), the move will
     /// be made from the default state of a `Board`. `pst_delta` is the
     /// expected gain in evaluation for the player making the move. Typically,
@@ -221,7 +220,7 @@ impl Default for Game {
                 let mut map = IntMap::default();
                 map.insert(Board::default().hash, 1);
                 map
-            }
+            },
         }
     }
 }
