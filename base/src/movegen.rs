@@ -564,11 +564,12 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 /// Enumerate the legal moves a player of the given color would be
 /// able to make if it were their turn to move, and if the player is not in
 /// check.
-fn non_evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
-    let b = &pos.board;
-    let player = b.player_to_move;
-    normal_piece_assistant::<N>(pos, player, moves, Bitboard::ALL);
-    pawn_assistant::<N>(pos, player, moves, Bitboard::ALL);
+fn non_evasions<N: NominateMove>(
+    pos: &Position, 
+    moves: &mut Vec<(Move, N::Output)>
+) {
+    normal_piece_assistant::<N>(pos, moves, Bitboard::ALL);
+    pawn_assistant::<N>(pos, moves, Bitboard::ALL);
 
     // generate king moves
     castles::<N>(pos, moves);
@@ -597,8 +598,8 @@ fn evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>)
             }
         }
 
-        pawn_assistant::<N>(pos, player, moves, pawn_targets);
-        normal_piece_assistant::<N>(pos, player, moves, target_sqs);
+        pawn_assistant::<N>(pos, moves, pawn_targets);
+        normal_piece_assistant::<N>(pos, moves, target_sqs);
     }
 
     king_move_non_castle::<N>(pos, moves, Bitboard::ALL);
@@ -606,7 +607,10 @@ fn evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>)
 
 #[inline(always)]
 /// Enumerate the "loud" pseudolegal moves for a given board.
-fn loud_pseudolegal_moves<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
+fn loud_pseudolegal_moves<N: NominateMove>(
+    pos: &Position, 
+    moves: &mut Vec<(Move, N::Output)>
+) {
     let b = &pos.board;
     let player = b.player_to_move;
     let target_sqs = b[!player];
@@ -621,7 +625,7 @@ fn loud_pseudolegal_moves<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move
         pawn_targets |= Bitboard::from(sq);
     }
 
-    loud_pawn_assistant::<N>(pos, player, moves, pawn_targets);
+    loud_pawn_assistant::<N>(pos, moves, pawn_targets);
     for sq in b[Piece::Knight] & from_sqs {
         append_valid_normal::<N>(sq, KNIGHT_MOVES[sq as usize] & target_sqs, pos, moves);
     }
@@ -692,23 +696,23 @@ fn square_attackers_occupancy(
 /// pawn.
 fn pawn_assistant<N: NominateMove>(
     pos: &Position,
-    color: Color,
     moves: &mut Vec<(Move, N::Output)>,
     target: Bitboard,
 ) {
     let board = &pos.board;
-    let color_occupancy = board[color];
-    let enemy_occupancy = board[!color];
-    let occupancy = color_occupancy | enemy_occupancy;
+    let player = pos.board.player_to_move;
+    let allies = board[player];
+    let opponents = board[!player];
+    let occupancy = allies | opponents;
     let unoccupied = !occupancy;
-    let pawns = board[Piece::Pawn] & color_occupancy;
-    let rank8 = color.pawn_promote_rank();
+    let pawns = board[Piece::Pawn] & allies;
+    let rank8 = player.pawn_promote_rank();
     let not_rank8 = !rank8;
-    let rank3 = match color {
+    let rank3 = match player {
         Color::White => Bitboard::new(0xFF0000),
         Color::Black => Bitboard::new(0xFF0000000000),
     };
-    let direction = color.pawn_direction();
+    let direction = player.pawn_direction();
     let doubledir = 2 * direction;
 
     let mut singles = (pawns << direction.0) & unoccupied;
@@ -731,9 +735,7 @@ fn pawn_assistant<N: NominateMove>(
     let capture_dir_e = direction + Direction::EAST;
     let capture_dir_w = direction + Direction::WEST;
 
-    let mut capture_mask = enemy_occupancy;
-
-    capture_mask &= target;
+    let capture_mask = opponents & target;
 
     // prevent pawns from capturing by wraparound
     let not_westmost = Bitboard::new(0xFEFEFEFEFEFEFEFE);
@@ -761,7 +763,7 @@ fn pawn_assistant<N: NominateMove>(
     // en passant
     if let Some(ep_square) = board.en_passant_square {
         if target.contains(ep_square) {
-            let from_sqs = PAWN_ATTACKS[!color as usize][ep_square as usize] & pawns;
+            let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
             for from_sq in from_sqs {
                 let m = Move::en_passant(from_sq, ep_square);
                 if validate(m, pos) {
@@ -804,26 +806,26 @@ fn pawn_promotion_helper<N: NominateMove>(
 /// opponent.
 fn loud_pawn_assistant<N: NominateMove>(
     pos: &Position,
-    color: Color,
     moves: &mut Vec<(Move, N::Output)>,
     target: Bitboard,
 ) {
     let board = &pos.board;
-    let color_occupancy = board[color];
-    let enemy_occupancy = board[!color];
-    let rank8 = color.pawn_promote_rank();
+    let player = pos.board.player_to_move;
+    let allies = board[player];
+    let opponents = board[!player];
+    let rank8 = player.pawn_promote_rank();
     let not_rank8 = !rank8;
-    let occupancy = color_occupancy | enemy_occupancy;
+    let occupancy = allies | opponents;
     let unoccupied = !occupancy;
-    let direction = color.pawn_direction();
-    let pawns = color_occupancy & board[Piece::Pawn];
+    let direction = player.pawn_direction();
+    let pawns = allies & board[Piece::Pawn];
 
     let singles = (pawns << direction.0) & unoccupied & target;
 
     let capture_dir_e = direction + Direction::EAST;
     let capture_dir_w = direction + Direction::WEST;
 
-    let capture_mask = enemy_occupancy & target;
+    let capture_mask = opponents & target;
 
     // prevent pawns from capturing by wraparound
     let not_westmost = Bitboard::new(0xFEFEFEFEFEFEFEFE);
@@ -869,7 +871,8 @@ fn loud_pawn_assistant<N: NominateMove>(
     // en passant
     if let Some(ep_square) = board.en_passant_square {
         if target.contains(ep_square) {
-            let from_sqs = PAWN_ATTACKS[!color as usize][ep_square as usize] & pawns;
+            let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize]
+             & pawns;
             for from_sq in from_sqs {
                 let m = Move::en_passant(from_sq, ep_square);
                 if validate(m, pos) {
@@ -884,19 +887,19 @@ fn loud_pawn_assistant<N: NominateMove>(
 /// up on the target.
 fn normal_piece_assistant<N: NominateMove>(
     pos: &Position,
-    color: Color,
     moves: &mut Vec<(Move, N::Output)>,
     target: Bitboard,
 ) {
     let board = &pos.board;
-    let color_occupancy = board[color];
-    let legal_targets = !color_occupancy & target;
-    let occupancy = color_occupancy | board[!color];
+    let player = pos.board.player_to_move;
+    let allies = board[player];
+    let legal_targets = !allies & target;
+    let occupancy = allies | board[!player];
     let queens = board[Piece::Queen];
-    let rook_movers = (board[Piece::Rook] | queens) & color_occupancy;
-    let bishop_movers = (board[Piece::Bishop] | queens) & color_occupancy;
+    let rook_movers = (board[Piece::Rook] | queens) & allies;
+    let bishop_movers = (board[Piece::Bishop] | queens) & allies;
 
-    for sq in board[Piece::Knight] & color_occupancy {
+    for sq in board[Piece::Knight] & allies {
         append_valid_normal::<N>(sq, KNIGHT_MOVES[sq as usize] & legal_targets, pos, moves)
     }
     for sq in bishop_movers {
