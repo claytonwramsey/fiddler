@@ -591,7 +591,7 @@ pub mod tests {
     #[test]
     /// Test that we can play e4 on the first move of the game.
     fn test_play_e4() {
-        test_move_helper(Board::default(), Move::new(Square::E2, Square::E4, None));
+        test_move_helper(Board::default(), Move::normal(Square::E2, Square::E4));
     }
 
     #[test]
@@ -636,7 +636,7 @@ pub mod tests {
     #[test]
     /// Test that capturing a rook removes the right to castle with that rook.
     fn test_no_castle_after_capture() {
-        let m = Move::new(Square::B2, Square::H8, None);
+        let m = Move::normal(Square::B2, Square::H8);
         // capturing the rook on h8 prevents castle rights
         test_fen_helper(
             "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5",

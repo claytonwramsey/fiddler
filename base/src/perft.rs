@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use crate::movegen::NoopNominator;
+
 use super::{movegen::get_moves, Position};
 
 #[allow(dead_code)]
@@ -26,15 +28,15 @@ fn perft_search(pos: &Position, depth: u8, divide: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = get_moves(pos);
+    let moves = get_moves::<NoopNominator>(pos);
     let mut total = 0;
     let mut pcopy;
     for m in moves {
         pcopy = *pos;
-        pcopy.make_move(m, Position::NO_DELTA);
+        pcopy.make_move(m.0, Position::NO_DELTA);
         let perft_count = perft_search(&pcopy, depth - 1, false);
         if divide {
-            println!("{m}: {perft_count}");
+            println!("{}, {perft_count}", m.0);
         }
         total += perft_count;
     }

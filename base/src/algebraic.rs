@@ -1,3 +1,5 @@
+use crate::movegen::NoopNominator;
+
 use super::{
     movegen::{get_moves, is_square_attacked_by},
     Move, Piece, Position,
@@ -26,7 +28,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     } else {
         let mover_type = b.type_at_square(m.from_square()).unwrap();
         let is_move_capture = b.is_move_capture(m);
-        let other_moves = get_moves(pos);
+        let other_moves = get_moves::<NoopNominator>(pos).into_iter().map(|x| x.0);
         let from_sq = m.from_square();
 
         // Resolution of un-clarity on mover location
@@ -90,7 +92,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     let enemy_king_sq = pos.king_sqs[!player_color as usize];
     poscopy.make_move(m, Position::NO_DELTA);
     if is_square_attacked_by(&poscopy.board, enemy_king_sq, player_color) {
-        if get_moves(&poscopy).is_empty() {
+        if get_moves::<NoopNominator>(&poscopy).is_empty() {
             s += "#";
         } else {
             s += "+";
@@ -103,8 +105,9 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
 /// Given the string of an algebraic-notation move, get the `Move` which can be
 /// played. Will return Err if the string is invalid.
 pub fn move_from_algebraic(s: &str, pos: &Position) -> Result<Move, &'static str> {
-    get_moves(pos)
+    get_moves::<NoopNominator>(pos)
         .into_iter()
+        .map(|x| x.0)
         .find(|m| algebraic_from_move(*m, pos).as_str() == s)
         .ok_or("not a legal algebraic move")
 }
@@ -119,7 +122,7 @@ mod tests {
     /// form.
     fn test_e4_to_algebraic() {
         let pos = Position::default();
-        let m = Move::new(Square::E2, Square::E4, None);
+        let m = Move::normal(Square::E2, Square::E4);
 
         assert_eq!("e4", algebraic_from_move(m, &pos));
     }
@@ -130,7 +133,7 @@ mod tests {
         // Rb8# is the winning move
         let pos =
             Position::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
-        let m = Move::new(Square::B6, Square::B8, None);
+        let m = Move::normal(Square::B6, Square::B8);
 
         assert_eq!("Rb8#", algebraic_from_move(m, &pos));
     }
@@ -144,12 +147,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let m = Move::new(Square::E4, Square::F5, None);
-        let moves = get_moves(&pos);
-        for m in moves.iter() {
-            println!("{m} ");
-        }
-
+        let m = Move::normal(Square::E4, Square::F5);
         assert_eq!(algebraic_from_move(m, &pos), "exf5");
     }
 
@@ -157,7 +155,7 @@ mod tests {
     /// Test that the opening move e4 can be converted from a string to a move.
     fn test_move_from_e4() {
         let pos = Position::default();
-        let m = Move::new(Square::E2, Square::E4, None);
+        let m = Move::normal(Square::E2, Square::E4);
         let s = "e4";
 
         assert_eq!(move_from_algebraic(s, &pos), Ok(m));
@@ -171,7 +169,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let m = Move::new(Square::E4, Square::F5, None);
+        let m = Move::normal(Square::E4, Square::F5);
         let s = "exf5";
 
         assert_eq!(move_from_algebraic(s, &pos), Ok(m));
@@ -182,7 +180,7 @@ mod tests {
     fn test_promotion() {
         // f7 pawn can promote
         let pos = Position::from_fen("8/5P2/2k5/4K3/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
-        let m = Move::new(Square::F7, Square::F8, Some(Piece::Queen));
+        let m = Move::promoting(Square::F7, Square::F8, Piece::Queen);
         let s = "f8=Q";
         assert_eq!(algebraic_from_move(m, &pos), s);
     }
