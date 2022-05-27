@@ -18,7 +18,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     let b = &pos.board;
     assert!(b.is_valid());
 
-    if b.is_move_castle(m) {
+    if m.is_castle() {
         if m.to_square().file() > m.from_square().file() {
             //moving right, must be O-O
             s += "O-O";

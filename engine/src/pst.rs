@@ -81,14 +81,14 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
         eg_delta += ENDGAME_VALUE[capturee_idx][to_opposite_idx];
     }
 
-    if board.is_move_en_passant(m) {
+    if m.is_en_passant() {
         let to_opposite_idx = (to_alt - Color::White.pawn_direction()).opposite() as usize;
 
         mg_delta += MIDGAME_VALUE[Piece::Pawn as usize][to_opposite_idx];
         eg_delta += ENDGAME_VALUE[Piece::Pawn as usize][to_opposite_idx];
     }
 
-    if board.is_move_castle(m) {
+    if m.is_castle() {
         let is_queen_castle = to_sq.file() == 2;
         let (rook_from_idx, rook_to_idx) = match is_queen_castle {
             true => (Square::A1 as usize, Square::D1 as usize),

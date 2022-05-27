@@ -163,6 +163,7 @@ impl Board {
         self[Color::White] | self[Color::Black]
     }
 
+    #[inline(always)]
     /// Get the type of the piece occupying a given square.
     /// Returns `None` if there are no pieces occupying the square.
     pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
@@ -189,33 +190,9 @@ impl Board {
     }
 
     #[inline(always)]
-    /// Is a given move en passant? Assumes the move is pseudo-legal.
-    pub fn is_move_en_passant(&self, m: Move) -> bool {
-        Some(m.to_square()) == self.en_passant_square && self[Piece::Pawn].contains(m.from_square())
-    }
-
-    #[inline(always)]
-    /// In this state, is the given move a castle? Assumes the move is
-    /// pseudo-legal.
-    pub fn is_move_castle(&self, m: Move) -> bool {
-        self[Piece::King].contains(m.from_square())
-            && m.from_square().chebyshev_to(m.to_square()) > 1
-    }
-
-    #[inline(always)]
-    /// In the given position, is this move a promotion?
-    pub fn is_move_promotion(&self, m: Move) -> bool {
-        (self[Piece::Pawn] & self[self.player_to_move]).contains(m.from_square())
-            && self
-                .player_to_move
-                .pawn_promote_rank()
-                .contains(m.to_square())
-    }
-
-    #[inline(always)]
     /// Is the given move a capture in the current state of the board?
     pub fn is_move_capture(&self, m: Move) -> bool {
-        self.occupancy().contains(m.to_square()) || self.is_move_en_passant(m)
+        self.occupancy().contains(m.to_square()) || m.is_en_passant()
     }
 
     #[inline(always)]
@@ -230,7 +207,6 @@ impl Board {
     }
 
     /// Check if the state of this board is valid,
-
     /// Returns false if the board is invalid.
     pub fn is_valid(&self) -> bool {
         let mut sides_checksum = Bitboard::EMPTY;
@@ -275,7 +251,6 @@ impl Board {
     pub fn make_move(&mut self, m: Move) {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
-        let is_en_passant = self.is_move_en_passant(m);
         let player = self.player_to_move;
         let opponent = !player;
         //this length is used to determine whether it's not a move that a king
@@ -301,7 +276,7 @@ impl Board {
 
         /* En passant handling */
         //perform an en passant capture
-        if is_en_passant {
+        if m.is_en_passant() {
             let capturee_sq =
                 Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
             self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
@@ -403,7 +378,6 @@ impl Board {
 
     #[inline(always)]
     /// Set the piece at a given position to be a certain piece. This is safe,
-
     /// and will not result in any issues regarding hash legality. If the given
     /// piece type is None, the color given will be ignored.
     pub fn set_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color) {
@@ -669,13 +643,10 @@ pub mod tests {
     pub fn test_move_result_helper(old_board: Board, new_board: Board, m: Move) {
         let mover_color = old_board.color_at_square(m.from_square()).unwrap();
         let mover_type = old_board.type_at_square(m.from_square()).unwrap();
-        let is_en_passant = old_board.is_move_en_passant(m);
-        let is_castle = old_board.is_move_castle(m);
-        let is_promotion = old_board.is_move_promotion(m);
 
         assert!(new_board.is_valid());
 
-        if is_promotion {
+        if m.is_promotion() {
             assert_eq!(new_board.type_at_square(m.to_square()), m.promote_type());
         } else {
             assert_eq!(new_board.type_at_square(m.to_square()), Some(mover_type));
@@ -686,7 +657,7 @@ pub mod tests {
         assert_eq!(new_board.color_at_square(m.from_square()), None);
 
         //Check en passant worked correctly
-        if is_en_passant {
+        if m.is_en_passant() {
             assert_eq!(
                 new_board.type_at_square(old_board.en_passant_square.unwrap()),
                 Some(Piece::Pawn)
@@ -698,7 +669,7 @@ pub mod tests {
         }
 
         //Check castling worked correctly
-        if is_castle {
+        if m.is_castle() {
             let rook_start_file = match m.to_square().file() {
                 2 => 0,
                 6 => 7,
