@@ -323,12 +323,22 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
 #[inline(always)]
 /// Get all the legal moves on a board.
 pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
-    let mut moves = Vec::with_capacity(100);
+    let mut moves;
     let in_check = pos.check_info.checkers != Bitboard::EMPTY;
 
     match in_check {
-        false => non_evasions::<N>(pos, &mut moves),
-        true => evasions::<N>(pos, &mut moves),
+        false => {
+            // in the overwhelming majority of cases, there are fewer than 50 
+            // legal moves total
+            moves = Vec::with_capacity(50);
+            non_evasions::<N>(pos, &mut moves);
+        },
+        true => {
+            // in the overwhelming majority of cases, there are 8 or fewer 
+            // legal evasions if the king is in check
+            moves = Vec::with_capacity(8);
+            evasions::<N>(pos, &mut moves);
+        },
     };
 
     moves
@@ -343,7 +353,8 @@ pub fn get_loud_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)>
         "loud moves cannot be requested for board where king is checked"
     );
 
-    let mut moves = Vec::with_capacity(50);
+    // in most cases, there are 8 or fewer captures
+    let mut moves = Vec::with_capacity(8);
 
     loud_pseudolegal_moves::<N>(pos, &mut moves);
 
