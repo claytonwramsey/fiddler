@@ -134,9 +134,6 @@ impl<'a> FiddlerApp<'a> {
     fn parse_command(&self, s: &str) -> ParseResult {
         let mut token_iter = s.split_ascii_whitespace();
         let first_token = token_iter.next();
-        if first_token.is_none() {
-            panic!();
-        }
         let command_block = first_token.ok_or("no token given")?;
         let result: ParseResult = if command_block.starts_with('/') {
             let command_name = command_block.get(1..).ok_or("no command specified")?;
