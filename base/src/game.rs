@@ -130,7 +130,7 @@ impl Game {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the current state of the game as a board. Will panic if there is no
     /// history (but this should never happen if the game was initialized
     /// correctly)
@@ -138,7 +138,7 @@ impl Game {
         &self.position().board
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the position representing the current state of the game. Will panic
     /// if there is no history, but this should never happen.
     pub fn position(&self) -> &Position {

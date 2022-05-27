@@ -75,7 +75,7 @@ pub fn phase_of(b: &Board) -> f32 {
     (bounded_npm - EG_LIMIT).float_val() / (MG_LIMIT - EG_LIMIT).float_val()
 }
 
-#[inline]
+#[inline(always)]
 /// Blend the evaluation of a position between the midgame and endgame.
 pub fn blend_eval(b: &Board, mg_eval: Eval, eg_eval: Eval) -> Eval {
     let phase = phase_of(b);

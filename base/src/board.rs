@@ -157,7 +157,7 @@ impl Board {
         Ok(board)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the squares occupied by pieces.
     pub fn occupancy(&self) -> Bitboard {
         self[Color::White] | self[Color::Black]
@@ -174,7 +174,7 @@ impl Board {
         None
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the color of a piece occupying a current square.
     /// Returns `None` if there are no pieces occupying the square.
     pub fn color_at_square(&self, sq: Square) -> Option<Color> {
@@ -188,13 +188,13 @@ impl Board {
         None
     }
 
-    #[inline]
+    #[inline(always)]
     /// Is a given move en passant? Assumes the move is pseudo-legal.
     pub fn is_move_en_passant(&self, m: Move) -> bool {
         Some(m.to_square()) == self.en_passant_square && self[Piece::Pawn].contains(m.from_square())
     }
 
-    #[inline]
+    #[inline(always)]
     /// In this state, is the given move a castle? Assumes the move is
     /// pseudo-legal.
     pub fn is_move_castle(&self, m: Move) -> bool {
@@ -202,7 +202,7 @@ impl Board {
             && m.from_square().chebyshev_to(m.to_square()) > 1
     }
 
-    #[inline]
+    #[inline(always)]
     /// In the given position, is this move a promotion?
     pub fn is_move_promotion(&self, m: Move) -> bool {
         (self[Piece::Pawn] & self[self.player_to_move]).contains(m.from_square())
@@ -212,13 +212,13 @@ impl Board {
                 .contains(m.to_square())
     }
 
-    #[inline]
+    #[inline(always)]
     /// Is the given move a capture in the current state of the board?
     pub fn is_move_capture(&self, m: Move) -> bool {
         self.occupancy().contains(m.to_square()) || self.is_move_en_passant(m)
     }
 
-    #[inline]
+    #[inline(always)]
     /// In the current state, is the king (i.e. player to move) in check?
     pub fn is_king_checked(&self) -> bool {
         let player = self.player_to_move;
@@ -367,7 +367,7 @@ impl Board {
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
     }
 
-    #[inline]
+    #[inline(always)]
     /// Remove the piece at `sq` from this board.
     fn remove_piece(&mut self, sq: Square) {
         if let Some(p) = self.type_at_square(sq) {
@@ -375,7 +375,7 @@ impl Board {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Remove a piece of a known type at a square, which will be slightly more
     /// efficient than `remove_piece`.
     pub fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
@@ -386,7 +386,7 @@ impl Board {
         self.sides[color as usize] &= removal_mask;
     }
 
-    #[inline]
+    #[inline(always)]
     /// Add a piece to the square at a given place on the board.
     /// This should only be called if you believe that the board as-is is empty
     /// at the square below. Otherwise it will break the internal board
@@ -401,7 +401,7 @@ impl Board {
         self.hash ^= zobrist::square_key(sq, Some(pt), color);
     }
 
-    #[inline]
+    #[inline(always)]
     /// Set the piece at a given position to be a certain piece. This is safe,
 
     /// and will not result in any issues regarding hash legality. If the given
@@ -428,7 +428,7 @@ impl Board {
         self.castle_rights &= !rights_actually_removed;
     }
 
-    #[inline]
+    #[inline(always)]
     /// Recompute the Zobrist hash of this board and set it to the saved hash
     /// value.
     pub fn recompute_hash(&mut self) {
@@ -502,7 +502,7 @@ impl PartialEq for Board {
 impl Index<Piece> for Board {
     type Output = Bitboard;
 
-    #[inline]
+    #[inline(always)]
     /// Get the squares occupied by the given piece.
     fn index(&self, index: Piece) -> &Self::Output {
         // This will not fail because there are the same number of pieces as
@@ -514,7 +514,7 @@ impl Index<Piece> for Board {
 impl Index<Color> for Board {
     type Output = Bitboard;
 
-    #[inline]
+    #[inline(always)]
     /// Get the squares occupied by the given piece.
     fn index(&self, index: Color) -> &Self::Output {
         // This will not fail because there are the same number of colors as

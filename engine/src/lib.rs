@@ -28,7 +28,7 @@ pub enum SearchError {
 }
 
 impl<T> From<PoisonError<T>> for SearchError {
-    #[inline]
+    #[inline(always)]
     fn from(_: PoisonError<T>) -> Self {
         SearchError::Poison
     }
@@ -39,7 +39,7 @@ impl<T> From<PoisonError<T>> for SearchError {
 /// search failed.
 pub type SearchResult = Result<(Move, Eval, u8), SearchError>;
 
-#[inline]
+#[inline(always)]
 /// Compute the effective branch factor given a given search depth and a number
 /// of nodes evaluated.
 fn branch_factor(depth: u8, num_nodes: u64) -> f64 {

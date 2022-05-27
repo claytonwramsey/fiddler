@@ -320,7 +320,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
     }
 }
 
-#[inline]
+#[inline(always)]
 /// Get all the legal moves on a board.
 pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
     let mut moves = Vec::with_capacity(100);
@@ -334,7 +334,7 @@ pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
     moves
 }
 
-#[inline]
+#[inline(always)]
 /// Get moves which are "loud," i.e. captures or checks. The king must not be
 /// in check in this position.
 pub fn get_loud_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
@@ -524,13 +524,13 @@ pub fn is_move_self_check(pos: &Position, m: Move) -> bool {
     (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY
 }
 
-#[inline]
+#[inline(always)]
 /// In a given board state, is a square attacked by the given color?
 pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
     square_attackers(board, sq, color) != Bitboard::EMPTY
 }
 
-#[inline]
+#[inline(always)]
 /// Enumerate the legal moves a player of the given color would be
 /// able to make if it were their turn to move, and if the player is not in
 /// check.
@@ -574,7 +574,7 @@ fn evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>)
     king_move_non_castle::<N>(pos, moves, Bitboard::ALL);
 }
 
-#[inline]
+#[inline(always)]
 /// Enumerate the "loud" pseudolegal moves for a given board.
 fn loud_pseudolegal_moves<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
     let b = &pos.board;
@@ -615,7 +615,7 @@ fn loud_pseudolegal_moves<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move
     king_move_non_castle::<N>(pos, moves, target_sqs);
 }
 
-#[inline]
+#[inline(always)]
 /// Get the attackers of a given color on a square as a `Bitboard`
 /// representing the squares of the attackers.
 pub fn square_attackers(board: &Board, sq: Square, color: Color) -> Bitboard {
@@ -910,7 +910,7 @@ fn pawn_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
     target_squares
 }
 
-#[inline]
+#[inline(always)]
 /// Get the captures a pawn can make in the current position. The given
 /// color is the color that a pawn would be to generate the captures from
 /// this square. `color` is the color of the piece at `sq`. The result is a
@@ -938,7 +938,7 @@ fn king_move_non_castle<N: NominateMove>(
     append_valid_normal::<N>(king_sq, to_bb, pos, moves);
 }
 
-#[inline]
+#[inline(always)]
 /// Get the castling moves that the king could make in this position, and
 /// append them onto the target vector.
 fn castles<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
@@ -980,14 +980,14 @@ fn castles<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) 
     }
 }
 
-#[inline]
+#[inline(always)]
 /// Get a bitboard of all the squares between the two given squares, along
 /// the moves of a bishop or rook.
 pub fn between(sq1: Square, sq2: Square) -> Bitboard {
     BETWEEN[sq1 as usize][sq2 as usize]
 }
 
-#[inline]
+#[inline(always)]
 /// Determine whether three squares are aligned according to rook or bishop
 /// directions.
 pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {

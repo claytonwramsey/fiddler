@@ -57,13 +57,13 @@ impl SearchLimit {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     /// Poll whether the search is over.
     pub fn is_over(&self) -> bool {
         self.over.load(Ordering::Relaxed)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Check the elapsed time to see if this search is over, and if so, update
     /// accordingly.
     pub fn update_time(&self) -> Result<bool, SearchError> {
@@ -77,7 +77,7 @@ impl SearchLimit {
         Ok(false)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Increment the total number of nodes searched. If a lock acquisition
     /// failure occurs, will return an error.
     pub fn add_nodes(&self, nodes: u64) -> Result<(), SearchError> {
@@ -90,7 +90,7 @@ impl SearchLimit {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the cumulative number of nodes searched.
     pub fn num_nodes(&self) -> u64 {
         self.num_nodes.load(Ordering::Relaxed)

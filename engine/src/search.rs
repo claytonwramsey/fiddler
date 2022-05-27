@@ -285,8 +285,6 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves = get_loud_moves::<PstNominate>(g.position());
-
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
         let leaf_evaluation = evaluate(g);
@@ -310,6 +308,7 @@ impl PVSearch {
             return Ok((Move::BAD_MOVE, alpha));
         }
 
+        let mut moves = get_loud_moves::<PstNominate>(g.position());
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut best_move = Move::BAD_MOVE;
 
@@ -404,7 +403,7 @@ impl PVSearch {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Evaluate the given game. Return a pair containing the best move and its
     /// evaluation, as well as the depth to which the evaluation was searched.
     pub fn evaluate(&mut self, mut g: Game) -> SearchResult {
@@ -439,7 +438,7 @@ impl PVSearch {
         Ok((result.0, result.1, highest_successful_depth))
     }
 
-    #[inline]
+    #[inline(always)]
     /// Increment the number of nodes searched, copying over the value into the
     /// search limit if it is too high.
     fn increment_nodes(&mut self) -> Result<(), SearchError> {
@@ -450,7 +449,7 @@ impl PVSearch {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {

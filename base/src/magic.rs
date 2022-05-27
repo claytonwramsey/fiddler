@@ -227,14 +227,14 @@ impl MagicTable {
         mtable
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the attacks that a rook on `sq` could make with the reference table
     /// `mtable`.
     pub fn rook_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
         get_attacks(occupancy, sq, &self.rook_magic)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the attacks that a bishop on `sq` could make with the reference table
     /// `mtable`.
     pub fn bishop_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
@@ -333,7 +333,7 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard
     unsafe { *magic_data.attacks.get_unchecked(key) }
 }
 
-#[inline]
+#[inline(always)]
 /// Use magic hashing to get the index to look up attacks in a bitboad.
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
     usize::from((occupancy * magic) >> (64 - shift))
@@ -535,7 +535,7 @@ fn is_valid_step(sq: Square, dir: Direction) -> bool {
     sq.chebyshev_to(sq + dir) <= 1
 }
 
-#[inline]
+#[inline(always)]
 /// Generate a random, mostly-empty bitboard.
 fn random_sparse_bitboard() -> Bitboard {
     let mut result = Bitboard::new(thread_rng().gen::<u64>());

@@ -83,26 +83,26 @@ pub enum Square {
 }
 
 impl Square {
-    #[inline]
+    #[inline(always)]
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
     pub fn new(rank: usize, file: usize) -> Option<Square> {
         Square::try_from(((rank << 3) | file) as u8).ok()
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
     pub const fn rank(&self) -> usize {
         (*self as u8 >> 3u8) as usize
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the integer representing the file (0 -> A, ...) of this square.
     pub const fn file(self) -> usize {
         (self as u8 & 7u8) as usize
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the Chebyshev distance to another square.
     pub fn chebyshev_to(&self, rhs: Square) -> u8 {
         let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
@@ -111,7 +111,7 @@ impl Square {
         max(rankdiff, filediff) as u8
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get what this square would appear to be from the point of view of the
     /// opposing player.
     ///
@@ -180,7 +180,7 @@ impl Square {
 
 impl Add<Direction> for Square {
     type Output = Square;
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: Direction) -> Self::Output {
         // Apply the modulo to prevent UB.
         unsafe { transmute(((self as i8) + rhs.0) as u8 & 63) }
@@ -188,14 +188,14 @@ impl Add<Direction> for Square {
 }
 
 impl AddAssign<Direction> for Square {
-    #[inline]
+    #[inline(always)]
     fn add_assign(&mut self, rhs: Direction) {
         *self = *self + rhs;
     }
 }
 
 impl Display for Square {
-    #[inline]
+    #[inline(always)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", self.file_name(), self.rank() + 1)
     }
@@ -203,7 +203,7 @@ impl Display for Square {
 
 impl Sub<Square> for Square {
     type Output = Direction;
-    #[inline]
+    #[inline(always)]
     fn sub(self, rhs: Square) -> Self::Output {
         Direction((self as i8) - (rhs as i8))
     }
@@ -211,7 +211,7 @@ impl Sub<Square> for Square {
 
 impl Sub<Direction> for Square {
     type Output = Square;
-    #[inline]
+    #[inline(always)]
     fn sub(self, rhs: Direction) -> Self::Output {
         Square::try_from(((self as i8) - (rhs.0)) as u8 & 63u8).unwrap()
     }
@@ -222,7 +222,7 @@ impl TryFrom<Bitboard> for Square {
 
     /// Create the square closest to A1 (prioritizing rank) on the given
     /// bitboard.
-    #[inline]
+    #[inline(always)]
     fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
         Square::try_from(bb.trailing_zeros() as u8)
     }
@@ -230,7 +230,7 @@ impl TryFrom<Bitboard> for Square {
 
 impl TryFrom<u8> for Square {
     type Error = &'static str;
-    #[inline]
+    #[inline(always)]
     fn try_from(x: u8) -> Result<Square, Self::Error> {
         match x {
             // This transmutation is safe because i will always be less than

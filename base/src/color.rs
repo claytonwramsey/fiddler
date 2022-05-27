@@ -12,7 +12,7 @@ pub enum Color {
 }
 
 impl Color {
-    #[inline]
+    #[inline(always)]
     /// Get the direction that a pawn of the given color normally moves.
     pub const fn pawn_direction(&self) -> Direction {
         match self {
@@ -21,7 +21,7 @@ impl Color {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the promotion rank of a given color.
     pub const fn pawn_promote_rank(&self) -> Bitboard {
         match self {
@@ -30,7 +30,7 @@ impl Color {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get a `Bitboard` with 1's on the start rank of the pawn of the given
     /// color.
     pub const fn pawn_start_rank(&self) -> Bitboard {
@@ -43,7 +43,7 @@ impl Color {
 
 impl Not for Color {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn not(self) -> Color {
         match self {
             Color::White => Color::Black,

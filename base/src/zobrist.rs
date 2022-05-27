@@ -1,6 +1,6 @@
 use crate::{Color, Piece, Square};
 
-#[inline]
+#[inline(always)]
 /// Get the Zobrist key for a given key, type, and square.
 pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
@@ -16,7 +16,7 @@ pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     }
 }
 
-#[inline]
+#[inline(always)]
 /// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is
 /// for white queen castle, 2 is for black king castle, and 3 is for black
 /// queen castle.
@@ -24,7 +24,7 @@ pub const fn get_castle_key(right: u8) -> u64 {
     CASTLE_KEYS[right as usize]
 }
 
-#[inline]
+#[inline(always)]
 /// Get the Zobrist key of an en passant square.
 pub fn ep_key(ep_square: Option<Square>) -> u64 {
     match ep_square {
@@ -35,7 +35,7 @@ pub fn ep_key(ep_square: Option<Square>) -> u64 {
     }
 }
 
-#[inline]
+#[inline(always)]
 /// Get the Zobrist key for the player to move
 pub const fn player_to_move_key(player_to_move: Color) -> u64 {
     match player_to_move {

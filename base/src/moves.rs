@@ -86,14 +86,14 @@ impl Move {
         Move::new(from_square, to_square, None, false, true)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the target square of this move.
     pub fn to_square(&self) -> Square {
         // Masking out the bottom bits will make this always valid.
         unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the square that a piece moves from to execute this move.
     pub fn from_square(&self) -> Square {
         // Masking out the bottom bits will make this always valid
@@ -118,7 +118,7 @@ impl Move {
         self.0 & Move::FLAG_MASK == Move::EN_PASSANT_FLAG
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the promotion type of this move. The resulting type will never be a
     /// pawn or a king.
     pub fn promote_type(&self) -> Option<Piece> {
@@ -176,14 +176,14 @@ impl Move {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get a number representing this move uniquely. The value may change from
     /// version to version.
     pub const fn value(&self) -> u16 {
         self.0
     }
 
-    #[inline]
+    #[inline(always)]
     /// Reconstruct a move based on its `value`. Should only be used with
     /// values returned from `Move::value()`.
     pub const fn from_val(val: u16) -> Move {

@@ -47,7 +47,7 @@ impl Position {
         (Eval::DRAW, Eval::DRAW)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Make a move on this position, updating the check info and PST values as
     /// needed. `pst_delta` is the expected gain in PST evaluation that will
     /// occur from this move. It will be higher for moves which are better for

@@ -151,7 +151,7 @@ fn train_thread(
     (grad, sum_se)
 }
 
-#[inline]
+#[inline(always)]
 /// Compute the  sigmoid function of a variable. `beta` is the
 /// horizontal scaling of the sigmoid.
 ///
@@ -253,7 +253,7 @@ fn extract(b: &Board) -> Vec<(usize, f32)> {
     features
 }
 
-#[inline]
+#[inline(always)]
 /// Given the extracted feature vector of a position, and a weight vector, get
 /// the final evaluation.
 ///

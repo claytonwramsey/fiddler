@@ -58,19 +58,19 @@ impl Eval {
     /// The value of one pawn.
     const PAWN_VALUE: i16 = 100;
 
-    #[inline]
+    #[inline(always)]
     /// Get an evaluation equivalent to the given pawn value.
     pub fn pawns(x: f64) -> Eval {
         Eval((x * Eval::PAWN_VALUE as f64) as i16)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Construct an `Eval` with the given value in centipawns.
     pub const fn centipawns(x: i16) -> Eval {
         Eval(x)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Create an `Eval` based on the number of half-moves required for White to
     /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
     /// plies.
@@ -78,7 +78,7 @@ impl Eval {
         Eval(Eval::MATE_0_VAL - (nplies as i16))
     }
 
-    #[inline]
+    #[inline(always)]
     /// Step this evaluation back in time one move. "normal" evaluations will
     /// not be changed, but mates will be moved one closer to 0. When the
     /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined
@@ -94,7 +94,7 @@ impl Eval {
         Eval(self.0 - self.0 / (Eval::MATE_CUTOFF + 1))
     }
 
-    #[inline]
+    #[inline(always)]
     /// Step this evaluation forward in time one move. "normal" evaluations will
     /// not be changed, but mates will be moved one further from 0. When the
     /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined
@@ -103,7 +103,7 @@ impl Eval {
         Eval(self.0 + self.0 / (Eval::MATE_CUTOFF + 1))
     }
 
-    #[inline]
+    #[inline(always)]
     /// Is this evaluation a mate (i.e. a non-normal evaluation)?
     pub const fn is_mate(&self) -> bool {
         self.0 > Eval::MATE_CUTOFF || self.0 < -Eval::MATE_CUTOFF
@@ -133,14 +133,14 @@ impl Eval {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the value in centipawns of this evaluation. Will return a number
     /// with magnitude greater than 29000 for mates.
     pub const fn centipawn_val(&self) -> i16 {
         self.0
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the value in floating-point pawns of this evaluation.
     pub fn float_val(&self) -> f32 {
         (self.0 as f32) * 100.
@@ -168,7 +168,7 @@ impl Display for Eval {
 
 impl Mul<u32> for Eval {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn mul(self, rhs: u32) -> Self::Output {
         Eval(self.0 * rhs as i16)
     }
@@ -176,7 +176,7 @@ impl Mul<u32> for Eval {
 
 impl Mul<i16> for Eval {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn mul(self, rhs: i16) -> Self::Output {
         Eval(self.0 * rhs)
     }
@@ -184,28 +184,28 @@ impl Mul<i16> for Eval {
 
 impl Mul<f32> for Eval {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn mul(self, rhs: f32) -> Self::Output {
         Eval((self.0 as f32 * rhs) as i16)
     }
 }
 
 impl MulAssign<i16> for Eval {
-    #[inline]
+    #[inline(always)]
     fn mul_assign(&mut self, rhs: i16) {
         self.0 *= rhs;
     }
 }
 
 impl AddAssign<Eval> for Eval {
-    #[inline]
+    #[inline(always)]
     fn add_assign(&mut self, rhs: Eval) {
         self.0 += rhs.0;
     }
 }
 
 impl SubAssign<Eval> for Eval {
-    #[inline]
+    #[inline(always)]
     fn sub_assign(&mut self, rhs: Eval) {
         self.0 -= rhs.0;
     }
@@ -213,7 +213,7 @@ impl SubAssign<Eval> for Eval {
 
 impl Add<Eval> for Eval {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn add(self, rhs: Eval) -> Eval {
         Eval(self.0 + rhs.0)
     }
@@ -221,7 +221,7 @@ impl Add<Eval> for Eval {
 
 impl Sub<Eval> for Eval {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn sub(self, rhs: Eval) -> Eval {
         Eval(self.0 - rhs.0)
     }
@@ -229,7 +229,7 @@ impl Sub<Eval> for Eval {
 
 impl Neg for Eval {
     type Output = Self;
-    #[inline]
+    #[inline(always)]
     fn neg(self) -> Eval {
         Eval(-self.0)
     }

@@ -185,14 +185,14 @@ impl TTable {
         self.occupancy.store(0, Ordering::Relaxed);
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the fill proportion of this transposition table. The fill
     /// proportion is 0 for an empty table and 1 for a completely full one.
     pub fn fill_rate(&self) -> f32 {
         (self.occupancy.load(Ordering::Relaxed) as f32) / (2. * self.entries.len() as f32)
     }
 
-    #[inline]
+    #[inline(always)]
     /// Get the fill rate proportion of this transposition table out of 1000.
     /// Typically used for UCI.
     pub fn fill_rate_permill(&self) -> u16 {
@@ -206,19 +206,19 @@ impl Default for TTable {
     }
 }
 
-#[inline]
+#[inline(always)]
 /// Given a packed entry in the transposition table, get the age of the entry.
 const fn unpack_age(packed: u64) -> u8 {
     (packed >> 56) as u8
 }
 
-#[inline]
+#[inline(always)]
 /// Given a packed entry in the transposition table, get the depth of the entry.
 const fn unpack_depth(packed: u64) -> i8 {
     ((packed >> 48) & 0xFF) as i8
 }
 
-#[inline]
+#[inline(always)]
 /// Unpack some data which was stored in the transposition table.
 const fn unpack_data(packed: u64) -> EvalData {
     EvalData {
@@ -229,7 +229,7 @@ const fn unpack_data(packed: u64) -> EvalData {
     }
 }
 
-#[inline]
+#[inline(always)]
 /// Pack some data to be stored in the transposition table.
 const fn pack(
     age: u8,
