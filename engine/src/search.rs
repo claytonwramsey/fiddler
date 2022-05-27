@@ -1,12 +1,12 @@
-use fiddler_base::{Bitboard, Eval, Game, Move, Score};
+use fiddler_base::{movegen::get_loud_moves, Bitboard, Eval, Game, Move};
+
+use crate::pst::PstNominate;
 
 use super::{
-    candidacy::candidacy,
     config::SearchConfig,
     evaluate::evaluate,
     limit::SearchLimit,
     pick::MovePicker,
-    pst::pst_delta,
     transposition::{EvalData, TTable},
     SearchError, SearchResult,
 };
@@ -285,11 +285,7 @@ impl PVSearch {
 
         self.increment_nodes()?;
 
-        let mut moves: Vec<(Move, Score)> = g
-            .get_loud_moves()
-            .into_iter()
-            .map(|m| (m, pst_delta(g.board(), m)))
-            .collect();
+        let mut moves = get_loud_moves::<PstNominate>(g.position());
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
@@ -314,10 +310,10 @@ impl PVSearch {
             return Ok((Move::BAD_MOVE, alpha));
         }
 
-        moves.sort_by_cached_key(|&(m, delta)| -candidacy(g.position(), m, delta));
+        moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut best_move = Move::BAD_MOVE;
 
-        for (m, delta) in moves {
+        for (m, (delta, _)) in moves {
             g.make_move(m, delta);
             // zero-window search
             score = -self

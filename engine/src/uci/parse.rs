@@ -1,3 +1,5 @@
+use fiddler_base::Board;
+
 use crate::Move;
 
 use super::{GoOption, UciCommand};
@@ -6,8 +8,10 @@ use super::{GoOption, UciCommand};
 /// UCI protocol, these errors should generally be logged or ignored.
 pub type UciParseResult = Result<UciCommand, String>;
 
-/// Perform a read of a single UCI instruction.
-pub fn parse_line(line: &str) -> UciParseResult {
+/// Perform a read of a single UCI instruction. A board state is given to allow
+/// for the `searchmoves` parameter on UCI to know what metadata to add to the
+/// moves.
+pub fn parse_line(line: &str, board: &Board) -> UciParseResult {
     let mut tokens = line.split_ascii_whitespace();
     let first_tok = tokens.next().ok_or("line contains no tokens")?;
     match first_tok {
@@ -21,7 +25,7 @@ pub fn parse_line(line: &str) -> UciParseResult {
         "setoption" => parse_set_option(&mut tokens),
         "ucinewgame" => Ok(UciCommand::NewGame),
         "position" => parse_position(&mut tokens),
-        "go" => parse_go(&mut tokens),
+        "go" => parse_go(&mut tokens, board),
         "stop" => Ok(UciCommand::Stop),
         "ponderhit" => Ok(UciCommand::PonderHit),
         "quit" => Ok(UciCommand::Quit),
@@ -123,8 +127,14 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
         _ => return Err("illegal starting position token".to_string()),
     };
 
+    let board = Board::from_fen(
+        start_fen
+            .as_deref()
+            .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+    )?;
+
     let mut moves = Vec::new();
-    for m_result in tokens.map(Move::from_uci) {
+    for m_result in tokens.map(|tok| Move::from_uci(tok, &board)) {
         match m_result {
             Ok(m) => moves.push(m),
             Err(e) => return Err(format!("could not parse UCI move: {e}")),
@@ -138,8 +148,9 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
 }
 
 /// Parse a `go` command from UCI. Assumes the token `go` has already been
-/// consumed.
-fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
+/// consumed. The current board is needed to annotate the moves with their
+/// effects.
+fn parse_go(tokens: &mut dyn Iterator<Item = &str>, board: &Board) -> UciParseResult {
     let mut opts = Vec::new();
     let mut peeks = tokens.peekable();
     // build the options
@@ -153,7 +164,7 @@ fn parse_go(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
                     let move_peek = peeks.peek();
                     match move_peek {
                         Some(m_tok) => {
-                            if let Ok(m) = Move::from_uci(m_tok) {
+                            if let Ok(m) = Move::from_uci(m_tok, board) {
                                 moves.push(m);
                                 // consume the token that we peeked
                                 peeks.next()
@@ -207,7 +218,7 @@ mod tests {
     /// correctly.
     fn test_position_starting() {
         assert_eq!(
-            parse_line("position startpos moves\n"),
+            parse_line("position startpos moves\n", &Board::default()),
             Ok(UciCommand::Position {
                 fen: None,
                 moves: Vec::new()
@@ -220,7 +231,8 @@ mod tests {
     fn test_position_fen() {
         assert_eq!(
             parse_line(
-                "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n"
+                "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n",
+                &Board::default()
             ),
             Ok(UciCommand::Position {
                 fen: Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1".into()),
@@ -233,7 +245,7 @@ mod tests {
     /// Test that a FEN is properly loaded from a UCI position command.
     fn test_position_fen_then_moves() {
         assert_eq!(
-            parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n"), 
+            parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n", &Board::default()), 
             Ok(UciCommand::Position {
                 fen: Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1".into()), 
                 moves: vec![
@@ -248,7 +260,7 @@ mod tests {
     /// Test that an option with no value is correctly set.
     fn test_setoption_key_only() {
         assert_eq!(
-            parse_line("setoption name MyOption\n"),
+            parse_line("setoption name MyOption\n", &Board::default()),
             Ok(UciCommand::SetOption {
                 name: "MyOption".into(),
                 value: None
@@ -260,7 +272,7 @@ mod tests {
     /// Test that a key-value pair for a setoption is correct.
     fn test_setoption_key_value() {
         assert_eq!(
-            parse_line("setoption name my option value 4 or 5\n"),
+            parse_line("setoption name my option value 4 or 5\n", &Board::default()),
             Ok(UciCommand::SetOption {
                 name: "my option".into(),
                 value: Some("4 or 5".into())
@@ -272,7 +284,7 @@ mod tests {
     /// Test that a simple `go` command is parsed correctly.
     fn test_go_simple() {
         assert_eq!(
-            parse_line("go depth 7 nodes 25\n"),
+            parse_line("go depth 7 nodes 25\n", &Board::default()),
             Ok(UciCommand::Go(vec![
                 GoOption::Depth(7),
                 GoOption::Nodes(25),
@@ -286,7 +298,10 @@ mod tests {
     /// would remove the validity of all others.
     fn test_go_all() {
         assert_eq!(
-            parse_line("go depth 7 nodes 250 infinite searchmoves e2e4 wtime 1 btime 2 winc 3 binc 4 movestogo 5 mate 6 movetime 7 ponder\n"),
+            parse_line(
+                "go depth 7 nodes 250 infinite searchmoves e2e4 wtime 1 btime 2 winc 3 binc 4 movestogo 5 mate 6 movetime 7 ponder\n", 
+            &Board::default()
+        ),
             Ok(UciCommand::Go(vec![
                 GoOption::Depth(7),
                 GoOption::Nodes(250),
@@ -309,7 +324,7 @@ mod tests {
     /// options.
     fn test_go_searchmoves() {
         assert_eq!(
-            parse_line("go searchmoves e2e4 infinite\n"),
+            parse_line("go searchmoves e2e4 infinite\n", &Board::default()),
             Ok(UciCommand::Go(vec![
                 GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
                 GoOption::Infinite,
@@ -320,14 +335,20 @@ mod tests {
     #[test]
     /// Test that a `uci` command is parsed correctly.
     fn test_uci() {
-        assert_eq!(parse_line("uci\n"), Ok(UciCommand::Uci));
+        assert_eq!(parse_line("uci\n", &Board::default()), Ok(UciCommand::Uci));
     }
 
     #[test]
     /// Test that the `debug` commands are parsed correctly.
     fn test_debug() {
-        assert_eq!(parse_line("debug on\n"), Ok(UciCommand::Debug(true)));
+        assert_eq!(
+            parse_line("debug on\n", &Board::default()),
+            Ok(UciCommand::Debug(true))
+        );
 
-        assert_eq!(parse_line("debug off\n"), Ok(UciCommand::Debug(false)));
+        assert_eq!(
+            parse_line("debug off\n", &Board::default()),
+            Ok(UciCommand::Debug(false))
+        );
     }
 }

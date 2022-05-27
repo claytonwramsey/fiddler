@@ -149,13 +149,18 @@ impl Move {
             None
         };
 
-        let is_castle = board[Piece::King].contains(from_sq) 
-            && from_sq.chebyshev_to(to_sq) > 1;
+        let is_castle = board[Piece::King].contains(from_sq) && from_sq.chebyshev_to(to_sq) > 1;
 
-        let is_en_passant = board[Piece::Pawn].contains(from_sq) 
-            && board.en_passant_square == Some(to_sq);
+        let is_en_passant =
+            board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq);
 
-        Ok(Move::new(from_sq, to_sq, promote_type, is_castle, is_en_passant))
+        Ok(Move::new(
+            from_sq,
+            to_sq,
+            promote_type,
+            is_castle,
+            is_en_passant,
+        ))
     }
 
     /// Construct a UCI string version of this move.
@@ -211,10 +216,11 @@ mod tests {
     fn test_uci_move_promotion() {
         assert_eq!(
             Move::from_uci(
-                "b7b8q", 
+                "b7b8q",
                 &Board::from_fen("r1b1kbnr/pPqppppp/2n5/8/8/8/P1PPPPPP/RNBQKBNR w KQkq - 1 5")
                     .unwrap(),
-            ).unwrap(),
+            )
+            .unwrap(),
             Move::new(Square::B7, Square::B8, Some(Piece::Queen), false, false),
         );
     }

@@ -1,6 +1,6 @@
 use fiddler_base::{
     algebraic::{algebraic_from_move, move_from_algebraic},
-    movegen::get_moves,
+    movegen::{get_moves, NoopNominator},
     Game, Move,
 };
 use fiddler_engine::{
@@ -250,12 +250,12 @@ impl<'a> FiddlerApp<'a> {
 
     /// Print out a list of the available moves in this position.
     fn list_moves(&mut self) -> CommandResult {
-        let moves = get_moves(self.game.position());
+        let moves = get_moves::<NoopNominator>(self.game.position());
         for m in moves.iter() {
             writeln!(
                 self.output_stream,
                 "{}",
-                algebraic_from_move(*m, self.game.position())
+                algebraic_from_move(m.0, self.game.position())
             )
             .map_err(|_| "failed to write move list")?;
         }
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(
             app.parse_command("e4"),
             Ok(Command::PlayMove {
-                m: Move::new(Square::E2, Square::E4, None),
+                m: Move::normal(Square::E2, Square::E4),
                 engine_reply: true,
             })
         );

@@ -803,27 +803,37 @@ fn loud_pawn_assistant<N: NominateMove>(
 
     for to_sq in singles & rank8 {
         let m = Move::promoting(to_sq - direction, to_sq, Piece::Queen);
-        moves.push((m, N::score(m, pos)));
+        if validate(m, pos) {
+            moves.push((m, N::score(m, pos)));
+        }
     }
 
     for to_sq in capture_e & not_rank8 {
         let m = Move::normal(to_sq - capture_dir_e, to_sq);
-        moves.push((m, N::score(m, pos)));
+        if validate(m, pos) {
+            moves.push((m, N::score(m, pos)));
+        }
     }
 
     for to_sq in capture_w & not_rank8 {
         let m = Move::normal(to_sq - capture_dir_w, to_sq);
-        moves.push((m, N::score(m, pos)));
+        if validate(m, pos) {
+            moves.push((m, N::score(m, pos)));
+        }
     }
 
     for to_sq in capture_e & rank8 {
         let m = Move::promoting(to_sq - capture_dir_e, to_sq, Piece::Queen);
-        moves.push((m, N::score(m, pos)));
+        if validate(m, pos) {
+            moves.push((m, N::score(m, pos)));
+        }
     }
 
     for to_sq in capture_w & rank8 {
         let m = Move::promoting(to_sq - capture_dir_w, to_sq, Piece::Queen);
-        moves.push((m, N::score(m, pos)));
+        if validate(m, pos) {
+            moves.push((m, N::score(m, pos)));
+        }
     }
 
     // en passant
@@ -917,7 +927,11 @@ fn pawn_captures(board: &Board, sq: Square, color: Color) -> Bitboard {
 #[inline(always)]
 /// Get the moves that a king could make in a position that are not castles,
 /// and append them into the moves buffer.
-fn king_move_non_castle<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>, target: Bitboard) {
+fn king_move_non_castle<N: NominateMove>(
+    pos: &Position,
+    moves: &mut Vec<(Move, N::Output)>,
+    target: Bitboard,
+) {
     let king_sq = pos.king_sqs[pos.board.player_to_move as usize];
     let allies = pos.board[pos.board.player_to_move];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
@@ -1231,11 +1245,8 @@ mod tests {
         .unwrap();
         let illegal_move = Move::normal(Square::D5, Square::C3);
 
-        assert!(!get_moves::<NoopNominator>(&pos).contains(
-            &(illegal_move, ())
-        ));
-        assert!(!get_loud_moves::<NoopNominator>(&pos)
-            .contains(&(illegal_move, ())));
+        assert!(!get_moves::<NoopNominator>(&pos).contains(&(illegal_move, ())));
+        assert!(!get_loud_moves::<NoopNominator>(&pos).contains(&(illegal_move, ())));
         assert!(!is_legal(illegal_move, &pos));
     }
 

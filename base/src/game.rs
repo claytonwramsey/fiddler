@@ -2,7 +2,7 @@ use crate::movegen::NoopNominator;
 
 use super::{
     algebraic::algebraic_from_move,
-    movegen::{NominateMove, get_loud_moves, get_moves, has_moves, is_square_attacked_by},
+    movegen::{get_loud_moves, get_moves, has_moves, is_square_attacked_by, NominateMove},
     position::PSTEvaluator,
     Board, Color, Move, Piece, Position, Score, Square,
 };

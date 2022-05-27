@@ -3,13 +3,15 @@ use fiddler_base::{
     Eval, Move, Position, Score,
 };
 
-use super::{candidacy::candidacy, pst::pst_delta};
+use crate::pst::PstNominate;
+
+use super::pst::pst_delta;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MovePicker {
     /// The buffer of moves to select from, paired with their PST deltas and
     /// then their final candidacies.
-    move_buffer: Vec<((Move, Score), Eval)>,
+    move_buffer: Vec<(Move, (Score, Eval))>,
     /// The index in the move buffer of the next move to give
     /// (initialized to 0).
     index: usize,
@@ -95,13 +97,7 @@ impl Iterator for MovePicker {
             PickPhase::PreGeneral => {
                 // generate moves, and then move along
                 self.phase = PickPhase::General;
-                self.move_buffer = get_moves(&self.pos)
-                    .iter()
-                    .map(|&m| {
-                        let delta = pst_delta(&self.pos.board, m);
-                        ((m, delta), candidacy(&self.pos, m, delta))
-                    })
-                    .collect();
+                self.move_buffer = get_moves::<PstNominate>(&self.pos);
                 self.next()
             }
             PickPhase::General => {
@@ -124,13 +120,13 @@ impl Iterator for MovePicker {
                 for &ignored in self.ignored.iter() {
                     // if we encounter an ignored move, skip our best move and
                     // move on.
-                    if ignored == best.0 {
+                    if ignored == best {
                         self.index += 1;
                         return self.next();
                     }
                 }
                 self.index += 1;
-                Some(best)
+                Some((best, best_eval.0))
             }
         }
     }

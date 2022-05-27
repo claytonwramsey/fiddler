@@ -19,7 +19,7 @@ fn main() {
         if stdin().read_line(&mut buf).is_err() {
             debug_info("failed to read line".into(), debug);
         };
-        let command = match parse_line(&buf) {
+        let command = match parse_line(&buf, game.board()) {
             Ok(cmd) => cmd,
             Err(e) => {
                 // print out the error to the frontend and continue on to the
