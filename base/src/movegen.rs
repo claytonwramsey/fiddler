@@ -236,6 +236,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
 
             let mut is_pseudolegal = KING_MOVES[from_sq as usize].contains(to_sq);
             if m.is_castle() && n_checkers == 0 {
+                // just generate moves, since castle is quite rare
                 let mut move_buf = Vec::with_capacity(2);
                 castles::<NoopNominator>(pos, &mut move_buf);
                 is_pseudolegal |= move_buf.contains(&(m, ()));
@@ -247,9 +248,27 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
             if n_checkers == 2 {
                 return false;
             }
-            if pt != Piece::Pawn && m.promote_type().is_some() {
+
+            if pt != Piece::Pawn && m.is_promotion() {
                 // cannot promote non-pawn
                 return false;
+            }
+
+            if m.is_castle() {
+                // only kings can castle
+                return false;
+            }
+
+            if m.is_en_passant() {
+                if pt != Piece::Pawn {
+                    // only pawns can en passant
+                    return false;
+                }
+
+                if pos.board.en_passant_square != Some(to_sq) {
+                    // en passant must target the en passant square
+                    return false;
+                }
             }
 
             // first, validate pseudolegality
@@ -1228,6 +1247,18 @@ mod tests {
             assert!(is_legal(m.0, &pos));
         }
         assert!(moves.contains(&(Move::promoting(Square::E2, Square::E1, Piece::Queen), ())));
+    }
+
+    #[test]
+    /// Test that a move flagged as en passant is illegal, even if it is an 
+    /// otherwise normal capture.
+    fn test_en_passant_illegal() {
+        let pos = Position::from_fen("r6r/3n1pk1/p4p2/3p4/2p1p1q1/1P2P1P1/P1PP1P1P/R1B1R1K1 b - - 0 25", Position::no_eval).unwrap();
+        let m = Move::en_passant(Square::C4, Square::B3);
+
+        assert!(!is_legal(m, &pos));
+        assert!(!get_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(!get_loud_moves::<NoopNominator>(&pos).contains(&(m, ())));
     }
 
     #[test]
