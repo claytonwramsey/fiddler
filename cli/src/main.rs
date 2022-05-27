@@ -28,17 +28,18 @@ fn main() {
             "bench" => {
                 // for now, just run a benchmark on the fried liver fen
                 let g = Game::from_fen(
-                    "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
+                    "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
                     pst_evaluate,
                 )
                 .unwrap();
 
                 let mut e = MainSearch::new();
-                e.set_depth(9);
+                e.set_depth(8);
                 e.set_nhelpers(15);
 
                 let r = e.evaluate(&g);
-                println!("{:?}", r);
+                let (m, eval, depth) = r.unwrap();
+                println!("depth {}: {} gives {}", depth, m, eval);
             }
             _ => {
                 println!("unrecognized mode of operation {:?}", args[0]);
