@@ -89,8 +89,7 @@ lazy_static! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A struct containing information for generating moves without self-checking,
-/// such as the necessary pieces to block the king. When a `Game` makes a move,
-/// this information is expected to be lost.
+/// such as the necessary pieces to block the king.
 pub struct CheckInfo {
     /// The locations of pieces which are checking the king in the current
     /// position.
@@ -347,17 +346,17 @@ pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
 
     match in_check {
         false => {
-            // in the overwhelming majority of cases, there are fewer than 50 
+            // in the overwhelming majority of cases, there are fewer than 50
             // legal moves total
             moves = Vec::with_capacity(50);
             non_evasions::<N>(pos, &mut moves);
-        },
+        }
         true => {
-            // in the overwhelming majority of cases, there are 8 or fewer 
+            // in the overwhelming majority of cases, there are 8 or fewer
             // legal evasions if the king is in check
             moves = Vec::with_capacity(8);
             evasions::<N>(pos, &mut moves);
-        },
+        }
     };
 
     moves
@@ -564,10 +563,7 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 /// Enumerate the legal moves a player of the given color would be
 /// able to make if it were their turn to move, and if the player is not in
 /// check.
-fn non_evasions<N: NominateMove>(
-    pos: &Position, 
-    moves: &mut Vec<(Move, N::Output)>
-) {
+fn non_evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
     normal_piece_assistant::<N>(pos, moves, Bitboard::ALL);
     pawn_assistant::<N>(pos, moves, Bitboard::ALL);
 
@@ -607,10 +603,7 @@ fn evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>)
 
 #[inline(always)]
 /// Enumerate the "loud" pseudolegal moves for a given board.
-fn loud_pseudolegal_moves<N: NominateMove>(
-    pos: &Position, 
-    moves: &mut Vec<(Move, N::Output)>
-) {
+fn loud_pseudolegal_moves<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
     let b = &pos.board;
     let player = b.player_to_move;
     let target_sqs = b[!player];
@@ -871,8 +864,7 @@ fn loud_pawn_assistant<N: NominateMove>(
     // en passant
     if let Some(ep_square) = board.en_passant_square {
         if target.contains(ep_square) {
-            let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize]
-             & pawns;
+            let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
             for from_sq in from_sqs {
                 let m = Move::en_passant(from_sq, ep_square);
                 if validate(m, pos) {
@@ -1253,10 +1245,14 @@ mod tests {
     }
 
     #[test]
-    /// Test that a move flagged as en passant is illegal, even if it is an 
+    /// Test that a move flagged as en passant is illegal, even if it is an
     /// otherwise normal capture.
     fn test_en_passant_illegal() {
-        let pos = Position::from_fen("r6r/3n1pk1/p4p2/3p4/2p1p1q1/1P2P1P1/P1PP1P1P/R1B1R1K1 b - - 0 25", Position::no_eval).unwrap();
+        let pos = Position::from_fen(
+            "r6r/3n1pk1/p4p2/3p4/2p1p1q1/1P2P1P1/P1PP1P1P/R1B1R1K1 b - - 0 25",
+            Position::no_eval,
+        )
+        .unwrap();
         let m = Move::en_passant(Square::C4, Square::B3);
 
         assert!(!is_legal(m, &pos));
