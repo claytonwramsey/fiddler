@@ -19,8 +19,8 @@ const ANTI_DIAG: Bitboard = Bitboard::new(0x0102040810204080);
 /// A Bitboard made of 1's around the ring of the board, and 0's in the middle
 const RING_MASK: Bitboard = Bitboard::new(0xFF818181818181FF);
 
-/// A saved list of magics for rooks created using the generator. Some magics 
-/// for sizes below the required bitshift amount were taken from the 
+/// A saved list of magics for rooks created using the generator. Some magics
+/// for sizes below the required bitshift amount were taken from the
 /// Chessprogramming Wiki.
 const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
     Bitboard::new(0x4080002040001480), //a1
@@ -89,8 +89,8 @@ const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
     Bitboard::new(0x7645FFFECBFEA79E), //h8
 ];
 
-/// A saved list of magics for bishops created using the generator. Some magics 
-/// for sizes below the required bitshift amount were taken from the 
+/// A saved list of magics for bishops created using the generator. Some magics
+/// for sizes below the required bitshift amount were taken from the
 /// Chessprogramming Wiki.
 const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
     Bitboard::new(0xffedf9fd7cfcffff), //a1
@@ -159,7 +159,7 @@ const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
     Bitboard::new(0x43ff9e4ef4ca2c89), //h8
 ];
 
-/// The number of bits used to express the magic lookups for rooks at each 
+/// The number of bits used to express the magic lookups for rooks at each
 /// square.
 const ROOK_BITS: [u8; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12, // rank 1
@@ -172,7 +172,7 @@ const ROOK_BITS: [u8; 64] = [
     11, 10, 10, 10, 10, 11, 10, 11, // 8
 ];
 
-/// The number of bits used to express the magic lookups for bishops at each 
+/// The number of bits used to express the magic lookups for bishops at each
 /// square.
 const BISHOP_BITS: [u8; 64] = [
     5, 4, 5, 5, 5, 5, 4, 5, // rank 1
@@ -296,9 +296,10 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         let num_points = table[i].mask.count_ones();
         for j in 0..(1 << num_points) {
             let occupancy = index_to_occupancy(j, table[i].mask);
-            let directions = match is_rook {
-                true => &Direction::ROOK_DIRECTIONS,
-                false => &Direction::BISHOP_DIRECTIONS,
+            let directions = if is_rook {
+                &Direction::ROOK_DIRECTIONS
+            } else {
+                &Direction::BISHOP_DIRECTIONS
             };
             let attack = directional_attacks(sq, directions, occupancy);
             let key = compute_magic_key(occupancy, table[i].magic, table[i].shift);
@@ -369,11 +370,11 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         for j in 0..(1 << num_points) {
             occupancies[j] = index_to_occupancy(j, table[i].mask);
             //compute attacks
-            if is_rook {
-                attacks[j] = directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancies[j]);
+            attacks[j] = if is_rook {
+                directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancies[j])
             } else {
-                attacks[j] = directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancies[j]);
-            }
+                directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancies[j])
+            };
         }
         // try random magics until one works
         let mut found_magic = false;
