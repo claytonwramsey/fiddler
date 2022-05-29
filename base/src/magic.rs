@@ -159,28 +159,30 @@ const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
     Bitboard::new(0x43ff9e4ef4ca2c89), //h8
 ];
 
-/// The target shift size for rook moves. Smaller is better.
-const ROOK_SHIFTS: [u8; 64] = [
-    12, 11, 11, 11, 11, 11, 11, 12, //rank 1
-    11, 10, 10, 10, 10, 10, 10, 11, //2
-    11, 10, 10, 10, 10, 10, 10, 11, //3
-    11, 10, 10, 10, 10, 10, 10, 11, //4
-    11, 10, 10, 10, 10, 10, 10, 11, //5
-    11, 10, 10, 10, 10, 10, 10, 11, //6
-    10, 9, 9, 9, 9, 9, 9, 10, //7
-    11, 10, 10, 10, 10, 11, 10, 11, //8
+/// The number of bits used to express the magic lookups for rooks at each 
+/// square.
+const ROOK_BITS: [u8; 64] = [
+    12, 11, 11, 11, 11, 11, 11, 12, // rank 1
+    11, 10, 10, 10, 10, 10, 10, 11, // 2
+    11, 10, 10, 10, 10, 10, 10, 11, // 3
+    11, 10, 10, 10, 10, 10, 10, 11, // 4
+    11, 10, 10, 10, 10, 10, 10, 11, // 5
+    11, 10, 10, 10, 10, 10, 10, 11, // 6
+    10, 9, 9, 9, 9, 9, 9, 10, // 7
+    11, 10, 10, 10, 10, 11, 10, 11, // 8
 ];
 
-/// The target shift size for bishop move enumeration. Smaller is better.
-const BISHOP_SHIFTS: [u8; 64] = [
-    5, 4, 5, 5, 5, 5, 4, 5, //rank 1
-    4, 4, 5, 5, 5, 5, 4, 4, //2
-    4, 4, 7, 7, 7, 7, 4, 4, //3
-    5, 5, 7, 9, 9, 7, 5, 5, //4
-    5, 5, 7, 9, 9, 7, 5, 5, //5
-    4, 4, 7, 7, 7, 7, 4, 4, //6
-    4, 4, 5, 5, 5, 5, 4, 4, //7
-    5, 4, 5, 5, 5, 5, 4, 5, //8
+/// The number of bits used to express the magic lookups for bishops at each 
+/// square.
+const BISHOP_BITS: [u8; 64] = [
+    5, 4, 5, 5, 5, 5, 4, 5, // rank 1
+    4, 4, 5, 5, 5, 5, 4, 4, // 2
+    4, 4, 7, 7, 7, 7, 4, 4, // 3
+    5, 5, 7, 9, 9, 7, 5, 5, // 4
+    5, 5, 7, 9, 9, 7, 5, 5, // 5
+    4, 4, 7, 7, 7, 7, 4, 4, // 6
+    4, 4, 5, 5, 5, 5, 4, 4, // 7
+    5, 4, 5, 5, 5, 5, 4, 5, // 8
 ];
 
 #[derive(Clone, Debug)]
@@ -282,11 +284,11 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         if is_rook {
             table[i].mask = get_rook_mask(sq);
             table[i].magic = SAVED_ROOK_MAGICS[i];
-            table[i].shift = ROOK_SHIFTS[i];
+            table[i].shift = 64 - ROOK_BITS[i];
         } else {
             table[i].mask = get_bishop_mask(sq);
             table[i].magic = SAVED_BISHOP_MAGICS[i];
-            table[i].shift = BISHOP_SHIFTS[i];
+            table[i].shift = 64 - BISHOP_BITS[i];
         }
         table[i]
             .attacks
@@ -334,7 +336,7 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard
 #[inline(always)]
 /// Use magic hashing to get the index to look up attacks in a bitboad.
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
-    usize::from((occupancy * magic) >> (64 - shift))
+    usize::from((occupancy * magic) >> shift)
 }
 
 /// Populate a magic table. If `is_rook` is true, it will make magics for rook
@@ -350,10 +352,10 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         let sq = Square::try_from(i as u8).unwrap();
         if is_rook {
             table[i].mask = get_rook_mask(sq);
-            table[i].shift = ROOK_SHIFTS[i];
+            table[i].shift = 64 - ROOK_BITS[i];
         } else {
             table[i].mask = get_bishop_mask(sq);
-            table[i].shift = BISHOP_SHIFTS[i];
+            table[i].shift = 64 - BISHOP_BITS[i];
         }
         // number of squares where occupancy matters
         let num_points = table[i].mask.count_ones();
