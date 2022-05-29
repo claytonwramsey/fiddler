@@ -17,7 +17,7 @@ fn main() {
     loop {
         let mut buf = String::new();
         if stdin().read_line(&mut buf).is_err() {
-            debug_info("failed to read line".into(), debug);
+            debug_info("failed to read line", debug);
         };
         let command = match parse_line(&buf, game.board()) {
             Ok(cmd) => cmd,
@@ -104,7 +104,7 @@ fn main() {
                         GoOption::SearchMoves(_) => {
                             unimplemented!("no implementation of searching move subsets")
                         }
-                        Ponder => todo!(),
+                        GoOption::Ponder => todo!(),
                         GoOption::WhiteTime(time) => {
                             wtime = Some(time);
                         }
@@ -136,9 +136,11 @@ fn main() {
                     }
                 }
             }
-            UciCommand::Stop => {}
+            UciCommand::Stop => {
+                searcher.limit.stop();
+            }
             UciCommand::PonderHit => todo!(),
-            UciCommand::Quit => todo!(),
+            UciCommand::Quit => break,
         }
     }
 }

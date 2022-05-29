@@ -57,6 +57,11 @@ impl SearchLimit {
         Ok(())
     }
 
+    /// Immediately halt the search, and mark this current search as over.
+    pub fn stop(&self) {
+        self.over.store(false, Ordering::Relaxed);
+    }
+
     #[inline(always)]
     /// Poll whether the search is over.
     pub fn is_over(&self) -> bool {
