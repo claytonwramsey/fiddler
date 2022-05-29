@@ -61,8 +61,8 @@ pub fn evaluate(g: &mut Game) -> Eval {
 /// Get a blending float describing the current phase of the game. Will range
 /// from 0 (full endgame) to 1 (full midgame).
 pub fn phase_of(b: &Board) -> f32 {
-    const MG_LIMIT: Eval = Eval::centipawns(2200);
-    const EG_LIMIT: Eval = Eval::centipawns(1000);
+    const MG_LIMIT: Eval = Eval::centipawns(2500);
+    const EG_LIMIT: Eval = Eval::centipawns(1400);
     let npm = {
         let mut total = Eval::DRAW;
         for pt in Piece::NON_PAWN_TYPES {

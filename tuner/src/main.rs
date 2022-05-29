@@ -1,13 +1,9 @@
 use std::{env, path::Path, sync::Arc, time::Instant};
 
 use fiddler_base::{Board, Color, Piece, Square};
-use fiddler_engine::evaluate::phase_of;
+use fiddler_engine::{evaluate::phase_of, greedy::piece_value, pst::PST};
 use libm::expf;
-use rand::{thread_rng, Rng};
 use rusqlite::Connection;
-
-/// The dimension of the feature vector.
-const FEATURE_DIM: usize = 772;
 
 /// A datum of training data.
 struct TrainingDatum {
@@ -29,15 +25,11 @@ pub fn main() {
     println!("path is `{path_str}`");
     let path = Path::new(path_str);
     let db = Connection::open(path).unwrap();
-    let mut weights = vec![3., 3., 5., 9.];
-    let mut rng = thread_rng();
-    for _ in 4..FEATURE_DIM {
-        weights.push(rng.gen_range(-0.1..0.1));
-    }
-    let mut learn_rate = 10.;
+    let mut weights = load_weights();
+    let mut learn_rate = 100.;
     let beta = 0.6;
 
-    let nthreads = 8;
+    let nthreads = 16;
     let tic = Instant::now();
     let mut statement = db.prepare("SELECT fen, eval FROM evaluations").unwrap();
 
@@ -67,7 +59,7 @@ pub fn main() {
             beta,
             nthreads,
         );
-        learn_rate *= 0.999;
+        learn_rate *= 0.99;
         println!("iteration {i}...")
     }
 
@@ -161,6 +153,27 @@ fn sigmoid(x: f32, beta: f32) -> f32 {
     1. / (1. + expf(-x * beta))
 }
 
+/// Load the weight value constants from the ones defined in the PST evaluation.
+fn load_weights() -> Vec<f32> {
+    let mut weights = Vec::new();
+    for pt in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+        weights.push(piece_value(pt).centipawn_val() as f32);
+    }
+
+    for pt in Piece::ALL_TYPES {
+        for rank in 0..8 {
+            for file in 0..8 {
+                let sq_idx = 8 * rank + file;
+                let score = PST[pt as usize][sq_idx];
+                weights.push(score.0.centipawn_val() as f32);
+                weights.push(score.1.centipawn_val() as f32);
+            }
+        }
+    }
+
+    weights
+}
+
 /// Print out a weights vector so it can be used as code.
 fn print_weights(weights: &[f32]) {
     let piece_val = |name: &str, val: f32| {
@@ -176,7 +189,7 @@ fn print_weights(weights: &[f32]) {
     piece_val("QUEEN", weights[3]);
     piece_val("PAWN", 1.);
 
-    println!("const PTABLE: Pst = expand_table([");
+    println!("const PST: Pst = expand_table([");
     for pt in Piece::ALL_TYPES {
         println!("\t[ // {pt}");
         let pt_idx = 4 + (128 * pt as usize);
@@ -209,11 +222,11 @@ fn print_weights(weights: &[f32]) {
 /// * 1: Bishop quantity
 /// * 2: Rook quantity
 /// * 3: Queen quantity
-/// * 4..132: Pawn PST, paired (midgame, endgame) element-wise
-/// * 132..260: Knight PST
-/// * 260..388: Bishop PST
-/// * 388..516: Rook PST
-/// * 516..644: Queen PST
+/// * 4..132: Knight PST, paired (midgame, endgame) element-wise
+/// * 132..260: Bishop PST
+/// * 260..388: Rook PST
+/// * 388..516: Queen PST
+/// * 516..644: Pawn PST
 /// * 644..772: King PST
 ///
 /// Ranges given above are lower-bound inclusive.
@@ -225,7 +238,7 @@ fn extract(b: &Board) -> Vec<(usize, f32)> {
     for pt in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
         let n_white = (b[pt] & b[Color::White]).count_ones() as i8;
         let n_black = (b[pt] & b[Color::Black]).count_ones() as i8;
-        features.push((pt as usize - 1, (n_white - n_black) as f32));
+        features.push((pt as usize, (n_white - n_black) as f32));
     }
 
     let offset = 4; // offset added to PST positions

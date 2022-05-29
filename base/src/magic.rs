@@ -292,7 +292,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         }
         table[i]
             .attacks
-            .resize(1 << table[i].shift, Bitboard::EMPTY);
+            .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
         let num_points = table[i].mask.count_ones();
         for j in 0..(1 << num_points) {
             let occupancy = index_to_occupancy(j, table[i].mask);
@@ -413,7 +413,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             // found a magic, populate the attack vector
             table[i]
                 .attacks
-                .resize(1 << table[i].shift, Bitboard::EMPTY);
+                .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
                 table[i].attacks[key] = attacks[j];
