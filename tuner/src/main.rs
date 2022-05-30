@@ -3,6 +3,7 @@ use std::{env, path::Path, sync::Arc, time::Instant};
 use fiddler_base::{Board, Color, Piece, Square};
 use fiddler_engine::{evaluate::phase_of, greedy::piece_value, pst::PST};
 use libm::expf;
+use rand::Rng;
 use rusqlite::Connection;
 
 /// A datum of training data.
@@ -26,7 +27,8 @@ pub fn main() {
     let path = Path::new(path_str);
     let db = Connection::open(path).unwrap();
     let mut weights = load_weights();
-    let mut learn_rate = 100.;
+    fuzz(&mut weights[5..], 0.05);
+    let mut learn_rate = 2.;
     let beta = 0.6;
 
     let nthreads = 16;
@@ -51,7 +53,7 @@ pub fn main() {
     let input_arc = Arc::new(input_sets);
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for i in 0..10000 {
+    for i in 0..500 {
         weights = train_step(
             input_arc.clone(),
             Arc::new(weights),
@@ -59,7 +61,7 @@ pub fn main() {
             beta,
             nthreads,
         );
-        learn_rate *= 0.99;
+        learn_rate *= 0.999;
         println!("iteration {i}...")
     }
 
@@ -157,7 +159,7 @@ fn sigmoid(x: f32, beta: f32) -> f32 {
 fn load_weights() -> Vec<f32> {
     let mut weights = Vec::new();
     for pt in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
-        weights.push(piece_value(pt).centipawn_val() as f32);
+        weights.push(piece_value(pt).centipawn_val() as f32 / 100.);
     }
 
     for pt in Piece::ALL_TYPES {
@@ -165,13 +167,21 @@ fn load_weights() -> Vec<f32> {
             for file in 0..8 {
                 let sq_idx = 8 * rank + file;
                 let score = PST[pt as usize][sq_idx];
-                weights.push(score.0.centipawn_val() as f32);
-                weights.push(score.1.centipawn_val() as f32);
+                weights.push(score.0.centipawn_val() as f32 / 100.);
+                weights.push(score.1.centipawn_val() as f32 / 100.);
             }
         }
     }
 
     weights
+}
+
+/// Add random values, ranging from +/- `amplitude`, to each element of `v`.
+fn fuzz(v: &mut [f32], amplitude: f32) {
+    let mut rng = rand::thread_rng();
+    for elem in v.iter_mut() {
+        *elem += amplitude * (2. * rng.gen::<f32>() - 1.);
+    }
 }
 
 /// Print out a weights vector so it can be used as code.
@@ -191,10 +201,10 @@ fn print_weights(weights: &[f32]) {
 
     println!("const PST: Pst = expand_table([");
     for pt in Piece::ALL_TYPES {
-        println!("\t[ // {pt}");
+        println!("    [ // {pt}");
         let pt_idx = 4 + (128 * pt as usize);
         for rank in 0..8 {
-            print!("\t\t");
+            print!("        ");
             for file in 0..8 {
                 let sq = Square::new(rank, file).unwrap();
                 let mg_idx = pt_idx + (2 * sq as usize);
@@ -203,9 +213,9 @@ fn print_weights(weights: &[f32]) {
                 let eg_val = (weights[eg_idx] * 100.) as i16;
                 print!("({mg_val}, {eg_val}), ");
             }
-            println!("// rank {rank}");
+            println!();
         }
-        println!("\t],");
+        println!("    ],");
     }
     println!("])");
 }
