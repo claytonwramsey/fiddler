@@ -1,7 +1,11 @@
 use std::{env, path::Path, sync::Arc, time::Instant};
 
-use fiddler_base::{Board, Color, Piece, Square};
-use fiddler_engine::{evaluate::phase_of, greedy::piece_value, pst::PST};
+use fiddler_base::{Bitboard, Board, Color, Piece, Square};
+use fiddler_engine::{
+    evaluate::{phase_of, DOUBLED_PAWN_VALUE},
+    greedy::piece_value,
+    pst::PST,
+};
 use libm::expf;
 use rand::Rng;
 use rusqlite::Connection;
@@ -28,7 +32,7 @@ pub fn main() {
     let db = Connection::open(path).unwrap();
     let mut weights = load_weights();
     fuzz(&mut weights[5..], 0.05);
-    let mut learn_rate = 2.;
+    let mut learn_rate = 5.;
     let beta = 0.6;
 
     let nthreads = 16;
@@ -158,8 +162,8 @@ fn sigmoid(x: f32, beta: f32) -> f32 {
 /// Load the weight value constants from the ones defined in the PST evaluation.
 fn load_weights() -> Vec<f32> {
     let mut weights = Vec::new();
-    for pt in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
-        weights.push(piece_value(pt).centipawn_val() as f32 / 100.);
+    for pt in Piece::NON_KING_TYPES {
+        weights.push(piece_value(pt).float_val());
     }
 
     for pt in Piece::ALL_TYPES {
@@ -167,11 +171,13 @@ fn load_weights() -> Vec<f32> {
             for file in 0..8 {
                 let sq_idx = 8 * rank + file;
                 let score = PST[pt as usize][sq_idx];
-                weights.push(score.0.centipawn_val() as f32 / 100.);
-                weights.push(score.1.centipawn_val() as f32 / 100.);
+                weights.push(score.0.float_val());
+                weights.push(score.1.float_val());
             }
         }
     }
+
+    weights.push(DOUBLED_PAWN_VALUE.float_val());
 
     weights
 }
@@ -197,12 +203,16 @@ fn print_weights(weights: &[f32]) {
     piece_val("BISHOP", weights[1]);
     piece_val("ROOK", weights[2]);
     piece_val("QUEEN", weights[3]);
-    piece_val("PAWN", 1.);
+    piece_val("PAWN", weights[4]);
+    println!(
+        "const DOUBLED_PAWN_VAL: Eval = Eval::centipawns({})",
+        (weights[773] * 100.) as i16
+    );
 
     println!("const PST: Pst = expand_table([");
     for pt in Piece::ALL_TYPES {
         println!("    [ // {pt}");
-        let pt_idx = 4 + (128 * pt as usize);
+        let pt_idx = 5 + (128 * pt as usize);
         for rank in 0..8 {
             print!("        ");
             for file in 0..8 {
@@ -221,8 +231,7 @@ fn print_weights(weights: &[f32]) {
 }
 
 /// Extract a feature vector from a board. The resulting vector will have
-/// dimension 772 (=4 + (64 * 6 * 2)). A pawn is always worth 100 centipawns,
-/// so not included in the feature vector. The PST values can be up to 1 for a
+/// dimension 773 (=5 + (64 * 6 * 2)). The PST values can be up to 1 for a
 /// white piece on the given PST square, -1 for a black piece, or 0 for both or
 /// neither. The PST values are then pre-blended by game phase.
 ///
@@ -232,12 +241,15 @@ fn print_weights(weights: &[f32]) {
 /// * 1: Bishop quantity
 /// * 2: Rook quantity
 /// * 3: Queen quantity
-/// * 4..132: Knight PST, paired (midgame, endgame) element-wise
-/// * 132..260: Bishop PST
-/// * 260..388: Rook PST
-/// * 388..516: Queen PST
-/// * 516..644: Pawn PST
-/// * 644..772: King PST
+/// * 4: Pawn quantity
+/// * 5..133: Knight PST, paired (midgame, endgame) element-wise
+/// * 133..261: Bishop PST
+/// * 261..389: Rook PST
+/// * 389..517: Queen PST
+/// * 517..645: Pawn PST
+/// * 645..773: King PST
+/// * 773: Number of doubled pawns
+///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
 ///
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
@@ -245,18 +257,19 @@ fn print_weights(weights: &[f32]) {
 fn extract(b: &Board) -> Vec<(usize, f32)> {
     let mut features: Vec<(usize, f32)> = Vec::new();
     // Indices 0..4: non-king piece values
-    for pt in [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+    for pt in Piece::NON_KING_TYPES {
         let n_white = (b[pt] & b[Color::White]).count_ones() as i8;
         let n_black = (b[pt] & b[Color::Black]).count_ones() as i8;
         features.push((pt as usize, (n_white - n_black) as f32));
     }
 
-    let offset = 4; // offset added to PST positions
+    let mut offset = 5; // offset added to PST positions
     let phase = phase_of(b);
 
     let bocc = b[Color::Black];
     let wocc = b[Color::White];
 
+    // Get piece-square quantities
     for pt in Piece::ALL_TYPES {
         let pt_idx = pt as usize;
         for sq in b[pt] {
@@ -271,6 +284,35 @@ fn extract(b: &Board) -> Vec<(usize, f32)> {
             features.push((idx, phase * increment));
             features.push((idx + 1, (1. - phase) * increment));
         }
+    }
+
+    // New offset after everything in the PST.
+    offset = 773;
+
+    // Doubled pawns
+    let white_occupancy = b[Color::White];
+    let pawns = b[Piece::Pawn];
+    let mut col_mask = Bitboard::new(0x0101010101010101);
+    let mut doubled_count: i8 = 0;
+    for _ in 0..8 {
+        let col_pawns = pawns & col_mask;
+
+        // all ones on the A column, shifted left by the col
+        let num_black = match ((!white_occupancy) & col_pawns).count_ones() {
+            0 => 0,
+            x => x as i8 - 1,
+        };
+        let num_white = match (white_occupancy & col_pawns).count_ones() {
+            0 => 0,
+            x => x as i8 - 1,
+        };
+
+        doubled_count += num_white - num_black;
+
+        col_mask <<= 1;
+    }
+    if doubled_count != 0 {
+        features.push((offset, doubled_count as f32));
     }
 
     features

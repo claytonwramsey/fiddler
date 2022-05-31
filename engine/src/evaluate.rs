@@ -5,7 +5,7 @@ use fiddler_base::{Bitboard, Board, Color, Eval, Game, Piece};
 use super::greedy::{greedy_evaluate, piece_value};
 
 /// The value of having an opponent's pawn doubled.
-const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(10);
+pub const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(-10);
 
 /// Evaluate a quiet position.
 pub fn evaluate(g: &mut Game) -> Eval {
@@ -49,8 +49,8 @@ pub fn evaluate(g: &mut Game) -> Eval {
             x => x - 1,
         };
 
-        eg_eval += DOUBLED_PAWN_VALUE * num_black_doubled_pawns;
-        eg_eval -= DOUBLED_PAWN_VALUE * num_white_doubled_pawns;
+        eg_eval -= DOUBLED_PAWN_VALUE * num_black_doubled_pawns;
+        eg_eval += DOUBLED_PAWN_VALUE * num_white_doubled_pawns;
 
         col_mask <<= 1;
     }

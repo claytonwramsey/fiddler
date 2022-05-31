@@ -143,7 +143,7 @@ impl Eval {
     #[inline(always)]
     /// Get the value in floating-point pawns of this evaluation.
     pub fn float_val(&self) -> f32 {
-        (self.0 as f32) * 100.
+        (self.0 as f32) / 100.
     }
 }
 
