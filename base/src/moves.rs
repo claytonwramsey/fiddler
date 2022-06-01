@@ -194,9 +194,16 @@ impl Move {
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.promote_type() {
-            None => write!(f, "{} -> {}", self.from_square(), self.to_square()),
-            Some(p) => write!(f, "{} -> {} ={}", self.from_square(), self.to_square(), p),
+            None => write!(f, "{} -> {}", self.from_square(), self.to_square())?,
+            Some(p) => write!(f, "{} -> {} ={}", self.from_square(), self.to_square(), p)?,
+        };
+        if self.is_en_passant() {
+            write!(f, " [e.p.]")?;
         }
+        if self.is_castle() {
+            write!(f, " [castle]")?;
+        }
+        Ok(())
     }
 }
 

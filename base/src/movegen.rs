@@ -257,8 +257,9 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                 // only kings can castle
                 return false;
             }
-
-            if m.is_en_passant() {
+            
+            let is_ep = m.is_en_passant();
+            if is_ep {
                 if pt != Piece::Pawn {
                     // only pawns can en passant
                     return false;
@@ -282,13 +283,8 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                         || (to_sq == singlemove_sq + pawn_dir //doublemove
                             && player.pawn_start_rank().contains(from_sq)
                             && !occupancy.contains(to_sq))))
-                        || (pattacks
-                            & (enemies
-                                | match pos.board.en_passant_square {
-                                    Some(sq) => Bitboard::from(sq),
-                                    None => Bitboard::EMPTY,
-                                }))
-                        .contains(to_sq)
+                        || (is_ep && pos.board.en_passant_square == Some(to_sq))
+                        || (!is_ep && (pattacks & enemies).contains(m.to_square()))
                 }
                 Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
                 Piece::Bishop => MAGIC
@@ -1275,6 +1271,19 @@ mod tests {
         assert!(!is_legal(m, &pos));
     }
 
+    #[test]
+    /// Test that a move must be tagged as en passant to be considered legal to 
+    /// escape check.
+    fn test_en_passant_tagged() {
+        let pos = Position::from_fen(
+            "2B1kb2/pp2pp2/7p/1PpQP3/2nK4/8/P1r4R/R7 w - c6 0 27", 
+            Position::no_eval
+        ).unwrap();
+
+        let m = Move::normal(Square::B5, Square::C6);
+        assert!(!is_legal(m, &pos));
+        assert!(!get_moves::<NoopNominator>(&pos).contains(&(m, ())));
+    }
     #[test]
     /// Test that a pinned piece cannot make a capture if it does not defend
     /// against the pin.
