@@ -56,6 +56,12 @@ impl Bitboard {
     pub const fn trailing_zeros(&self) -> u32 {
         self.0.trailing_zeros()
     }
+
+    /// Count the number of leading zeros (i.e. empty squares between H8 and 
+    /// the highest non-empty square). Will be zero if H8 is occupied.
+    pub const fn leading_zeros(&self) -> u32 {
+        self.0.leading_zeros()
+    }
 }
 
 impl BitAnd for Bitboard {
@@ -148,6 +154,15 @@ impl Shl<i32> for Bitboard {
 
     #[inline(always)]
     fn shl(self, rhs: i32) -> Self::Output {
+        Bitboard(self.0 << rhs)
+    }
+}
+
+impl Shl<usize> for Bitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn shl(self, rhs: usize) -> Self::Output {
         Bitboard(self.0 << rhs)
     }
 }

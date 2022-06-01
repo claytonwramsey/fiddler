@@ -6,6 +6,9 @@ use super::greedy::{greedy_evaluate, piece_value};
 
 /// The value of having your own pawn doubled.
 pub const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(-33);
+/// The value of having a rook with no same-colored pawns in front of it which 
+/// are not advanced past the 3rd rank.
+pub const OPEN_ROOK_VALUE: Eval = Eval::centipawns(10);
 
 /// Evaluate a quiet position.
 pub fn evaluate(g: &mut Game) -> Eval {
@@ -35,6 +38,7 @@ pub fn evaluate(g: &mut Game) -> Eval {
     // Add losses due to doubled pawns
     let white_occupancy = b[Color::White];
     let pawns = b[Piece::Pawn];
+    let mut net_doubled_pawns: i16 = 0;
     let mut col_mask = Bitboard::new(0x0101010101010101);
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
@@ -42,20 +46,75 @@ pub fn evaluate(g: &mut Game) -> Eval {
         // all ones on the A column, shifted left by the col
         let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).count_ones() {
             0 => 0,
-            x => x - 1,
+            x => x as i16 - 1,
         };
         let num_white_doubled_pawns = match (white_occupancy & col_pawns).count_ones() {
             0 => 0,
-            x => x - 1,
+            x => x as i16 - 1,
         };
 
-        eg_eval -= DOUBLED_PAWN_VALUE * num_black_doubled_pawns;
-        eg_eval += DOUBLED_PAWN_VALUE * num_white_doubled_pawns;
+        net_doubled_pawns -= num_black_doubled_pawns;
+        net_doubled_pawns += num_white_doubled_pawns;
 
         col_mask <<= 1;
     }
+    let doubled_pawn_contribution = DOUBLED_PAWN_VALUE * net_doubled_pawns;
+    mg_eval += doubled_pawn_contribution;
+    eg_eval += doubled_pawn_contribution;
+
+    
 
     blend_eval(g.board(), mg_eval, eg_eval)
+}
+
+/// Count the number of "open" rooks (i.e., those which are not blocked by 
+/// unadvanced pawns) in a position. The number is a net value, so it will be 
+/// negative if Black has more open rooks than White.
+pub fn net_open_rooks(b: &Board) -> i8 {
+    const A_FILE_MASK: Bitboard = Bitboard::new(0x0101010101010101);
+    // Mask for pawns which are above rank 3 (i.e. on the white half of the 
+    // board).
+    const BELOW_RANK3: Bitboard = Bitboard::new(0xFFFFFFFF);
+    // Mask for pawns which are on the black half of the board
+    const ABOVE_RANK3: Bitboard = Bitboard::new(0x00000000FFFFFFFF);
+    let mut net_open_rooks = 0i8;
+    let rooks = b[Piece::Rook];
+    let pawns = b[Piece::Pawn];
+    let white = b[Color::White];
+    let black = b[Color::Black];
+
+    // count white rooks
+    for wrook_sq in rooks & white {
+        if wrook_sq.rank() >= 3 {
+            net_open_rooks += 1;
+            continue;
+        }
+        let pawns_in_col = (pawns & white) & (A_FILE_MASK << wrook_sq.file());
+        let important_pawns = BELOW_RANK3 & pawns_in_col;
+        // check that the forward-most pawn of the important pawns is in front 
+        // of or behind the rook
+        if important_pawns.leading_zeros() > (63 - (wrook_sq as u32)) {
+            // all the important pawns are behind the rook
+            net_open_rooks += 1;
+        }
+    }
+
+    // count black rooks
+    for brook_sq in rooks & black {
+        if brook_sq.rank() <= 4 {
+            net_open_rooks -= 1;
+            continue;
+        }
+        let pawns_in_col = (pawns & white) & (A_FILE_MASK << brook_sq.file());
+        let important_pawns = ABOVE_RANK3 & pawns_in_col;
+        // check that the lowest-rank pawn that could block the rook is behind 
+        // the rook
+        if important_pawns.trailing_zeros() > brook_sq as u32 {
+            net_open_rooks -= 1;
+        }
+    }
+
+    net_open_rooks
 }
 
 /// Get a blending float describing the current phase of the game. Will range
