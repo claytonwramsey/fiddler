@@ -303,7 +303,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             };
             let attack = directional_attacks(sq, directions, occupancy);
             let key = compute_magic_key(occupancy, table[i].magic, table[i].shift);
-            if table[i].attacks[key] == Bitboard::EMPTY {
+            if table[i].attacks[key].is_empty() {
                 table[i].attacks[key] = attack;
             } else if table[i].attacks[key] != attack {
                 // This should never happen, since we should expect our loads to
@@ -387,7 +387,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             found_magic = true;
             for j in 0..(1 << num_points) {
                 let key = compute_magic_key(occupancies[j], magic, table[i].shift);
-                if used[key] == Bitboard::EMPTY {
+                if used[key].is_empty() {
                     used[key] = attacks[j];
                 } else if used[key] != attacks[j] {
                     found_magic = false;

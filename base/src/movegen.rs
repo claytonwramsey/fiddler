@@ -171,7 +171,7 @@ impl CheckInfo {
             if (between_bb & occupancy).count_ones() == 1 {
                 blockers |= between_bb;
                 if let Some(color) = sq_color {
-                    if board[color] & between_bb != Bitboard::EMPTY {
+                    if !(board[color] & between_bb).is_empty() {
                         pinners |= Bitboard::from(sniper_sq);
                     }
                 }
@@ -338,7 +338,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
 /// Get all the legal moves on a board.
 pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
     let mut moves;
-    let in_check = pos.check_info.checkers != Bitboard::EMPTY;
+    let in_check = !pos.check_info.checkers.is_empty();
 
     match in_check {
         false => {
@@ -363,7 +363,7 @@ pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
 /// in check in this position.
 pub fn get_loud_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
     assert!(
-        pos.check_info.checkers == Bitboard::EMPTY,
+        pos.check_info.checkers.is_empty(),
         "loud moves cannot be requested for board where king is checked"
     );
 
@@ -388,7 +388,7 @@ pub fn has_moves(pos: &Position) -> bool {
     let king_attackers = pos.check_info.checkers;
     let king_to_sqs = KING_MOVES[king_square as usize] & !player_occupancy;
 
-    if king_attackers != Bitboard::EMPTY {
+    if !king_attackers.is_empty() {
         // king is in check
 
         // King can probably get out on his own
@@ -467,12 +467,12 @@ fn validate(m: Move, pos: &Position) -> bool {
 
         return (MAGIC.rook_attacks(new_occupancy, king_sq)
             & (b[Piece::Rook] | b[Piece::Queen])
-            & enemy
-            == Bitboard::EMPTY)
+            & enemy)
+           .is_empty()
             && (MAGIC.bishop_attacks(new_occupancy, king_sq)
                 & (b[Piece::Bishop] | b[Piece::Queen])
-                & enemy
-                == Bitboard::EMPTY);
+                & enemy)
+               .is_empty();
     }
 
     // Validate passthrough squares for castling
@@ -498,7 +498,7 @@ fn validate(m: Move, pos: &Position) -> bool {
     if from_sq == king_sq {
         let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
         return square_attackers_occupancy(b, to_sq, !b.player_to_move, new_occupancy)
-            == Bitboard::EMPTY;
+           .is_empty();
     }
 
     // the move is valid if the piece is not pinned, or if the piece is pinned
@@ -506,7 +506,7 @@ fn validate(m: Move, pos: &Position) -> bool {
     //
     // it is reasonable to use `aligned()` here because there's no way a piece
     // can stay aligned in a move without keeping the pin appeased.
-    (pinned & from_bb == Bitboard::EMPTY) || aligned(m.from_square(), m.to_square(), king_sq)
+    (pinned & from_bb).is_empty() || aligned(m.from_square(), m.to_square(), king_sq)
 }
 
 /// In a given board state, is a move illegal because it would be a
@@ -546,13 +546,13 @@ pub fn is_move_self_check(pos: &Position, m: Move) -> bool {
     let attackers = square_attackers_occupancy(board, king_square, opponent, occupancy);
 
     //attackers which we will capture are not a threat
-    (attackers & !Bitboard::from(m.to_square())) != Bitboard::EMPTY
+    !(attackers & !Bitboard::from(m.to_square())).is_empty()
 }
 
 #[inline(always)]
 /// In a given board state, is a square attacked by the given color?
 pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
-    square_attackers(board, sq, color) != Bitboard::EMPTY
+    !square_attackers(board, sq, color).is_empty()
 }
 
 #[inline(always)]
@@ -921,7 +921,7 @@ fn pawn_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
     if !occupancy.contains(sq + dir) {
         target_squares |= Bitboard::from(sq + dir);
         //pawn is on start rank and double-move square is not occupied
-        if (start_rank & from_bb) != Bitboard::EMPTY && !occupancy.contains(sq + 2 * dir) {
+        if !(start_rank & from_bb).is_empty() && !occupancy.contains(sq + 2 * dir) {
             target_squares |= Bitboard::from(sq + 2 * dir);
         }
     }
@@ -974,7 +974,7 @@ fn castles<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) 
     };
 
     let can_kingside_castle = pos.board.castle_rights.is_kingside_castle_legal(player)
-        && occ & kingside_castle_passthrough_sqs == Bitboard::EMPTY;
+        && (occ & kingside_castle_passthrough_sqs).is_empty();
 
     if can_kingside_castle {
         let m = Move::castling(king_sq, Square::new(king_sq.rank(), 6).unwrap());
@@ -991,7 +991,7 @@ fn castles<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) 
     };
 
     let can_queenside_castle = pos.board.castle_rights.is_queenside_castle_legal(player)
-        && occ & queenside_castle_passthrough_sqs == Bitboard::EMPTY;
+        && (occ & queenside_castle_passthrough_sqs).is_empty();
 
     if can_queenside_castle {
         let m = Move::castling(king_sq, Square::new(king_sq.rank(), 2).unwrap());
@@ -1012,7 +1012,7 @@ pub fn between(sq1: Square, sq2: Square) -> Bitboard {
 /// Determine whether three squares are aligned according to rook or bishop
 /// directions.
 pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
-    LINES[sq1 as usize][sq2 as usize] & Bitboard::from(sq3) != Bitboard::EMPTY
+    !(LINES[sq1 as usize][sq2 as usize] & Bitboard::from(sq3)).is_empty()
 }
 
 /// Get the step attacks that could be made by moving in `dirs` from each point

@@ -62,6 +62,11 @@ impl Bitboard {
     pub const fn leading_zeros(&self) -> u32 {
         self.0.leading_zeros()
     }
+
+    /// Determine whether this bitboard is empty.
+    pub const fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
 }
 
 impl BitAnd for Bitboard {
@@ -233,7 +238,7 @@ impl Iterator for Bitboard {
 
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        if *self == Bitboard::EMPTY {
+        if self.is_empty() {
             return None;
         }
         // This will not cause UB because we already accounted for the empty

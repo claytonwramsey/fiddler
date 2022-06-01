@@ -180,10 +180,10 @@ impl Board {
     /// Returns `None` if there are no pieces occupying the square.
     pub fn color_at_square(&self, sq: Square) -> Option<Color> {
         let bb = Bitboard::from(sq);
-        if self.sides[Color::Black as usize] & bb != Bitboard::EMPTY {
+        if !(self[Color::Black] & bb).is_empty() {
             return Some(Color::Black);
         }
-        if self.sides[Color::White as usize] & bb != Bitboard::EMPTY {
+        if !(self[Color::White] & bb).is_empty() {
             return Some(Color::White);
         }
         None
