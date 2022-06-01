@@ -130,4 +130,25 @@ impl Iterator for MovePicker {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.phase {
+            // we know that we can play the transposition move
+            PickPhase::Transposition => (1, None),
+            // no clue if the killer move is any good
+            PickPhase::Killer => (0, None),
+            // no clue what the result of movegen will be
+            PickPhase::PreGeneral => (0, None),
+            // check the size of the moves buffer
+            PickPhase::General => {
+                let n = self.move_buffer.len() - self.index;
+                let n_ignored = self.ignored.len();
+                if n_ignored >= n {
+                    (0, Some(n))
+                } else {
+                    (n - n_ignored, Some(n))
+                }
+            },
+        }
+    }
 }

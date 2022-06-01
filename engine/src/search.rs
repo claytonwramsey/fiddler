@@ -1,4 +1,4 @@
-use fiddler_base::{movegen::get_loud_moves, Bitboard, Eval, Game, Move};
+use fiddler_base::{movegen::get_loud_moves, Eval, Game, Move};
 
 use crate::pst::PstNominate;
 

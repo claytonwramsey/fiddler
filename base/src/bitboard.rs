@@ -247,4 +247,9 @@ impl Iterator for Bitboard {
         self.0 &= self.0 - 1;
         result
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.0.count_ones() as usize;
+        (n, Some(n))
+    }
 }
