@@ -3,11 +3,11 @@ use fiddler_base::{Board, Color, Eval, Piece};
 /// Get the value of one piece by its type.
 pub fn piece_value(pt: Piece) -> Eval {
     Eval::centipawns(match pt {
-        Piece::Knight => 288,
-        Piece::Bishop => 330,
-        Piece::Rook => 474,
-        Piece::Queen => 962,
-        Piece::Pawn => 101,
+        Piece::Knight => 291,
+        Piece::Bishop => 333,
+        Piece::Rook => 453,
+        Piece::Queen => 972,
+        Piece::Pawn => 102,
         Piece::King => 0,
     })
 }

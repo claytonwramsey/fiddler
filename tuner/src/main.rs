@@ -1,8 +1,8 @@
 use std::{env, path::Path, sync::Arc, time::Instant};
 
-use fiddler_base::{Bitboard, Board, Color, Piece, Square};
+use fiddler_base::{Board, Color, Piece, Square};
 use fiddler_engine::{
-    evaluate::{phase_of, DOUBLED_PAWN_VALUE},
+    evaluate::{net_doubled_pawns, net_open_rooks, phase_of, DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE},
     greedy::piece_value,
     pst::PST,
 };
@@ -177,7 +177,11 @@ fn load_weights() -> Vec<f32> {
         }
     }
 
-    weights.push(DOUBLED_PAWN_VALUE.float_val());
+    weights.push(DOUBLED_PAWN_VALUE.0.float_val());
+    weights.push(DOUBLED_PAWN_VALUE.1.float_val());
+
+    weights.push(OPEN_ROOK_VALUE.0.float_val());
+    weights.push(OPEN_ROOK_VALUE.1.float_val());
 
     weights
 }
@@ -199,15 +203,22 @@ fn print_weights(weights: &[f32]) {
         );
     };
 
+    let paired_val = |name: &str, start: usize| {
+        println!(
+            "const {name}: (Eval::centipawns({}), Eval::centipawns({}));",
+            (weights[start] * 100.) as i16,
+            (weights[start + 1] * 100.) as i16,
+        );
+    };
+
     piece_val("KNIGHT", weights[0]);
     piece_val("BISHOP", weights[1]);
     piece_val("ROOK", weights[2]);
     piece_val("QUEEN", weights[3]);
     piece_val("PAWN", weights[4]);
-    println!(
-        "const DOUBLED_PAWN_VAL: Eval = Eval::centipawns({})",
-        (weights[773] * 100.) as i16
-    );
+
+    paired_val("DOUBLED_PAWN_VAL", 773);
+    paired_val("OPEN_ROOK_VAL", 775);
 
     println!("const PST: Pst = expand_table([");
     for pt in Piece::ALL_TYPES {
@@ -248,14 +259,15 @@ fn print_weights(weights: &[f32]) {
 /// * 389..517: Queen PST
 /// * 517..645: Pawn PST
 /// * 645..773: King PST
-/// * 773: Number of doubled pawns
+/// * 773..775: Number of doubled pawns (mg, eg) weighted
 ///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
+/// * 775..777: Net number of
 ///
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
 /// true vector. Zero entries will not be in the output.
 fn extract(b: &Board) -> Vec<(usize, f32)> {
-    let mut features: Vec<(usize, f32)> = Vec::new();
+    let mut features = Vec::with_capacity(20);
     // Indices 0..4: non-king piece values
     for pt in Piece::NON_KING_TYPES {
         let n_white = (b[pt] & b[Color::White]).count_ones() as i8;
@@ -290,29 +302,16 @@ fn extract(b: &Board) -> Vec<(usize, f32)> {
     offset = 773;
 
     // Doubled pawns
-    let white_occupancy = b[Color::White];
-    let pawns = b[Piece::Pawn];
-    let mut col_mask = Bitboard::new(0x0101010101010101);
-    let mut doubled_count: i8 = 0;
-    for _ in 0..8 {
-        let col_pawns = pawns & col_mask;
-
-        // all ones on the A column, shifted left by the col
-        let num_black = match ((!white_occupancy) & col_pawns).count_ones() {
-            0 => 0,
-            x => x as i8 - 1,
-        };
-        let num_white = match (white_occupancy & col_pawns).count_ones() {
-            0 => 0,
-            x => x as i8 - 1,
-        };
-
-        doubled_count += num_white - num_black;
-
-        col_mask <<= 1;
-    }
+    let doubled_count = net_doubled_pawns(b);
     if doubled_count != 0 {
-        features.push((offset, doubled_count as f32));
+        features.push((offset, (doubled_count as f32) * phase));
+        features.push((offset + 1, (doubled_count as f32) * (1. - phase)));
+    }
+
+    let open_rook_count = net_open_rooks(b);
+    if open_rook_count != 0 {
+        features.push((offset + 2, (open_rook_count as f32) * phase));
+        features.push((offset + 3, (open_rook_count as f32) * (1. - phase)));
     }
 
     features

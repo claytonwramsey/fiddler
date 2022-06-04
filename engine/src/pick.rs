@@ -148,7 +148,7 @@ impl Iterator for MovePicker {
                 } else {
                     (n - n_ignored, Some(n))
                 }
-            },
+            }
         }
     }
 }

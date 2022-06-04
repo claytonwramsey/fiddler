@@ -182,6 +182,14 @@ impl Mul<i16> for Eval {
     }
 }
 
+impl Mul<i8> for Eval {
+    type Output = Self;
+    #[inline(always)]
+    fn mul(self, rhs: i8) -> Self::Output {
+        Eval(self.0 * (rhs as i16))
+    }
+}
+
 impl Mul<f32> for Eval {
     type Output = Self;
     #[inline(always)]

@@ -1,14 +1,14 @@
 use std::cmp::{max, min};
 
-use fiddler_base::{Bitboard, Board, Color, Eval, Game, Piece};
+use fiddler_base::{Bitboard, Board, Color, Eval, Game, Piece, Score};
 
 use super::greedy::{greedy_evaluate, piece_value};
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Eval = Eval::centipawns(-33);
-/// The value of having a rook with no same-colored pawns in front of it which 
+pub const DOUBLED_PAWN_VALUE: Score = (Eval::centipawns(-34), Eval::centipawns(-31));
+/// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Eval = Eval::centipawns(10);
+pub const OPEN_ROOK_VALUE: Score = (Eval::centipawns(41), Eval::centipawns(10));
 
 /// Evaluate a quiet position.
 pub fn evaluate(g: &mut Game) -> Eval {
@@ -36,43 +36,21 @@ pub fn evaluate(g: &mut Game) -> Eval {
     eg_eval += material;
 
     // Add losses due to doubled pawns
-    let white_occupancy = b[Color::White];
-    let pawns = b[Piece::Pawn];
-    let mut net_doubled_pawns: i16 = 0;
-    let mut col_mask = Bitboard::new(0x0101010101010101);
-    for _ in 0..8 {
-        let col_pawns = pawns & col_mask;
+    let ndoubled = net_doubled_pawns(b);
+    mg_eval += DOUBLED_PAWN_VALUE.0 * ndoubled;
+    eg_eval += DOUBLED_PAWN_VALUE.1 * ndoubled;
 
-        // all ones on the A column, shifted left by the col
-        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).count_ones() {
-            0 => 0,
-            x => x as i16 - 1,
-        };
-        let num_white_doubled_pawns = match (white_occupancy & col_pawns).count_ones() {
-            0 => 0,
-            x => x as i16 - 1,
-        };
-
-        net_doubled_pawns -= num_black_doubled_pawns;
-        net_doubled_pawns += num_white_doubled_pawns;
-
-        col_mask <<= 1;
-    }
-    let doubled_pawn_contribution = DOUBLED_PAWN_VALUE * net_doubled_pawns;
-    mg_eval += doubled_pawn_contribution;
-    eg_eval += doubled_pawn_contribution;
-
-    
+    // Add gains from open rooks
 
     blend_eval(g.board(), mg_eval, eg_eval)
 }
 
-/// Count the number of "open" rooks (i.e., those which are not blocked by 
-/// unadvanced pawns) in a position. The number is a net value, so it will be 
+/// Count the number of "open" rooks (i.e., those which are not blocked by
+/// unadvanced pawns) in a position. The number is a net value, so it will be
 /// negative if Black has more open rooks than White.
 pub fn net_open_rooks(b: &Board) -> i8 {
     const A_FILE_MASK: Bitboard = Bitboard::new(0x0101010101010101);
-    // Mask for pawns which are above rank 3 (i.e. on the white half of the 
+    // Mask for pawns which are above rank 3 (i.e. on the white half of the
     // board).
     const BELOW_RANK3: Bitboard = Bitboard::new(0xFFFFFFFF);
     // Mask for pawns which are on the black half of the board
@@ -91,7 +69,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
         }
         let pawns_in_col = (pawns & white) & (A_FILE_MASK << wrook_sq.file());
         let important_pawns = BELOW_RANK3 & pawns_in_col;
-        // check that the forward-most pawn of the important pawns is in front 
+        // check that the forward-most pawn of the important pawns is in front
         // of or behind the rook
         if important_pawns.leading_zeros() > (63 - (wrook_sq as u32)) {
             // all the important pawns are behind the rook
@@ -107,7 +85,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
         }
         let pawns_in_col = (pawns & white) & (A_FILE_MASK << brook_sq.file());
         let important_pawns = ABOVE_RANK3 & pawns_in_col;
-        // check that the lowest-rank pawn that could block the rook is behind 
+        // check that the lowest-rank pawn that could block the rook is behind
         // the rook
         if important_pawns.trailing_zeros() > brook_sq as u32 {
             net_open_rooks -= 1;
@@ -115,6 +93,33 @@ pub fn net_open_rooks(b: &Board) -> i8 {
     }
 
     net_open_rooks
+}
+
+pub fn net_doubled_pawns(b: &Board) -> i8 {
+    let white_occupancy = b[Color::White];
+    let pawns = b[Piece::Pawn];
+    let mut npawns: i8 = 0;
+    let mut col_mask = Bitboard::new(0x0101010101010101);
+    for _ in 0..8 {
+        let col_pawns = pawns & col_mask;
+
+        // all ones on the A column, shifted left by the col
+        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).count_ones() {
+            0 => 0,
+            x => x as i8 - 1,
+        };
+        let num_white_doubled_pawns = match (white_occupancy & col_pawns).count_ones() {
+            0 => 0,
+            x => x as i8 - 1,
+        };
+
+        npawns -= num_black_doubled_pawns;
+        npawns += num_white_doubled_pawns;
+
+        col_mask <<= 1;
+    }
+
+    npawns
 }
 
 /// Get a blending float describing the current phase of the game. Will range

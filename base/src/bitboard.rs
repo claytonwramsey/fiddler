@@ -57,7 +57,7 @@ impl Bitboard {
         self.0.trailing_zeros()
     }
 
-    /// Count the number of leading zeros (i.e. empty squares between H8 and 
+    /// Count the number of leading zeros (i.e. empty squares between H8 and
     /// the highest non-empty square). Will be zero if H8 is occupied.
     pub const fn leading_zeros(&self) -> u32 {
         self.0.leading_zeros()

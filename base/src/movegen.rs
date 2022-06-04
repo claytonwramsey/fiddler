@@ -257,7 +257,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                 // only kings can castle
                 return false;
             }
-            
+
             let is_ep = m.is_en_passant();
             if is_ep {
                 if pt != Piece::Pawn {
@@ -468,11 +468,11 @@ fn validate(m: Move, pos: &Position) -> bool {
         return (MAGIC.rook_attacks(new_occupancy, king_sq)
             & (b[Piece::Rook] | b[Piece::Queen])
             & enemy)
-           .is_empty()
+            .is_empty()
             && (MAGIC.bishop_attacks(new_occupancy, king_sq)
                 & (b[Piece::Bishop] | b[Piece::Queen])
                 & enemy)
-               .is_empty();
+                .is_empty();
     }
 
     // Validate passthrough squares for castling
@@ -497,8 +497,7 @@ fn validate(m: Move, pos: &Position) -> bool {
     // Other king moves must make sure they don't step into check
     if from_sq == king_sq {
         let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
-        return square_attackers_occupancy(b, to_sq, !b.player_to_move, new_occupancy)
-           .is_empty();
+        return square_attackers_occupancy(b, to_sq, !b.player_to_move, new_occupancy).is_empty();
     }
 
     // the move is valid if the piece is not pinned, or if the piece is pinned
@@ -1272,13 +1271,14 @@ mod tests {
     }
 
     #[test]
-    /// Test that a move must be tagged as en passant to be considered legal to 
+    /// Test that a move must be tagged as en passant to be considered legal to
     /// escape check.
     fn test_en_passant_tagged() {
         let pos = Position::from_fen(
-            "2B1kb2/pp2pp2/7p/1PpQP3/2nK4/8/P1r4R/R7 w - c6 0 27", 
-            Position::no_eval
-        ).unwrap();
+            "2B1kb2/pp2pp2/7p/1PpQP3/2nK4/8/P1r4R/R7 w - c6 0 27",
+            Position::no_eval,
+        )
+        .unwrap();
 
         let m = Move::normal(Square::B5, Square::C6);
         assert!(!is_legal(m, &pos));
