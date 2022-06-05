@@ -36,11 +36,11 @@ impl MainSearch {
     /// will be single-threaded.
     pub fn set_nhelpers(&mut self, n_helpers: usize) {
         if n_helpers >= self.configs.len() {
-            for _ in 0..(n_helpers - self.configs.len() - 1) {
+            for _ in 0..(n_helpers - self.configs.len() + 1) {
                 self.configs.push(self.main_config);
             }
         } else {
-            self.configs.truncate(n_helpers - 1);
+            self.configs.truncate(n_helpers + 1);
         }
     }
 

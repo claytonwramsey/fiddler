@@ -35,7 +35,7 @@ fn main() {
 
                 let mut e = MainSearch::new();
                 e.set_depth(8);
-                e.set_nhelpers(15);
+                e.set_nhelpers(0);
 
                 let r = e.evaluate(&g);
                 let (m, eval, depth) = r.unwrap();
