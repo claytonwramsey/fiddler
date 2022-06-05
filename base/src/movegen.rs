@@ -233,6 +233,11 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                 return false;
             }
 
+            if m.is_en_passant() {
+                // king cannot en passant
+                return false;
+            }
+
             let mut is_pseudolegal = KING_MOVES[from_sq as usize].contains(to_sq);
             if m.is_castle() && n_checkers == 0 {
                 // just generate moves, since castle is quite rare

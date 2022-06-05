@@ -76,7 +76,6 @@ impl Game {
             false => previous_state.1 + 1,
         };
         new_pos.make_move(m, pst_delta);
-
         let num_reps = self.repetitions.entry(new_pos.board.hash).or_insert(0);
         *num_reps += 1;
         self.history.push((new_pos, move_timeout));
