@@ -5,7 +5,7 @@ use fiddler_base::{Eval, Move};
 pub mod candidacy;
 pub mod config;
 pub mod evaluate;
-pub mod greedy;
+pub mod material;
 pub mod limit;
 pub mod pick;
 pub mod pst;

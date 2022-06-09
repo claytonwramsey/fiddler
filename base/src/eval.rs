@@ -71,6 +71,13 @@ impl Eval {
     }
 
     #[inline(always)]
+    /// Convert a pair of centipawn values into a `Score` containing two 
+    /// `Evals`.
+    pub const fn score(midgame_val: i16, endgame_val: i16) -> Score {
+        (Eval::centipawns(midgame_val), Eval::centipawns(endgame_val))
+    }
+
+    #[inline(always)]
     /// Create an `Eval` based on the number of half-moves required for White to
     /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
     /// plies.

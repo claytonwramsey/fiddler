@@ -279,7 +279,7 @@ impl PVSearch {
 
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
-        if !(g.position().check_info.checkers).is_empty() {
+        if !g.position().check_info.checkers.is_empty() {
             return self.pvs(1, depth_so_far, g, alpha_in, beta_in, false);
         }
 

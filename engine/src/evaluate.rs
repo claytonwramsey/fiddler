@@ -2,13 +2,13 @@ use std::cmp::{max, min};
 
 use fiddler_base::{Bitboard, Board, Color, Eval, Game, Piece, Score};
 
-use super::greedy::{greedy_evaluate, piece_value};
+use super::material;
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = (Eval::centipawns(-34), Eval::centipawns(-31));
+pub const DOUBLED_PAWN_VALUE: Score = (Eval::centipawns(-33), Eval::centipawns(-29));
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = (Eval::centipawns(41), Eval::centipawns(10));
+pub const OPEN_ROOK_VALUE: Score = (Eval::centipawns(41), Eval::centipawns(12));
 
 /// Evaluate a quiet position.
 pub fn evaluate(g: &mut Game) -> Eval {
@@ -31,9 +31,9 @@ pub fn evaluate(g: &mut Game) -> Eval {
     let b = &pos.board;
 
     let (mut mg_eval, mut eg_eval) = pos.pst_val;
-    let material = greedy_evaluate(b);
-    mg_eval += material;
-    eg_eval += material;
+    let material = material::evaluate(b);
+    mg_eval += material.0;
+    eg_eval += material.1;
 
     // Add losses due to doubled pawns
     let ndoubled = net_doubled_pawns(b);
@@ -42,7 +42,7 @@ pub fn evaluate(g: &mut Game) -> Eval {
 
     // Add gains from open rooks
 
-    blend_eval(g.board(), mg_eval, eg_eval)
+    blend_eval(g.board(), (mg_eval, eg_eval))
 }
 
 /// Count the number of "open" rooks (i.e., those which are not blocked by
@@ -127,21 +127,25 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 pub fn phase_of(b: &Board) -> f32 {
     const MG_LIMIT: Eval = Eval::centipawns(2500);
     const EG_LIMIT: Eval = Eval::centipawns(1400);
-    let npm = {
+    // amount of non-pawn material in the board, under midgame values
+    let mg_npm = {
         let mut total = Eval::DRAW;
         for pt in Piece::NON_PAWN_TYPES {
-            total += piece_value(pt) * b[pt].count_ones();
+            total += material::value(pt).0 * b[pt].count_ones();
         }
         total
     };
-    let bounded_npm = max(MG_LIMIT, min(EG_LIMIT, npm));
+    let bounded_npm = max(MG_LIMIT, min(EG_LIMIT, mg_npm));
 
     (bounded_npm - EG_LIMIT).float_val() / (MG_LIMIT - EG_LIMIT).float_val()
 }
 
 #[inline(always)]
 /// Blend the evaluation of a position between the midgame and endgame.
-pub fn blend_eval(b: &Board, mg_eval: Eval, eg_eval: Eval) -> Eval {
-    let phase = phase_of(b);
-    mg_eval * phase + eg_eval * (1. - phase)
+pub fn blend_eval(b: &Board, score: Score) -> Eval {
+    phase_blend(phase_of(b), score)
+}
+
+pub fn phase_blend(phase: f32, score: Score) -> Eval {
+    score.0 * phase + score.1 * (1. - phase)
 }

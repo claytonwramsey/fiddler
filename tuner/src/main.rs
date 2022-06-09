@@ -3,8 +3,7 @@ use std::{env, path::Path, sync::Arc, time::Instant};
 use fiddler_base::{Board, Color, Piece, Square};
 use fiddler_engine::{
     evaluate::{net_doubled_pawns, net_open_rooks, phase_of, DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE},
-    greedy::piece_value,
-    pst::PST,
+    pst::PST, material,
 };
 use libm::expf;
 use rand::Rng;
@@ -31,7 +30,7 @@ pub fn main() {
     let path = Path::new(path_str);
     let db = Connection::open(path).unwrap();
     let mut weights = load_weights();
-    fuzz(&mut weights[5..], 0.05);
+    fuzz(&mut weights, 0.05);
     let mut learn_rate = 5.;
     let beta = 0.6;
 
@@ -163,7 +162,9 @@ fn sigmoid(x: f32, beta: f32) -> f32 {
 fn load_weights() -> Vec<f32> {
     let mut weights = Vec::new();
     for pt in Piece::NON_KING_TYPES {
-        weights.push(piece_value(pt).float_val());
+        let val = material::value(pt);
+        weights.push(val.0.float_val());
+        weights.push(val.1.float_val());
     }
 
     for pt in Piece::ALL_TYPES {
@@ -196,34 +197,27 @@ fn fuzz(v: &mut [f32], amplitude: f32) {
 
 /// Print out a weights vector so it can be used as code.
 fn print_weights(weights: &[f32]) {
-    let piece_val = |name: &str, val: f32| {
-        println!(
-            "const {name}_VAL: Eval = Eval::centipawns({})",
-            (val * 100.) as i16
-        );
-    };
-
     let paired_val = |name: &str, start: usize| {
         println!(
-            "const {name}: (Eval::centipawns({}), Eval::centipawns({}));",
+            "const {name}: Score = (Eval::centipawns({}), Eval::centipawns({}));",
             (weights[start] * 100.) as i16,
             (weights[start + 1] * 100.) as i16,
         );
     };
 
-    piece_val("KNIGHT", weights[0]);
-    piece_val("BISHOP", weights[1]);
-    piece_val("ROOK", weights[2]);
-    piece_val("QUEEN", weights[3]);
-    piece_val("PAWN", weights[4]);
+    paired_val("KNIGHT_VAL", 0);
+    paired_val("BISHOP_VAL", 2);
+    paired_val("ROOK_VAL", 4);
+    paired_val("QUEEN_VAL", 6);
+    paired_val("PAWN_VAL", 8);
 
-    paired_val("DOUBLED_PAWN_VAL", 773);
-    paired_val("OPEN_ROOK_VAL", 775);
+    paired_val("DOUBLED_PAWN_VAL", 778);
+    paired_val("OPEN_ROOK_VAL", 780);
 
     println!("const PST: Pst = expand_table([");
     for pt in Piece::ALL_TYPES {
         println!("    [ // {pt}");
-        let pt_idx = 5 + (128 * pt as usize);
+        let pt_idx = 10 + (128 * pt as usize);
         for rank in 0..8 {
             print!("        ");
             for file in 0..8 {
@@ -242,41 +236,46 @@ fn print_weights(weights: &[f32]) {
 }
 
 /// Extract a feature vector from a board. The resulting vector will have
-/// dimension 773 (=5 + (64 * 6 * 2)). The PST values can be up to 1 for a
+/// dimension 773. The PST values can be up to 1 for a
 /// white piece on the given PST square, -1 for a black piece, or 0 for both or
 /// neither. The PST values are then pre-blended by game phase.
 ///
 /// The elements of the vector are listed by their indices as follows:
 ///
-/// * 0: Knight quantity
-/// * 1: Bishop quantity
-/// * 2: Rook quantity
-/// * 3: Queen quantity
-/// * 4: Pawn quantity
-/// * 5..133: Knight PST, paired (midgame, endgame) element-wise
-/// * 133..261: Bishop PST
-/// * 261..389: Rook PST
-/// * 389..517: Queen PST
-/// * 517..645: Pawn PST
-/// * 645..773: King PST
-/// * 773..775: Number of doubled pawns (mg, eg) weighted
+/// * 0-2: Knight quantity
+/// * 2-4: Bishop quantity
+/// * 4-6: Rook quantity
+/// * 6-8: Queen quantity
+/// * 8-10: Pawn quantity
+/// * 10..138: Knight PST, paired (midgame, endgame) element-wise
+/// * 138..266: Bishop PST
+/// * 266..394: Rook PST
+/// * 394..522: Queen PST
+/// * 522..650: Pawn PST
+/// * 650..778: King PST
+/// * 778..780: Number of doubled pawns (mg, eg) weighted
 ///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
-/// * 775..777: Net number of
+/// * 780..782: Net number of open rooks
 ///
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
 /// true vector. Zero entries will not be in the output.
 fn extract(b: &Board) -> Vec<(usize, f32)> {
-    let mut features = Vec::with_capacity(20);
+    let mut features = Vec::with_capacity(28);
+    let phase = phase_of(b);
     // Indices 0..4: non-king piece values
     for pt in Piece::NON_KING_TYPES {
         let n_white = (b[pt] & b[Color::White]).count_ones() as i8;
         let n_black = (b[pt] & b[Color::Black]).count_ones() as i8;
-        features.push((pt as usize, (n_white - n_black) as f32));
+        let net = n_white - n_black;
+        if net != 0 {
+            let idx = 2 * (pt as usize);
+            features.push((idx, phase * (net as f32)));
+            features.push((idx, (1. - phase) * (net as f32)));
+        }
     }
 
-    let mut offset = 5; // offset added to PST positions
-    let phase = phase_of(b);
+    let mut offset = 10; // offset added to PST positions
 
     let bocc = b[Color::Black];
     let wocc = b[Color::White];
@@ -299,7 +298,7 @@ fn extract(b: &Board) -> Vec<(usize, f32)> {
     }
 
     // New offset after everything in the PST.
-    offset = 773;
+    offset = 778;
 
     // Doubled pawns
     let doubled_count = net_doubled_pawns(b);
