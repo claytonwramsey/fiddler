@@ -28,7 +28,6 @@ pub fn evaluate(b: &Board) -> Score {
         let val = value(pt);
         score.0 += val.0 * white_diff;
         score.1 += val.1 * white_diff;
-        
     }
 
     score

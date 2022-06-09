@@ -71,7 +71,7 @@ impl Eval {
     }
 
     #[inline(always)]
-    /// Convert a pair of centipawn values into a `Score` containing two 
+    /// Convert a pair of centipawn values into a `Score` containing two
     /// `Evals`.
     pub const fn score(midgame_val: i16, endgame_val: i16) -> Score {
         (Eval::centipawns(midgame_val), Eval::centipawns(endgame_val))

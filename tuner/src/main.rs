@@ -3,7 +3,8 @@ use std::{env, path::Path, sync::Arc, time::Instant};
 use fiddler_base::{Board, Color, Piece, Square};
 use fiddler_engine::{
     evaluate::{net_doubled_pawns, net_open_rooks, phase_of, DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE},
-    pst::PST, material,
+    material,
+    pst::PST,
 };
 use libm::expf;
 use rand::Rng;

@@ -1,4 +1,4 @@
-use crate::evaluate::{phase_of, phase_blend};
+use crate::evaluate::{phase_blend, phase_of};
 
 use super::material;
 use fiddler_base::{Eval, Move, Piece, Position, Score};
