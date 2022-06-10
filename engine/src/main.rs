@@ -116,7 +116,7 @@ fn main() {
                         }
                         GoOption::Ponder => {
                             infinite = true;
-                        },
+                        }
                         GoOption::WhiteTime(time) => {
                             wtime = Some(time);
                         }

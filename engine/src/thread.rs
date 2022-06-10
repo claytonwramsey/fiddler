@@ -5,8 +5,9 @@ use std::{
 
 use fiddler_base::Game;
 
-use super::{config::SearchConfig, limit::SearchLimit, search::PVSearch,
-    transposition::TTable, SearchError, SearchResult,
+use super::{
+    config::SearchConfig, limit::SearchLimit, search::PVSearch, transposition::TTable, SearchError,
+    SearchResult,
 };
 
 #[derive(Clone, Debug)]

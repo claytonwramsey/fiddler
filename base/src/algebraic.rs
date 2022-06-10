@@ -66,7 +66,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
                 s += from_sq.file_name();
             } else if !is_unclear_file {
                 //we can specify the mover by its rank
-                s = format!("{}{}", s, from_sq.rank());
+                s = format!("{}{}", s, from_sq.rank() + 1);
             } else {
                 //we need the complete square to specify the location of the mover
                 s += &from_sq.to_string();
@@ -192,5 +192,20 @@ mod tests {
         let s = "garbage";
 
         assert!(move_from_algebraic(s, &pos).is_err());
+    }
+
+    #[test]
+    /// Test that algebraic moves are correctly disambiguated by their rank if
+    /// needed.
+    fn test_rank_identifier() {
+        let pos = Position::from_fen(
+            "rnbqkbnr/pppppppp/8/8/3P4/1N6/PPP1PPPP/RNBQKB1R w KQkq - 1 5",
+            Position::no_eval,
+        )
+        .unwrap();
+        let m = Move::normal(Square::B3, Square::D2);
+        let s = "N3d2";
+        assert_eq!(algebraic_from_move(m, &pos), s);
+        assert_eq!(move_from_algebraic(s, &pos).unwrap(), m);
     }
 }
