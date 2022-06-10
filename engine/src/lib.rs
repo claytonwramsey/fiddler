@@ -11,6 +11,7 @@ pub mod pick;
 pub mod pst;
 pub mod search;
 pub mod thread;
+pub mod time;
 pub mod transposition;
 
 /// UCI-compliant parser and data structures.
@@ -40,6 +41,7 @@ impl<T> From<PoisonError<T>> for SearchError {
 pub type SearchResult = Result<(Move, Eval, u8), SearchError>;
 
 #[inline(always)]
+#[allow(unused)]
 /// Compute the effective branch factor given a given search depth and a number
 /// of nodes evaluated.
 fn branch_factor(depth: u8, num_nodes: u64) -> f64 {

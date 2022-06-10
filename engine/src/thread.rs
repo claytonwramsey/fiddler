@@ -1,13 +1,11 @@
 use std::{
     sync::Arc,
     thread::{self, JoinHandle},
-    time::Instant,
 };
 
 use fiddler_base::Game;
 
-use super::{
-    branch_factor, config::SearchConfig, limit::SearchLimit, search::PVSearch,
+use super::{config::SearchConfig, limit::SearchLimit, search::PVSearch,
     transposition::TTable, SearchError, SearchResult,
 };
 
@@ -44,9 +42,7 @@ impl MainSearch {
         }
     }
 
-    pub fn evaluate(&mut self, g: &Game) -> SearchResult {
-        let tic = Instant::now(); // start time of the search
-
+    pub fn evaluate(&self, g: &Game) -> SearchResult {
         let handles: Vec<JoinHandle<SearchResult>> = self
             .configs
             .iter()
@@ -82,22 +78,6 @@ impl MainSearch {
                 // error cases cause nothing to happen
                 _ => (),
             };
-        }
-
-        let n_nodes = self.limit.num_nodes();
-
-        let toc = Instant::now();
-        let nsecs = (toc - tic).as_secs_f64();
-
-        if let Ok(search_data) = best_result {
-            println!(
-                "evaluated {:.0} nodes in {:.0} secs ({:.0} nodes/sec); branch factor {:.2}, hash fill rate {:.2}",
-                n_nodes,
-                nsecs,
-                n_nodes as f64 / nsecs,
-                branch_factor(search_data.2, n_nodes),
-                self.ttable.fill_rate(),
-            );
         }
 
         best_result

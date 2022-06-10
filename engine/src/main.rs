@@ -1,9 +1,14 @@
-use std::{io::stdin, time::Duration};
+use std::{
+    io::stdin,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 use fiddler_base::Game;
 use fiddler_engine::{
     pst::{pst_delta, pst_evaluate},
     thread::MainSearch,
+    time::get_search_time,
     uci::{build_message, parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
 };
 
@@ -11,8 +16,9 @@ use fiddler_engine::{
 fn main() {
     // whether we are in debug mode
     let mut debug = false;
-    let mut searcher = MainSearch::new();
+    let searcher = Arc::new(RwLock::new(MainSearch::new()));
     let mut game = Game::default();
+    let mut search_handle = None;
 
     loop {
         let mut buf = String::new();
@@ -33,10 +39,10 @@ fn main() {
                 // identify the engine
                 print!(
                     "{}",
-                    build_message(&UciMessage::Id {
+                    UciMessage::Id {
                         name: Some("Fiddler 0.1.0"),
                         author: Some("Clayton Ramsey"),
-                    })
+                    }
                 );
 
                 // add options
@@ -49,6 +55,8 @@ fn main() {
                         max: 255,
                     },
                 );
+
+                print!("{}", UciMessage::UciOk)
             }
             UciCommand::Debug(new_debug) => {
                 // activate or deactivate debug mode
@@ -62,7 +70,7 @@ fn main() {
                 "Thread Count" => match value {
                     None => debug_info("error: no value given for number of threads", debug),
                     Some(num_str) => match num_str.parse() {
-                        Ok(n) => searcher.set_nhelpers(n),
+                        Ok(n) => searcher.write().unwrap().set_nhelpers(n),
                         _ => debug_info("error: illegal parameter for `Thread Count`", debug),
                     },
                 },
@@ -82,13 +90,15 @@ fn main() {
                 },
             },
             UciCommand::Go(opts) => {
-                let mut ponder = false; // whether the last move given in the position should be considered the ponder-move
+                // whether the last move given in the position should be
+                // considered the ponder-move
+                let mut _ponder = false;
 
                 // time remaining for players
                 let (mut wtime, mut btime) = (None, None);
 
-                // increments
-                let (mut winc, mut binc) = (None, None);
+                // increments. by default assumed to be zero
+                let (mut winc, mut binc) = (0, 0);
 
                 // number of moves until increment achieved. if `None`, there
                 // is no increment.
@@ -98,13 +108,15 @@ fn main() {
 
                 let mut movetime = None;
 
-                *searcher.limit.nodes_cap.lock().unwrap() = None;
+                *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = None;
                 for opt in opts {
                     match opt {
                         GoOption::SearchMoves(_) => {
                             unimplemented!("no implementation of searching move subsets")
                         }
-                        GoOption::Ponder => todo!(),
+                        GoOption::Ponder => {
+                            infinite = true;
+                        },
                         GoOption::WhiteTime(time) => {
                             wtime = Some(time);
                         }
@@ -112,19 +124,19 @@ fn main() {
                             btime = Some(time);
                         }
                         GoOption::WhiteInc(inc) => {
-                            winc = Some(inc);
+                            winc = inc;
                         }
                         GoOption::BlackInc(inc) => {
-                            binc = Some(inc);
+                            binc = inc;
                         }
                         GoOption::MovesToGo(n) => {
                             movestogo = Some(n);
                         }
                         GoOption::Depth(d) => {
-                            searcher.set_depth(d);
+                            searcher.write().unwrap().set_depth(d);
                         }
                         GoOption::Nodes(num) => {
-                            *searcher.limit.nodes_cap.lock().unwrap() = Some(num);
+                            *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = Some(num);
                         }
                         GoOption::Mate(_) => unimplemented!(),
                         GoOption::MoveTime(msecs) => {
@@ -135,9 +147,70 @@ fn main() {
                         }
                     }
                 }
+
+                // configure timeout condition
+                if infinite {
+                    *searcher
+                        .read()
+                        .unwrap()
+                        .limit
+                        .search_duration
+                        .lock()
+                        .unwrap() = None;
+                } else if let Some(mt) = movetime {
+                    *searcher
+                        .read()
+                        .unwrap()
+                        .limit
+                        .search_duration
+                        .lock()
+                        .unwrap() = Some(mt)
+                } else {
+                    *searcher
+                        .read()
+                        .unwrap()
+                        .limit
+                        .search_duration
+                        .lock()
+                        .unwrap() = Some(Duration::from_millis(get_search_time(
+                        movestogo,
+                        (winc, binc),
+                        (wtime.unwrap(), btime.unwrap()),
+                        game.board().player_to_move,
+                    ) as u64));
+                }
+
+                searcher.read().unwrap().limit.start().unwrap();
+
+                let cloned_game = game.clone();
+                let searcher_new_arc = searcher.clone();
+                search_handle = Some(std::thread::spawn(move || {
+                    let (m, eval, depth) = searcher_new_arc
+                        .read()
+                        .unwrap()
+                        .evaluate(&cloned_game)
+                        .unwrap();
+                    print!("{}", UciMessage::BestMove { m, ponder: None });
+                    print!(
+                        "{}",
+                        UciMessage::Info(&[
+                            EngineInfo::Score {
+                                eval,
+                                is_lower_bound: false,
+                                is_upper_bound: false
+                            },
+                            EngineInfo::Depth(depth)
+                        ])
+                    );
+                }));
             }
             UciCommand::Stop => {
-                searcher.limit.stop();
+                searcher.read().unwrap().limit.stop();
+                if let Some(handle) = search_handle {
+                    // wait for the previous search to die
+                    handle.join().unwrap();
+                    search_handle = None;
+                }
             }
             UciCommand::PonderHit => todo!(),
             UciCommand::Quit => break,
@@ -149,12 +222,11 @@ fn main() {
 /// `debug` is `false`.
 fn debug_info(s: &str, debug: bool) {
     if debug {
-        print!(
-            "{}",
-            build_message(&UciMessage::Info(&[EngineInfo::String(s)]))
-        );
+        print!("{}", UciMessage::Info(&[EngineInfo::String(s)]));
     }
 }
 
 /// Send out a message to add an option for the frontend.
-fn add_option(name: &str, opt: OptionType) {}
+fn add_option(name: &str, opt: OptionType) {
+    print!("{}", UciMessage::Option { name, opt })
+}
