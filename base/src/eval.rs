@@ -156,15 +156,15 @@ impl Eval {
     }
 
     #[inline(always)]
-    /// Put this evaluation into the perspective of the given player. 
-    /// In essence, if the player is Black, the evaluation will be inverted, but 
-    /// if the player is White, the evaluation will remain the same. This 
-    /// function is an involution, meaning that calling it twice with the same 
+    /// Put this evaluation into the perspective of the given player.
+    /// In essence, if the player is Black, the evaluation will be inverted, but
+    /// if the player is White, the evaluation will remain the same. This
+    /// function is an involution, meaning that calling it twice with the same
     /// player will yield the original evaluation.
     pub const fn in_perspective(&self, player: Color) -> Eval {
         match player {
             Color::White => *self,
-            Color::Black => Eval(-self.0)
+            Color::Black => Eval(-self.0),
         }
     }
 }

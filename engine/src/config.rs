@@ -3,7 +3,7 @@
 pub struct SearchConfig {
     /// The depth at which this algorithm will evaluate a position.
     pub depth: u8,
-    /// The number of helper threads. If this value is 0, then the search is 
+    /// The number of helper threads. If this value is 0, then the search is
     /// single-threaded.
     pub n_helpers: u8,
     /// The maximum depth to which the engine will add or edit entries in the

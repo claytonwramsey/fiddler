@@ -41,10 +41,8 @@ fn main() {
                 let r = e.evaluate(&g);
                 let info = r.unwrap();
                 println!(
-                    "depth {}: {} gives {}", 
-                    info.highest_successful_depth, 
-                    info.best_move, 
-                    info.eval
+                    "depth {}: {} gives {}",
+                    info.highest_successful_depth, info.best_move, info.eval
                 );
             }
             _ => {

@@ -190,7 +190,13 @@ fn main() {
                         .unwrap()
                         .evaluate(&cloned_game)
                         .unwrap();
-                    print!("{}", UciMessage::BestMove { m: info.best_move, ponder: None });
+                    print!(
+                        "{}",
+                        UciMessage::BestMove {
+                            m: info.best_move,
+                            ponder: None
+                        }
+                    );
                     print!(
                         "{}",
                         UciMessage::Info(&[

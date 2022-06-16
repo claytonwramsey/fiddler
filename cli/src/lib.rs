@@ -263,8 +263,9 @@ impl<'a> FiddlerApp<'a> {
     fn select_engine(&mut self, opts: String) -> CommandResult {
         // For now, we just use it to set the depth, as there are no engines to
         // select.
-        self.engine.config.depth = opts.parse()
-                .map_err(|_| "could not parse engine selection")?;
+        self.engine.config.depth = opts
+            .parse()
+            .map_err(|_| "could not parse engine selection")?;
 
         Ok(())
     }
@@ -287,8 +288,10 @@ impl<'a> FiddlerApp<'a> {
             search_data.eval
         )
         .map_err(|_| "failed to write to output")?;
-        self.game
-            .make_move(search_data.best_move, pst_delta(self.game.board(), search_data.best_move));
+        self.game.make_move(
+            search_data.best_move,
+            pst_delta(self.game.board(), search_data.best_move),
+        );
 
         Ok(())
     }

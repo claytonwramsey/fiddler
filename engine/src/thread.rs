@@ -1,6 +1,7 @@
 use std::{
     sync::Arc,
-    thread::{JoinHandle, spawn}, time::Instant,
+    thread::{spawn, JoinHandle},
+    time::Instant,
 };
 
 use fiddler_base::Game;
@@ -8,7 +9,11 @@ use fiddler_base::Game;
 use crate::uci::{EngineInfo, UciMessage};
 
 use super::{
-    config::SearchConfig, limit::SearchLimit, search::{search, SearchResult}, transposition::TTable, SearchError,
+    config::SearchConfig,
+    limit::SearchLimit,
+    search::{search, SearchResult},
+    transposition::TTable,
+    SearchError,
 };
 
 #[derive(Clone, Debug)]
@@ -46,11 +51,11 @@ impl MainSearch {
 
         // now it's our turn to think
         let mut best_result = search(
-            g.clone(), 
-            self.ttable.clone(), 
-            &self.config, 
-            self.limit.clone(), 
-            true
+            g.clone(),
+            self.ttable.clone(),
+            &self.config,
+            self.limit.clone(),
+            true,
         );
 
         for handle in handles {
@@ -74,11 +79,14 @@ impl MainSearch {
             let nodes = self.limit.num_nodes();
             let nps = nodes * 1000 / (elapsed.as_millis() as u64);
             // inform the user
-            print!("{}", UciMessage::Info(&[
-                EngineInfo::Depth(info.highest_successful_depth),
-                EngineInfo::Nodes(nodes),
-                EngineInfo::NodeSpeed(nps),
-            ]));
+            print!(
+                "{}",
+                UciMessage::Info(&[
+                    EngineInfo::Depth(info.highest_successful_depth),
+                    EngineInfo::Nodes(nodes),
+                    EngineInfo::NodeSpeed(nps),
+                ])
+            );
         }
 
         best_result
@@ -93,7 +101,7 @@ mod tests {
 
     use super::*;
 
-    /// Compare the speed of a search on a given transposition depth with its 
+    /// Compare the speed of a search on a given transposition depth with its
     /// adjacent depths.
     fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: u8) {
         let g = Game::from_fen(fen, pst_evaluate).unwrap();
@@ -107,7 +115,7 @@ mod tests {
             main.evaluate(&g).unwrap();
             let toc = Instant::now();
             println!(
-                "tdepth {tdepth}: {:.3}s, hashfill {:.3}", 
+                "tdepth {tdepth}: {:.3}s, hashfill {:.3}",
                 (toc - tic).as_secs_f32(),
                 main.ttable.fill_rate()
             );
@@ -117,10 +125,10 @@ mod tests {
     #[test]
     fn transposition_speed_fried_liver() {
         transposition_speed_comparison(
-            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", 
-            11, 
-            6, 
-            7
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+            11,
+            6,
+            7,
         );
     }
 }

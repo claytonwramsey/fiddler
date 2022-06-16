@@ -13,8 +13,11 @@ use super::{
     transposition::{EvalData, TTable},
 };
 
-use std::{cmp::{max, min}, sync::PoisonError};
 use std::sync::Arc;
+use std::{
+    cmp::{max, min},
+    sync::PoisonError,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The types of errors which can occur during a search.
@@ -34,7 +37,7 @@ impl<T> From<PoisonError<T>> for SearchError {
     }
 }
 
-/// The result of performing a search. The `Ok` version contains data on the 
+/// The result of performing a search. The `Ok` version contains data on the
 /// search, while the `Err` version contains a reason why the search failed.
 pub type SearchResult = Result<SearchInfo, SearchError>;
 
@@ -45,24 +48,24 @@ type PVSResult = Result<(Move, Eval), SearchError>;
 #[inline(always)]
 /// Evaluate the given game. Return a pair containing the best move and its
 /// evaluation, as well as the depth to which the evaluation was searched.
-/// 
+///
 /// `g` is the game which will be evaluated.
-/// 
+///
 /// `ttable` is a reference counter to the shared transposition table.
-/// 
-/// `config` is the configuration of this search. 
-/// 
-/// `limit` is the search limiter, and will be interiorly mutated by this 
+///
+/// `config` is the configuration of this search.
+///
+/// `limit` is the search limiter, and will be interiorly mutated by this
 /// function.
-/// 
-/// `is_main` determines whether or not this search is the "main" search or a 
+///
+/// `is_main` determines whether or not this search is the "main" search or a
 /// subjugate thread, and determines responsibilities as such.
 pub fn search(
-    mut g: Game, 
-    ttable: Arc<TTable>, 
-    config: &SearchConfig, 
-    limit: Arc<SearchLimit>, 
-    is_main: bool
+    mut g: Game,
+    ttable: Arc<TTable>,
+    config: &SearchConfig,
+    limit: Arc<SearchLimit>,
+    is_main: bool,
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut best_move = None;
@@ -116,7 +119,7 @@ pub struct SearchInfo {
 }
 
 impl SearchInfo {
-    /// Unify with another `SearchInfo`, selecting the most accurate evaluation 
+    /// Unify with another `SearchInfo`, selecting the most accurate evaluation
     /// (by depth) and summing the number of transpositions and nodes evaluated.
     pub fn unify_with(&mut self, other: &SearchInfo) {
         if other.highest_successful_depth > self.highest_successful_depth {
@@ -151,8 +154,7 @@ struct PVSearch<'a> {
     is_main: bool,
 }
 
-
-impl <'a> PVSearch<'a> {
+impl<'a> PVSearch<'a> {
     /// Construct a new PVSearch using a given transposition table,
     /// configuration, and limit. `is_main` is whether the thread is a main
     /// search, responsible for certain synchronization activities.
@@ -526,27 +528,34 @@ pub mod tests {
     use fiddler_base::Square;
 
     /// Helper function to search a position at a given depth.
-    /// 
+    ///
     /// # Panics
-    /// 
-    /// This function will panic if searching the position fails or the game is 
+    ///
+    /// This function will panic if searching the position fails or the game is
     /// invalid.
     fn search_helper(fen: &str, depth: u8) -> SearchInfo {
         let g = Game::from_fen(fen, pst_evaluate).unwrap();
-        let config = SearchConfig {depth, ..Default::default()};
+        let config = SearchConfig {
+            depth,
+            ..Default::default()
+        };
         search(
-            g, 
-            Arc::new(TTable::default()), 
-            &config, 
-            Arc::new(SearchLimit::default()), 
-            true
-        ).unwrap()
+            g,
+            Arc::new(TTable::default()),
+            &config,
+            Arc::new(SearchLimit::default()),
+            true,
+        )
+        .unwrap()
     }
 
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.
     pub fn test_eval_start() {
-        let info = search_helper("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 11);
+        let info = search_helper(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            11,
+        );
         println!("best move: {} [{}]", info.best_move, info.eval);
     }
 
@@ -554,7 +563,10 @@ pub mod tests {
     /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
-        let info = search_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", 10);
+        let info = search_helper(
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+            10,
+        );
         let m = Move::normal(Square::D1, Square::F3);
 
         assert_eq!(info.best_move, m);
@@ -590,5 +602,4 @@ pub mod tests {
             9,
         );
     }
-
 }
