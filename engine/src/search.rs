@@ -517,22 +517,7 @@ pub mod tests {
         e.set_depth(10); // this prevents taking too long on searches
         let m = Move::normal(Square::D1, Square::F3);
 
-        let mut tic = Instant::now();
-        assert_eq!(e.evaluate(g.clone()).unwrap().0, m);
-        let mut toc = Instant::now();
-        println!(
-            "with transposition table: {:.3} secs",
-            (toc - tic).as_secs_f64()
-        );
-        e.config.max_transposition_depth = 0;
-        e.clear();
-        tic = Instant::now();
         assert_eq!(e.evaluate(g).unwrap().0, m);
-        toc = Instant::now();
-        println!(
-            "no transposition table: {:.3} secs",
-            (toc - tic).as_secs_f64()
-        );
     }
 
     #[test]

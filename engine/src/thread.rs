@@ -16,7 +16,7 @@ use super::{
 /// The primary search thread for an engine.
 pub struct MainSearch {
     pub main_config: SearchConfig,
-    configs: Vec<SearchConfig>,
+    pub configs: Vec<SearchConfig>,
     ttable: Arc<TTable>,
     pub limit: Arc<SearchLimit>,
 }
@@ -105,5 +105,47 @@ impl MainSearch {
         self.configs
             .iter_mut()
             .for_each(|config| config.depth = depth);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cmp::max;
+
+    use crate::pst::pst_evaluate;
+
+    use super::*;
+
+    /// Compare the speed of a search on a given transposition depth with its 
+    /// adjacent depths.
+    fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: usize) {
+        let g = Game::from_fen(fen, pst_evaluate).unwrap();
+        let mut main = MainSearch::new();
+        main.set_depth(depth);
+        main.set_nhelpers(nhelpers);
+        for tdepth in max(0, transposition_depth - 1)..=(transposition_depth + 1) {
+            main.main_config.max_transposition_depth = tdepth;
+            for cfg in main.configs.iter_mut() {
+                cfg.max_transposition_depth = tdepth;
+            }
+            let tic = Instant::now();
+            main.evaluate(&g).unwrap();
+            let toc = Instant::now();
+            println!(
+                "tdepth {tdepth}: {:.3}s, hashfill {:.3}", 
+                (toc - tic).as_secs_f32(),
+                main.ttable.fill_rate()
+            );
+        }
+    }
+
+    #[test]
+    fn transposition_speed_fried_liver() {
+        transposition_speed_comparison(
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", 
+            11, 
+            6, 
+            7
+        );
     }
 }
