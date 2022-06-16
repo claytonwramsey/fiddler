@@ -3,6 +3,8 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
+use crate::Color;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 /// A wrapper for the evaluation of a position.
 /// The higher an evaluation is, the better the position is for White. An
@@ -151,6 +153,19 @@ impl Eval {
     /// Get the value in floating-point pawns of this evaluation.
     pub fn float_val(&self) -> f32 {
         (self.0 as f32) / 100.
+    }
+
+    #[inline(always)]
+    /// Put this evaluation into the perspective of the given player. 
+    /// In essence, if the player is Black, the evaluation will be inverted, but 
+    /// if the player is White, the evaluation will remain the same. This 
+    /// function is an involution, meaning that calling it twice with the same 
+    /// player will yield the original evaluation.
+    pub const fn in_perspective(&self, player: Color) -> Eval {
+        match player {
+            Color::White => *self,
+            Color::Black => Eval(-self.0)
+        }
     }
 }
 

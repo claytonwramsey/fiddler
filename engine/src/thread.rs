@@ -8,8 +8,7 @@ use fiddler_base::Game;
 use crate::uci::{EngineInfo, UciMessage};
 
 use super::{
-    config::SearchConfig, limit::SearchLimit, search::PVSearch, transposition::TTable, SearchError,
-    SearchResult,
+    config::SearchConfig, limit::SearchLimit, search::{search, SearchResult}, transposition::TTable, SearchError,
 };
 
 #[derive(Clone, Debug)]
@@ -41,25 +40,18 @@ impl MainSearch {
             let config_copy = self.config;
             let gcopy = g.clone();
             handles.push(spawn(move || {
-                let mut searcher = PVSearch::new(
-                    ttable_arc,
-                    config_copy,
-                    limit_arc,
-                    false
-                );
-
-                searcher.evaluate(gcopy)
+                search(gcopy, ttable_arc, &config_copy, limit_arc, false)
             }))
         }
 
         // now it's our turn to think
-        let mut main_searcher = PVSearch::new(
-            self.ttable.clone(),
-            self.config,
-            self.limit.clone(),
-            true,
+        let mut best_result = search(
+            g.clone(), 
+            self.ttable.clone(), 
+            &self.config, 
+            self.limit.clone(), 
+            true
         );
-        let mut best_result = main_searcher.evaluate(g.clone());
 
         for handle in handles {
             let eval_result = handle.join().map_err(|_| SearchError::Join)?;
@@ -68,10 +60,8 @@ impl MainSearch {
                 // if this is our first successful thread, use its result
                 (Err(_), Ok(_)) => best_result = eval_result,
                 // if both were successful, use the deepest result
-                (Ok(best_search), Ok(new_search)) => {
-                    if new_search.2 > best_search.2 {
-                        best_result = eval_result;
-                    }
+                (Ok(ref mut best_search), Ok(ref new_search)) => {
+                    best_search.unify_with(new_search);
                 }
                 // error cases cause nothing to happen
                 _ => (),
@@ -80,12 +70,12 @@ impl MainSearch {
         let toc = Instant::now();
         let elapsed = toc - tic;
 
-        if let Ok((_, _, depth)) = best_result {
+        if let Ok(info) = best_result {
             let nodes = self.limit.num_nodes();
             let nps = nodes * 1000 / (elapsed.as_millis() as u64);
             // inform the user
             print!("{}", UciMessage::Info(&[
-                EngineInfo::Depth(depth),
+                EngineInfo::Depth(info.highest_successful_depth),
                 EngineInfo::Nodes(nodes),
                 EngineInfo::NodeSpeed(nps),
             ]));

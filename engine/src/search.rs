@@ -11,44 +11,154 @@ use super::{
     limit::SearchLimit,
     pick::MovePicker,
     transposition::{EvalData, TTable},
-    SearchError, SearchResult,
 };
 
-use std::cmp::{max, min};
+use std::{cmp::{max, min}, sync::PoisonError};
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
-/// A chess engine which uses Principal Variation Search.
-pub struct PVSearch {
-    /// The transposition table.
-    pub ttable: Arc<TTable>,
-    /// The set of "killer" moves. Each index corresponds to a depth (0 is most
-    /// shallow, etc).
-    killer_moves: Vec<Move>,
-    /// The cumulative number of nodes evaluated in this evaluation event since
-    /// the search limit was last updated.
-    num_nodes_evaluated: u64,
-    /// The cumulative number of transpositions.
-    num_transpositions: u64,
-    /// The configuration of this search.
-    pub config: SearchConfig,
-    /// The limit to this search.
-    pub limit: Arc<SearchLimit>,
-    /// Whether this search is the main search.
-    is_main: bool,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The types of errors which can occur during a search.
+pub enum SearchError {
+    /// This search failed due to timeout.
+    Timeout,
+    /// This search failed because a lock was poisoned.
+    Poison,
+    /// This searched failed because a thread failed to join.
+    Join,
 }
+
+impl<T> From<PoisonError<T>> for SearchError {
+    #[inline(always)]
+    fn from(_: PoisonError<T>) -> Self {
+        SearchError::Poison
+    }
+}
+
+/// The result of performing a search. The `Ok` version contains data on the 
+/// search, while the `Err` version contains a reason why the search failed.
+pub type SearchResult = Result<SearchInfo, SearchError>;
 
 /// The output type of a search. An `Err` may be given if, for instance,
 /// the search times out.
 type PVSResult = Result<(Move, Eval), SearchError>;
 
-impl PVSearch {
+#[inline(always)]
+/// Evaluate the given game. Return a pair containing the best move and its
+/// evaluation, as well as the depth to which the evaluation was searched.
+/// 
+/// `g` is the game which will be evaluated.
+/// 
+/// `ttable` is a reference counter to the shared transposition table.
+/// 
+/// `config` is the configuration of this search. 
+/// 
+/// `limit` is the search limiter, and will be interiorly mutated by this 
+/// function.
+/// 
+/// `is_main` determines whether or not this search is the "main" search or a 
+/// subjugate thread, and determines responsibilities as such.
+pub fn search(
+    mut g: Game, 
+    ttable: Arc<TTable>, 
+    config: &SearchConfig, 
+    limit: Arc<SearchLimit>, 
+    is_main: bool
+) -> SearchResult {
+    let mut searcher = PVSearch::new(ttable, config, limit, is_main);
+    let mut best_move = None;
+    let mut best_eval = None;
+    let mut highest_successful_depth = 0;
+    for iter_depth in 1..=config.depth {
+        match searcher.pvs(iter_depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true) {
+            Ok((m, eval)) => {
+                best_move = Some(m);
+                best_eval = Some(eval);
+                highest_successful_depth = iter_depth;
+            }
+            Err(e) => match e {
+                SearchError::Timeout => break,
+                SearchError::Poison => return Err(e),
+                SearchError::Join => {
+                    // theoretically, this should never happen
+                    panic!("single-threaded process have a join error?!")
+                }
+            },
+        };
+    }
+
+    if best_move.is_none() {
+        // search timed out before it could come up with any good moves.
+        return Err(SearchError::Timeout);
+    }
+
+    Ok(SearchInfo {
+        best_move: best_move.unwrap(),
+        eval: best_eval.unwrap().in_perspective(g.board().player_to_move),
+        num_transpositions: searcher.num_transpositions,
+        num_nodes_evaluated: searcher.num_nodes_evaluated,
+        highest_successful_depth,
+    })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Information about the search which will be returned at the end of a search.
+pub struct SearchInfo {
+    /// The best move in the position.
+    pub best_move: Move,
+    /// The evaluation of the position.
+    pub eval: Eval,
+    /// The number of times a transposition table get was successful.
+    pub num_transpositions: u64,
+    /// The number of nodes evaluated in this search.
+    pub num_nodes_evaluated: u64,
+    /// The highest depth at which this search succeeded.
+    pub highest_successful_depth: u8,
+}
+
+impl SearchInfo {
+    /// Unify with another `SearchInfo`, selecting the most accurate evaluation 
+    /// (by depth) and summing the number of transpositions and nodes evaluated.
+    pub fn unify_with(&mut self, other: &SearchInfo) {
+        if other.highest_successful_depth > self.highest_successful_depth {
+            self.best_move = other.best_move;
+            self.eval = other.eval;
+            self.highest_successful_depth = other.highest_successful_depth;
+        }
+        self.num_nodes_evaluated += other.num_nodes_evaluated;
+        self.num_transpositions += other.num_transpositions;
+    }
+}
+
+#[derive(Clone, Debug)]
+/// A structure containing data which is shared across function calls to a principal variation search.
+struct PVSearch<'a> {
+    /// The transposition table.
+    ttable: Arc<TTable>,
+    /// The set of "killer" moves. Each index corresponds to a depth (0 is most
+    /// shallow, etc).
+    killer_moves: Vec<Move>,
+    /// The cumulative number of nodes evaluated in this evaluation.
+    num_nodes_evaluated: u64,
+    /// The cumulative number of nodes visited since we last updated the limit.
+    nodes_since_limit_update: u16,
+    /// The cumulative number of transpositions.
+    num_transpositions: u64,
+    /// The configuration of this search.
+    config: &'a SearchConfig,
+    /// The limit to this search.
+    limit: Arc<SearchLimit>,
+    /// Whether this search is the main search.
+    is_main: bool,
+}
+
+
+impl <'a> PVSearch<'a> {
     /// Construct a new PVSearch using a given transposition table,
     /// configuration, and limit. `is_main` is whether the thread is a main
     /// search, responsible for certain synchronization activities.
     pub fn new(
         ttable: Arc<TTable>,
-        config: SearchConfig,
+        config: &'a SearchConfig,
         limit: Arc<SearchLimit>,
         is_main: bool,
     ) -> PVSearch {
@@ -56,6 +166,7 @@ impl PVSearch {
             ttable,
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
             num_nodes_evaluated: 0,
+            nodes_since_limit_update: 0,
             num_transpositions: 0,
             config,
             limit,
@@ -295,13 +406,8 @@ impl PVSearch {
         /*if g.is_over().0 {
             println!("{g}: {leaf_evaluation}");
         }*/
-        // (1 - 2 * us) will cause the evaluation to be positive for
-        // whichever player is moving. This will cascade up the Negamax
-        // inversions to make the final result at the top correct.
-        // This step must also be done at the top level so that positions
-        // with Black to move are evaluated as negative when faced
-        // outwardly.
-        let mut score = leaf_evaluation * (1 - 2 * player as i16);
+        // Put the score in perspective of the player.
+        let mut score = leaf_evaluation.in_perspective(player);
         let mut alpha = alpha_in;
         let beta = beta_in;
 
@@ -359,12 +465,6 @@ impl PVSearch {
         Ok((best_move, alpha))
     }
 
-    /// Clear out internal data.
-    pub fn clear(&mut self) {
-        self.num_nodes_evaluated = 0;
-        self.num_transpositions = 0;
-    }
-
     /// Store data in the transposition table.
     /// `score` is the best score of the position as evaluated, while `alpha`
     /// and `beta` are the upper and lower bounds on the overall position due
@@ -397,51 +497,6 @@ impl PVSearch {
         );
     }
 
-    /// Set the search depth of the engine. This is preferred over strictly
-    /// mutating the engine, as the depth may alter some data structures used
-    /// by the engine.
-    pub fn set_depth(&mut self, depth: u8) {
-        self.config.depth = depth;
-        for _ in 0..depth {
-            self.killer_moves.push(Move::BAD_MOVE);
-        }
-    }
-
-    #[inline(always)]
-    /// Evaluate the given game. Return a pair containing the best move and its
-    /// evaluation, as well as the depth to which the evaluation was searched.
-    pub fn evaluate(&mut self, mut g: Game) -> SearchResult {
-        self.num_nodes_evaluated = 0;
-        self.num_transpositions = 0;
-        let mut result = (Move::BAD_MOVE, Eval::DRAW);
-        let mut highest_successful_depth = 0;
-        for iter_depth in 1..=self.config.depth {
-            match self.pvs(iter_depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true) {
-                Ok(search_result) => {
-                    result = (
-                        search_result.0,
-                        search_result.1 * (1 - 2 * g.board().player_to_move as i16),
-                    );
-                    highest_successful_depth = iter_depth;
-                }
-                Err(e) => match e {
-                    SearchError::Timeout => break,
-                    SearchError::Poison => return Err(e),
-                    SearchError::Join => {
-                        panic!("how did a single-threaded process have a join error?!")
-                    }
-                },
-            };
-        }
-
-        if result.0 == Move::BAD_MOVE {
-            // search timed out before it could come up with any good moves.
-            return Err(SearchError::Timeout);
-        }
-
-        Ok((result.0, result.1, highest_successful_depth))
-    }
-
     #[inline(always)]
     /// Increment the number of nodes searched, copying over the value into the
     /// search limit if it is too high.
@@ -457,68 +512,59 @@ impl PVSearch {
     /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
-        self.limit.add_nodes(self.num_nodes_evaluated)?;
+        self.limit.add_nodes(self.nodes_since_limit_update as u64)?;
         self.num_nodes_evaluated = 0;
         Ok(())
     }
 }
 
-impl Default for PVSearch {
-    fn default() -> PVSearch {
-        let mut searcher = PVSearch {
-            ttable: Arc::new(TTable::default()),
-            killer_moves: Vec::new(),
-            num_nodes_evaluated: 0,
-            num_transpositions: 0,
-            config: SearchConfig {
-                depth: 0,
-                max_transposition_depth: 8,
-                num_early_moves: 4,
-                limit_update_increment: 100,
-                n_helpers: 0,
-            },
-            limit: Arc::new(SearchLimit::new()),
-            is_main: true,
-        };
-        searcher.set_depth(5);
-        searcher
-    }
-}
-
 #[cfg(test)]
 pub mod tests {
-    use std::time::Instant;
-
     use super::*;
     use crate::pst::pst_evaluate;
     use fiddler_base::Move;
     use fiddler_base::Square;
 
+    /// Helper function to search a position at a given depth.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic if searching the position fails or the game is 
+    /// invalid.
+    fn search_helper(fen: &str, depth: u8) -> SearchInfo {
+        let g = Game::from_fen(fen, pst_evaluate).unwrap();
+        let config = SearchConfig {depth, ..Default::default()};
+        search(
+            g, 
+            Arc::new(TTable::default()), 
+            &config, 
+            Arc::new(SearchLimit::default()), 
+            true
+        ).unwrap()
+    }
+
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.
     pub fn test_eval_start() {
-        let g = Game::default();
-        let mut e = PVSearch::default();
-        e.set_depth(11); // this prevents taking too long on searches
-
-        let result = e.evaluate(g);
-        println!("best move: {} [{}]", result.unwrap().0, result.unwrap().1);
+        let info = search_helper("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 11);
+        println!("best move: {} [{}]", info.best_move, info.eval);
     }
 
     #[test]
     /// A test on the evaluation of the game in the fried liver position. The
     /// only winning move for White is Qd3+.
     fn test_fried_liver() {
-        let g = Game::from_fen(
-            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            pst_evaluate,
-        )
-        .unwrap();
-        let mut e = PVSearch::default();
-        e.set_depth(10); // this prevents taking too long on searches
+        let info = search_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", 10);
         let m = Move::normal(Square::D1, Square::F3);
 
-        assert_eq!(e.evaluate(g).unwrap().0, m);
+        assert_eq!(info.best_move, m);
+    }
+
+    /// A helper function which ensures that the evaluation of a position is
+    /// equal to what we expect it to be. It will check both a normal search
+    /// and a search without the transposition table.
+    fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
+        assert_eq!(search_helper(fen, depth).eval, eval);
     }
 
     #[test]
@@ -545,29 +591,4 @@ pub mod tests {
         );
     }
 
-    /// A helper function which ensures that the evaluation of a position is
-    /// equal to what we expect it to be. It will check both a normal search
-    /// and a search without the transposition table.
-    fn test_eval_helper(fen: &str, eval: Eval, depth: u8) {
-        let g = Game::from_fen(fen, pst_evaluate).unwrap();
-        let mut e = PVSearch::default();
-        e.set_depth(depth);
-
-        let mut tic = Instant::now();
-        assert_eq!(e.evaluate(g.clone()).unwrap().1, eval);
-        let mut toc = Instant::now();
-        println!(
-            "with transposition table: {:.3} secs",
-            (toc - tic).as_secs_f64()
-        );
-        e.config.max_transposition_depth = 0;
-        e.clear();
-        tic = Instant::now();
-        assert_eq!(e.evaluate(g).unwrap().1, eval);
-        toc = Instant::now();
-        println!(
-            "no transposition table: {:.3} secs",
-            (toc - tic).as_secs_f64()
-        );
-    }
 }

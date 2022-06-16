@@ -39,8 +39,13 @@ fn main() {
                 e.config.max_transposition_depth = 99;
 
                 let r = e.evaluate(&g);
-                let (m, eval, depth) = r.unwrap();
-                println!("depth {}: {} gives {}", depth, m, eval);
+                let info = r.unwrap();
+                println!(
+                    "depth {}: {} gives {}", 
+                    info.highest_successful_depth, 
+                    info.best_move, 
+                    info.eval
+                );
             }
             _ => {
                 println!("unrecognized mode of operation {:?}", args[0]);

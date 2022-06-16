@@ -103,6 +103,7 @@ impl SearchLimit {
 }
 
 impl Default for SearchLimit {
+    /// Construct a `SearchLimit` which will never stop.
     fn default() -> Self {
         SearchLimit::new()
     }

@@ -185,21 +185,21 @@ fn main() {
                 let cloned_game = game.clone();
                 let searcher_new_arc = searcher.clone();
                 search_handle = Some(std::thread::spawn(move || {
-                    let (m, eval, depth) = searcher_new_arc
+                    let info = searcher_new_arc
                         .read()
                         .unwrap()
                         .evaluate(&cloned_game)
                         .unwrap();
-                    print!("{}", UciMessage::BestMove { m, ponder: None });
+                    print!("{}", UciMessage::BestMove { m: info.best_move, ponder: None });
                     print!(
                         "{}",
                         UciMessage::Info(&[
                             EngineInfo::Score {
-                                eval,
+                                eval: info.eval,
                                 is_lower_bound: false,
                                 is_upper_bound: false
                             },
-                            EngineInfo::Depth(depth)
+                            EngineInfo::Depth(info.highest_successful_depth)
                         ])
                     );
                 }));

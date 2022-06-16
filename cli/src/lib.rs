@@ -282,13 +282,13 @@ impl<'a> FiddlerApp<'a> {
         writeln!(
             self.output_stream,
             "depth {}: the engine played {}: {}",
-            search_data.2,
-            algebraic_from_move(search_data.0, self.game.position()),
-            search_data.1
+            search_data.highest_successful_depth,
+            algebraic_from_move(search_data.best_move, self.game.position()),
+            search_data.eval
         )
         .map_err(|_| "failed to write to output")?;
         self.game
-            .make_move(search_data.0, pst_delta(self.game.board(), search_data.0));
+            .make_move(search_data.best_move, pst_delta(self.game.board(), search_data.best_move));
 
         Ok(())
     }
