@@ -34,13 +34,9 @@ fn main() {
                 .unwrap();
 
                 let mut e = MainSearch::new();
-                e.set_depth(10);
-                e.set_nhelpers(15);
-                let tdepth = 99;
-                e.main_config.max_transposition_depth = tdepth;
-                for cfg in e.configs.iter_mut() {
-                    cfg.max_transposition_depth = tdepth;
-                }
+                e.config.depth = 11;
+                e.config.n_helpers = 7;
+                e.config.max_transposition_depth = 99;
 
                 let r = e.evaluate(&g);
                 let (m, eval, depth) = r.unwrap();

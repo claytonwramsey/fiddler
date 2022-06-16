@@ -475,6 +475,7 @@ impl Default for PVSearch {
                 max_transposition_depth: 8,
                 num_early_moves: 4,
                 limit_update_increment: 100,
+                n_helpers: 0,
             },
             limit: Arc::new(SearchLimit::new()),
             is_main: true,

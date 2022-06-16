@@ -3,6 +3,9 @@
 pub struct SearchConfig {
     /// The depth at which this algorithm will evaluate a position.
     pub depth: u8,
+    /// The number of helper threads. If this value is 0, then the search is 
+    /// single-threaded.
+    pub n_helpers: u8,
     /// The maximum depth to which the engine will add or edit entries in the
     /// transposition table.
     pub max_transposition_depth: u8,
@@ -18,6 +21,7 @@ impl SearchConfig {
     pub fn new() -> SearchConfig {
         SearchConfig {
             depth: 10,
+            n_helpers: 0,
             max_transposition_depth: 7,
             num_early_moves: 4,
             limit_update_increment: 100,

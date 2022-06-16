@@ -263,10 +263,8 @@ impl<'a> FiddlerApp<'a> {
     fn select_engine(&mut self, opts: String) -> CommandResult {
         // For now, we just use it to set the depth, as there are no engines to
         // select.
-        self.engine.set_depth(
-            opts.parse()
-                .map_err(|_| "could not parse engine selection")?,
-        );
+        self.engine.config.depth = opts.parse()
+                .map_err(|_| "could not parse engine selection")?;
 
         Ok(())
     }
@@ -319,7 +317,7 @@ impl<'a> Default for FiddlerApp<'a> {
             limit: arc_limit.clone(),
         };
         app.engine.limit = arc_limit;
-        app.engine.set_nhelpers(15);
+        app.engine.config.n_helpers = 15;
         app
     }
 }

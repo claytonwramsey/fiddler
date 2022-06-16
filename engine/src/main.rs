@@ -70,7 +70,7 @@ fn main() {
                 "Thread Count" => match value {
                     None => debug_info("error: no value given for number of threads", debug),
                     Some(num_str) => match num_str.parse() {
-                        Ok(n) => searcher.write().unwrap().set_nhelpers(n),
+                        Ok(n) => searcher.write().unwrap().config.n_helpers = n,
                         _ => debug_info("error: illegal parameter for `Thread Count`", debug),
                     },
                 },
@@ -133,7 +133,7 @@ fn main() {
                             movestogo = Some(n);
                         }
                         GoOption::Depth(d) => {
-                            searcher.write().unwrap().set_depth(d);
+                            searcher.write().unwrap().config.depth = d;
                         }
                         GoOption::Nodes(num) => {
                             *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = Some(num);

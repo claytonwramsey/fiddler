@@ -1,6 +1,6 @@
 use std::{
     sync::Arc,
-    thread::{self, JoinHandle}, time::Instant,
+    thread::{JoinHandle, spawn}, time::Instant,
 };
 
 use fiddler_base::Game;
@@ -15,8 +15,7 @@ use super::{
 #[derive(Clone, Debug)]
 /// The primary search thread for an engine.
 pub struct MainSearch {
-    pub main_config: SearchConfig,
-    pub configs: Vec<SearchConfig>,
+    pub config: SearchConfig,
     ttable: Arc<TTable>,
     pub limit: Arc<SearchLimit>,
 }
@@ -26,42 +25,37 @@ impl MainSearch {
     /// Construct a new main search with only a single search thread.
     pub fn new() -> MainSearch {
         MainSearch {
-            main_config: SearchConfig::new(),
-            configs: Vec::new(),
+            config: SearchConfig::new(),
             ttable: Arc::new(TTable::default()),
             limit: Arc::new(SearchLimit::new()),
         }
     }
 
-    /// Set the number of helper threads. If `n_helpers` is 0, then this search
-    /// will be single-threaded.
-    pub fn set_nhelpers(&mut self, n_helpers: usize) {
-        if n_helpers >= self.configs.len() {
-            for _ in 0..(n_helpers - self.configs.len() + 1) {
-                self.configs.push(self.main_config);
-            }
-        } else {
-            self.configs.truncate(n_helpers + 1);
-        }
-    }
-
     pub fn evaluate(&self, g: &Game) -> SearchResult {
         let tic = Instant::now();
-        let handles: Vec<JoinHandle<SearchResult>> = self
-            .configs
-            .iter()
-            .map(|config| {
-                let mut searcher =
-                    PVSearch::new(self.ttable.clone(), *config, self.limit.clone(), false);
-                let gcopy = g.clone();
-                thread::spawn(move || searcher.evaluate(gcopy))
-            })
-            .collect();
+        let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
+
+        for _thread_id in 1..(self.config.n_helpers + 1) {
+            let ttable_arc = self.ttable.clone();
+            let limit_arc = self.limit.clone();
+            let config_copy = self.config;
+            let gcopy = g.clone();
+            handles.push(spawn(move || {
+                let mut searcher = PVSearch::new(
+                    ttable_arc,
+                    config_copy,
+                    limit_arc,
+                    false
+                );
+
+                searcher.evaluate(gcopy)
+            }))
+        }
 
         // now it's our turn to think
         let mut main_searcher = PVSearch::new(
             self.ttable.clone(),
-            self.main_config,
+            self.config,
             self.limit.clone(),
             true,
         );
@@ -99,13 +93,6 @@ impl MainSearch {
 
         best_result
     }
-
-    pub fn set_depth(&mut self, depth: u8) {
-        self.main_config.depth = depth;
-        self.configs
-            .iter_mut()
-            .for_each(|config| config.depth = depth);
-    }
 }
 
 #[cfg(test)]
@@ -118,16 +105,14 @@ mod tests {
 
     /// Compare the speed of a search on a given transposition depth with its 
     /// adjacent depths.
-    fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: usize) {
+    fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: u8) {
         let g = Game::from_fen(fen, pst_evaluate).unwrap();
         let mut main = MainSearch::new();
-        main.set_depth(depth);
-        main.set_nhelpers(nhelpers);
+        main.config.depth = depth;
+        main.config.n_helpers = nhelpers;
         for tdepth in max(0, transposition_depth - 1)..=(transposition_depth + 1) {
-            main.main_config.max_transposition_depth = tdepth;
-            for cfg in main.configs.iter_mut() {
-                cfg.max_transposition_depth = tdepth;
-            }
+            main.config.max_transposition_depth = tdepth;
+
             let tic = Instant::now();
             main.evaluate(&g).unwrap();
             let toc = Instant::now();
