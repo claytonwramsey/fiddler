@@ -1,8 +1,8 @@
-use crate::movegen::NoopNominator;
+use crate::movegen::{NoopNominator, ALL};
 
 use super::{
     algebraic::algebraic_from_move,
-    movegen::{get_loud_moves, get_moves, has_moves, is_square_attacked_by, NominateMove},
+    movegen::{get_moves, has_moves, is_square_attacked_by, GenMode, NominateMove},
     position::PSTEvaluator,
     Board, Color, Move, Piece, Position, Score, Square,
 };
@@ -87,7 +87,7 @@ impl Game {
     /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
     /// you that the move is illegal, and no state will be changed.
     pub fn try_move(&mut self, m: Move, pst_delta: Score) -> Result<(), &'static str> {
-        if self.get_moves::<NoopNominator>().contains(&(m, ())) {
+        if self.get_moves::<ALL, NoopNominator>().contains(&(m, ())) {
             self.make_move(m, pst_delta);
             Ok(())
         } else {
@@ -185,23 +185,12 @@ impl Game {
 
     /// Get the legal moves in this position. Will be empty if the position is
     /// drawn or the game is over.
-    pub fn get_moves<N: NominateMove>(&self) -> Vec<(Move, N::Output)> {
+    pub fn get_moves<const M: GenMode, N: NominateMove>(&self) -> Vec<(Move, N::Output)> {
         if self.is_drawn_historically() {
             return Vec::new();
         }
 
-        get_moves::<N>(self.position())
-    }
-
-    /// Get the "loud" moves, such as captures and promotions, which are legal
-    /// in this position. The definition of "loud" is relatively fluid at the
-    /// moment, and may change.
-    pub fn get_loud_moves<N: NominateMove>(&self) -> Vec<(Move, N::Output)> {
-        if self.is_drawn_historically() {
-            return Vec::new();
-        }
-
-        get_loud_moves::<N>(self.position())
+        get_moves::<M, N>(self.position())
     }
 
     // no need for `is_empty` since history should always be nonempty
@@ -330,7 +319,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let moves = get_moves::<NoopNominator>(g.position());
+        let moves = get_moves::<ALL, NoopNominator>(g.position());
         assert!(moves.is_empty());
         assert!(!has_moves(g.position()));
         assert_eq!(g.is_over(), (true, Some(Color::White)));
@@ -343,7 +332,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let moves = get_moves::<NoopNominator>(g.position());
+        let moves = get_moves::<ALL, NoopNominator>(g.position());
         assert!(moves.is_empty());
         assert!(!has_moves(g.position()));
         assert_eq!(g.is_over(), (true, Some(Color::Black)));
@@ -355,7 +344,7 @@ mod tests {
         // Rb8# is the winning move
         let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
         let m = Move::normal(Square::B6, Square::B8);
-        assert!(g.get_moves::<NoopNominator>().contains(&(m, ())));
+        assert!(g.get_moves::<ALL, NoopNominator>().contains(&(m, ())));
         g.make_move(m, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.is_over(), (true, Some(Color::White)));
     }
@@ -381,7 +370,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let moves = g.get_moves::<NoopNominator>();
+        let moves = g.get_moves::<ALL, NoopNominator>();
         let expected_moves = vec![
             Move::normal(Square::E6, Square::D6),
             Move::normal(Square::E6, Square::F7),

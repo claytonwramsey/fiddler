@@ -1,4 +1,7 @@
-use fiddler_base::{movegen::get_loud_moves, Eval, Game, Move};
+use fiddler_base::{
+    movegen::{get_moves, CAPTURES},
+    Eval, Game, Move,
+};
 
 use crate::pst::PstNominate;
 
@@ -99,23 +102,24 @@ impl PVSearch {
 
         // Retrieve transposition data and use it to improve our estimate on
         // the position
-        let mut stored_move = Move::BAD_MOVE;
+        let mut stored_move = None;
         if depth_so_far <= self.config.max_transposition_depth {
             if let Some(edata) = self.ttable.get(g.board().hash) {
                 self.num_transpositions += 1;
-                stored_move = edata.critical_move;
+                let m = edata.critical_move;
+                stored_move = Some(m);
                 if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
                     // searching deeper will not find us an escape from or a
                     // faster mate if the fill tree was searched
-                    return Ok((stored_move, edata.lower_bound));
+                    return Ok((m, edata.lower_bound));
                 }
                 if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
                     if edata.lower_bound >= beta_in {
-                        return Ok((stored_move, edata.lower_bound));
+                        return Ok((m, edata.lower_bound));
                     }
                     if edata.upper_bound <= alpha_in {
-                        return Ok((stored_move, edata.upper_bound));
+                        return Ok((m, edata.upper_bound));
                     }
                     alpha = max(alpha, edata.lower_bound);
                     beta = min(beta, edata.upper_bound);
@@ -138,8 +142,8 @@ impl PVSearch {
         let killer_index = depth_so_far as usize;
         let can_use_killers = depth_so_far < self.config.depth;
         let killer_move = match can_use_killers {
-            true => self.killer_moves[killer_index],
-            false => Move::BAD_MOVE,
+            true => Some(self.killer_moves[killer_index]),
+            false => None,
         };
 
         let mut moves_iter = MovePicker::new(*g.position(), stored_move, killer_move);
@@ -308,7 +312,7 @@ impl PVSearch {
             return Ok((Move::BAD_MOVE, alpha));
         }
 
-        let mut moves = get_loud_moves::<PstNominate>(g.position());
+        let mut moves = get_moves::<CAPTURES, PstNominate>(g.position());
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut best_move = Move::BAD_MOVE;
 

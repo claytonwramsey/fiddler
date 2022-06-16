@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::movegen::NoopNominator;
+use crate::movegen::{NoopNominator, ALL};
 
 use super::{movegen::get_moves, Position};
 
@@ -28,7 +28,7 @@ fn perft_search(pos: &Position, depth: u8, divide: bool) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = get_moves::<NoopNominator>(pos);
+    let moves = get_moves::<ALL, NoopNominator>(pos);
     let mut total = 0;
     let mut pcopy;
     for m in moves {

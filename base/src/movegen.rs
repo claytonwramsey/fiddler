@@ -87,6 +87,17 @@ lazy_static! {
     ];
 }
 
+/// The types of move generation. These are used in const generics, as enums are
+/// not supported in const generics.
+pub type GenMode = u8;
+
+/// Generate all legal moves.
+pub const ALL: GenMode = 0;
+/// Generate all captures.
+pub const CAPTURES: GenMode = 1;
+/// Generate all quiet moves.
+pub const QUIETS: GenMode = 2;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A struct containing information for generating moves without self-checking,
 /// such as the necessary pieces to block the king.
@@ -341,7 +352,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
 
 #[inline(always)]
 /// Get all the legal moves on a board.
-pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
+pub fn get_moves<const M: GenMode, N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
     let mut moves;
     let in_check = !pos.check_info.checkers.is_empty();
 
@@ -349,33 +360,22 @@ pub fn get_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
         false => {
             // in the overwhelming majority of cases, there are fewer than 50
             // legal moves total
-            moves = Vec::with_capacity(50);
-            non_evasions::<N>(pos, &mut moves);
+            let capacity = match M {
+                ALL => 50,
+                CAPTURES => 8,
+                QUIETS => 40,
+                _ => unreachable!(),
+            };
+            moves = Vec::with_capacity(capacity);
+            non_evasions::<M, N>(pos, &mut moves);
         }
         true => {
             // in the overwhelming majority of cases, there are 8 or fewer
             // legal evasions if the king is in check
             moves = Vec::with_capacity(8);
-            evasions::<N>(pos, &mut moves);
+            evasions::<M, N>(pos, &mut moves);
         }
     };
-
-    moves
-}
-
-#[inline(always)]
-/// Get moves which are "loud," i.e. captures or checks. The king must not be
-/// in check in this position.
-pub fn get_loud_moves<N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
-    assert!(
-        pos.check_info.checkers.is_empty(),
-        "loud moves cannot be requested for board where king is checked"
-    );
-
-    // in most cases, there are 8 or fewer captures
-    let mut moves = Vec::with_capacity(8);
-
-    loud_pseudolegal_moves::<N>(pos, &mut moves);
 
     moves
 }
@@ -563,18 +563,37 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 /// Enumerate the legal moves a player of the given color would be
 /// able to make if it were their turn to move, and if the player is not in
 /// check.
-fn non_evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
-    normal_piece_assistant::<N>(pos, moves, Bitboard::ALL);
-    pawn_assistant::<N>(pos, moves, Bitboard::ALL);
+fn non_evasions<const M: GenMode, N: NominateMove>(
+    pos: &Position,
+    moves: &mut Vec<(Move, N::Output)>,
+) {
+    let target_sqs = match M {
+        ALL => Bitboard::ALL,
+        CAPTURES => pos.board[!pos.board.player_to_move],
+        QUIETS => !pos.board[!pos.board.player_to_move],
+        _ => unreachable!(),
+    };
+
+    normal_piece_assistant::<N>(pos, moves, target_sqs);
+
+    let mut pawn_targets = target_sqs;
+    if M != QUIETS {
+        if let Some(ep_sq) = pos.board.en_passant_square {
+            pawn_targets |= Bitboard::from(ep_sq);
+        }
+    }
+    pawn_assistant::<M, N>(pos, moves, pawn_targets);
 
     // generate king moves
-    castles::<N>(pos, moves);
-    king_move_non_castle::<N>(pos, moves, Bitboard::ALL);
+    if M != CAPTURES {
+        castles::<N>(pos, moves);
+    }
+    king_move_non_castle::<N>(pos, moves, target_sqs);
 }
 
 /// Compute the evasions in a position where the king is checked, and then push
 /// those evading moves into the moves buffer.
-fn evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
+fn evasions<const M: GenMode, N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
     let b = &pos.board;
     let player = b.player_to_move;
     let king_sq = pos.king_sqs[player as usize];
@@ -584,62 +603,36 @@ fn evasions<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>)
         // this unsafe is fine because we already checked
         let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
         // Look for blocks or captures
-        let target_sqs = between(king_sq, checker_sq) | pos.check_info.checkers;
+        let mut target_sqs = between(king_sq, checker_sq) | pos.check_info.checkers;
+        match M {
+            ALL => (),
+            CAPTURES => target_sqs &= b[!player],
+            QUIETS => target_sqs &= !b[!player],
+            _ => unreachable!(),
+        }
+
         let mut pawn_targets = target_sqs;
-        if let Some(ep_sq) = b.en_passant_square {
-            // can en passant save us from check?
-            let ep_attacker_sq = ep_sq - player.pawn_direction();
-            if pos.check_info.checkers.contains(ep_attacker_sq) {
-                pawn_targets |= Bitboard::from(ep_sq);
+        if M != QUIETS {
+            if let Some(ep_sq) = b.en_passant_square {
+                // can en passant save us from check?
+                let ep_attacker_sq = ep_sq - player.pawn_direction();
+                if pos.check_info.checkers.contains(ep_attacker_sq) {
+                    pawn_targets |= Bitboard::from(ep_sq);
+                }
             }
         }
 
-        pawn_assistant::<N>(pos, moves, pawn_targets);
+        pawn_assistant::<M, N>(pos, moves, pawn_targets);
         normal_piece_assistant::<N>(pos, moves, target_sqs);
     }
 
-    king_move_non_castle::<N>(pos, moves, Bitboard::ALL);
-}
-
-#[inline(always)]
-/// Enumerate the "loud" pseudolegal moves for a given board.
-fn loud_pseudolegal_moves<N: NominateMove>(pos: &Position, moves: &mut Vec<(Move, N::Output)>) {
-    let b = &pos.board;
-    let player = b.player_to_move;
-    let target_sqs = b[!player];
-    let from_sqs = b[player];
-    let occupancy = target_sqs | from_sqs;
-    let queens = b[Piece::Queen];
-    let rook_movers = (b[Piece::Rook] | queens) & from_sqs;
-    let bishop_movers = (b[Piece::Bishop] | queens) & from_sqs;
-
-    let mut pawn_targets = target_sqs | player.pawn_promote_rank();
-    if let Some(sq) = b.en_passant_square {
-        pawn_targets |= Bitboard::from(sq);
-    }
-
-    loud_pawn_assistant::<N>(pos, moves, pawn_targets);
-    for sq in b[Piece::Knight] & from_sqs {
-        append_valid_normal::<N>(sq, KNIGHT_MOVES[sq as usize] & target_sqs, pos, moves);
-    }
-    for sq in bishop_movers {
-        append_valid_normal::<N>(
-            sq,
-            MAGIC.bishop_attacks(occupancy, sq) & target_sqs,
-            pos,
-            moves,
-        );
-    }
-    for sq in rook_movers {
-        append_valid_normal::<N>(
-            sq,
-            MAGIC.rook_attacks(occupancy, sq) & target_sqs,
-            pos,
-            moves,
-        );
-    }
-    // castling is never a loud move, so just look at normal moves
-    king_move_non_castle::<N>(pos, moves, target_sqs);
+    let king_targets = match M {
+        ALL => Bitboard::ALL,
+        CAPTURES => b[!player],
+        QUIETS => !b[!player],
+        _ => unreachable!(),
+    };
+    king_move_non_castle::<N>(pos, moves, king_targets);
 }
 
 #[inline(always)]
@@ -687,7 +680,7 @@ fn square_attackers_occupancy(
 /// Generate the moves all pawns can make and populate `moves` with those
 /// moves. `target` is the set of squares for which it is desired to move a
 /// pawn.
-fn pawn_assistant<N: NominateMove>(
+fn pawn_assistant<const M: GenMode, N: NominateMove>(
     pos: &Position,
     moves: &mut Vec<(Move, N::Output)>,
     target: Bitboard,
@@ -708,59 +701,68 @@ fn pawn_assistant<N: NominateMove>(
     let direction = player.pawn_direction();
     let doubledir = 2 * direction;
 
-    let mut singles = (pawns << direction.0) & unoccupied;
-    let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
-    singles &= target;
+    if M != CAPTURES {
+        // pawn forward moves
 
-    for to_sq in singles & not_rank8 {
-        let m = Move::normal(to_sq - direction, to_sq);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
+        let mut singles = (pawns << direction.0) & unoccupied;
+        let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
+        singles &= target;
+
+        for to_sq in singles & not_rank8 {
+            let m = Move::normal(to_sq - direction, to_sq);
+            if validate(m, pos) {
+                moves.push((m, N::score(m, pos)));
+            }
         }
-    }
-    for to_sq in doubles {
-        let m = Move::normal(to_sq - doubledir, to_sq);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
+
+        for to_sq in doubles {
+            let m = Move::normal(to_sq - doubledir, to_sq);
+            if validate(m, pos) {
+                moves.push((m, N::score(m, pos)));
+            }
         }
-    }
 
-    let capture_dir_e = direction + Direction::EAST;
-    let capture_dir_w = direction + Direction::WEST;
-
-    let capture_mask = opponents & target;
-
-    // prevent pawns from capturing by wraparound
-    let not_westmost = Bitboard::new(0xFEFEFEFEFEFEFEFE);
-    let not_eastmost = Bitboard::new(0x7F7F7F7F7F7F7F7F);
-    let capture_e = ((pawns & not_eastmost) << capture_dir_e.0) & capture_mask;
-    let capture_w = ((pawns & not_westmost) << capture_dir_w.0) & capture_mask;
-
-    for to_sq in capture_e & not_rank8 {
-        let m = Move::normal(to_sq - capture_dir_e, to_sq);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
-    }
-    for to_sq in capture_w & not_rank8 {
-        let m = Move::normal(to_sq - capture_dir_w, to_sq);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
+        pawn_promotion_helper::<N>(singles & rank8, direction, pos, moves);
     }
 
-    pawn_promotion_helper::<N>(singles & rank8, direction, pos, moves);
-    pawn_promotion_helper::<N>(capture_e & rank8, capture_dir_e, pos, moves);
-    pawn_promotion_helper::<N>(capture_w & rank8, capture_dir_w, pos, moves);
+    if M != QUIETS {
+        // pawn captures
+        let capture_dir_e = direction + Direction::EAST;
+        let capture_dir_w = direction + Direction::WEST;
 
-    // en passant
-    if let Some(ep_square) = board.en_passant_square {
-        if target.contains(ep_square) {
-            let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
-            for from_sq in from_sqs {
-                let m = Move::en_passant(from_sq, ep_square);
-                if validate(m, pos) {
-                    moves.push((m, N::score(m, pos)));
+        let capture_mask = opponents & target;
+
+        // prevent pawns from capturing by wraparound
+        const NOT_WEST: Bitboard = Bitboard::new(0xFEFEFEFEFEFEFEFE);
+        const NOT_EAST: Bitboard = Bitboard::new(0x7F7F7F7F7F7F7F7F);
+        let capture_e = ((pawns & NOT_EAST) << capture_dir_e.0) & capture_mask;
+        let capture_w = ((pawns & NOT_WEST) << capture_dir_w.0) & capture_mask;
+
+        for to_sq in capture_e & not_rank8 {
+            let m = Move::normal(to_sq - capture_dir_e, to_sq);
+            if validate(m, pos) {
+                moves.push((m, N::score(m, pos)));
+            }
+        }
+        for to_sq in capture_w & not_rank8 {
+            let m = Move::normal(to_sq - capture_dir_w, to_sq);
+            if validate(m, pos) {
+                moves.push((m, N::score(m, pos)));
+            }
+        }
+
+        pawn_promotion_helper::<N>(capture_e & rank8, capture_dir_e, pos, moves);
+        pawn_promotion_helper::<N>(capture_w & rank8, capture_dir_w, pos, moves);
+
+        // en passant
+        if let Some(ep_square) = board.en_passant_square {
+            if target.contains(ep_square) {
+                let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
+                for from_sq in from_sqs {
+                    let m = Move::en_passant(from_sq, ep_square);
+                    if validate(m, pos) {
+                        moves.push((m, N::score(m, pos)));
+                    }
                 }
             }
         }
@@ -789,87 +791,6 @@ fn pawn_promotion_helper<N: NominateMove>(
             for promote_type in [Piece::Knight, Piece::Rook, Piece::Bishop] {
                 let m = Move::promoting(from_sq, to_sq, promote_type);
                 moves.push((m, N::score(m, pos)));
-            }
-        }
-    }
-}
-
-/// Generate the loud moves all pawns can make and populate `moves` with
-/// those moves. `target` contains the squares a pawn can move to to capture an
-/// opponent.
-fn loud_pawn_assistant<N: NominateMove>(
-    pos: &Position,
-    moves: &mut Vec<(Move, N::Output)>,
-    target: Bitboard,
-) {
-    let board = &pos.board;
-    let player = pos.board.player_to_move;
-    let allies = board[player];
-    let opponents = board[!player];
-    let rank8 = player.pawn_promote_rank();
-    let not_rank8 = !rank8;
-    let occupancy = allies | opponents;
-    let unoccupied = !occupancy;
-    let direction = player.pawn_direction();
-    let pawns = allies & board[Piece::Pawn];
-
-    let singles = (pawns << direction.0) & unoccupied & target;
-
-    let capture_dir_e = direction + Direction::EAST;
-    let capture_dir_w = direction + Direction::WEST;
-
-    let capture_mask = opponents & target;
-
-    // prevent pawns from capturing by wraparound
-    let not_westmost = Bitboard::new(0xFEFEFEFEFEFEFEFE);
-    let not_eastmost = Bitboard::new(0x7F7F7F7F7F7F7F7F);
-    let capture_e = ((pawns & not_eastmost) << capture_dir_e.0) & capture_mask;
-    let capture_w = ((pawns & not_westmost) << capture_dir_w.0) & capture_mask;
-
-    for to_sq in singles & rank8 {
-        let m = Move::promoting(to_sq - direction, to_sq, Piece::Queen);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
-    }
-
-    for to_sq in capture_e & not_rank8 {
-        let m = Move::normal(to_sq - capture_dir_e, to_sq);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
-    }
-
-    for to_sq in capture_w & not_rank8 {
-        let m = Move::normal(to_sq - capture_dir_w, to_sq);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
-    }
-
-    for to_sq in capture_e & rank8 {
-        let m = Move::promoting(to_sq - capture_dir_e, to_sq, Piece::Queen);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
-    }
-
-    for to_sq in capture_w & rank8 {
-        let m = Move::promoting(to_sq - capture_dir_w, to_sq, Piece::Queen);
-        if validate(m, pos) {
-            moves.push((m, N::score(m, pos)));
-        }
-    }
-
-    // en passant
-    if let Some(ep_square) = board.en_passant_square {
-        if target.contains(ep_square) {
-            let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
-            for from_sq in from_sqs {
-                let m = Move::en_passant(from_sq, ep_square);
-                if validate(m, pos) {
-                    moves.push((m, N::score(m, pos)));
-                }
             }
         }
     }
@@ -1086,7 +1007,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let moves = get_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
         assert!(moves.contains(&(m, ())));
         for m in moves {
             assert!(is_legal(m.0, &pos));
@@ -1103,11 +1024,11 @@ mod tests {
         )
         .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
-        for m in get_moves::<NoopNominator>(&pos) {
+        for m in get_moves::<ALL, NoopNominator>(&pos) {
             assert!(is_legal(m.0, &pos));
         }
-        assert!(get_moves::<NoopNominator>(&pos).contains(&(m, ())));
-        assert!(get_loud_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).contains(&(m, ())));
     }
 
     #[test]
@@ -1119,7 +1040,7 @@ mod tests {
         )
         .unwrap();
 
-        let moves = get_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
 
         for m2 in moves.iter() {
             assert!(is_legal(m2.0, &pos));
@@ -1135,11 +1056,11 @@ mod tests {
         )
         .unwrap();
         assert!(!has_moves(&pos));
-        let moves = get_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
         for m in moves {
             assert!(is_legal(m.0, &pos));
         }
-        assert!(get_moves::<NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
     }
 
     #[test]
@@ -1148,7 +1069,7 @@ mod tests {
         let pos =
             Position::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2", Position::no_eval).unwrap();
         assert!(has_moves(&pos));
-        assert!(get_moves::<NoopNominator>(&pos).len() == 1);
+        assert!(get_moves::<ALL, NoopNominator>(&pos).len() == 1);
         assert!(is_legal(Move::normal(Square::C8, Square::B8), &pos));
     }
 
@@ -1161,7 +1082,7 @@ mod tests {
         )
         .unwrap();
         let m = Move::castling(Square::E8, Square::C8);
-        assert!(get_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
         assert!(is_legal(m, &pos));
     }
 
@@ -1174,7 +1095,7 @@ mod tests {
         )
         .unwrap();
         let m = Move::castling(Square::E8, Square::C8);
-        assert!(!get_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(!get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
 
         assert!(!is_legal(m, &pos));
     }
@@ -1216,7 +1137,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let moves = get_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
         let expected_moves = vec![
             Move::normal(Square::E6, Square::D6),
             Move::normal(Square::E6, Square::F7),
@@ -1237,11 +1158,26 @@ mod tests {
     /// Test that Black can promote a piece (on e1).
     fn test_black_can_promote() {
         let pos = Position::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1", Position::no_eval).unwrap();
-        let moves = get_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
         for m in moves.iter() {
             assert!(is_legal(m.0, &pos));
         }
         assert!(moves.contains(&(Move::promoting(Square::E2, Square::E1, Piece::Queen), ())));
+    }
+
+    #[test]
+    /// Test that pawns cannot "wrap around" the side of the board.
+    fn test_no_wraparound() {
+        let pos = Position::from_fen(
+            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBPPP3/q4N2/Pp4PP/R2Q1RK1 b kq - 0 1",
+            Position::no_eval,
+        )
+        .unwrap();
+
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
+        let m = Move::normal(Square::H7, Square::A7);
+        assert!(!(moves.contains(&(m, ()))));
+        assert!(!is_legal(m, &pos));
     }
 
     #[test]
@@ -1256,8 +1192,8 @@ mod tests {
         let m = Move::en_passant(Square::C4, Square::B3);
 
         assert!(!is_legal(m, &pos));
-        assert!(!get_moves::<NoopNominator>(&pos).contains(&(m, ())));
-        assert!(!get_loud_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(!get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
+        assert!(!get_moves::<CAPTURES, NoopNominator>(&pos).contains(&(m, ())));
     }
 
     #[test]
@@ -1269,7 +1205,7 @@ mod tests {
             Position::no_eval,
         )
         .unwrap();
-        let moves = get_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
         let m = Move::en_passant(Square::F4, Square::E3);
         assert!(!moves.contains(&(m, ())));
         assert!(!is_legal(m, &pos));
@@ -1287,7 +1223,7 @@ mod tests {
 
         let m = Move::normal(Square::B5, Square::C6);
         assert!(!is_legal(m, &pos));
-        assert!(!get_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(!get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
     }
     #[test]
     /// Test that a pinned piece cannot make a capture if it does not defend
@@ -1300,8 +1236,8 @@ mod tests {
         .unwrap();
         let illegal_move = Move::normal(Square::D5, Square::C3);
 
-        assert!(!get_moves::<NoopNominator>(&pos).contains(&(illegal_move, ())));
-        assert!(!get_loud_moves::<NoopNominator>(&pos).contains(&(illegal_move, ())));
+        assert!(!get_moves::<ALL, NoopNominator>(&pos).contains(&(illegal_move, ())));
+        assert!(!get_moves::<CAPTURES, NoopNominator>(&pos).contains(&(illegal_move, ())));
         assert!(!is_legal(illegal_move, &pos));
     }
 
@@ -1317,8 +1253,8 @@ mod tests {
 
         let m = Move::en_passant(Square::E5, Square::F6);
 
-        assert!(get_moves::<NoopNominator>(&pos).contains(&(m, ())));
-        assert!(get_loud_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).contains(&(m, ())));
         assert!(is_legal(m, &pos));
     }
 
@@ -1335,7 +1271,7 @@ mod tests {
 
         let m = Move::en_passant(Square::B5, Square::C6);
 
-        assert!(get_moves::<NoopNominator>(&pos).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).contains(&(m, ())));
         assert!(is_legal(m, &pos));
         assert!(has_moves(&pos));
     }
@@ -1349,7 +1285,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(get_moves::<NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
         assert!(!has_moves(&pos));
     }
 
@@ -1358,8 +1294,8 @@ mod tests {
     fn loud_moves_helper(fen: &str) {
         let pos = Position::from_fen(fen, Position::no_eval).unwrap();
 
-        let moves = get_moves::<NoopNominator>(&pos);
-        let loud_moves = get_loud_moves::<NoopNominator>(&pos);
+        let moves = get_moves::<ALL, NoopNominator>(&pos);
+        let loud_moves = get_moves::<CAPTURES, NoopNominator>(&pos);
 
         for loud_move in loud_moves.iter() {
             assert!(moves.contains(loud_move));

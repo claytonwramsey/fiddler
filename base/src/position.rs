@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::movegen::NoopNominator;
+use crate::movegen::{NoopNominator, ALL};
 
 use super::{
     movegen::{get_moves, CheckInfo},
@@ -74,7 +74,7 @@ impl Position {
     /// (unlike `make_move()`). On illegal moves, will return an `Err` with a
     /// string describing the issue.
     pub fn try_move(&mut self, m: Move, pst_delta: Score) -> Result<(), &str> {
-        let legal_moves = get_moves::<NoopNominator>(self);
+        let legal_moves = get_moves::<ALL, NoopNominator>(self);
         if !legal_moves.contains(&(m, ())) {
             return Err("not contained in the set of legal moves");
         }

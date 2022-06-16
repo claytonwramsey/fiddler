@@ -206,7 +206,7 @@ pub const PST: Pst = expand_table([
 mod tests {
 
     use super::*;
-    use fiddler_base::movegen::{get_moves, NoopNominator};
+    use fiddler_base::movegen::{get_moves, NoopNominator, ALL};
     use fiddler_base::Position;
 
     #[test]
@@ -220,7 +220,7 @@ mod tests {
         .unwrap();
         let pst_original = pst_evaluate(&pos.board);
 
-        for m in get_moves::<NoopNominator>(&pos) {
+        for m in get_moves::<ALL, NoopNominator>(&pos) {
             let delta = pst_delta(&pos.board, m.0);
             let delta_eval = (pst_original.0 + delta.0, pst_original.1 + delta.1);
             let mut bcopy = pos.board;

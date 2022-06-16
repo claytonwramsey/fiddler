@@ -1,4 +1,4 @@
-use crate::movegen::NoopNominator;
+use crate::movegen::{NoopNominator, ALL};
 
 use super::{
     movegen::{get_moves, is_square_attacked_by},
@@ -28,7 +28,9 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     } else {
         let mover_type = b.type_at_square(m.from_square()).unwrap();
         let is_move_capture = b.is_move_capture(m);
-        let other_moves = get_moves::<NoopNominator>(pos).into_iter().map(|x| x.0);
+        let other_moves = get_moves::<ALL, NoopNominator>(pos)
+            .into_iter()
+            .map(|x| x.0);
         let from_sq = m.from_square();
 
         // Resolution of un-clarity on mover location
@@ -92,7 +94,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     let enemy_king_sq = pos.king_sqs[!player_color as usize];
     poscopy.make_move(m, Position::NO_DELTA);
     if is_square_attacked_by(&poscopy.board, enemy_king_sq, player_color) {
-        if get_moves::<NoopNominator>(&poscopy).is_empty() {
+        if get_moves::<ALL, NoopNominator>(&poscopy).is_empty() {
             s += "#";
         } else {
             s += "+";
@@ -105,7 +107,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
 /// Given the string of an algebraic-notation move, get the `Move` which can be
 /// played. Will return Err if the string is invalid.
 pub fn move_from_algebraic(s: &str, pos: &Position) -> Result<Move, &'static str> {
-    get_moves::<NoopNominator>(pos)
+    get_moves::<ALL, NoopNominator>(pos)
         .into_iter()
         .map(|x| x.0)
         .find(|m| algebraic_from_move(*m, pos).as_str() == s)
