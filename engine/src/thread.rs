@@ -1,9 +1,11 @@
 use std::{
     sync::Arc,
-    thread::{self, JoinHandle},
+    thread::{self, JoinHandle}, time::Instant,
 };
 
 use fiddler_base::Game;
+
+use crate::uci::{EngineInfo, UciMessage};
 
 use super::{
     config::SearchConfig, limit::SearchLimit, search::PVSearch, transposition::TTable, SearchError,
@@ -44,6 +46,7 @@ impl MainSearch {
     }
 
     pub fn evaluate(&self, g: &Game) -> SearchResult {
+        let tic = Instant::now();
         let handles: Vec<JoinHandle<SearchResult>> = self
             .configs
             .iter()
@@ -79,6 +82,19 @@ impl MainSearch {
                 // error cases cause nothing to happen
                 _ => (),
             };
+        }
+        let toc = Instant::now();
+        let elapsed = toc - tic;
+
+        if let Ok((_, _, depth)) = best_result {
+            let nodes = self.limit.num_nodes();
+            let nps = nodes * 1000 / (elapsed.as_millis() as u64);
+            // inform the user
+            print!("{}", UciMessage::Info(&[
+                EngineInfo::Depth(depth),
+                EngineInfo::Nodes(nodes),
+                EngineInfo::NodeSpeed(nps),
+            ]));
         }
 
         best_result
