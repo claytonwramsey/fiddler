@@ -39,12 +39,12 @@ pub struct MovePicker {
 enum PickPhase {
     /// Pick the move from the transposition table next.
     Transposition,
-    /// Pick the killer move next.
-    Killer,
     /// Prior to picking good captures, so captures must be generated.
     PreGoodCapture,
     /// Pick good captures, which have already been generated
     GoodCapture,
+    /// Pick the killer move next.
+    Killer,
     /// Prior to picking quiet moves, so quiet moves must be generated.
     PreQuiet,
     /// Pick quiet moves.
@@ -110,26 +110,13 @@ impl Iterator for MovePicker {
     fn next(&mut self) -> Option<Self::Item> {
         match self.phase {
             PickPhase::Transposition => {
-                self.phase = PickPhase::Killer;
+                self.phase = PickPhase::PreGoodCapture;
                 match self.transposition_move {
                     None => self.next(),
                     Some(m) => {
                         self.ignore(m);
                         Some((m, pst_delta(&self.pos.board, m)))
                     }
-                }
-            }
-            PickPhase::Killer => {
-                self.phase = PickPhase::PreGoodCapture;
-                match self.killer_move {
-                    None => self.next(),
-                    Some(m) => match is_legal(m, &self.pos) {
-                        true => {
-                            self.ignore(m);
-                            Some((m, pst_delta(&self.pos.board, m)))
-                        }
-                        false => self.next(),
-                    },
                 }
             }
             PickPhase::PreGoodCapture => {
@@ -141,7 +128,7 @@ impl Iterator for MovePicker {
             PickPhase::GoodCapture => {
                 if self.capture_index >= self.capture_buffer.len() {
                     // out of captures
-                    self.phase = PickPhase::PreQuiet;
+                    self.phase = PickPhase::Killer;
                     return self.next();
                 }
                 let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
@@ -157,6 +144,19 @@ impl Iterator for MovePicker {
                     return self.next();
                 }
                 Some((capture_entry.0, capture_entry.1 .0))
+            }
+            PickPhase::Killer => {
+                self.phase = PickPhase::PreQuiet;
+                match self.killer_move {
+                    None => self.next(),
+                    Some(m) => match is_legal(m, &self.pos) {
+                        true => {
+                            self.ignore(m);
+                            Some((m, pst_delta(&self.pos.board, m)))
+                        }
+                        false => self.next(),
+                    },
+                }
             }
             PickPhase::PreQuiet => {
                 // generate quiet moves
