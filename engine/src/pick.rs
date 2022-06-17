@@ -5,7 +5,7 @@ use fiddler_base::{
     Eval, Move, Position, Score,
 };
 
-use crate::pst::PstNominate;
+use crate::candidacy::PstNominate;
 
 use super::pst::pst_delta;
 

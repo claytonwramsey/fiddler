@@ -3,7 +3,7 @@ use fiddler_base::{
     Eval, Game, Move,
 };
 
-use crate::pst::PstNominate;
+use crate::candidacy::PstNominate;
 
 use super::{
     config::SearchConfig,
@@ -133,7 +133,8 @@ impl SearchInfo {
 }
 
 #[derive(Clone, Debug)]
-/// A structure containing data which is shared across function calls to a principal variation search.
+/// A structure containing data which is shared across function calls to a
+/// principal variation search.
 struct PVSearch<'a> {
     /// The transposition table.
     ttable: Arc<TTable>,
@@ -504,7 +505,8 @@ impl<'a> PVSearch<'a> {
     /// search limit if it is too high.
     fn increment_nodes(&mut self) -> Result<(), SearchError> {
         self.num_nodes_evaluated += 1;
-        if self.num_nodes_evaluated > self.config.limit_update_increment {
+        self.nodes_since_limit_update += 1;
+        if self.nodes_since_limit_update as u64 > self.config.limit_update_increment {
             self.update_node_limits()?;
         }
         Ok(())
@@ -515,7 +517,7 @@ impl<'a> PVSearch<'a> {
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
         self.limit.add_nodes(self.nodes_since_limit_update as u64)?;
-        self.num_nodes_evaluated = 0;
+        self.nodes_since_limit_update = 0;
         Ok(())
     }
 }

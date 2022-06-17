@@ -1,17 +1,17 @@
 use fiddler_base::{Eval, Move};
 use search::SearchError;
 
-pub mod candidacy;
-pub mod config;
+mod candidacy;
+mod config;
 pub mod evaluate;
 pub mod limit;
 pub mod material;
-pub mod pick;
+mod pick;
 pub mod pst;
-pub mod search;
+mod search;
 pub mod thread;
 pub mod time;
-pub mod transposition;
+mod transposition;
 
 /// UCI-compliant parser and data structures.
 pub mod uci;

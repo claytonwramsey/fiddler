@@ -81,8 +81,8 @@ impl TTable {
 
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
-    pub fn age_up(&mut self, max_age: u8) {
-        for entry in self.entries.iter_mut() {
+    pub fn age_up(&self, max_age: u8) {
+        for entry in self.entries.iter() {
             // no need to age up recent since it will be overwritten anyway
             let hash = entry.deepest.hash.load(Ordering::Relaxed);
             let datum = entry.deepest.data.load(Ordering::Relaxed);
@@ -172,6 +172,7 @@ impl TTable {
         None
     }
 
+    #[allow(unused)]
     /// Clear the transposition table. Will *not* lose any capacity.
     pub fn clear(&mut self) {
         self.entries = self
@@ -186,6 +187,7 @@ impl TTable {
     }
 
     #[inline(always)]
+    #[allow(unused)]
     /// Get the fill proportion of this transposition table. The fill
     /// proportion is 0 for an empty table and 1 for a completely full one.
     pub fn fill_rate(&self) -> f32 {

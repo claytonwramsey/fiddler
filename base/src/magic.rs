@@ -224,6 +224,7 @@ impl MagicTable {
         mtable
     }
 
+    #[allow(unused)]
     /// Create a `MagicTable` from scratch, generating new magics.
     pub fn make() -> MagicTable {
         let mut mtable = MagicTable::new();

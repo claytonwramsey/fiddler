@@ -1,11 +1,7 @@
 //! A module containing the information for Piece-Square Tables (PSTs). A PST
 //! is given for both the early and endgame.
 
-use fiddler_base::{
-    movegen::NominateMove, Board, Color, Eval, Move, Piece, Position, Score, Square,
-};
-
-use crate::evaluate::blend_eval;
+use fiddler_base::{Board, Color, Eval, Move, Piece, Score, Square};
 
 /// A lookup table for piece values. The outer index is the type of the piece
 /// (in order of Pawn, Knight, Bishop, Rook, Queen, and King)
@@ -101,18 +97,6 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
     }
 
     delta
-}
-
-pub struct PstNominate {}
-
-impl NominateMove for PstNominate {
-    type Output = (Score, Eval);
-
-    #[inline(always)]
-    fn score(m: Move, pos: &Position) -> Self::Output {
-        let delta = pst_delta(&pos.board, m);
-        (delta, blend_eval(&pos.board, delta))
-    }
 }
 
 /// A function used for ergonomics to convert from a table of millipawn values

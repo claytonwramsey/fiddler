@@ -17,7 +17,7 @@ pub use board::Board;
 
 /// A module for managing castling rights.
 mod castling;
-pub use castling::CastleRights;
+use castling::CastleRights;
 
 /// A module for the representation of players and their colors.
 mod color;
@@ -25,8 +25,8 @@ pub use color::Color;
 
 /// A module for managing directions, which represent the differences between
 /// two squares.
-pub mod direction;
-pub use direction::Direction;
+mod direction;
+use direction::Direction;
 
 /// A module containing information for storing evaluations of positions.
 mod eval;
@@ -41,7 +41,6 @@ pub use game::Game;
 /// A module for magic bitboards, used in move generation in bishops, rooks,
 /// and queens.
 mod magic;
-pub use magic::MagicTable;
 
 /// A module used for generating legal moves on a position.
 pub mod movegen;

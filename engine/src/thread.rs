@@ -19,8 +19,11 @@ use super::{
 #[derive(Clone, Debug)]
 /// The primary search thread for an engine.
 pub struct MainSearch {
+    /// The configuration of the search, controlling the search parameters.
     pub config: SearchConfig,
+    /// The transposition table, shared across all search threads.
     ttable: Arc<TTable>,
+    /// The limit to the search.
     pub limit: Arc<SearchLimit>,
 }
 
@@ -35,8 +38,18 @@ impl MainSearch {
         }
     }
 
+    /// Evaluate a position. The searcher will continue searching until its
+    /// field `limit` marks itself as over.
+    ///
+    /// # Error
+    ///
+    /// An error will be returned according to the cases outlined in
+    /// `SearchError`. Such errors are rare, and are generally either the result
+    /// of an internal bug or a critical OS interrupt. However, a timeout error
+    /// is most likely if the search times out before it can do any computation.
     pub fn evaluate(&self, g: &Game) -> SearchResult {
         let tic = Instant::now();
+        self.ttable.age_up(2);
         let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
         for _thread_id in 1..(self.config.n_helpers + 1) {
@@ -79,12 +92,15 @@ impl MainSearch {
             let nodes = self.limit.num_nodes();
             let nps = nodes * 1000 / (elapsed.as_millis() as u64);
             // inform the user
+            // TODO genericize this to some kind of "UCI consumer" so that ugly
+            // printouts don't go to the CLI
             print!(
                 "{}",
                 UciMessage::Info(&[
                     EngineInfo::Depth(info.highest_successful_depth),
                     EngineInfo::Nodes(nodes),
                     EngineInfo::NodeSpeed(nps),
+                    EngineInfo::HashFull(self.ttable.fill_rate_permill())
                 ])
             );
         }
@@ -105,10 +121,10 @@ mod tests {
     /// adjacent depths.
     fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: u8) {
         let g = Game::from_fen(fen, pst_evaluate).unwrap();
-        let mut main = MainSearch::new();
-        main.config.depth = depth;
-        main.config.n_helpers = nhelpers;
         for tdepth in max(0, transposition_depth - 1)..=(transposition_depth + 1) {
+            let mut main = MainSearch::new();
+            main.config.depth = depth;
+            main.config.n_helpers = nhelpers;
             main.config.max_transposition_depth = tdepth;
 
             let tic = Instant::now();
@@ -127,7 +143,7 @@ mod tests {
         transposition_speed_comparison(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             11,
-            6,
+            7,
             7,
         );
     }

@@ -1,14 +1,32 @@
-use crate::evaluate::{phase_blend, phase_of};
+use crate::{
+    evaluate::{phase_blend, phase_of},
+    pst::pst_delta,
+};
 
 use super::material;
-use fiddler_base::{Eval, Move, Piece, Position, Score};
+use fiddler_base::{movegen::NominateMove, Eval, Move, Piece, Position, Score};
 
 use std::cmp::max;
 
+pub struct PstNominate {}
+
+impl NominateMove for PstNominate {
+    type Output = (Score, Eval);
+
+    #[inline(always)]
+    fn score(m: Move, pos: &Position) -> Self::Output {
+        let delta = pst_delta(&pos.board, m);
+        (delta, candidacy(pos, m, delta))
+    }
+}
+
+#[allow(unused)]
 /// Create an estimate for how good a move is. `delta` is the PST difference
-/// created by this move.
+/// created by this move. Requires that `m` must be a legal move in `pos`.
+///
 /// # Panics
-/// if the given move is illegal.
+///
+/// This function may panic if the given move is illegal.
 pub fn candidacy(pos: &Position, m: Move, delta: Score) -> Eval {
     let b = &pos.board;
     let mover_type = b.type_at_square(m.from_square()).unwrap();
