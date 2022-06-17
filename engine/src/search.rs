@@ -47,8 +47,8 @@ type PVSResult = Result<(Move, Eval), SearchError>;
 
 #[inline(always)]
 /// Evaluate the given game. Return a pair containing the best move and its
-/// evaluation, as well as the depth to which the evaluation was searched. The 
-/// evaluation will be from the player's perspective, i.e. inverted if the 
+/// evaluation, as well as the depth to which the evaluation was searched. The
+/// evaluation will be from the player's perspective, i.e. inverted if the
 /// player to move is Black.
 ///
 /// `g` is the game which will be evaluated.
@@ -594,7 +594,7 @@ pub mod tests {
     /// A test that shows the engine can find a mate in 4 plies, given enough
     /// depth.
     fn test_mate_in_4_ply() {
-        // because black, the player to move, is getting mated, the evaluation 
+        // because black, the player to move, is getting mated, the evaluation
         // is negative here
         test_eval_helper("3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1", -Eval::mate_in(4), 5);
     }

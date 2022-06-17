@@ -90,18 +90,15 @@ fn main() {
                 let old_bit_size = searcher_guard.ttable.bit_size();
                 searcher_guard.ttable = Arc::new(TTable::with_capacity(old_bit_size));
             }
-            UciCommand::Position { fen, moves } => match fen {
-                None => game = Game::new(),
-                Some(fen) => match Game::from_fen(&fen, pst_evaluate) {
-                    Ok(g) => {
-                        game = g;
-                        for m in moves {
-                            game.make_move(m, pst_delta(game.board(), m));
-                        }
-                    }
-                    Err(e) => debug_info(&format!("error: unable to load FEN: `{}`", e), debug),
-                },
-            },
+            UciCommand::Position { fen, moves } => {
+                game = match fen {
+                    None => Game::new(),
+                    Some(fen) => Game::from_fen(&fen, pst_evaluate).unwrap(),
+                };
+                for m in moves {
+                    game.make_move(m, pst_delta(game.board(), m));
+                }
+            }
             UciCommand::Go(opts) => {
                 // spawn a new thread to go search
                 debug_info("go command received", debug);
@@ -191,7 +188,7 @@ fn go(
             }
         }
     }
-    
+
     let searcher_guard = searcher.read().unwrap();
     // configure timeout condition
     let mut search_duration_guard = searcher_guard.limit.search_duration.lock().unwrap();

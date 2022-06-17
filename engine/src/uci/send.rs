@@ -24,7 +24,7 @@ pub fn build_message(message: &UciMessage) -> String {
         UciMessage::ReadyOk => "readyok\n".into(),
         UciMessage::Option { name, opt } => build_option(name, opt),
         UciMessage::BestMove { m, ponder } => {
-            let mut result = format!("bestmove {m} ");
+            let mut result = format!("bestmove {} ", m.to_uci());
             if let Some(pondermove) = ponder {
                 result += &format!("ponder {pondermove}");
             }
@@ -261,5 +261,17 @@ mod tests {
             }),
             "option name Clear Hash type button \n"
         )
+    }
+
+    #[test]
+    /// Test that best-moves are formatted correctly.
+    fn test_bestmove() {
+        assert_eq!(
+            build_message(&UciMessage::BestMove {
+                m: Move::normal(Square::E2, Square::E4),
+                ponder: None
+            }),
+            "bestmove e2e4 \n"
+        );
     }
 }
