@@ -81,7 +81,7 @@ fn main() {
             UciCommand::NewGame => {
                 game = Game::new();
                 // stop previous search
-                stop(&searcher, search_handle);
+                stop(&searcher, search_handle, debug);
                 search_handle = None;
                 // clear the transposititon table
                 // (in actuality, just make a new one to get around Arc
@@ -104,16 +104,17 @@ fn main() {
             },
             UciCommand::Go(opts) => {
                 // spawn a new thread to go search
+                debug_info("go command received", debug);
                 search_handle = go(&opts, &searcher, &game, debug);
             }
             UciCommand::Stop => {
-                stop(&searcher, search_handle);
+                stop(&searcher, search_handle, debug);
                 search_handle = None;
             }
             UciCommand::PonderHit => todo!(),
             UciCommand::Quit => {
                 // stop the ongoing search
-                stop(&searcher, search_handle);
+                stop(&searcher, search_handle, debug);
                 break;
             }
         }
@@ -146,9 +147,9 @@ fn go(
     let mut infinite = false; // whether to search infinitely
 
     let mut movetime = None;
-    let searcher_guard = searcher.read().unwrap();
 
-    *searcher_guard.limit.nodes_cap.lock().unwrap() = None;
+    // do not hold onto guard as option parsing will involve a write
+    *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = None;
     for opt in opts {
         match opt {
             GoOption::SearchMoves(_) => {
@@ -183,11 +184,15 @@ fn go(
                 movetime = Some(Duration::from_millis(msecs as u64));
             }
             GoOption::Infinite => {
+                // on an infinite search, we will go as deep as we want
+                // 99 is basically infinite in exponential growth
+                searcher.write().unwrap().config.depth = 99;
                 infinite = true;
             }
         }
     }
-
+    
+    let searcher_guard = searcher.read().unwrap();
     // configure timeout condition
     let mut search_duration_guard = searcher_guard.limit.search_duration.lock().unwrap();
     if infinite {
@@ -202,17 +207,21 @@ fn go(
             game.board().player_to_move,
         ) as u64));
     }
+    drop(search_duration_guard); // prevent deadlock when starting the limit
 
     searcher_guard.limit.start().unwrap();
 
     let cloned_game = game.clone();
     let searcher_new_arc = searcher.clone();
 
+    debug_info("spawning main search thread", debug);
     Some(std::thread::spawn(move || {
         let searcher_guard = searcher_new_arc.read().unwrap();
         let tic = Instant::now();
         // this step will block
+        debug_info("starting evaluation", debug);
         let search_result = searcher_guard.evaluate(&cloned_game);
+        debug_info("finished evaluation", debug);
         let elapsed = Instant::now() - tic;
 
         if let Ok(info) = search_result {
@@ -251,11 +260,13 @@ fn go(
 
 /// Notify any active searches to stop, and then block until they are all
 /// stopped.
-fn stop(searcher: &Arc<RwLock<MainSearch>>, search_handle: Option<JoinHandle<()>>) {
+fn stop(searcher: &Arc<RwLock<MainSearch>>, search_handle: Option<JoinHandle<()>>, debug: bool) {
+    debug_info("now stopping search", debug);
     searcher.read().unwrap().limit.stop();
     if let Some(handle) = search_handle {
         handle.join().unwrap();
     }
+    debug_info("search stopped", debug);
 }
 
 /// Print out a debug info message to the console. Will have no effect if

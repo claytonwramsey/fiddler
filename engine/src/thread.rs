@@ -1,12 +1,9 @@
 use std::{
     sync::Arc,
     thread::{spawn, JoinHandle},
-    time::Instant,
 };
 
 use fiddler_base::Game;
-
-use crate::uci::{EngineInfo, UciMessage};
 
 use super::{
     config::SearchConfig,
@@ -47,7 +44,6 @@ impl MainSearch {
     /// of an internal bug or a critical OS interrupt. However, a timeout error
     /// is most likely if the search times out before it can do any computation.
     pub fn evaluate(&self, g: &Game) -> SearchResult {
-        let tic = Instant::now();
         self.ttable.age_up(2);
         let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
@@ -84,26 +80,10 @@ impl MainSearch {
                 _ => (),
             };
         }
-        let toc = Instant::now();
-        let elapsed = toc - tic;
-
-        if let Ok(info) = best_result {
-            let nodes = self.limit.num_nodes();
-            let nps = nodes * 1000 / (elapsed.as_millis() as u64);
-            // inform the user
-            // TODO genericize this to some kind of "UCI consumer" so that ugly
-            // printouts don't go to the CLI
-            print!(
-                "{}",
-                UciMessage::Info(&[
-                    EngineInfo::Depth(info.highest_successful_depth),
-                    EngineInfo::Nodes(nodes),
-                    EngineInfo::NodeSpeed(nps),
-                    EngineInfo::HashFull(self.ttable.fill_rate_permill())
-                ])
-            );
+        if let Ok(ref mut info) = best_result {
+            // normalize evaluation to be in absolute terms
+            info.eval = info.eval.in_perspective(g.board().player_to_move);
         }
-
         best_result
     }
 }
@@ -116,7 +96,7 @@ impl Default for MainSearch {
 
 #[cfg(test)]
 mod tests {
-    use std::cmp::max;
+    use std::{cmp::max, time::Instant};
 
     use crate::pst::pst_evaluate;
 
