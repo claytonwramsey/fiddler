@@ -35,6 +35,21 @@ pub struct Game {
 }
 
 impl Game {
+    /// Construct a new `Game` in the conventional chess starting position. The
+    /// cumulative evaluation will be initialized to zero.
+    pub fn new() -> Game {
+        Game {
+            history: vec![(Position::default(), 0)],
+            moves: Vec::new(),
+            repetitions: {
+                let mut map = IntMap::default();
+                map.insert(Board::default().hash, 1);
+                map
+            },
+        }
+    }
+
+    /// Con
     pub fn from_fen(fen: &str, evaluator: PSTEvaluator) -> Result<Game, String> {
         let pos = Position::from_fen(fen, evaluator)?;
         // TODO extract 50 move rule from the FEN
@@ -203,15 +218,7 @@ impl Game {
 
 impl Default for Game {
     fn default() -> Self {
-        Game {
-            history: vec![(Position::default(), 0)],
-            moves: Vec::new(),
-            repetitions: {
-                let mut map = IntMap::default();
-                map.insert(Board::default().hash, 1);
-                map
-            },
-        }
+        Game::new()
     }
 }
 
@@ -236,7 +243,7 @@ mod tests {
     /// Test that we can play a simple move on a `Game` and have the board
     /// states update accordingly.
     fn test_play_e4() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
         let old_board = *g.board();
         g.make_move(
@@ -250,7 +257,7 @@ mod tests {
     #[test]
     /// Test that a single move can be undone correctly.
     fn test_undo_move() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
         g.make_move(m, (Eval::DRAW, Eval::DRAW));
         assert_eq!(g.undo(), Ok(m));
@@ -260,7 +267,7 @@ mod tests {
     #[test]
     /// Test that an undo will fail if there is no history to undo.
     fn test_illegal_undo() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         assert!(g.undo().is_err());
         assert_eq!(*g.board(), Board::default());
     }
@@ -268,7 +275,7 @@ mod tests {
     #[test]
     /// Test that we can undo multiple moves in a row.
     fn test_undo_multiple_moves() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         let m0 = Move::normal(Square::E2, Square::E4);
         let m1 = Move::normal(Square::E7, Square::E5);
         g.make_move(m0, (Eval::DRAW, Eval::DRAW));
@@ -281,13 +288,13 @@ mod tests {
     /// Test that a `Game` becomes exactly the same as what it started as if a
     /// move is undone.
     fn test_undo_equality() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         g.make_move(
             Move::normal(Square::E2, Square::E4),
             (Eval::DRAW, Eval::DRAW),
         );
         assert!(g.undo().is_ok());
-        assert_eq!(g, Game::default());
+        assert_eq!(g, Game::new());
     }
 
     #[test]
@@ -306,7 +313,7 @@ mod tests {
     #[test]
     /// Test that undoing with no history results in an error.
     fn test_undo_fail() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         assert!(g.undo().is_err());
     }
 
@@ -353,13 +360,13 @@ mod tests {
     /// Test that clearing a board has the same effect of replacing it with a
     /// default board, if the initial state was the initial board state.
     fn test_clear_board() {
-        let mut g = Game::default();
+        let mut g = Game::new();
         g.make_move(
             Move::normal(Square::E2, Square::E4),
             (Eval::DRAW, Eval::DRAW),
         );
         g.clear();
-        assert_eq!(g, Game::default());
+        assert_eq!(g, Game::new());
     }
 
     #[test]

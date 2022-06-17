@@ -1,7 +1,8 @@
 use std::{
     io::stdin,
     sync::{Arc, RwLock},
-    time::Duration,
+    thread::JoinHandle,
+    time::{Duration, Instant},
 };
 
 use fiddler_base::Game;
@@ -9,6 +10,7 @@ use fiddler_engine::{
     pst::{pst_delta, pst_evaluate},
     thread::MainSearch,
     time::get_search_time,
+    transposition::TTable,
     uci::{build_message, parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
 };
 
@@ -17,7 +19,7 @@ fn main() {
     // whether we are in debug mode
     let mut debug = false;
     let searcher = Arc::new(RwLock::new(MainSearch::new()));
-    let mut game = Game::default();
+    let mut game = Game::new();
     let mut search_handle = None;
 
     loop {
@@ -76,9 +78,20 @@ fn main() {
                 },
                 _ => debug_info(&format!("error: unknown option key `{}`", name), debug),
             },
-            UciCommand::NewGame => game = Game::default(),
+            UciCommand::NewGame => {
+                game = Game::new();
+                // stop previous search
+                stop(&searcher, search_handle);
+                search_handle = None;
+                // clear the transposititon table
+                // (in actuality, just make a new one to get around Arc
+                // immutability)
+                let mut searcher_guard = searcher.write().unwrap();
+                let old_bit_size = searcher_guard.ttable.bit_size();
+                searcher_guard.ttable = Arc::new(TTable::with_capacity(old_bit_size));
+            }
             UciCommand::Position { fen, moves } => match fen {
-                None => game = Game::default(),
+                None => game = Game::new(),
                 Some(fen) => match Game::from_fen(&fen, pst_evaluate) {
                     Ok(g) => {
                         game = g;
@@ -90,137 +103,158 @@ fn main() {
                 },
             },
             UciCommand::Go(opts) => {
-                // whether the last move given in the position should be
-                // considered the ponder-move
-                let mut _ponder = false;
-
-                // time remaining for players
-                let (mut wtime, mut btime) = (None, None);
-
-                // increments. by default assumed to be zero
-                let (mut winc, mut binc) = (0, 0);
-
-                // number of moves until increment achieved. if `None`, there
-                // is no increment.
-                let mut movestogo = None;
-
-                let mut infinite = false; // whether to search infinitely
-
-                let mut movetime = None;
-
-                *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = None;
-                for opt in opts {
-                    match opt {
-                        GoOption::SearchMoves(_) => {
-                            unimplemented!("no implementation of searching move subsets")
-                        }
-                        GoOption::Ponder => {
-                            infinite = true;
-                        }
-                        GoOption::WhiteTime(time) => {
-                            wtime = Some(time);
-                        }
-                        GoOption::BlackTime(time) => {
-                            btime = Some(time);
-                        }
-                        GoOption::WhiteInc(inc) => {
-                            winc = inc;
-                        }
-                        GoOption::BlackInc(inc) => {
-                            binc = inc;
-                        }
-                        GoOption::MovesToGo(n) => {
-                            movestogo = Some(n);
-                        }
-                        GoOption::Depth(d) => {
-                            searcher.write().unwrap().config.depth = d;
-                        }
-                        GoOption::Nodes(num) => {
-                            *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = Some(num);
-                        }
-                        GoOption::Mate(_) => unimplemented!(),
-                        GoOption::MoveTime(msecs) => {
-                            movetime = Some(Duration::from_millis(msecs as u64));
-                        }
-                        GoOption::Infinite => {
-                            infinite = true;
-                        }
-                    }
-                }
-
-                // configure timeout condition
-                if infinite {
-                    *searcher
-                        .read()
-                        .unwrap()
-                        .limit
-                        .search_duration
-                        .lock()
-                        .unwrap() = None;
-                } else if let Some(mt) = movetime {
-                    *searcher
-                        .read()
-                        .unwrap()
-                        .limit
-                        .search_duration
-                        .lock()
-                        .unwrap() = Some(mt)
-                } else {
-                    *searcher
-                        .read()
-                        .unwrap()
-                        .limit
-                        .search_duration
-                        .lock()
-                        .unwrap() = Some(Duration::from_millis(get_search_time(
-                        movestogo,
-                        (winc, binc),
-                        (wtime.unwrap(), btime.unwrap()),
-                        game.board().player_to_move,
-                    ) as u64));
-                }
-
-                searcher.read().unwrap().limit.start().unwrap();
-
-                let cloned_game = game.clone();
-                let searcher_new_arc = searcher.clone();
-                search_handle = Some(std::thread::spawn(move || {
-                    let info = searcher_new_arc
-                        .read()
-                        .unwrap()
-                        .evaluate(&cloned_game)
-                        .unwrap();
-                    print!(
-                        "{}",
-                        UciMessage::BestMove {
-                            m: info.best_move,
-                            ponder: None
-                        }
-                    );
-                    print!(
-                        "{}",
-                        UciMessage::Info(&[
-                            EngineInfo::Score {
-                                eval: info.eval,
-                                is_lower_bound: false,
-                                is_upper_bound: false
-                            },
-                            EngineInfo::Depth(info.highest_successful_depth)
-                        ])
-                    );
-                }));
+                // spawn a new thread to go search
+                search_handle = go(&opts, &searcher, &game, debug);
             }
             UciCommand::Stop => {
-                searcher.read().unwrap().limit.stop();
-                if let Some(handle) = search_handle {
-                    // wait for the previous search to die
-                    handle.join().unwrap();
-                    search_handle = None;
-                }
+                stop(&searcher, search_handle);
+                search_handle = None;
             }
             UciCommand::PonderHit => todo!(),
-            UciCommand::Quit => break,
+            UciCommand::Quit => {
+                // stop the ongoing search
+                stop(&searcher, search_handle);
+                break;
+            }
         }
+    }
+}
+
+/// Execute a UCI `go` command. This function has been broken out for
+/// readability. Will spawn a new thread to search and return its handle.
+fn go(
+    opts: &[GoOption],
+    searcher: &Arc<RwLock<MainSearch>>,
+    game: &Game,
+    debug: bool,
+) -> Option<JoinHandle<()>> {
+    // whether the last move given in the position should be considered the
+    // ponder-move
+    // unused for now
+    let mut _ponder = false;
+
+    // time remaining for players
+    let (mut wtime, mut btime) = (None, None);
+
+    // increments. by default assumed to be zero
+    let (mut winc, mut binc) = (0, 0);
+
+    // number of moves until increment achieved. if `None`, there
+    // is no increment.
+    let mut movestogo = None;
+
+    let mut infinite = false; // whether to search infinitely
+
+    let mut movetime = None;
+    let searcher_guard = searcher.read().unwrap();
+
+    *searcher_guard.limit.nodes_cap.lock().unwrap() = None;
+    for opt in opts {
+        match opt {
+            GoOption::SearchMoves(_) => {
+                unimplemented!("no implementation of searching move subsets")
+            }
+            GoOption::Ponder => {
+                infinite = true;
+            }
+            &GoOption::WhiteTime(time) => {
+                wtime = Some(time);
+            }
+            &GoOption::BlackTime(time) => {
+                btime = Some(time);
+            }
+            &GoOption::WhiteInc(inc) => {
+                winc = inc;
+            }
+            &GoOption::BlackInc(inc) => {
+                binc = inc;
+            }
+            GoOption::MovesToGo(n) => {
+                movestogo = Some(*n);
+            }
+            &GoOption::Depth(d) => {
+                searcher.write().unwrap().config.depth = d;
+            }
+            &GoOption::Nodes(num) => {
+                *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = Some(num);
+            }
+            GoOption::Mate(_) => unimplemented!(),
+            &GoOption::MoveTime(msecs) => {
+                movetime = Some(Duration::from_millis(msecs as u64));
+            }
+            GoOption::Infinite => {
+                infinite = true;
+            }
+        }
+    }
+
+    // configure timeout condition
+    let mut search_duration_guard = searcher_guard.limit.search_duration.lock().unwrap();
+    if infinite {
+        *search_duration_guard = None;
+    } else if let Some(mt) = movetime {
+        *search_duration_guard = Some(mt)
+    } else {
+        *search_duration_guard = Some(Duration::from_millis(get_search_time(
+            movestogo,
+            (winc, binc),
+            (wtime.unwrap(), btime.unwrap()),
+            game.board().player_to_move,
+        ) as u64));
+    }
+
+    searcher_guard.limit.start().unwrap();
+
+    let cloned_game = game.clone();
+    let searcher_new_arc = searcher.clone();
+
+    Some(std::thread::spawn(move || {
+        let searcher_guard = searcher_new_arc.read().unwrap();
+        let tic = Instant::now();
+        // this step will block
+        let search_result = searcher_guard.evaluate(&cloned_game);
+        let elapsed = Instant::now() - tic;
+
+        if let Ok(info) = search_result {
+            print!(
+                "{}",
+                UciMessage::BestMove {
+                    m: info.best_move,
+                    ponder: None
+                }
+            );
+            let nodes = info.num_nodes_evaluated;
+            let nps = nodes * 1000 / (elapsed.as_millis() as u64);
+
+            print!(
+                "{}",
+                UciMessage::Info(&[
+                    EngineInfo::Score {
+                        eval: info.eval,
+                        is_lower_bound: false,
+                        is_upper_bound: false
+                    },
+                    EngineInfo::Depth(info.highest_successful_depth),
+                    EngineInfo::Nodes(nodes),
+                    EngineInfo::NodeSpeed(nps),
+                    EngineInfo::HashFull(searcher_guard.ttable.fill_rate_permill())
+                ])
+            );
+        } else {
+            // search failed :(
+            // notify the GUI in debug mode, otherwise there's not much we can
+            // do
+            debug_info("search failed", debug);
+        }
+    }))
+}
+
+/// Notify any active searches to stop, and then block until they are all
+/// stopped.
+fn stop(searcher: &Arc<RwLock<MainSearch>>, search_handle: Option<JoinHandle<()>>) {
+    searcher.read().unwrap().limit.stop();
+    if let Some(handle) = search_handle {
+        handle.join().unwrap();
     }
 }
 

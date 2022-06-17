@@ -11,7 +11,7 @@ pub mod pst;
 mod search;
 pub mod thread;
 pub mod time;
-mod transposition;
+pub mod transposition;
 
 /// UCI-compliant parser and data structures.
 pub mod uci;

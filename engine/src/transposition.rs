@@ -186,7 +186,6 @@ impl TTable {
         self.occupancy.store(0, Ordering::Relaxed);
     }
 
-    #[inline(always)]
     #[allow(unused)]
     /// Get the fill proportion of this transposition table. The fill
     /// proportion is 0 for an empty table and 1 for a completely full one.
@@ -194,11 +193,15 @@ impl TTable {
         (self.occupancy.load(Ordering::Relaxed) as f32) / (2. * self.entries.len() as f32)
     }
 
-    #[inline(always)]
     /// Get the fill rate proportion of this transposition table out of 1000.
     /// Typically used for UCI.
     pub fn fill_rate_permill(&self) -> u16 {
         (self.occupancy.load(Ordering::Relaxed) * 500 / self.entries.len()) as u16
+    }
+
+    /// Get the size of this transposition table, in bits.
+    pub fn bit_size(&self) -> usize {
+        self.mask.count_ones() as usize
     }
 }
 

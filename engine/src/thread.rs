@@ -22,13 +22,12 @@ pub struct MainSearch {
     /// The configuration of the search, controlling the search parameters.
     pub config: SearchConfig,
     /// The transposition table, shared across all search threads.
-    ttable: Arc<TTable>,
+    pub ttable: Arc<TTable>,
     /// The limit to the search.
     pub limit: Arc<SearchLimit>,
 }
 
 impl MainSearch {
-    #[allow(clippy::new_without_default)]
     /// Construct a new main search with only a single search thread.
     pub fn new() -> MainSearch {
         MainSearch {
@@ -106,6 +105,12 @@ impl MainSearch {
         }
 
         best_result
+    }
+}
+
+impl Default for MainSearch {
+    fn default() -> Self {
+        MainSearch::new()
     }
 }
 

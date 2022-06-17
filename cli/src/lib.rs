@@ -313,7 +313,7 @@ impl<'a> Default for FiddlerApp<'a> {
             Arc::new(limit)
         };
         let mut app = FiddlerApp {
-            game: Game::default(),
+            game: Game::new(),
             engine: MainSearch::new(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
