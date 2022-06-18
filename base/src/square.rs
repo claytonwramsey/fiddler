@@ -1,3 +1,5 @@
+//! Squares, which are positions on a board.
+
 use super::{Bitboard, Direction};
 
 use std::{
@@ -10,8 +12,10 @@ use std::{
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-/// A single integer containing all the data to identify one square on a board.
-/// From MSB to LSB, this is composed of:
+/// A square: one of 64 spots on a `Board` that a `Piece` can occupy.
+///
+/// Internally, `Square`s are represented as a single integer to maintain a
+/// small size.From MSB to LSB, each square is composed of:
 /// * 2 unused bits
 /// * 3 bits for the rank
 /// * 3 bits for the file

@@ -1,3 +1,5 @@
+//! Magic bitboards, used for generating bishop, knight, and rook moves.
+
 use super::{Bitboard, Direction, Square};
 
 use rand::{thread_rng, Rng};

@@ -1,3 +1,5 @@
+//! Hash key generation for boards.
+
 use crate::{Color, Piece, Square};
 
 #[inline(always)]

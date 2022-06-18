@@ -1,3 +1,5 @@
+//! Conversion functions between moves and their algebraic notation.
+
 use crate::movegen::{NoopNominator, ALL};
 
 use super::{

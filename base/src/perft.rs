@@ -1,3 +1,7 @@
+//! Performance testing, or "perft." Perft is used for verifying the correctness
+//! of move generation and benchmarking the speed of both move generation and
+//! the make/unmake processes.
+
 use std::time::Instant;
 
 use crate::movegen::{NoopNominator, ALL};
@@ -8,6 +12,10 @@ use super::{movegen::get_moves, Position};
 /// Perform a performance test on the move generator and print out facts. The
 /// input fen is the FEN of the board to start from, and the depth is the depth
 /// from which to generate moves.
+///
+/// # Panics
+///
+/// This function will panic if `fen` is not a legal board.
 pub fn perft(fen: &str, depth: u8) -> u64 {
     let pos = Position::from_fen(fen, Position::no_eval).unwrap();
     let tic = Instant::now();

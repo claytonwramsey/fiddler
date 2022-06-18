@@ -1,3 +1,5 @@
+//! Generation and verification of legal moves in a position.
+
 use super::{
     magic::MagicTable, moves::Move, Bitboard, Board, Color, Direction, Piece, Position, Square,
 };

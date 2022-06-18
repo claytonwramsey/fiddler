@@ -1,3 +1,5 @@
+//! Representation of player colors.
+
 use super::{Bitboard, Direction};
 use std::ops::Not;
 

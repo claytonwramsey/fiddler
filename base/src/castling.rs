@@ -1,3 +1,5 @@
+//! Castling rights management.
+
 use super::Color;
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};

@@ -1,3 +1,5 @@
+//! Definitions of moves, which can describe any legal playable move.
+
 use crate::Board;
 
 use super::{Piece, Square};
@@ -9,8 +11,10 @@ use std::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// The information of one move, containing its from- and to-squares, as well as
-/// its promote type, in one integer.
-/// From MSB to LSB:
+/// its promote type.
+///
+/// Internally, moves are represented as packed structures in a single unsigned
+/// 16-bit integer. From MSB to LSB, the bits inside of a `Move` are as follows:
 /// * 2 bits: flags (promotion, castling, or en passant)
 /// * 2 bits: promote type
 /// * 6 bits: from-square
@@ -19,7 +23,8 @@ pub struct Move(u16);
 
 impl Move {
     /// A sentinel value for a move which is illegal, or otherwise
-    /// inexpressible.
+    /// inexpressible. It is *strongly* recommended that `Option<Move>` is used
+    /// instead of this.
     pub const BAD_MOVE: Move = Move(0xFFFF);
 
     /// The mask used to extract the flag bits from a move.
@@ -36,6 +41,11 @@ impl Move {
 
     #[inline(always)]
     /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the user requests that the move be tagged as
+    /// both a castle and en passant move.
     pub const fn new(
         from_square: Square,
         to_square: Square,

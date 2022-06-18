@@ -1,3 +1,5 @@
+//! Bitboards, data structures used to efficiently represent sets of squares.
+
 use super::Square;
 
 use std::{

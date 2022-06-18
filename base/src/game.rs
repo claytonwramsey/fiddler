@@ -1,3 +1,5 @@
+//! Full chess games, including history and metadata.
+
 use crate::movegen::{NoopNominator, ALL};
 
 use super::{

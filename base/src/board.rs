@@ -1,3 +1,6 @@
+//! State representations of boards, which contain board state (such as piece
+//! positions), but neither history nor meta-information about a game.
+
 use super::{
     movegen::is_square_attacked_by, zobrist, Bitboard, CastleRights, Color, Move, Piece, Square,
 };

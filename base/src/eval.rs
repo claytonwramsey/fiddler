@@ -1,3 +1,5 @@
+//! The scoring values of positions.
+
 use std::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},

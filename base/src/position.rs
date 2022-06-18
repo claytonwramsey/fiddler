@@ -1,3 +1,5 @@
+//! Positions, which contain both boards and metadata about said boards.
+
 use std::convert::TryFrom;
 
 use crate::movegen::{NoopNominator, ALL};
@@ -12,6 +14,8 @@ pub type PSTEvaluator = fn(&Board) -> Score;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A structure describing one board, plus useful metadata about that board.
+///
+/// TODO: genericise this structure to allow for differing amounts of metadata.
 pub struct Position {
     /// The board which the position has metadata about.
     pub board: Board,

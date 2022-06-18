@@ -1,3 +1,5 @@
+//! Directions, which form a vector field describing motions between `Square`s.
+
 use super::Square;
 use std::ops::{Add, Mul, Neg, Sub};
 
@@ -129,14 +131,14 @@ impl Direction {
     #[allow(dead_code)]
     /// Get the difference moved by a Direction in a file.
     const fn file_step(self) -> i8 {
-        self.0 % 8
+        self.0 & 7
     }
 
     #[inline(always)]
     #[allow(dead_code)]
     /// Get the difference moved by a Direction in a rank.
     const fn rank_step(self) -> i8 {
-        self.0 / 8
+        self.0 >> 3
     }
 }
 
