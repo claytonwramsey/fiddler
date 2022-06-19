@@ -47,7 +47,7 @@ impl Position {
 
     /// Helper function for initializing boards if you do not care about the
     /// PST value of a board.
-    pub fn no_eval(_: &Board) -> Score {
+    pub const fn no_eval(_: &Board) -> Score {
         (Eval::DRAW, Eval::DRAW)
     }
 

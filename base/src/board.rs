@@ -46,7 +46,7 @@ impl Board {
     };
 
     /// Create an empty board with no pieces or castle rights.
-    pub fn empty() -> Board {
+    fn empty() -> Board {
         let mut board = Board {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],

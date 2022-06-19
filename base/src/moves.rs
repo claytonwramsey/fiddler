@@ -72,7 +72,8 @@ impl Move {
     }
 
     #[inline(always)]
-    /// Create a `Move` with no promotion type.
+    /// Create a `Move` with no promotion type, which is not marked as having 
+    /// any extra special flags.
     pub const fn normal(from_square: Square, to_square: Square) -> Move {
         Move::new(from_square, to_square, None, false, false)
     }
@@ -98,40 +99,40 @@ impl Move {
 
     #[inline(always)]
     /// Get the target square of this move.
-    pub fn to_square(&self) -> Square {
+    pub const fn to_square(&self) -> Square {
         // Masking out the bottom bits will make this always valid.
         unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
     }
 
     #[inline(always)]
     /// Get the square that a piece moves from to execute this move.
-    pub fn from_square(&self) -> Square {
+    pub const fn from_square(&self) -> Square {
         // Masking out the bottom bits will make this always valid
         unsafe { transmute((self.0 & 63u16) as u8) }
     }
 
     #[inline(always)]
     /// Determine whether this move is marked as a promotion.
-    pub fn is_promotion(&self) -> bool {
+    pub const fn is_promotion(&self) -> bool {
         self.0 & Move::FLAG_MASK == Move::PROMOTE_FLAG
     }
 
     #[inline(always)]
     /// Determine whether this move is marked as a castle.
-    pub fn is_castle(&self) -> bool {
+    pub const fn is_castle(&self) -> bool {
         self.0 & Move::FLAG_MASK == Move::CASTLE_FLAG
     }
 
     #[inline(always)]
     /// Determine whether this move is marked as an en passant capture.
-    pub fn is_en_passant(&self) -> bool {
+    pub const fn is_en_passant(&self) -> bool {
         self.0 & Move::FLAG_MASK == Move::EN_PASSANT_FLAG
     }
 
     #[inline(always)]
     /// Get the promotion type of this move. The resulting type will never be a
     /// pawn or a king.
-    pub fn promote_type(&self) -> Option<Piece> {
+    pub const fn promote_type(&self) -> Option<Piece> {
         if self.is_promotion() {
             Some(unsafe { std::mem::transmute(((self.0 >> 12) & 3u16) as u8) })
         } else {
