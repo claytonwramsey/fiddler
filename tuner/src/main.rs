@@ -18,6 +18,10 @@ struct TrainingDatum {
     eval: f32,
 }
 
+/// The input feature set of a board. Each element is a (key, value) pair where
+/// the key is the index of the value in the full feature vector.
+type BoardFeatures = Vec<(usize, f32)>;
+
 /// Run the main training function.
 ///
 /// # Panics
@@ -41,8 +45,8 @@ pub fn main() {
 
     // construct the datasets.
     // Outer vector: each element for one datum
-    // Inner vector: each element for one piece-square pair
-    let input_sets: Vec<(Vec<(usize, f32)>, f32)> = statement
+    // Inner vector: each element for one feature-quantity pair
+    let input_sets: Vec<(BoardFeatures, f32)> = statement
         .query_map([], |row| {
             Ok(TrainingDatum {
                 fen: row.get(0)?,
@@ -71,10 +75,6 @@ pub fn main() {
 
     print_weights(&weights);
 }
-
-/// The input feature set of a board. Each element is a (key, value) pair where
-/// the key is the index of the value in the full feature vector.
-type BoardFeatures = Vec<(usize, f32)>;
 
 /// Perform one step of PST training, and update the weights to reflect this.
 /// `inputs` is a vector containing the input vector and the expected
@@ -127,7 +127,7 @@ fn train_step(
 /// Construct the gradient vector for a subset of the input data. Also provides
 /// the sum of the squared error.
 fn train_thread(
-    input: &[(Vec<(usize, f32)>, f32)],
+    input: &[(BoardFeatures, f32)],
     weights: &[f32],
     sigmoid_scale: f32,
 ) -> (Vec<f32>, f32) {
@@ -261,7 +261,7 @@ fn print_weights(weights: &[f32]) {
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
 /// true vector. Zero entries will not be in the output.
-fn extract(b: &Board) -> Vec<(usize, f32)> {
+fn extract(b: &Board) -> BoardFeatures {
     let mut features = Vec::with_capacity(28);
     let phase = phase_of(b);
     // Indices 0..4: non-king piece values
