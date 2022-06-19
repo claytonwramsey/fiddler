@@ -41,6 +41,9 @@ pub fn evaluate(g: &mut Game) -> Eval {
     eg_eval += DOUBLED_PAWN_VALUE.1 * ndoubled;
 
     // Add gains from open rooks
+    let nopen = net_open_rooks(b);
+    mg_eval += OPEN_ROOK_VALUE.0 * nopen;
+    eg_eval += OPEN_ROOK_VALUE.1 * nopen;
 
     blend_eval(g.board(), (mg_eval, eg_eval))
 }
