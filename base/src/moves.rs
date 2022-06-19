@@ -72,7 +72,7 @@ impl Move {
     }
 
     #[inline(always)]
-    /// Create a `Move` with no promotion type, which is not marked as having 
+    /// Create a `Move` with no promotion type, which is not marked as having
     /// any extra special flags.
     pub const fn normal(from_square: Square, to_square: Square) -> Move {
         Move::new(from_square, to_square, None, false, false)

@@ -1,9 +1,12 @@
 use std::{
     sync::Arc,
     thread::{spawn, JoinHandle},
+    time::Instant,
 };
 
 use fiddler_base::Game;
+
+use crate::uci::{EngineInfo, UciMessage};
 
 use super::{
     config::SearchConfig,
@@ -45,41 +48,75 @@ impl MainSearch {
     /// is most likely if the search times out before it can do any computation.
     pub fn evaluate(&self, g: &Game) -> SearchResult {
         self.ttable.age_up(2);
-        let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
+        let tic = Instant::now();
+        let mut best_result = Err(SearchError::Timeout);
+        for depth in 1..=self.config.depth {
+            let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
-        for _thread_id in 1..(self.config.n_helpers + 1) {
-            let ttable_arc = self.ttable.clone();
-            let limit_arc = self.limit.clone();
-            let config_copy = self.config;
-            let gcopy = g.clone();
-            handles.push(spawn(move || {
-                search(gcopy, ttable_arc, &config_copy, limit_arc, false)
-            }))
-        }
+            for _thread_id in 0..=self.config.n_helpers {
+                println!("spawn thread");
+                let ttable_arc = self.ttable.clone();
+                let limit_arc = self.limit.clone();
+                let config_copy = self.config;
+                let gcopy = g.clone();
+                handles.push(spawn(move || {
+                    search(gcopy, depth, ttable_arc, &config_copy, limit_arc, false)
+                }))
+            }
 
-        // now it's our turn to think
-        let mut best_result = search(
-            g.clone(),
-            self.ttable.clone(),
-            &self.config,
-            self.limit.clone(),
-            true,
-        );
+            // now it's our turn to think
+            let mut sub_result = search(
+                g.clone(),
+                depth,
+                self.ttable.clone(),
+                &self.config,
+                self.limit.clone(),
+                true,
+            );
 
-        for handle in handles {
-            let eval_result = handle.join().map_err(|_| SearchError::Join)?;
+            for handle in handles {
+                let eval_result = handle.join().map_err(|_| SearchError::Join)?;
 
-            match (best_result, eval_result) {
-                // if this is our first successful thread, use its result
-                (Err(_), Ok(_)) => best_result = eval_result,
-                // if both were successful, use the deepest result
-                (Ok(ref mut best_search), Ok(ref new_search)) => {
-                    best_search.unify_with(new_search);
+                match (sub_result, eval_result) {
+                    // if this is our first successful thread, use its result
+                    (Err(_), Ok(_)) => sub_result = eval_result,
+                    // if both were successful, use the deepest result
+                    (Ok(ref mut best_search), Ok(ref new_search)) => {
+                        best_search.unify_with(new_search);
+                    }
+                    // error cases cause nothing to happen
+                    _ => (),
+                };
+            }
+
+            if let Ok(ref info) = sub_result {
+                // update best result and inform GUI
+                best_result = sub_result;
+                if let Ok(ref mut best_info) = best_result {
+                    best_info.unify_with(info);
+
+                    let elapsed = Instant::now() - tic;
+                    print!(
+                        "{}",
+                        UciMessage::Info(&[
+                            EngineInfo::Depth(depth),
+                            EngineInfo::Time(elapsed),
+                            EngineInfo::Nodes(best_info.num_nodes_evaluated),
+                            EngineInfo::NodeSpeed(
+                                best_info.num_nodes_evaluated * 1000 / (elapsed.as_millis() as u64)
+                            ),
+                            EngineInfo::HashFull(self.ttable.fill_rate_permill()),
+                            EngineInfo::Score {
+                                eval: best_info.eval,
+                                is_lower_bound: false,
+                                is_upper_bound: false
+                            }
+                        ])
+                    );
                 }
-                // error cases cause nothing to happen
-                _ => (),
-            };
+            }
         }
+
         if let Ok(ref mut info) = best_result {
             // normalize evaluation to be in absolute terms
             info.eval = info.eval.in_perspective(g.board().player_to_move);

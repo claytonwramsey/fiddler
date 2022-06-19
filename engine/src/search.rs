@@ -64,44 +64,22 @@ type PVSResult = Result<(Move, Eval), SearchError>;
 /// subjugate thread, and determines responsibilities as such.
 pub fn search(
     mut g: Game,
+    depth: u8,
     ttable: Arc<TTable>,
     config: &SearchConfig,
     limit: Arc<SearchLimit>,
     is_main: bool,
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
-    let mut best_move = None;
-    let mut best_eval = None;
-    let mut highest_successful_depth = 0;
-    for iter_depth in 1..=config.depth {
-        match searcher.pvs(iter_depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true) {
-            Ok((m, eval)) => {
-                best_move = Some(m);
-                best_eval = Some(eval);
-                highest_successful_depth = iter_depth;
-            }
-            Err(e) => match e {
-                SearchError::Timeout => break,
-                SearchError::Poison => return Err(e),
-                SearchError::Join => {
-                    // theoretically, this should never happen
-                    panic!("single-threaded process have a join error?!")
-                }
-            },
-        };
-    }
 
-    if best_move.is_none() {
-        // search timed out before it could come up with any good moves.
-        return Err(SearchError::Timeout);
-    }
+    let (m, eval) = searcher.pvs(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true)?;
 
     Ok(SearchInfo {
-        best_move: best_move.unwrap(),
-        eval: best_eval.unwrap(),
+        best_move: m,
+        eval,
         num_transpositions: searcher.num_transpositions,
         num_nodes_evaluated: searcher.num_nodes_evaluated,
-        highest_successful_depth,
+        highest_successful_depth: depth,
     })
 }
 
@@ -545,6 +523,7 @@ pub mod tests {
         };
         search(
             g,
+            depth,
             Arc::new(TTable::default()),
             &config,
             Arc::new(SearchLimit::default()),

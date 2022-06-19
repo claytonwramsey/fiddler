@@ -57,6 +57,7 @@ fn main() {
                         max: 255,
                     },
                 );
+                searcher.write().unwrap().config.n_helpers = 15;
 
                 print!("{}", UciMessage::UciOk)
             }
@@ -147,6 +148,10 @@ fn go(
 
     // do not hold onto guard as option parsing will involve a write
     *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = None;
+
+    // by default, set the depth to search to be 99, so that the timer is the
+    // sole limiting factor
+    searcher.write().unwrap().config.depth = 99;
     for opt in opts {
         match opt {
             GoOption::SearchMoves(_) => {
@@ -236,13 +241,14 @@ fn go(
                 "{}",
                 UciMessage::Info(&[
                     EngineInfo::Score {
-                        eval: info.eval,
+                        eval: info.eval.in_perspective(cloned_game.board().player_to_move),
                         is_lower_bound: false,
                         is_upper_bound: false
                     },
                     EngineInfo::Depth(info.highest_successful_depth),
                     EngineInfo::Nodes(nodes),
                     EngineInfo::NodeSpeed(nps),
+                    EngineInfo::Time(elapsed),
                     EngineInfo::HashFull(searcher_guard.ttable.fill_rate_permill())
                 ])
             );

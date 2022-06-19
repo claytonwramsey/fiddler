@@ -98,7 +98,7 @@ impl TTable {
                     // the entry is too old, evict it
                     entry.deepest.hash.store(BAD_HASH, Ordering::Relaxed);
                     entry.deepest.data.store(0, Ordering::Relaxed);
-                    self.occupancy.fetch_add(1, Ordering::Relaxed);
+                    self.occupancy.fetch_sub(1, Ordering::Relaxed);
                 }
             }
         }

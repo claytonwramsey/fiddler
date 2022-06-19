@@ -32,7 +32,7 @@ pub fn get_search_time(
 
     if let Some(moves) = movestogo {
         min(
-            900 * our_remaining / (1000 * (moves as u32)) + our_inc,
+            970 * our_remaining / (1000 * (moves as u32)) + our_inc,
             (0.9 * our_remaining as f32) as u32,
         )
     } else {
