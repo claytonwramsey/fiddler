@@ -209,6 +209,7 @@ fn go(
             game.board().player_to_move,
         ) as u64));
     }
+    debug_info(&format!("search time: {:?}", *search_duration_guard), debug);
     drop(search_duration_guard); // prevent deadlock when starting the limit
 
     searcher_guard.limit.start().unwrap();
@@ -224,19 +225,22 @@ fn go(
         let search_result = searcher_guard.evaluate(&cloned_game);
         debug_info("finished evaluation", debug);
 
-        if let Ok(info) = search_result {
-            println!(
-                "{}",
-                UciMessage::BestMove {
-                    m: info.best_move,
-                    ponder: None
-                }
-            );
-        } else {
-            // search failed :(
-            // notify the GUI in debug mode, otherwise there's not much we can
-            // do
-            debug_info("search failed", debug);
+        match search_result {
+            Ok(info) => {
+                println!(
+                    "{}",
+                    UciMessage::BestMove {
+                        m: info.best_move,
+                        ponder: None
+                    }
+                );
+            }
+            Err(e) => {
+                // search failed :(
+                // notify the GUI in debug mode, otherwise there's not much we can
+                // do
+                debug_info(&format!("search failed: {:?}", e), debug);
+            }
         }
     }))
 }

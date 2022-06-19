@@ -60,7 +60,7 @@ impl MainSearch {
                 let gcopy = g.clone();
                 handles.push(spawn(move || {
                     search(gcopy, depth, ttable_arc, &config_copy, limit_arc, false)
-                }))
+                }));
             }
 
             // now it's our turn to think
@@ -102,7 +102,8 @@ impl MainSearch {
                             EngineInfo::Time(elapsed),
                             EngineInfo::Nodes(best_info.num_nodes_evaluated),
                             EngineInfo::NodeSpeed(
-                                best_info.num_nodes_evaluated * 1000 / (elapsed.as_millis() as u64)
+                                best_info.num_nodes_evaluated * 1000
+                                    / (elapsed.as_millis() as u64 + 1)
                             ),
                             EngineInfo::HashFull(self.ttable.fill_rate_permill()),
                             EngineInfo::Score {
