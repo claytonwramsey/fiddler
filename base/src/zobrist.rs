@@ -580,3 +580,29 @@ const EP_KEYS: [u64; 8] = [
     12936367968696784083,
 ];
 pub const BLACK_TO_MOVE_KEY: u64 = 11183034114380226606;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_no_equal_hashes() {
+        // first, collect all the hash keys
+        let mut hash_keys: Vec<u64> = Vec::new();
+        hash_keys.extend(
+            SQUARE_KEYS
+                .iter()
+                .flat_map(|x| x.iter())
+                .flat_map(|x| x.iter()),
+        );
+        hash_keys.extend(CASTLE_KEYS);
+        hash_keys.extend(EP_KEYS);
+        hash_keys.push(BLACK_TO_MOVE_KEY);
+
+        for (i, k0) in hash_keys.iter().enumerate() {
+            for k1 in hash_keys[i + 1..].iter() {
+                assert_ne!(k0, k1);
+            }
+        }
+    }
+}
