@@ -2,7 +2,7 @@ use std::{
     io::stdin,
     sync::{Arc, RwLock},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use fiddler_base::Game;
@@ -11,7 +11,7 @@ use fiddler_engine::{
     thread::MainSearch,
     time::get_search_time,
     transposition::TTable,
-    uci::{build_message, parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
+    uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
 };
 
 /// Run a UCI engine.
@@ -39,7 +39,7 @@ fn main() {
         match command {
             UciCommand::Uci => {
                 // identify the engine
-                print!(
+                println!(
                     "{}",
                     UciMessage::Id {
                         name: Some("Fiddler 0.1.0"),
@@ -59,7 +59,7 @@ fn main() {
                 );
                 searcher.write().unwrap().config.n_helpers = 15;
 
-                print!("{}", UciMessage::UciOk)
+                println!("{}", UciMessage::UciOk)
             }
             UciCommand::Debug(new_debug) => {
                 // activate or deactivate debug mode
@@ -67,7 +67,7 @@ fn main() {
             }
             UciCommand::IsReady => {
                 // we were born ready
-                print!("{}", build_message(&UciMessage::ReadyOk))
+                println!("{}", UciMessage::ReadyOk);
             }
             UciCommand::SetOption { name, value } => match name.as_str() {
                 "Thread Count" => match value {
@@ -219,38 +219,18 @@ fn go(
     debug_info("spawning main search thread", debug);
     Some(std::thread::spawn(move || {
         let searcher_guard = searcher_new_arc.read().unwrap();
-        let tic = Instant::now();
         // this step will block
         debug_info("starting evaluation", debug);
         let search_result = searcher_guard.evaluate(&cloned_game);
         debug_info("finished evaluation", debug);
-        let elapsed = Instant::now() - tic;
 
         if let Ok(info) = search_result {
-            print!(
+            println!(
                 "{}",
                 UciMessage::BestMove {
                     m: info.best_move,
                     ponder: None
                 }
-            );
-            let nodes = info.num_nodes_evaluated;
-            let nps = nodes * 1000 / (elapsed.as_millis() as u64);
-
-            print!(
-                "{}",
-                UciMessage::Info(&[
-                    EngineInfo::Score {
-                        eval: info.eval.in_perspective(cloned_game.board().player_to_move),
-                        is_lower_bound: false,
-                        is_upper_bound: false
-                    },
-                    EngineInfo::Depth(info.highest_successful_depth),
-                    EngineInfo::Nodes(nodes),
-                    EngineInfo::NodeSpeed(nps),
-                    EngineInfo::Time(elapsed),
-                    EngineInfo::HashFull(searcher_guard.ttable.fill_rate_permill())
-                ])
             );
         } else {
             // search failed :(
@@ -276,11 +256,11 @@ fn stop(searcher: &Arc<RwLock<MainSearch>>, search_handle: Option<JoinHandle<()>
 /// `debug` is `false`.
 fn debug_info(s: &str, debug: bool) {
     if debug {
-        print!("{}", UciMessage::Info(&[EngineInfo::String(s)]));
+        println!("{}", UciMessage::Info(&[EngineInfo::String(s)]));
     }
 }
 
 /// Send out a message to add an option for the frontend.
 fn add_option(name: &str, opt: OptionType) {
-    print!("{}", UciMessage::Option { name, opt })
+    println!("{}", UciMessage::Option { name, opt })
 }

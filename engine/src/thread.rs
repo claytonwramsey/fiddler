@@ -54,7 +54,6 @@ impl MainSearch {
             let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
             for _thread_id in 0..=self.config.n_helpers {
-                println!("spawn thread");
                 let ttable_arc = self.ttable.clone();
                 let limit_arc = self.limit.clone();
                 let config_copy = self.config;
@@ -96,7 +95,7 @@ impl MainSearch {
                     best_info.unify_with(info);
 
                     let elapsed = Instant::now() - tic;
-                    print!(
+                    println!(
                         "{}",
                         UciMessage::Info(&[
                             EngineInfo::Depth(depth),
@@ -165,7 +164,7 @@ mod tests {
         transposition_speed_comparison(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             11,
-            7,
+            8,
             7,
         );
     }

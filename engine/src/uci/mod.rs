@@ -1,11 +1,7 @@
-use std::{fmt, time::Duration};
-
-use crate::{Eval, Move};
-
-mod send;
-pub use send::build_message;
+use crate::Move;
 
 mod parse;
+mod send;
 pub use parse::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -103,99 +99,4 @@ pub enum GoOption {
     Infinite,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
-/// The set of messages that the engine can send to the GUI.
-pub enum UciMessage<'a> {
-    /// The engine identifies itself. Must be sent after receiving a
-    /// `UciCommand::Uci` message.
-    Id {
-        /// The name of the engine.
-        name: Option<&'a str>,
-        /// The author of the engine.
-        author: Option<&'a str>,
-    },
-    /// Sent after `id` and additional options are given to inform the GUI that
-    /// the engine is ready in UCI mode.
-    UciOk,
-    /// Must be sent after a `UciCommand::IsReady` command and the engine has
-    /// processed all input. Typically only for commands that take some time,
-    /// but can actually be sent at any time.
-    ReadyOk,
-    /// Request that the GUI display an option to the user.
-    /// Not to be confused with the standard `Option`.
-    Option { name: &'a str, opt: OptionType<'a> },
-    /// Inform the GUI that the engine has found a move. `m` is the best move
-    /// that it found, and `ponder` may optionally be the opponent's reply to
-    /// the best move that the engine would like to think about. Directly
-    /// before a `BestMove`, the engine should send an `Info` command with the
-    /// final search information.
-    BestMove { m: Move, ponder: Option<Move> },
-    /// Give the GUI some information about what the engine is thinking.
-    Info(&'a [EngineInfo<'a>]),
-}
-
-impl<'a> fmt::Display for UciMessage<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", build_message(self))
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-/// Information about an engine's search state.
-pub enum EngineInfo<'a> {
-    /// The depth to which this information was created.
-    Depth(u8),
-    /// The selective search depth.
-    SelDepth(u8),
-    /// The time searched.
-    Time(Duration),
-    /// The number of nodes searched.
-    Nodes(u64),
-    /// The principal variation.
-    Pv(&'a [Move]),
-    /// Optional. The number of principal variations given.
-    MultiPv(u8),
-    /// The evaluation of the position.
-    Score {
-        /// A numeric evaluation of the position.
-        eval: Eval,
-        /// Whether the evaluation given is only a lower bound.
-        is_lower_bound: bool,
-        /// Whether the evaluation given is only an upper bound.
-        is_upper_bound: bool,
-    },
-    /// The current move being examined.
-    CurrMove(Move),
-    /// The number of the move currently being searched. For the first move
-    /// searched, this would be 1, etc.
-    CurrMoveNumber(u8),
-    /// The hash fill rate of the transposition table. Measured out of 1000.
-    HashFull(u16),
-    /// The number of nodes searched per second by the engine.
-    NodeSpeed(u64),
-    /// Any string which should be displayed to the GUI. The string may not
-    /// contain any newlines (`\n`).
-    String(&'a str),
-    /* Other infos omitted for now */
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum OptionType<'a> {
-    /// A spin box which takes an integer. The internal value is its default
-    /// parameter.
-    Spin { default: i64, min: i64, max: i64 },
-    /// A string which the user can input. The default is the given value.
-    String(Option<&'a str>),
-    /// A checkbox which will either be true (checked) or false (unchecked).
-    Check(Option<bool>),
-    /// A set of selectable options for a mode.
-    Combo {
-        /// The default selection on the combination box.
-        default: Option<&'a str>,
-        /// The variations on the combinations. Need not include the value of
-        /// the `default` part of this struct.
-        vars: &'a [&'a str],
-    },
-    /// A button which can be pressed to send a command.
-    Button,
-}
+pub use send::{EngineInfo, OptionType, UciMessage};
