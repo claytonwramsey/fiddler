@@ -109,7 +109,7 @@ fn train_step(
         let (sub_grad, se) = grad_handle.join().unwrap();
         sum_se += se;
         for i in 0..new_weights.len() {
-            new_weights[i] -= learn_rate * sub_grad[i] / chunk_size as f32;
+            new_weights[i] -= learn_rate * sub_grad[i] / inputs.len() as f32;
         }
     }
     let toc = Instant::now();

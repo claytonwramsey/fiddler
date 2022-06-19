@@ -5,10 +5,10 @@ use fiddler_base::{Bitboard, Board, Color, Eval, Game, Piece, Score};
 use super::material;
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = (Eval::centipawns(-33), Eval::centipawns(-29));
+pub const DOUBLED_PAWN_VALUE: Score = (Eval::centipawns(-33), Eval::centipawns(-31));
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = (Eval::centipawns(41), Eval::centipawns(12));
+pub const OPEN_ROOK_VALUE: Score = (Eval::centipawns(7), Eval::centipawns(15));
 
 /// Evaluate a quiet position.
 pub fn evaluate(g: &mut Game) -> Eval {
@@ -86,7 +86,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
             net_open_rooks -= 1;
             continue;
         }
-        let pawns_in_col = (pawns & white) & (A_FILE_MASK << brook_sq.file());
+        let pawns_in_col = (pawns & black) & (A_FILE_MASK << brook_sq.file());
         let important_pawns = ABOVE_RANK3 & pawns_in_col;
         // check that the lowest-rank pawn that could block the rook is behind
         // the rook
