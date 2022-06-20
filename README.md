@@ -44,3 +44,9 @@ results.
 
 * On rare occasion, sometimes the engine misses simple one-move blunders. I'm
 also not sure what causes this.
+
+## Contributing
+
+If you are interested in contributing to Fiddler, please open a pull request.
+Any help is welcome! If you do submit a pull request, make sure to add your name
+to `AUTHORS.md`.
