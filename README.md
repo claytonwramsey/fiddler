@@ -19,8 +19,6 @@ international master.
 
 * Integrated gradient descent tuner
 
-* CLI for ergonomic usage
-
 ## Future plans
 
 Below are my plans for the future of this engine, in roughly descending order of
