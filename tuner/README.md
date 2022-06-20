@@ -51,16 +51,14 @@ total samples:
 
 $$
 \argmin_{\boldsymbol{w}} E(\boldsymbol{w}) =
-\frac{1}{N} \sum_{\boldsymbol{x} \in X} \left(r(\boldsymbol{x})
-- \hat r(\boldsymbol{x}) \right)^2
+\frac{1}{N} \sum_{\boldsymbol{x} \in X} \left(r(\boldsymbol{x}) - \hat r(\boldsymbol{x}) \right)^2
 $$
 
 We cannot solve this with algebra, so we settle for gradient descent. To do so,
 we calculate the gradient:
 
 $$
-\nabla_{\boldsymbol{w}} E(\boldsymbol{w}) =
-- \frac{2 k}{N} \sum_{x \in X}
+\nabla_{\boldsymbol{w}} E(\boldsymbol{w}) = - \frac{2 k}{N} \sum_{x \in X}
     \left(r(\boldsymbol{x}) - \hat r(\boldsymbol{x}) \right)
     \hat r(\boldsymbol{x})
     \left(1 - \hat r(\boldsymbol{x}) \right)
