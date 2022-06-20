@@ -24,6 +24,8 @@ international master.
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
 
+* Refactor `Score` to be an actual structure with more convenient usage
+
 * Actual match data to support Elo estimates
 
 * Futility and null-move pruning
