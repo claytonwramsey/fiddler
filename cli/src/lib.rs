@@ -5,8 +5,7 @@ use fiddler_base::{
 };
 use fiddler_engine::{
     limit::SearchLimit,
-    pst::{pst_delta, pst_evaluate},
-    thread::MainSearch,
+    thread::MainSearch, evaluate::{static_evaluate, value_delta},
 };
 
 use std::{
@@ -231,13 +230,13 @@ impl<'a> FiddlerApp<'a> {
 
     /// Attempt to load a FEN string into the game.
     fn load_fen(&mut self, fen: &str) -> CommandResult {
-        self.game = Game::from_fen(fen, pst_evaluate)?;
+        self.game = Game::from_fen(fen, static_evaluate)?;
         Ok(())
     }
 
     /// Attempt to play a move.
     fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
-        self.game.try_move(m, pst_delta(self.game.board(), m))?;
+        self.game.try_move(m, value_delta(self.game.board(), m))?;
         if engine_reply {
             self.play_engine_move()?;
         }
@@ -290,7 +289,7 @@ impl<'a> FiddlerApp<'a> {
         .map_err(|_| "failed to write to output")?;
         self.game.make_move(
             search_data.best_move,
-            pst_delta(self.game.board(), search_data.best_move),
+            value_delta(self.game.board(), search_data.best_move),
         );
 
         Ok(())
@@ -377,7 +376,7 @@ mod tests {
             app.game,
             Game::from_fen(
                 "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-                pst_evaluate
+                static_evaluate
             )
             .unwrap()
         );

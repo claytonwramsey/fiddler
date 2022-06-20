@@ -1,4 +1,4 @@
-use fiddler_base::{Board, Color, Eval, Piece, Score};
+use fiddler_base::{Board, Color, Eval, Piece, Score, Move};
 
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {
@@ -10,6 +10,32 @@ pub const fn value(pt: Piece) -> Score {
         Piece::Pawn => Eval::score(101, 103),
         Piece::King => Eval::score(0, 0),
     }
+}
+
+/// Compute the effect that a move will have on the total quantity of material.
+pub fn material_delta(b: &Board, m: Move) -> Score {
+    // material only ever changes value based on captures and promotions, so 
+    // this is easy
+    let capturee_type = if m.is_en_passant() {
+        Some(Piece::Pawn)
+    } else {
+        b.type_at_square(m.to_square())
+    };
+    let mut gain = capturee_type.map_or_else(|| Eval::score(0, 0), value);
+    
+    if m.is_promotion() {
+        // we already checked that m is a promotion, so we can trust that it has 
+        // a promotion
+        let promotion_gain = value(unsafe {m.promote_type().unwrap_unchecked()});
+        gain.0 += promotion_gain.0;
+        gain.1 += promotion_gain.1;
+        let pawn_val = value(Piece::Pawn);
+        gain.0 -= pawn_val.0;
+        gain.1 -= pawn_val.1;
+    }
+
+    // we need not put this delta in perspective, that is `Position`'s job
+    gain
 }
 
 /// Evaluate a position solely by the amount of material available.
@@ -31,4 +57,32 @@ pub fn evaluate(b: &Board) -> Score {
     }
 
     score
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fiddler_base::{movegen::{get_moves, NoopNominator, ALL}, Game};
+
+    fn delta_helper(fen: &str) {
+        let mut g = Game::from_fen(fen, evaluate).unwrap();
+        for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
+            g.make_move(m, material_delta(g.board(), m));
+            // println!("{g}");
+            assert_eq!(g.position().pst_val, evaluate(g.board()));
+            g.undo().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_delta_captures() {
+        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
+    }
+
+    #[test]
+    fn test_delta_promotion() {
+        // undoubling capture promotion is possible
+        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
+    }
 }

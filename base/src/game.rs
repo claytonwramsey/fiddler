@@ -79,10 +79,10 @@ impl Game {
 
     /// Make a move, assuming said move is legal. If the history is empty
     /// (this should never happen if normal operations occurred), the move will
-    /// be made from the default state of a `Board`. `pst_delta` is the
+    /// be made from the default state of a `Board`. `delta` is the
     /// expected gain in evaluation for the player making the move. Typically,
-    /// `pst_delta` wil always be positive.
-    pub fn make_move(&mut self, m: Move, pst_delta: Score) {
+    /// `delta` will be positive.
+    pub fn make_move(&mut self, m: Move, delta: Score) {
         let previous_state = self.history.last().unwrap();
         let mut new_pos = previous_state.0;
 
@@ -92,7 +92,7 @@ impl Game {
             true => 0,
             false => previous_state.1 + 1,
         };
-        new_pos.make_move(m, pst_delta);
+        new_pos.make_move(m, delta);
         let num_reps = self.repetitions.entry(new_pos.board.hash).or_insert(0);
         *num_reps += 1;
         self.history.push((new_pos, move_timeout));
@@ -103,9 +103,9 @@ impl Game {
     /// legal, the move will be executed and the state will change, then
     /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
     /// you that the move is illegal, and no state will be changed.
-    pub fn try_move(&mut self, m: Move, pst_delta: Score) -> Result<(), &'static str> {
+    pub fn try_move(&mut self, m: Move, delta: Score) -> Result<(), &'static str> {
         if self.get_moves::<ALL, NoopNominator>().contains(&(m, ())) {
-            self.make_move(m, pst_delta);
+            self.make_move(m, delta);
             Ok(())
         } else {
             Err("illegal move given!")

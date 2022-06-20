@@ -7,7 +7,7 @@ use crate::candidacy::PstNominate;
 
 use super::{
     config::SearchConfig,
-    evaluate::evaluate,
+    evaluate::leaf_evaluate,
     limit::SearchLimit,
     pick::MovePicker,
     transposition::{EvalData, TTable},
@@ -251,7 +251,7 @@ impl<'a> PVSearch<'a> {
             None => {
                 return Ok((
                     Move::BAD_MOVE,
-                    evaluate(g) * (1 - 2 * g.board().player_to_move as i16),
+                    leaf_evaluate(g) * (1 - 2 * g.board().player_to_move as i16),
                 ))
             }
         };
@@ -385,7 +385,7 @@ impl<'a> PVSearch<'a> {
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = evaluate(g);
+        let leaf_evaluation = leaf_evaluate(g);
         /*if g.is_over().0 {
             println!("{g}: {leaf_evaluation}");
         }*/
@@ -505,7 +505,7 @@ impl<'a> PVSearch<'a> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::pst::pst_evaluate;
+    use crate::evaluate::static_evaluate;
     use fiddler_base::Move;
     use fiddler_base::Square;
 
@@ -516,7 +516,7 @@ pub mod tests {
     /// This function will panic if searching the position fails or the game is
     /// invalid.
     fn search_helper(fen: &str, depth: u8) -> SearchInfo {
-        let g = Game::from_fen(fen, pst_evaluate).unwrap();
+        let g = Game::from_fen(fen, static_evaluate).unwrap();
         let config = SearchConfig {
             depth,
             ..Default::default()
@@ -581,10 +581,12 @@ pub mod tests {
     #[test]
     /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
     fn test_mate_in_9_ply() {
+        // because capturing a low-value piece is often a "late" move, it is 
+        // likely to be reduced in depth
         test_eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
             Eval::mate_in(9),
-            9,
+            11,
         );
     }
 }

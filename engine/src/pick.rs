@@ -5,9 +5,7 @@ use fiddler_base::{
     Eval, Move, Position, Score,
 };
 
-use crate::candidacy::PstNominate;
-
-use super::pst::pst_delta;
+use crate::{candidacy::PstNominate, evaluate::value_delta};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MovePicker {
@@ -115,7 +113,7 @@ impl Iterator for MovePicker {
                     None => self.next(),
                     Some(m) => {
                         self.ignore(m);
-                        Some((m, pst_delta(&self.pos.board, m)))
+                        Some((m, value_delta(&self.pos.board, m)))
                     }
                 }
             }
@@ -152,7 +150,7 @@ impl Iterator for MovePicker {
                     Some(m) => match is_legal(m, &self.pos) {
                         true => {
                             self.ignore(m);
-                            Some((m, pst_delta(&self.pos.board, m)))
+                            Some((m, value_delta(&self.pos.board, m)))
                         }
                         false => self.next(),
                     },

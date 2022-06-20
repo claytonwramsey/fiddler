@@ -7,11 +7,10 @@ use std::{
 
 use fiddler_base::Game;
 use fiddler_engine::{
-    pst::{pst_delta, pst_evaluate},
     thread::MainSearch,
     time::get_search_time,
     transposition::TTable,
-    uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
+    uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage}, evaluate::{static_evaluate, value_delta},
 };
 
 /// Run a UCI engine.
@@ -94,10 +93,10 @@ fn main() {
             UciCommand::Position { fen, moves } => {
                 game = match fen {
                     None => Game::new(),
-                    Some(fen) => Game::from_fen(&fen, pst_evaluate).unwrap(),
+                    Some(fen) => Game::from_fen(&fen, static_evaluate).unwrap(),
                 };
                 for m in moves {
-                    game.make_move(m, pst_delta(game.board(), m));
+                    game.make_move(m, value_delta(game.board(), m));
                 }
             }
             UciCommand::Go(opts) => {

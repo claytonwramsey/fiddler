@@ -14,7 +14,7 @@ type Pst = [[Score; 64]; Piece::NUM_TYPES];
 type CentiPst = [[(i16, i16); 64]; Piece::NUM_TYPES];
 
 /// Evaluate a board based on its PST value. This is slow, so under most
-/// conditions it is recommended to use `pst_delta()` instead if you are making
+/// conditions it is recommended to use `value_delta()` instead if you are making
 /// moves. The first value in the return type is the midgame difference, and
 /// the second is the endgame difference.
 pub fn pst_evaluate(board: &Board) -> Score {
@@ -96,7 +96,7 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
             PST[Piece::Rook as usize][rook_to_idx].1 - PST[Piece::Rook as usize][rook_from_idx].1;
     }
 
-    delta
+    (delta.0, delta.1)
 }
 
 /// A function used for ergonomics to convert from a table of millipawn values
@@ -191,25 +191,32 @@ mod tests {
 
     use super::*;
     use fiddler_base::movegen::{get_moves, NoopNominator, ALL};
-    use fiddler_base::Position;
+    use fiddler_base::{Game};
+
+    fn delta_helper(fen: &str) {
+        let mut g = Game::from_fen(fen, pst_evaluate).unwrap();
+        for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
+            g.make_move(m, pst_delta(g.board(), m));
+            // println!("{g}");
+            assert_eq!(g.position().pst_val, pst_evaluate(g.board()));
+            g.undo().unwrap();
+        }
+    }
 
     #[test]
     /// Test that adding deltas matches the same result as taking the PST value
     /// from scratch.
     fn test_pst_delta_equals_base_result() {
-        let pos = Position::from_fen(
-            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            Position::no_eval,
-        )
-        .unwrap();
-        let pst_original = pst_evaluate(&pos.board);
+        delta_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7");
+    }
 
-        for m in get_moves::<ALL, NoopNominator>(&pos) {
-            let delta = pst_delta(&pos.board, m.0);
-            let delta_eval = (pst_original.0 + delta.0, pst_original.1 + delta.1);
-            let mut bcopy = pos.board;
-            bcopy.make_move(m.0);
-            assert_eq!(delta_eval, pst_evaluate(&bcopy));
-        }
+    #[test]
+    fn test_delta_captures() {
+        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
+    }
+
+    #[test]
+    fn test_delta_promotion() {
+        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
     }
 }

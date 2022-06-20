@@ -2,7 +2,7 @@ use std::env;
 
 use fiddler_base::{perft::perft, Game};
 use fiddler_cli::FiddlerApp;
-use fiddler_engine::{pst::pst_evaluate, thread::MainSearch};
+use fiddler_engine::{thread::MainSearch, evaluate::static_evaluate};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -29,7 +29,7 @@ fn main() {
                 // for now, just run a benchmark on the fried liver fen
                 let g = Game::from_fen(
                     "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-                    pst_evaluate,
+                    static_evaluate,
                 )
                 .unwrap();
 

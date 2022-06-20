@@ -53,17 +53,17 @@ impl Position {
 
     #[inline(always)]
     /// Make a move on this position, updating the check info and PST values as
-    /// needed. `pst_delta` is the expected gain in PST evaluation that will
+    /// needed. `delta` is the expected gain in PST evaluation that will
     /// occur from this move. It will be higher for moves which are better for
     /// the player.
-    pub fn make_move(&mut self, m: Move, pst_delta: Score) {
+    pub fn make_move(&mut self, m: Move, delta: Score) {
         // reduce evaluation for goot moves for Black
         match self.board.player_to_move {
             Color::White => {
-                self.pst_val = (self.pst_val.0 + pst_delta.0, self.pst_val.1 + pst_delta.1)
+                self.pst_val = (self.pst_val.0 + delta.0, self.pst_val.1 + delta.1)
             }
             Color::Black => {
-                self.pst_val = (self.pst_val.0 - pst_delta.0, self.pst_val.1 - pst_delta.1)
+                self.pst_val = (self.pst_val.0 - delta.0, self.pst_val.1 - delta.1)
             }
         }
         if m.from_square() == self.king_sqs[self.board.player_to_move as usize] {
@@ -77,13 +77,13 @@ impl Position {
     /// Apply the given move to the board. Will *not* assume the move is legal
     /// (unlike `make_move()`). On illegal moves, will return an `Err` with a
     /// string describing the issue.
-    pub fn try_move(&mut self, m: Move, pst_delta: Score) -> Result<(), &str> {
+    pub fn try_move(&mut self, m: Move, delta: Score) -> Result<(), &str> {
         let legal_moves = get_moves::<ALL, NoopNominator>(self);
         if !legal_moves.contains(&(m, ())) {
             return Err("not contained in the set of legal moves");
         }
 
-        self.make_move(m, pst_delta);
+        self.make_move(m, delta);
         Ok(())
     }
 }

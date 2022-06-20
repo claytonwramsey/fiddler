@@ -135,14 +135,14 @@ impl Default for MainSearch {
 mod tests {
     use std::{cmp::max, time::Instant};
 
-    use crate::pst::pst_evaluate;
+    use crate::evaluate::static_evaluate;
 
     use super::*;
 
     /// Compare the speed of a search on a given transposition depth with its
     /// adjacent depths.
     fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: u8) {
-        let g = Game::from_fen(fen, pst_evaluate).unwrap();
+        let g = Game::from_fen(fen, static_evaluate).unwrap();
         for tdepth in max(0, transposition_depth - 1)..=(transposition_depth + 1) {
             let mut main = MainSearch::new();
             main.config.depth = depth;
