@@ -24,9 +24,6 @@ international master.
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
 
-* Refactor engine files to move evaluation together with material and move
-picking together with candidacy
-
 * Shuffle root move ordering across threads to improve parallelism speedup
 
 * Actual match data to support Elo estimates

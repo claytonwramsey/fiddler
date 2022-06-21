@@ -24,10 +24,10 @@ use crate::Eval;
 use fiddler_base::Move;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
-/// The set of messages that the engine can send to the GUI. 
-/// 
-/// Unlike `UciCommand`, `UciMessage` uses borrowed (instead of owned) values, 
-/// because it's expected that the user will generate the message and then print 
+/// The set of messages that the engine can send to the GUI.
+///
+/// Unlike `UciCommand`, `UciMessage` uses borrowed (instead of owned) values,
+/// because it's expected that the user will generate the message and then print
 /// them out, so there is no reason to include extra heap allocations.
 pub enum UciMessage<'a> {
     /// The engine identifies itself. Must be sent after receiving a
@@ -99,7 +99,7 @@ pub enum EngineInfo<'a> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 /// The types of options which can be given to the GUI for a user to select.
-/// 
+///
 /// Not to be confused with `std::option::Option`.
 pub enum OptionType<'a> {
     /// A spin box which takes an integer. The internal value is its default

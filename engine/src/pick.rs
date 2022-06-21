@@ -38,11 +38,46 @@
 use std::mem::swap;
 
 use fiddler_base::{
-    movegen::{get_moves, is_legal, CAPTURES, QUIETS},
+    movegen::{get_moves, is_legal, NominateMove, CAPTURES, QUIETS},
     Eval, Move, Position, Score,
 };
 
-use crate::{candidacy::PstNominate, evaluate::value_delta};
+use crate::{
+    evaluate::{phase_of, value_delta},
+    material,
+};
+
+/// A move nomination strategy which computes a candidacy for each move, and also computes the move's effect on board evaluation.
+pub struct CandidacyNominate {}
+
+impl NominateMove for CandidacyNominate {
+    type Output = (Score, Eval);
+
+    #[inline(always)]
+    fn score(m: Move, pos: &Position) -> Self::Output {
+        let delta = value_delta(&pos.board, m);
+        (delta, candidacy(pos, m, delta))
+    }
+}
+
+#[allow(unused)]
+/// Create an estimate for how good a move is. `delta` is the PST difference
+/// created by this move. Requires that `m` must be a legal move in `pos`.
+///
+/// # Panics
+///
+/// This function may panic if the given move is illegal.
+pub fn candidacy(pos: &Position, m: Move, delta: Score) -> Eval {
+    let b = &pos.board;
+    let mover_type = b.type_at_square(m.from_square()).unwrap();
+    let phase = phase_of(b);
+
+    // Worst case, we don't keep the piece we captured
+    let mut worst_case_delta = delta;
+    let mover_value = material::value(mover_type);
+    worst_case_delta -= mover_value;
+    worst_case_delta.blend(phase)
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MovePicker {
@@ -157,7 +192,7 @@ impl Iterator for MovePicker {
             PickPhase::PreGoodCapture => {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
-                self.capture_buffer = get_moves::<CAPTURES, PstNominate>(&self.pos);
+                self.capture_buffer = get_moves::<CAPTURES, CandidacyNominate>(&self.pos);
                 self.next()
             }
             PickPhase::GoodCapture => {
@@ -196,7 +231,7 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                self.quiet_buffer = get_moves::<QUIETS, PstNominate>(&self.pos);
+                self.quiet_buffer = get_moves::<QUIETS, CandidacyNominate>(&self.pos);
                 self.next()
             }
             PickPhase::Quiet => {

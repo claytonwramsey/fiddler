@@ -88,10 +88,10 @@ impl Bitboard {
         self.0 == 0
     }
 
-    /// Determine whether this bitboard has exactly one bit. Equivalent to 
+    /// Determine whether this bitboard has exactly one bit. Equivalent to
     /// `Bitboard.count_ones() == 1`.
     pub const fn has_single_bit(&self) -> bool {
-        // 5 arithmetic operations, 
+        // 5 arithmetic operations,
         // faster than the 13 required for `count_ones() == 1`
         self.0 != 0 && (self.0 & self.0.overflowing_sub(1).0) == 0
     }

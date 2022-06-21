@@ -33,7 +33,7 @@ use fiddler_base::{
     Eval, Game, Move,
 };
 
-use crate::candidacy::PstNominate;
+use crate::pick::CandidacyNominate;
 
 use super::{
     config::SearchConfig,
@@ -431,7 +431,7 @@ impl<'a> PVSearch<'a> {
             return Ok((Move::BAD_MOVE, alpha));
         }
 
-        let mut moves = get_moves::<CAPTURES, PstNominate>(g.position());
+        let mut moves = get_moves::<CAPTURES, CandidacyNominate>(g.position());
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut best_move = Move::BAD_MOVE;
 

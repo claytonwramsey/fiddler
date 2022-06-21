@@ -146,7 +146,7 @@ impl Square {
     /// assert_eq!(sq2, Square::A8);
     /// ```
     pub fn opposite(&self) -> Square {
-        unsafe {transmute(*self as u8 ^ 56)}
+        unsafe { transmute(*self as u8 ^ 56) }
     }
 
     /// Convert an algebraic string (such as 'e7') to a square.

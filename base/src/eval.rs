@@ -50,11 +50,11 @@ use crate::Color;
 pub struct Eval(i16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// A `Score` is a pair of two `Evals` - one for the midgame and one for the 
-/// endgame. The values inside of a `Score` should never be mate values. 
-/// 
-/// Internally, `Score`s are represented as a single integer to improve 
-/// arithmetic speed. The higher 16 bits are for the midgame evaluation, and the 
+/// A `Score` is a pair of two `Evals` - one for the midgame and one for the
+/// endgame. The values inside of a `Score` should never be mate values.
+///
+/// Internally, `Score`s are represented as a single integer to improve
+/// arithmetic speed. The higher 16 bits are for the midgame evaluation, and the
 /// lower 16 are for endgame.
 pub struct Score {
     /// The midgame-only evaluation of a position.
@@ -197,7 +197,7 @@ impl Score {
 
     /// Create a new `Score` by composing two evaluations together.
     pub const fn new(mg: Eval, eg: Eval) -> Score {
-        Score { mg, eg, }
+        Score { mg, eg }
     }
 
     /// Create a `Score` directly as a pair of centipawn values.
@@ -205,9 +205,10 @@ impl Score {
         Score::new(Eval::centipawns(mg), Eval::centipawns(eg))
     }
 
-    /// Blend the midgame and endgame 
+    /// Blend the midgame and endgame
     pub fn blend(&self, phase: f32) -> Eval {
-        #[cfg(debug_assertions)] {
+        #[cfg(debug_assertions)]
+        {
             // in test mode, require that the phase is between 0 and 1
             assert!(0. <= phase);
             assert!(phase <= 1.);
@@ -448,7 +449,7 @@ mod tests {
         let s2 = Score::centipawns(-289, -200);
         assert_eq!(s1 * 2i8, Score::centipawns(-578, 0));
         assert_eq!(s2 * 2i8, Score::centipawns(-578, -400));
-        
+
         assert_eq!(s1 * -2i8, Score::centipawns(578, 0));
         assert_eq!(s2 * -2i8, Score::centipawns(578, 400));
     }

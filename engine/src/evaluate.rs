@@ -17,26 +17,26 @@
 */
 
 //! Static evaluation of positions.
-//! 
-//! Of all the parts of a chess engine, static evaluation is arguably the most 
-//! important. Every leaf of the search is statically evaluated, and based on 
+//!
+//! Of all the parts of a chess engine, static evaluation is arguably the most
+//! important. Every leaf of the search is statically evaluated, and based on
 //! the comparisons of each evaluation, the full minimax search is achieved.
-//! 
-//! Fiddler uses a classical approach to static evaluation: the final evaluation 
-//! is the sum of a number of rules. Each rule contributes a quantity to the 
+//!
+//! Fiddler uses a classical approach to static evaluation: the final evaluation
+//! is the sum of a number of rules. Each rule contributes a quantity to the
 //! evaluation.
-//! 
-//! Also like other engines, Fiddler uses a "tapered" evaluation: rules are 
-//! given different weights at different phases of the game. To prevent sharp 
-//! changes in evaluation as the phase blends, a "midgame" and "endgame" 
-//! evaluation is created, and then the final evaluation is a linear combination 
+//!
+//! Also like other engines, Fiddler uses a "tapered" evaluation: rules are
+//! given different weights at different phases of the game. To prevent sharp
+//! changes in evaluation as the phase blends, a "midgame" and "endgame"
+//! evaluation is created, and then the final evaluation is a linear combination
 //! of those two.
-//! 
-//! More uniquely, Fiddler is obsessed with cumulative evaluation. Often, 
-//! learning facts about a board is lengthy and difficult (in computer time - it 
-//! takes nanoseconds in wall time). However, it is generally easy to guess what 
-//! effect a move will have on the static evaluation of a position. We therefore 
-//! tag moves with their effect on the evaluation, allowing us to cheaply 
+//!
+//! More uniquely, Fiddler is obsessed with cumulative evaluation. Often,
+//! learning facts about a board is lengthy and difficult (in computer time - it
+//! takes nanoseconds in wall time). However, it is generally easy to guess what
+//! effect a move will have on the static evaluation of a position. We therefore
+//! tag moves with their effect on the evaluation, allowing us to cheaply
 //! evaluate the final leaf position.
 
 use std::cmp::{max, min};

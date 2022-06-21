@@ -266,10 +266,7 @@ mod tests {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
         let old_board = *g.board();
-        g.make_move(
-            Move::normal(Square::E2, Square::E4),
-            Score::DRAW,
-        );
+        g.make_move(Move::normal(Square::E2, Square::E4), Score::DRAW);
         let new_board = g.board();
         crate::board::tests::test_move_result_helper(old_board, *new_board, m);
     }
@@ -309,10 +306,7 @@ mod tests {
     /// move is undone.
     fn test_undo_equality() {
         let mut g = Game::new();
-        g.make_move(
-            Move::normal(Square::E2, Square::E4),
-            Score::DRAW,
-        );
+        g.make_move(Move::normal(Square::E2, Square::E4), Score::DRAW);
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::new());
     }
@@ -381,10 +375,7 @@ mod tests {
     /// default board, if the initial state was the initial board state.
     fn test_clear_board() {
         let mut g = Game::new();
-        g.make_move(
-            Move::normal(Square::E2, Square::E4),
-            Score::DRAW,
-        );
+        g.make_move(Move::normal(Square::E2, Square::E4), Score::DRAW);
         g.clear();
         assert_eq!(g, Game::new());
     }

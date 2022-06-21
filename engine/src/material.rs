@@ -17,14 +17,14 @@
 */
 
 //! Material values for each piece.
-//! 
-//! Every piece is assigned a numeric value in centipawns (cp). Under normal 
-//! conditions, a centipawn is 100cp, however, the consequences of tuning have 
+//!
+//! Every piece is assigned a numeric value in centipawns (cp). Under normal
+//! conditions, a centipawn is 100cp, however, the consequences of tuning have
 //! yielded values for pawns slightly off of that mark.
-//! 
-//! In traditional chess, pawns are worth 100cp, knights and bishops are worth 
-//! 300cp, rooks are worth 500cp, and queens are worth 900cp each. However, any 
-//! chess player worth their salt might tell you that bishops are a little more 
+//!
+//! In traditional chess, pawns are worth 100cp, knights and bishops are worth
+//! 300cp, rooks are worth 500cp, and queens are worth 900cp each. However, any
+//! chess player worth their salt might tell you that bishops are a little more
 //! valuable than knights. Empirically, the engine agrees.
 
 use fiddler_base::{Board, Color, Move, Piece, Score};

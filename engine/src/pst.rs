@@ -24,7 +24,7 @@
 //! For instance, a knight is much more valuable near the center, so the PST
 //! value for a knight on rank 4 and file 3 is positive.
 
-use std::{mem::MaybeUninit, intrinsics::transmute};
+use std::{intrinsics::transmute, mem::MaybeUninit};
 
 use fiddler_base::{Board, Color, Move, Piece, Score, Square};
 
@@ -117,7 +117,7 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
 /// to a table of `Eval`s.
 const fn expand_table(centi_table: CentiPst) -> Pst {
     // we will overwrite the whole table later
-    let mut table = [[unsafe {MaybeUninit::uninit().assume_init()}; 64]; Piece::NUM_TYPES];
+    let mut table = [[unsafe { MaybeUninit::uninit().assume_init() }; 64]; Piece::NUM_TYPES];
     let mut piece_idx = 0;
     // I would use for-loops here, but those are unsupported in const fns.
     while piece_idx < Piece::NUM_TYPES {
@@ -130,7 +130,7 @@ const fn expand_table(centi_table: CentiPst) -> Pst {
         }
         piece_idx += 1;
     }
-    unsafe {transmute(table)}
+    unsafe { transmute(table) }
 }
 
 #[rustfmt::skip] // rustfmt likes to throw a million newlines in this

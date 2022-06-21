@@ -17,12 +17,12 @@
 */
 
 //! The main UCI procedure.
-//! 
-//! This code handles the central logic of actually running an engine. We 
-//! function quickly by constantly listening for new commands from the GUI, and 
-//! then spinning up threads to execute each command. 
-//! 
-//! Many of the details of concurrency required to achieve this are finicky; I 
+//!
+//! This code handles the central logic of actually running an engine. We
+//! function quickly by constantly listening for new commands from the GUI, and
+//! then spinning up threads to execute each command.
+//!
+//! Many of the details of concurrency required to achieve this are finicky; I
 //! am hopeful that we can develop more elegant solutions in the future.
 
 use std::{

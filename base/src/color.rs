@@ -19,7 +19,7 @@
 //! Representation of player colors.
 
 use super::{Bitboard, Direction};
-use std::{ops::Not, mem::transmute};
+use std::{mem::transmute, ops::Not};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -68,7 +68,7 @@ impl Not for Color {
         // self as u8 will always be 0 or 1
         // so self as u8 ^ 1 will always be 1 or 0
         // so we can safely transmute back
-        unsafe {transmute(self as u8 ^ 1)}
+        unsafe { transmute(self as u8 ^ 1) }
     }
 }
 

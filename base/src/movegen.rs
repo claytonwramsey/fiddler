@@ -128,7 +128,6 @@ pub struct CheckInfo {
     /// The locations of pieces that are blocking would-be checkers from the
     /// opponent.
     pub king_blockers: [Bitboard; 2],
-
     /* One day I will use these, but for now we will just pretend they're not here. */
     // #[allow(unused)]
     // /// The locations of pieces which are pinning their corresponding blockers
