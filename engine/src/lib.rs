@@ -34,10 +34,3 @@ pub mod thread;
 pub mod time;
 pub mod transposition;
 pub mod uci;
-
-#[allow(unused)]
-/// Compute the effective branch factor given a given search depth and a number
-/// of nodes evaluated.
-fn branch_factor(depth: u8, num_nodes: u64) -> f64 {
-    (num_nodes as f64).powf(1f64 / (depth as f64))
-}
