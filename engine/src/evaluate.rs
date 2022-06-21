@@ -55,10 +55,10 @@ use super::material;
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101010101010101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = (Eval::centipawns(-33), Eval::centipawns(-31));
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-33, -31);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = (Eval::centipawns(7), Eval::centipawns(15));
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(7, 15);
 
 /// Evaluate a leaf position on a game whose cumulative values have been
 /// computed correctly.
@@ -82,22 +82,13 @@ pub fn leaf_evaluate(g: &Game) -> Eval {
     let b = &pos.board;
     let leaf_val = leaf_rules(b);
 
-    blend_eval(
-        g.board(),
-        (leaf_val.0 + pos.pst_val.0, leaf_val.1 + pos.pst_val.1),
-    )
+    (leaf_val + pos.score).blend(phase_of(g.board()))
 }
 
 /// Compute the change in scoring that a move made on a board will cause. Used
 /// in tandem with `leaf_evaluate()`.
 pub fn value_delta(b: &Board, m: Move) -> Score {
-    let pst_delta = pst_delta(b, m);
-    let material_change = material_delta(b, m);
-
-    (
-        pst_delta.0 + material_change.0,
-        pst_delta.1 + material_change.1,
-    )
+    pst_delta(b, m) + material_delta(b, m)
 }
 
 /// Compute a static, cumulative-invariant evaluation of a position. It is much
@@ -106,31 +97,19 @@ pub fn value_delta(b: &Board, m: Move) -> Score {
 /// as number of doubled pawns), as this will be handled by `leaf_evaluate` at
 /// the end of the search tree.
 pub fn static_evaluate(b: &Board) -> Score {
-    let mut value = material::evaluate(b);
-
-    let pst_value = pst_evaluate(b);
-
-    value.0 += pst_value.0;
-    value.1 += pst_value.1;
-
-    // do not include leaf rules in static evaluation
-
-    value
+    material::evaluate(b) + pst_evaluate(b)
+    // leaf evaluations do not count here
 }
 
 /// Get the score gained from evaluations that are only performed at the leaf.
 fn leaf_rules(b: &Board) -> Score {
     // Add losses due to doubled pawns
-    let ndoubled = net_doubled_pawns(b);
-    let mut mg_eval = DOUBLED_PAWN_VALUE.0 * ndoubled;
-    let mut eg_eval = DOUBLED_PAWN_VALUE.1 * ndoubled;
+    let mut score = DOUBLED_PAWN_VALUE * net_doubled_pawns(b);
 
     // Add gains from open rooks
-    let nopen = net_open_rooks(b);
-    mg_eval += OPEN_ROOK_VALUE.0 * nopen;
-    eg_eval += OPEN_ROOK_VALUE.1 * nopen;
+    score += OPEN_ROOK_VALUE * net_open_rooks(b);
 
-    (mg_eval, eg_eval)
+    score
 }
 
 /// Count the number of "open" rooks (i.e., those which are not blocked by
@@ -220,24 +199,13 @@ pub fn phase_of(b: &Board) -> f32 {
     let mg_npm = {
         let mut total = Eval::DRAW;
         for pt in Piece::NON_PAWN_TYPES {
-            total += material::value(pt).0 * b[pt].count_ones();
+            total += material::value(pt).mg * b[pt].count_ones();
         }
         total
     };
     let bounded_npm = max(MG_LIMIT, min(EG_LIMIT, mg_npm));
 
     (bounded_npm - EG_LIMIT).float_val() / (MG_LIMIT - EG_LIMIT).float_val()
-}
-
-#[inline(always)]
-/// Blend the evaluation of a position between the midgame and endgame.
-pub fn blend_eval(b: &Board, score: Score) -> Eval {
-    phase_blend(phase_of(b), score)
-}
-
-/// Blend a score based on a phase.
-pub fn phase_blend(phase: f32, score: Score) -> Eval {
-    score.0 * phase + score.1 * (1. - phase)
 }
 
 #[cfg(test)]
@@ -250,7 +218,7 @@ mod tests {
         for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
             g.make_move(m, value_delta(g.board(), m));
             // println!("{g}");
-            assert_eq!(static_evaluate(g.board()), g.position().pst_val);
+            assert_eq!(static_evaluate(g.board()), g.position().score);
             g.undo().unwrap();
         }
     }

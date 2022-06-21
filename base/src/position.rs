@@ -24,7 +24,7 @@ use crate::movegen::{NoopNominator, ALL};
 
 use super::{
     movegen::{get_moves, CheckInfo},
-    Board, Color, Eval, Move, Piece, Score, Square,
+    Board, Color, Move, Piece, Score, Square,
 };
 
 /// A function which can get the PST value of a position.
@@ -42,12 +42,12 @@ pub struct Position {
     /// The location of the White and Black kings, respectively.
     pub king_sqs: [Square; 2],
     /// The PST evaluation for the middlegame and endgame, respectively.
-    pub pst_val: Score,
+    pub score: Score,
 }
 
 impl Position {
     /// An evaluation delta which causes no change.
-    pub const NO_DELTA: Score = (Eval::DRAW, Eval::DRAW);
+    pub const NO_DELTA: Score = Score::DRAW;
 
     /// Construct a position from a FEN.
     pub fn from_fen(fen: &str, pst_evaluator: PSTEvaluator) -> Result<Position, String> {
@@ -59,14 +59,14 @@ impl Position {
                 Square::try_from(board[Piece::King] & board[Color::White]).unwrap(),
                 Square::try_from(board[Piece::King] & board[Color::Black]).unwrap(),
             ],
-            pst_val: pst_evaluator(&board),
+            score: pst_evaluator(&board),
         })
     }
 
     /// Helper function for initializing boards if you do not care about the
     /// PST value of a board.
     pub const fn no_eval(_: &Board) -> Score {
-        (Eval::DRAW, Eval::DRAW)
+        Score::DRAW
     }
 
     #[inline(always)]
@@ -77,8 +77,8 @@ impl Position {
     pub fn make_move(&mut self, m: Move, delta: Score) {
         // reduce evaluation for goot moves for Black
         match self.board.player_to_move {
-            Color::White => self.pst_val = (self.pst_val.0 + delta.0, self.pst_val.1 + delta.1),
-            Color::Black => self.pst_val = (self.pst_val.0 - delta.0, self.pst_val.1 - delta.1),
+            Color::White => self.score += delta,
+            Color::Black => self.score -= delta,
         }
         if m.from_square() == self.king_sqs[self.board.player_to_move as usize] {
             // update king locations
@@ -112,7 +112,7 @@ impl Default for Position {
                 Square::try_from(b[Piece::King] & b[Color::White]).unwrap(),
                 Square::try_from(b[Piece::King] & b[Color::Black]).unwrap(),
             ],
-            pst_val: (Eval::DRAW, Eval::DRAW),
+            score: Score::DRAW,
         }
     }
 }

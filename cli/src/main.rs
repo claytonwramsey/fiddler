@@ -52,7 +52,7 @@ fn main() {
                 .unwrap();
 
                 let mut e = MainSearch::new();
-                e.config.depth = 11;
+                e.config.depth = 10;
                 e.config.n_helpers = 7;
                 e.config.max_transposition_depth = 99;
 

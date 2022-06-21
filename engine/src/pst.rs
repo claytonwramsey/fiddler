@@ -24,7 +24,9 @@
 //! For instance, a knight is much more valuable near the center, so the PST
 //! value for a knight on rank 4 and file 3 is positive.
 
-use fiddler_base::{Board, Color, Eval, Move, Piece, Score, Square};
+use std::{mem::MaybeUninit, intrinsics::transmute};
+
+use fiddler_base::{Board, Color, Move, Piece, Score, Square};
 
 /// A lookup table for piece values. The outer index is the type of the piece
 /// (in order of Pawn, Knight, Bishop, Rook, Queen, and King)
@@ -41,20 +43,17 @@ type CentiPst = [[(i16, i16); 64]; Piece::NUM_TYPES];
 /// moves. The first value in the return type is the midgame difference, and
 /// the second is the endgame difference.
 pub fn pst_evaluate(board: &Board) -> Score {
-    let mut score = (Eval::DRAW, Eval::DRAW);
+    let mut score = Score::DRAW;
 
     for pt in Piece::ALL_TYPES {
         for sq in board[pt] & board[Color::White] {
-            score.0 += PST[pt as usize][sq as usize].0;
-            score.1 += PST[pt as usize][sq as usize].1;
+            score += PST[pt as usize][sq as usize];
         }
         for sq in board[pt] & board[Color::Black] {
             //Invert the square that Black is on, since positional values are
             //flipped (as pawns move the other way, etc)
             let alt_sq = sq.opposite();
-
-            score.0 -= PST[pt as usize][alt_sq as usize].0;
-            score.1 -= PST[pt as usize][alt_sq as usize].1;
+            score -= PST[pt as usize][alt_sq as usize];
         }
     }
 
@@ -87,23 +86,18 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
     let (from_idx, to_idx) = (from_alt as usize, to_alt as usize);
 
     // you always lose the value of the square you moved from
-    let mut delta = (
-        PST[end_idx][to_idx].0 - PST[mover_idx][from_idx].0,
-        PST[end_idx][to_idx].1 - PST[mover_idx][from_idx].1,
-    );
+    let mut delta = PST[end_idx][to_idx] - PST[mover_idx][from_idx];
 
     if board[!board.player_to_move].contains(m.to_square()) {
         // conventional capture
         let to_opposite_idx = to_alt.opposite() as usize;
         let capturee_idx = board.type_at_square(to_sq).unwrap() as usize;
-        delta.0 += PST[capturee_idx][to_opposite_idx].0;
-        delta.1 += PST[capturee_idx][to_opposite_idx].1;
+        delta += PST[capturee_idx][to_opposite_idx];
     }
 
     if m.is_en_passant() {
         let to_opposite_idx = (to_alt - Color::White.pawn_direction()).opposite() as usize;
-        delta.0 += PST[Piece::Pawn as usize][to_opposite_idx].0;
-        delta.1 += PST[Piece::Pawn as usize][to_opposite_idx].1;
+        delta += PST[Piece::Pawn as usize][to_opposite_idx];
     }
 
     if m.is_castle() {
@@ -113,19 +107,17 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
             false => (Square::H1 as usize, Square::F1 as usize),
         };
 
-        delta.0 +=
-            PST[Piece::Rook as usize][rook_to_idx].0 - PST[Piece::Rook as usize][rook_from_idx].0;
-        delta.1 +=
-            PST[Piece::Rook as usize][rook_to_idx].1 - PST[Piece::Rook as usize][rook_from_idx].1;
+        delta += PST[Piece::Rook as usize][rook_to_idx] - PST[Piece::Rook as usize][rook_from_idx];
     }
 
-    (delta.0, delta.1)
+    delta
 }
 
 /// A function used for ergonomics to convert from a table of millipawn values
 /// to a table of `Eval`s.
 const fn expand_table(centi_table: CentiPst) -> Pst {
-    let mut table = [[(Eval::DRAW, Eval::DRAW); 64]; Piece::NUM_TYPES];
+    // we will overwrite the whole table later
+    let mut table = [[unsafe {MaybeUninit::uninit().assume_init()}; 64]; Piece::NUM_TYPES];
     let mut piece_idx = 0;
     // I would use for-loops here, but those are unsupported in const fns.
     while piece_idx < Piece::NUM_TYPES {
@@ -133,12 +125,12 @@ const fn expand_table(centi_table: CentiPst) -> Pst {
         while sq_idx < 64 {
             let int_score = centi_table[piece_idx][sq_idx];
             table[piece_idx][sq_idx] =
-                (Eval::centipawns(int_score.0), Eval::centipawns(int_score.1));
+                MaybeUninit::new(Score::centipawns(int_score.0, int_score.1));
             sq_idx += 1;
         }
         piece_idx += 1;
     }
-    table
+    unsafe {transmute(table)}
 }
 
 #[rustfmt::skip] // rustfmt likes to throw a million newlines in this
@@ -221,7 +213,7 @@ mod tests {
         for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
             g.make_move(m, pst_delta(g.board(), m));
             // println!("{g}");
-            assert_eq!(g.position().pst_val, pst_evaluate(g.board()));
+            assert_eq!(g.position().score, pst_evaluate(g.board()));
             g.undo().unwrap();
         }
     }

@@ -25,7 +25,7 @@
 //! effect on evaluation, and then hedges its bets by marking captures using 
 //! high-value pieces as poor.
 
-use crate::evaluate::{phase_blend, phase_of, value_delta};
+use crate::evaluate::{phase_of, value_delta};
 
 use super::material;
 use fiddler_base::{movegen::NominateMove, Eval, Move, Position, Score};
@@ -56,7 +56,6 @@ pub fn candidacy(pos: &Position, m: Move, delta: Score) -> Eval {
     // Worst case, we don't keep the piece we captured
     let mut worst_case_delta = delta;
     let mover_value = material::value(mover_type);
-    worst_case_delta.0 -= mover_value.0;
-    worst_case_delta.1 -= mover_value.1;
-    phase_blend(phase, worst_case_delta)
+    worst_case_delta -= mover_value;
+    worst_case_delta.blend(phase)
 }

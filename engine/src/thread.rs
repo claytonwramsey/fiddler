@@ -78,7 +78,7 @@ impl MainSearch {
         let mut best_result = Err(SearchError::Timeout);
         for depth in 1..=self.config.depth {
             // iterative deepening
-            
+
             let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
             for _thread_id in 0..=self.config.n_helpers {

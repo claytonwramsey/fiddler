@@ -257,7 +257,7 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Board, Eval, Move, Square};
+    use crate::{Board, Move, Square};
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board
@@ -268,7 +268,7 @@ mod tests {
         let old_board = *g.board();
         g.make_move(
             Move::normal(Square::E2, Square::E4),
-            (Eval::DRAW, Eval::DRAW),
+            Score::DRAW,
         );
         let new_board = g.board();
         crate::board::tests::test_move_result_helper(old_board, *new_board, m);
@@ -279,7 +279,7 @@ mod tests {
     fn test_undo_move() {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
-        g.make_move(m, (Eval::DRAW, Eval::DRAW));
+        g.make_move(m, Score::DRAW);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(*g.board(), Board::default());
     }
@@ -298,8 +298,8 @@ mod tests {
         let mut g = Game::new();
         let m0 = Move::normal(Square::E2, Square::E4);
         let m1 = Move::normal(Square::E7, Square::E5);
-        g.make_move(m0, (Eval::DRAW, Eval::DRAW));
-        g.make_move(m1, (Eval::DRAW, Eval::DRAW));
+        g.make_move(m0, Score::DRAW);
+        g.make_move(m1, Score::DRAW);
         assert_eq!(g.undo_n(2), Ok(()));
         assert_eq!(*g.board(), Board::default());
     }
@@ -311,7 +311,7 @@ mod tests {
         let mut g = Game::new();
         g.make_move(
             Move::normal(Square::E2, Square::E4),
-            (Eval::DRAW, Eval::DRAW),
+            Score::DRAW,
         );
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::new());
@@ -324,7 +324,7 @@ mod tests {
         let fen = "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7";
         let mut g = Game::from_fen(fen, Position::no_eval).unwrap();
         let m = Move::normal(Square::D1, Square::F3);
-        g.make_move(m, (Eval::DRAW, Eval::DRAW));
+        g.make_move(m, Score::DRAW);
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g, Game::from_fen(fen, Position::no_eval).unwrap());
         assert_eq!(g.board(), &Board::from_fen(fen).unwrap());
@@ -372,7 +372,7 @@ mod tests {
         let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
         let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves::<ALL, NoopNominator>().contains(&(m, ())));
-        g.make_move(m, (Eval::DRAW, Eval::DRAW));
+        g.make_move(m, Score::DRAW);
         assert_eq!(g.is_over(), (true, Some(Color::White)));
     }
 
@@ -383,7 +383,7 @@ mod tests {
         let mut g = Game::new();
         g.make_move(
             Move::normal(Square::E2, Square::E4),
-            (Eval::DRAW, Eval::DRAW),
+            Score::DRAW,
         );
         g.clear();
         assert_eq!(g, Game::new());

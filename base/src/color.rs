@@ -19,7 +19,7 @@
 //! Representation of player colors.
 
 use super::{Bitboard, Direction};
-use std::ops::Not;
+use std::{ops::Not, mem::transmute};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -65,10 +65,10 @@ impl Not for Color {
     type Output = Self;
     #[inline(always)]
     fn not(self) -> Color {
-        match self {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        }
+        // self as u8 will always be 0 or 1
+        // so self as u8 ^ 1 will always be 1 or 0
+        // so we can safely transmute back
+        unsafe {transmute(self as u8 ^ 1)}
     }
 }
 

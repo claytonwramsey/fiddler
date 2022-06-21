@@ -93,12 +93,12 @@ impl Bitboard {
     pub const fn has_single_bit(&self) -> bool {
         // 5 arithmetic operations, 
         // faster than the 13 required for `count_ones() == 1`
-        self.0 != 0 && (self.0 & (self.0 - 1)) == 0
+        self.0 != 0 && (self.0 & self.0.overflowing_sub(1).0) == 0
     }
 
     /// Determine whether more than one bit is set in this bitboard.
     pub const fn more_than_one(&self) -> bool {
-        (self.0 & (self.0 - 1)) != 0
+        (self.0 & self.0.overflowing_sub(1).0) != 0
     }
 }
 

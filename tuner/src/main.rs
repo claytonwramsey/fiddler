@@ -182,8 +182,8 @@ fn load_weights() -> Vec<f32> {
     let mut weights = Vec::new();
     for pt in Piece::NON_KING_TYPES {
         let val = material::value(pt);
-        weights.push(val.0.float_val());
-        weights.push(val.1.float_val());
+        weights.push(val.mg.float_val());
+        weights.push(val.eg.float_val());
     }
 
     for pt in Piece::ALL_TYPES {
@@ -191,17 +191,17 @@ fn load_weights() -> Vec<f32> {
             for file in 0..8 {
                 let sq_idx = 8 * rank + file;
                 let score = PST[pt as usize][sq_idx];
-                weights.push(score.0.float_val());
-                weights.push(score.1.float_val());
+                weights.push(score.mg.float_val());
+                weights.push(score.eg.float_val());
             }
         }
     }
 
-    weights.push(DOUBLED_PAWN_VALUE.0.float_val());
-    weights.push(DOUBLED_PAWN_VALUE.1.float_val());
+    weights.push(DOUBLED_PAWN_VALUE.mg.float_val());
+    weights.push(DOUBLED_PAWN_VALUE.eg.float_val());
 
-    weights.push(OPEN_ROOK_VALUE.0.float_val());
-    weights.push(OPEN_ROOK_VALUE.1.float_val());
+    weights.push(OPEN_ROOK_VALUE.mg.float_val());
+    weights.push(OPEN_ROOK_VALUE.eg.float_val());
 
     weights
 }

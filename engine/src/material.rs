@@ -27,17 +27,17 @@
 //! chess player worth their salt might tell you that bishops are a little more 
 //! valuable than knights. Empirically, the engine agrees.
 
-use fiddler_base::{Board, Color, Eval, Move, Piece, Score};
+use fiddler_base::{Board, Color, Move, Piece, Score};
 
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {
     match pt {
-        Piece::Knight => Eval::score(288, 289),
-        Piece::Bishop => Eval::score(330, 331),
-        Piece::Rook => Eval::score(470, 452),
-        Piece::Queen => Eval::score(966, 965),
-        Piece::Pawn => Eval::score(101, 103), // comically, a pawn is not worth 100cp
-        Piece::King => Eval::score(0, 0),
+        Piece::Knight => Score::centipawns(288, 289),
+        Piece::Bishop => Score::centipawns(330, 331),
+        Piece::Rook => Score::centipawns(470, 452),
+        Piece::Queen => Score::centipawns(966, 965),
+        Piece::Pawn => Score::centipawns(101, 103), // comically, a pawn is not worth 100cp
+        Piece::King => Score::centipawns(0, 0),
     }
 }
 
@@ -50,17 +50,13 @@ pub fn material_delta(b: &Board, m: Move) -> Score {
     } else {
         b.type_at_square(m.to_square())
     };
-    let mut gain = capturee_type.map_or_else(|| Eval::score(0, 0), value);
+    let mut gain = capturee_type.map_or_else(|| Score::centipawns(0, 0), value);
 
     if m.is_promotion() {
         // we already checked that m is a promotion, so we can trust that it has
         // a promotion
-        let promotion_gain = value(unsafe { m.promote_type().unwrap_unchecked() });
-        gain.0 += promotion_gain.0;
-        gain.1 += promotion_gain.1;
-        let pawn_val = value(Piece::Pawn);
-        gain.0 -= pawn_val.0;
-        gain.1 -= pawn_val.1;
+        gain += value(unsafe { m.promote_type().unwrap_unchecked() });
+        gain -= value(Piece::Pawn);
     }
 
     // we need not put this delta in perspective, that is `Position`'s job
@@ -69,7 +65,7 @@ pub fn material_delta(b: &Board, m: Move) -> Score {
 
 /// Evaluate a position solely by the amount of material available.
 pub fn evaluate(b: &Board) -> Score {
-    let mut score = Eval::score(0, 0);
+    let mut score = Score::centipawns(0, 0);
 
     let white_occupancy = b[Color::White];
     let black_occupancy = b[Color::Black];
@@ -78,11 +74,9 @@ pub fn evaluate(b: &Board) -> Score {
         // Total the quantity of white and black pieces of this type, and
         // multiply their individual value to get the net effect on the eval.
         let pt_squares = b[pt];
-        let white_diff = (white_occupancy & pt_squares).count_ones() as i16
-            - (black_occupancy & pt_squares).count_ones() as i16;
-        let val = value(pt);
-        score.0 += val.0 * white_diff;
-        score.1 += val.1 * white_diff;
+        let white_diff = (white_occupancy & pt_squares).count_ones() as i8
+            - (black_occupancy & pt_squares).count_ones() as i8;
+        score += value(pt) * white_diff;
     }
 
     score
@@ -101,7 +95,7 @@ mod tests {
         for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
             g.make_move(m, material_delta(g.board(), m));
             // println!("{g}");
-            assert_eq!(g.position().pst_val, evaluate(g.board()));
+            assert_eq!(g.position().score, evaluate(g.board()));
             g.undo().unwrap();
         }
     }

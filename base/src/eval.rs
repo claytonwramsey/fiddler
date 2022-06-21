@@ -49,10 +49,19 @@ use crate::Color;
 /// ```
 pub struct Eval(i16);
 
-/// A `Score` is a pair of `Eval`s. The first element in the score is the
-/// midgame evaluation, and the second is the endgame evaluation. At evaluation
-/// time, the two evaluations are blended to produce a final evaluation.
-pub type Score = (Eval, Eval);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A `Score` is a pair of two `Evals` - one for the midgame and one for the 
+/// endgame. The values inside of a `Score` should never be mate values. 
+/// 
+/// Internally, `Score`s are represented as a single integer to improve 
+/// arithmetic speed. The higher 16 bits are for the midgame evaluation, and the 
+/// lower 16 are for endgame.
+pub struct Score {
+    /// The midgame-only evaluation of a position.
+    pub mg: Eval,
+    /// The endgame-only evaluation of a position.
+    pub eg: Eval,
+}
 
 impl Eval {
     /// An evaluation which is smaller than every other "normal" evaluation.
@@ -90,13 +99,6 @@ impl Eval {
     /// Construct an `Eval` with the given value in centipawns.
     pub const fn centipawns(x: i16) -> Eval {
         Eval(x)
-    }
-
-    #[inline(always)]
-    /// Convert a pair of centipawn values into a `Score` containing two
-    /// `Evals`.
-    pub const fn score(midgame_val: i16, endgame_val: i16) -> Score {
-        (Eval::centipawns(midgame_val), Eval::centipawns(endgame_val))
     }
 
     #[inline(always)]
@@ -189,6 +191,32 @@ impl Eval {
     }
 }
 
+impl Score {
+    /// The score for a position which is completely drawn.
+    pub const DRAW: Score = Score::centipawns(0, 0);
+
+    /// Create a new `Score` by composing two evaluations together.
+    pub const fn new(mg: Eval, eg: Eval) -> Score {
+        Score { mg, eg, }
+    }
+
+    /// Create a `Score` directly as a pair of centipawn values.
+    pub const fn centipawns(mg: i16, eg: i16) -> Score {
+        Score::new(Eval::centipawns(mg), Eval::centipawns(eg))
+    }
+
+    /// Blend the midgame and endgame 
+    pub fn blend(&self, phase: f32) -> Eval {
+        #[cfg(debug_assertions)] {
+            // in test mode, require that the phase is between 0 and 1
+            assert!(0. <= phase);
+            assert!(phase <= 1.);
+        }
+
+        self.mg * phase + self.eg * (1. - phase)
+    }
+}
+
 impl Display for Eval {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if self.0 > Eval::MATE_CUTOFF {
@@ -205,6 +233,12 @@ impl Display for Eval {
             write!(f, "{:+2.2}", self.0 as f32 / Eval::PAWN_VALUE as f32)?;
         }
         Ok(())
+    }
+}
+
+impl Display for Score {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.mg, self.eg)
     }
 }
 
@@ -285,6 +319,52 @@ impl Neg for Eval {
     }
 }
 
+impl AddAssign<Score> for Score {
+    fn add_assign(&mut self, rhs: Score) {
+        self.mg += rhs.mg;
+        self.eg += rhs.eg;
+    }
+}
+
+impl SubAssign<Score> for Score {
+    fn sub_assign(&mut self, rhs: Score) {
+        self.mg -= rhs.mg;
+        self.eg -= rhs.eg;
+    }
+}
+
+impl Add<Score> for Score {
+    type Output = Self;
+
+    fn add(self, rhs: Score) -> Self::Output {
+        Score::new(self.mg + rhs.mg, self.eg + rhs.eg)
+    }
+}
+
+impl Sub<Score> for Score {
+    type Output = Self;
+
+    fn sub(self, rhs: Score) -> Self::Output {
+        Score::new(self.mg - rhs.mg, self.eg - rhs.eg)
+    }
+}
+
+impl Mul<i8> for Score {
+    type Output = Self;
+
+    fn mul(self, rhs: i8) -> Self::Output {
+        Score::new(self.mg * rhs, self.eg * rhs)
+    }
+}
+
+impl Mul<u32> for Score {
+    type Output = Self;
+
+    fn mul(self, rhs: u32) -> Self::Output {
+        Score::new(self.mg * rhs, self.eg * rhs)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,5 +439,17 @@ mod tests {
             -Eval(Eval::MATE_CUTOFF + 1),
             -Eval(Eval::MATE_CUTOFF + 2).step_back()
         );
+    }
+
+    #[test]
+    /// Test that multiplying scores doesn't screw up and cause weird overflows.
+    fn test_score_multiply() {
+        let s1 = Score::centipawns(-289, 0);
+        let s2 = Score::centipawns(-289, -200);
+        assert_eq!(s1 * 2i8, Score::centipawns(-578, 0));
+        assert_eq!(s2 * 2i8, Score::centipawns(-578, -400));
+        
+        assert_eq!(s1 * -2i8, Score::centipawns(578, 0));
+        assert_eq!(s2 * -2i8, Score::centipawns(578, 400));
     }
 }
