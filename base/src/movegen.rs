@@ -159,7 +159,7 @@ impl CheckInfo {
             CheckInfo::analyze_pins(b, b[Color::White], black_king_sq);
 
         // outdated check square computations
-        
+
         /*
         // we assume that we were not in check before
         let bishop_check_sqs = MAGIC.bishop_attacks(b.occupancy(), king_sq);
@@ -207,7 +207,8 @@ impl CheckInfo {
         for sniper_sq in snipers {
             let between_bb = between(sq, sniper_sq);
 
-            if (between_bb & occupancy).count_ones() == 1 {
+            if (between_bb & occupancy).has_single_bit() {
+                // only one blocker
                 blockers |= between_bb;
                 if let Some(color) = sq_color {
                     if !(board[color] & between_bb).is_empty() {
@@ -251,7 +252,6 @@ impl NominateMove for NoopNominator {
 /// could be played. Requires that the move must have been legal on *some*
 /// board, but not necessarily the given one.
 pub fn is_legal(m: Move, pos: &Position) -> bool {
-    let n_checkers = pos.check_info.checkers.count_ones();
     let from_sq = m.from_square();
     let to_sq = m.to_square();
     let player = pos.board.player_to_move;
@@ -278,7 +278,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
             }
 
             let mut is_pseudolegal = KING_MOVES[from_sq as usize].contains(to_sq);
-            if m.is_castle() && n_checkers == 0 {
+            if m.is_castle() && pos.check_info.checkers.is_empty() {
                 // just generate moves, since castle is quite rare
                 let mut move_buf = Vec::with_capacity(2);
                 castles::<NoopNominator>(pos, &mut move_buf);
@@ -288,7 +288,8 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
             is_pseudolegal && validate(m, pos)
         }
         Some(pt) => {
-            if n_checkers == 2 {
+            if pos.check_info.checkers.more_than_one() {
+                // non-kings can't get out of double check
                 return false;
             }
 
@@ -349,27 +350,25 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
             };
 
             // check that the move is not a self check
-            match n_checkers {
-                0 => (),
-                1 => {
-                    let checker_sq = Square::try_from(pos.check_info.checkers).unwrap();
-                    let player_idx = pos.board.player_to_move as usize;
-                    let king_idx = pos.king_sqs[player_idx] as usize;
-                    let mut targets =
-                        BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
+            if !pos.check_info.checkers.is_empty() {
+                // we already handled the two-checker case, so there is only one
+                // checker
+                let checker_sq = Square::try_from(pos.check_info.checkers).unwrap();
+                let player_idx = pos.board.player_to_move as usize;
+                let king_idx = pos.king_sqs[player_idx] as usize;
+                let mut targets =
+                    BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
 
-                    if let Some(ep_sq) = pos.board.en_passant_square {
-                        if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
-                            // allow en passants that let us escape check
-                            targets |= Bitboard::from(ep_sq);
-                        }
-                    }
-
-                    if !targets.contains(to_sq) {
-                        return false;
+                if let Some(ep_sq) = pos.board.en_passant_square {
+                    if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
+                        // allow en passants that let us escape check
+                        targets |= Bitboard::from(ep_sq);
                     }
                 }
-                _ => unreachable!(),
+
+                if !targets.contains(to_sq) {
+                    return false;
+                }
             };
 
             validate(m, pos)
@@ -434,7 +433,7 @@ pub fn has_moves(pos: &Position) -> bool {
 
         // king moves could not prevent checks
         // if this is a double check, we must be mated
-        if king_attackers.count_ones() > 1 {
+        if king_attackers.more_than_one() {
             return false;
         }
 
@@ -627,7 +626,7 @@ fn evasions<const M: GenMode, N: NominateMove>(pos: &Position, moves: &mut Vec<(
     let king_sq = pos.king_sqs[player as usize];
 
     // only look at non-king moves if we are not in double check
-    if pos.check_info.checkers.count_ones() == 1 {
+    if pos.check_info.checkers.has_single_bit() {
         // this unsafe is fine because we already checked
         let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
         // Look for blocks or captures

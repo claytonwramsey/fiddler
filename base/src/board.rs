@@ -255,11 +255,11 @@ impl Board {
             return false;
         }
 
-        if (self[Piece::King] & self[Color::White]).count_ones() != 1 {
+        if !(self[Piece::King] & self[Color::White]).has_single_bit() {
             return false;
         }
 
-        if (self[Piece::King] & self[Color::Black]).count_ones() != 1 {
+        if !(self[Piece::King] & self[Color::Black]).has_single_bit() {
             return false;
         }
 
