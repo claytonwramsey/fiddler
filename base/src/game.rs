@@ -51,7 +51,7 @@ pub struct Game {
     /// Stores the number of times a position has been reached in the course of
     /// this game. It is used for three-move-rule draws. The keys are the
     /// Zobrist hashes of the boards previously visited.
-    repetitions: IntMap<u64, u64>,
+    repetitions: IntMap<u64, u8>,
 }
 
 impl Game {

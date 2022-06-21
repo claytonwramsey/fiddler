@@ -128,13 +128,15 @@ pub struct CheckInfo {
     /// The locations of pieces that are blocking would-be checkers from the
     /// opponent.
     pub king_blockers: [Bitboard; 2],
-    #[allow(unused)]
-    /// The locations of pieces which are pinning their corresponding blockers
-    /// in `king_blockers`.
-    pub pinners: [Bitboard; 2],
-    #[allow(unused)]
-    /// The squares which each piece could move to to check the opposing king.
-    pub check_squares: [Bitboard; Piece::NUM_TYPES],
+
+    /* One day I will use these, but for now we will just pretend they're not here. */
+    // #[allow(unused)]
+    // /// The locations of pieces which are pinning their corresponding blockers
+    // /// in `king_blockers`.
+    // pub pinners: [Bitboard; 2],
+    // #[allow(unused)]
+    // /// The squares which each piece could move to to check the opposing king.
+    // pub check_squares: [Bitboard; Piece::NUM_TYPES],
 }
 
 impl CheckInfo {
@@ -151,18 +153,23 @@ impl CheckInfo {
             )
         };
 
-        let (blockers_white, pinners_black) =
+        let (blockers_white, _pinners_black) =
             CheckInfo::analyze_pins(b, b[Color::Black], white_king_sq);
-        let (blockers_black, pinners_white) =
+        let (blockers_black, _pinners_white) =
             CheckInfo::analyze_pins(b, b[Color::White], black_king_sq);
 
+        // outdated check square computations
+        
+        /*
         // we assume that we were not in check before
         let bishop_check_sqs = MAGIC.bishop_attacks(b.occupancy(), king_sq);
         let rook_check_sqs = MAGIC.rook_attacks(b.occupancy(), king_sq);
+        */
 
         CheckInfo {
             checkers: square_attackers(b, king_sq, !b.player_to_move),
             king_blockers: [blockers_white, blockers_black],
+            /*
             pinners: [pinners_white, pinners_black],
             check_squares: [
                 PAWN_ATTACKS[b.player_to_move as usize][king_sq as usize],
@@ -172,6 +179,7 @@ impl CheckInfo {
                 bishop_check_sqs | rook_check_sqs,
                 Bitboard::EMPTY,
             ],
+            */
         }
     }
 
