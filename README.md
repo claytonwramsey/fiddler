@@ -24,8 +24,6 @@ international master.
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
 
-* Refactor `Score` to be an actual structure with more convenient usage
-
 * Refactor engine files to move evaluation together with material and move
 picking together with candidacy
 
