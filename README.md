@@ -26,6 +26,8 @@ interest:
 
 * Shuffle root move ordering across threads to improve parallelism speedup
 
+* Send back pondermoves
+
 * Actual match data to support Elo estimates
 
 * Futility and null-move pruning
