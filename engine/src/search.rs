@@ -201,28 +201,32 @@ impl<'a> PVSearch<'a> {
         depth_to_go: i8,
         depth_so_far: u8,
         g: &mut Game,
-        alpha_in: Eval,
-        beta_in: Eval,
+        mut alpha: Eval,
+        mut beta: Eval,
         allow_reduction: bool,
     ) -> PVSResult {
-        if self.limit.is_over() {
-            return Err(SearchError::Timeout);
-        }
-
         if self.is_main {
             self.limit.update_time()?;
         }
 
-        if alpha_in >= Eval::mate_in(1) {
-            // we do not need to evaluate this position because we are
-            // guaranteed a mate which is as fast or faster elsewhere.
-            return Ok((Move::BAD_MOVE, Eval::mate_in(2)));
+        if self.limit.is_over() {
+            return Err(SearchError::Timeout);
         }
 
-        // Lower bound on evaluation.
-        let mut alpha = alpha_in;
-        // Upper bound on evaluation.
-        let mut beta = beta_in;
+        if depth_to_go <= 0 {
+            return self.quiesce(depth_to_go, depth_so_far, g, alpha, beta);
+        }
+
+        self.increment_nodes()?;
+
+        // mate distance pruning:
+        alpha = max(-Eval::mate_in(0), alpha);
+        beta = min(Eval::mate_in(1), beta);
+        if alpha >= beta {
+            // even if we mated our opponent at the end of this search, we would 
+            // not achieve anything better than what we already had
+            return Ok((Move::BAD_MOVE, alpha));
+        }
 
         // Retrieve transposition data and use it to improve our estimate on
         // the position
@@ -239,10 +243,10 @@ impl<'a> PVSearch<'a> {
                 }
                 if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
-                    if edata.lower_bound >= beta_in {
+                    if edata.lower_bound >= beta {
                         return Ok((m, edata.lower_bound));
                     }
-                    if edata.upper_bound <= alpha_in {
+                    if edata.upper_bound <= alpha {
                         return Ok((m, edata.upper_bound));
                     }
                     alpha = max(alpha, edata.lower_bound);
@@ -250,12 +254,6 @@ impl<'a> PVSearch<'a> {
                 }
             }
         }
-
-        if depth_to_go <= 0 {
-            return self.quiesce(depth_to_go, depth_so_far, g, alpha_in, beta_in);
-        }
-
-        self.increment_nodes()?;
 
         if g.is_drawn_historically() {
             // required so that movepicker only needs to know about current
@@ -394,21 +392,15 @@ impl<'a> PVSearch<'a> {
         depth_to_go: i8,
         depth_so_far: u8,
         g: &mut Game,
-        alpha_in: Eval,
-        beta_in: Eval,
+        mut alpha: Eval,
+        beta: Eval,
     ) -> PVSResult {
         let player = g.board().player_to_move;
-
-        if alpha_in >= Eval::mate_in(1) {
-            // we do not need to evaluate this position because we are
-            // guaranteed a mate which is as fast or faster elsewhere.
-            return Ok((Move::BAD_MOVE, Eval::mate_in(2)));
-        }
 
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if !g.position().check_info.checkers.is_empty() {
-            return self.pvs(1, depth_so_far, g, alpha_in, beta_in, false);
+            return self.pvs(1, depth_so_far, g, alpha, beta, false);
         }
 
         self.increment_nodes()?;
@@ -421,8 +413,6 @@ impl<'a> PVSearch<'a> {
         }*/
         // Put the score in perspective of the player.
         let mut score = leaf_evaluation.in_perspective(player);
-        let mut alpha = alpha_in;
-        let beta = beta_in;
 
         alpha = max(score, alpha);
         if alpha >= beta {
