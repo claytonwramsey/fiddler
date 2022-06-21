@@ -16,6 +16,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Code which defines the engine's behavior. Included below are methods for 
+//! evaluating positions, searching trees, storing data, configuring engines, 
+//! and more.
+
 use fiddler_base::{Eval, Move};
 use search::SearchError;
 
@@ -30,8 +34,6 @@ mod search;
 pub mod thread;
 pub mod time;
 pub mod transposition;
-
-/// UCI-compliant parser and data structures.
 pub mod uci;
 
 #[allow(unused)]

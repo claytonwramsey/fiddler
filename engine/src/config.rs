@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Configurations for the engine.
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Configuration options for a search.
 pub struct SearchConfig {

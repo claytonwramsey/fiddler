@@ -16,6 +16,20 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Parsing and constructing Universal Chess Interface (UCI) messages.
+//! 
+//! UCI is a MVC standard for writing chess engines. The GUI sends commands to 
+//! the engine, and the engine then thinks according to the messages sent to it.
+//! In general, the GUI dictates much of the pace of this interaction, and the 
+//! engine just plays along.
+//! 
+//! `UciCommand` describes all the messages that can be received for a UCI 
+//! engine. Meanwhile, `UciMessage` describes all the messages that the engine 
+//! can send back to the GUI.
+//! 
+//! For a full specification of the UCI standard, see 
+//! [here](https://backscattering.de/).
+
 use crate::Move;
 
 mod parse;

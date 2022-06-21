@@ -16,8 +16,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//! A module containing the information for Piece-Square Tables (PSTs). A PST
-//! is given for both the early and endgame.
+//! Piece-Square Tables (PSTs).
+//!
+//! A PST is a table with an item for each piece at each square. It grants a
+//! fixed value to the evaluation of a position for each piece, granting
+//! benefits for being on "good" squares and penalties for pieces on "bad" ones.
+//! For instance, a knight is much more valuable near the center, so the PST
+//! value for a knight on rank 4 and file 3 is positive.
 
 use fiddler_base::{Board, Color, Eval, Move, Piece, Score, Square};
 
@@ -209,7 +214,7 @@ mod tests {
 
     use super::*;
     use fiddler_base::movegen::{get_moves, NoopNominator, ALL};
-    use fiddler_base::{Game};
+    use fiddler_base::Game;
 
     fn delta_helper(fen: &str) {
         let mut g = Game::from_fen(fen, pst_evaluate).unwrap();

@@ -20,7 +20,7 @@ use std::env;
 
 use fiddler_base::{perft::perft, Game};
 use fiddler_cli::FiddlerApp;
-use fiddler_engine::{thread::MainSearch, evaluate::static_evaluate};
+use fiddler_engine::{evaluate::static_evaluate, thread::MainSearch};
 
 fn main() {
     let args: Vec<String> = env::args().collect();

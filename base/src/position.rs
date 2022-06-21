@@ -77,12 +77,8 @@ impl Position {
     pub fn make_move(&mut self, m: Move, delta: Score) {
         // reduce evaluation for goot moves for Black
         match self.board.player_to_move {
-            Color::White => {
-                self.pst_val = (self.pst_val.0 + delta.0, self.pst_val.1 + delta.1)
-            }
-            Color::Black => {
-                self.pst_val = (self.pst_val.0 - delta.0, self.pst_val.1 - delta.1)
-            }
+            Color::White => self.pst_val = (self.pst_val.0 + delta.0, self.pst_val.1 + delta.1),
+            Color::Black => self.pst_val = (self.pst_val.0 - delta.0, self.pst_val.1 - delta.1),
         }
         if m.from_square() == self.king_sqs[self.board.player_to_move as usize] {
             // update king locations

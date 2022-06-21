@@ -16,6 +16,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Thread management and synchronization.
+//!
+//! This is the meat of parallelism in
+//! the engine: a `MainSearch` is responsible for coralling all the threads and
+//! getting them to work together and on time. The main search also collects all
+//! of the output from each individual search and composes it into a single
+//! easily-used structure for consumption in the main process.
+
 use std::{
     sync::Arc,
     thread::{spawn, JoinHandle},
@@ -69,6 +77,8 @@ impl MainSearch {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
         for depth in 1..=self.config.depth {
+            // iterative deepening
+            
             let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
             for _thread_id in 0..=self.config.n_helpers {

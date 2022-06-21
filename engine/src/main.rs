@@ -16,6 +16,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! The main UCI procedure.
+//! 
+//! This code handles the central logic of actually running an engine. We 
+//! function quickly by constantly listening for new commands from the GUI, and 
+//! then spinning up threads to execute each command. 
+//! 
+//! Many of the details of concurrency required to achieve this are finicky; I 
+//! am hopeful that we can develop more elegant solutions in the future.
+
 use std::{
     io::stdin,
     sync::{Arc, RwLock},
@@ -25,10 +34,11 @@ use std::{
 
 use fiddler_base::Game;
 use fiddler_engine::{
+    evaluate::{static_evaluate, value_delta},
     thread::MainSearch,
     time::get_search_time,
     transposition::TTable,
-    uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage}, evaluate::{static_evaluate, value_delta},
+    uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
 };
 
 /// Run a UCI engine.

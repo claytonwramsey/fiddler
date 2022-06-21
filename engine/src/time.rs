@@ -17,6 +17,13 @@
 */
 
 //! Time management heuristics and decision making.
+//!
+//! In a match, a chess engine is usually given a budget of time for the entire
+//! game, and it is the engine's duty to decide how much to use when making each
+//! move. More sophisticated engines do an analysis of the position and guess
+//! its complexity, giving themselves more time in positions which are more
+//! complex. For now, Fiddler is not so intelligent, and instead rations time to
+//! itself indiscriminately.
 
 use std::cmp::min;
 

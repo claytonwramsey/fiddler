@@ -16,6 +16,25 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Move selection and phased generation.
+//!
+//! In order to search effectively, all alpha-beta searches require an
+//! effective move ordering which puts the best moves first. This move ordering
+//! is the move picker's job.
+//!
+//! The move picker generates moves "lazily," that is, by only performing move
+//! generations when it has no other choice. Often, playing the transposition
+//! move (found by looking up the position in the transposition table) can be
+//! enough to cause a beta-cutoff, ending the search in a subtree without ever
+//! having to generate moves.
+//!
+//! In addition, moves are generated in phases, so that not all moves are
+//! created at once. Captures, being usually the most likely move to cause a
+//! cutoff, are generated first, before the quiet moves. However, some captures
+//! are extremely bad, and lose material on the spot. Accordingly, those
+//! captures tagged with negative candidacy are sent straight to the back of the
+//! move ordering.
+
 use std::mem::swap;
 
 use fiddler_base::{

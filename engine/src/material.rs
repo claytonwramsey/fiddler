@@ -16,7 +16,18 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use fiddler_base::{Board, Color, Eval, Piece, Score, Move};
+//! Material values for each piece.
+//! 
+//! Every piece is assigned a numeric value in centipawns (cp). Under normal 
+//! conditions, a centipawn is 100cp, however, the consequences of tuning have 
+//! yielded values for pawns slightly off of that mark.
+//! 
+//! In traditional chess, pawns are worth 100cp, knights and bishops are worth 
+//! 300cp, rooks are worth 500cp, and queens are worth 900cp each. However, any 
+//! chess player worth their salt might tell you that bishops are a little more 
+//! valuable than knights. Empirically, the engine agrees.
+
+use fiddler_base::{Board, Color, Eval, Move, Piece, Score};
 
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {
@@ -25,14 +36,14 @@ pub const fn value(pt: Piece) -> Score {
         Piece::Bishop => Eval::score(330, 331),
         Piece::Rook => Eval::score(470, 452),
         Piece::Queen => Eval::score(966, 965),
-        Piece::Pawn => Eval::score(101, 103),
+        Piece::Pawn => Eval::score(101, 103), // comically, a pawn is not worth 100cp
         Piece::King => Eval::score(0, 0),
     }
 }
 
 /// Compute the effect that a move will have on the total quantity of material.
 pub fn material_delta(b: &Board, m: Move) -> Score {
-    // material only ever changes value based on captures and promotions, so 
+    // material only ever changes value based on captures and promotions, so
     // this is easy
     let capturee_type = if m.is_en_passant() {
         Some(Piece::Pawn)
@@ -40,11 +51,11 @@ pub fn material_delta(b: &Board, m: Move) -> Score {
         b.type_at_square(m.to_square())
     };
     let mut gain = capturee_type.map_or_else(|| Eval::score(0, 0), value);
-    
+
     if m.is_promotion() {
-        // we already checked that m is a promotion, so we can trust that it has 
+        // we already checked that m is a promotion, so we can trust that it has
         // a promotion
-        let promotion_gain = value(unsafe {m.promote_type().unwrap_unchecked()});
+        let promotion_gain = value(unsafe { m.promote_type().unwrap_unchecked() });
         gain.0 += promotion_gain.0;
         gain.1 += promotion_gain.1;
         let pawn_val = value(Piece::Pawn);
@@ -77,11 +88,13 @@ pub fn evaluate(b: &Board) -> Score {
     score
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::{movegen::{get_moves, NoopNominator, ALL}, Game};
+    use fiddler_base::{
+        movegen::{get_moves, NoopNominator, ALL},
+        Game,
+    };
 
     fn delta_helper(fen: &str) {
         let mut g = Game::from_fen(fen, evaluate).unwrap();

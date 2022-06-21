@@ -16,9 +16,16 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use crate::{
-    evaluate::{phase_blend, phase_of, value_delta},
-};
+//! Move candidacy. 
+//! 
+//! Because it's important that good moves are sorted first, a good candidacy 
+//! function can dramatically improve an engine's performance. 
+//! 
+//! Fiddler's candidacy function is relatively simple: it calculates the move's 
+//! effect on evaluation, and then hedges its bets by marking captures using 
+//! high-value pieces as poor.
+
+use crate::evaluate::{phase_blend, phase_of, value_delta};
 
 use super::material;
 use fiddler_base::{movegen::NominateMove, Eval, Move, Position, Score};

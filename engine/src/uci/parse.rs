@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Parser for UCI messages from the GUI.
+
 use fiddler_base::Board;
 
 use crate::Move;

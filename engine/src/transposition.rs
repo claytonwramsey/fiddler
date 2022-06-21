@@ -16,6 +16,26 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Transposition tables.
+//!
+//! A transposition table is a large hash-map from hashkeys of board positions
+//! to useful information about each position. The intent of a transposition
+//! table is twofold: first, if the same position is reached through multiple
+//! lines, the engine can reuse its old evaluation. Second, in multithreaded
+//! contexts, the transposition table is the only way in which two threads can
+//! communicate about their search.
+//!
+//! Fiddler uses a lock-less atomic transposition table with a depth and a
+//! recency slot in each bucket. The primary idea for this approach comes from
+//! Hyatt and Mann, 2002. This lock-less approach is slow, however, and it may
+//! be that we must move to a
+//!
+//! Each entry (or bucket) has two slots which can store data. The recency slot
+//! is evicted every time that a new entry is created, and replaced by the new
+//! entry. Meanwhile, the depth slot is only evicted when an entry of greater
+//! depth is created, allowing us to keep entries which might save us lots of
+//! time in the future.
+
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use fiddler_base::{Eval, Move};

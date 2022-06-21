@@ -26,13 +26,27 @@ interest:
 
 * Refactor `Score` to be an actual structure with more convenient usage
 
+* Refactor engine files to move evaluation together with material and move
+picking together with candidacy
+
+* Shuffle root move ordering across threads to improve parallelism speedup
+
 * Actual match data to support Elo estimates
 
 * Futility and null-move pruning
 
 * Tablebase support
 
+* Move away from `rusqlite` for tuner DB access so that the tuner can be run on
+non-Linux platforms
+
 * Opening book support
+
+* Add a mate-searching thread
+
+* Add loads of doctests to make usage more clear
+
+* Develop intelligent time-management schemes
 
 * PEXT sliding movegen on x86 architectures
 
@@ -44,6 +58,22 @@ results.
 
 * On rare occasion, sometimes the engine misses simple one-move blunders. I'm
 also not sure what causes this.
+
+## File structure
+
+Fiddler currently consists of four crates:
+
+* `base` contains common definitions across all of Fiddler, such as board state
+and move generation.
+
+* `engine` contains all code for running the Fiddler engine, including the main
+UCI executable.
+
+* `tuner` contains the tuner, which will automatically tune constant values for
+evaluation.
+
+* `cli` contains a command-line interface for testing the engine. We intend to
+eventually retire the CLI.
 
 ## Contributing
 

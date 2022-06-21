@@ -16,6 +16,18 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Primary search algorithms.
+//!
+//! All chess engines do some sort of tree searching,
+//! and as a classical engine, Fiddler uses a variation of Minimax search. In
+//! this case, Fiddler uses principal-variation search, which runs in
+//! Omega(b^{d/2}) time, so long as the move ordering is correct and causes the
+//! most critical moves to be searched first at each depth.
+//!
+//! At each leaf of the principal-variation search, a second, shorter quiescence
+//! search is performed to exhaust all captures in the position, preventing the
+//! mis-evaluation of positions with hanging pieces.
+
 use fiddler_base::{
     movegen::{get_moves, CAPTURES},
     Eval, Game, Move,
@@ -599,7 +611,7 @@ pub mod tests {
     #[test]
     /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
     fn test_mate_in_9_ply() {
-        // because capturing a low-value piece is often a "late" move, it is 
+        // because capturing a low-value piece is often a "late" move, it is
         // likely to be reduced in depth
         test_eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",

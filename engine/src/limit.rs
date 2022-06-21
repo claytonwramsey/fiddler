@@ -16,6 +16,16 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! Search limiting.
+//! 
+//! It makes little sense to wait until a search decides that it's done, as it's 
+//! hard to predict when said search will be done. The code in here is used to 
+//! create limits to how long we can search, so that we don't have to wait 
+//! forever. 
+//! 
+//! A search limit is an inherently concurrent structure - much care must be 
+//! taken to avoid deadlocking.
+
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
