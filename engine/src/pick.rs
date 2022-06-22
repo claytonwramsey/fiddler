@@ -47,7 +47,8 @@ use crate::{
     material,
 };
 
-/// A move nomination strategy which computes a candidacy for each move, and also computes the move's effect on board evaluation.
+/// A move nomination strategy which computes a candidacy for each move, and
+/// also computes the move's effect on board evaluation.
 pub struct CandidacyNominate {}
 
 impl NominateMove for CandidacyNominate {

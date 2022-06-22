@@ -104,43 +104,40 @@ impl MainSearch {
             for handle in handles {
                 let eval_result = handle.join().map_err(|_| SearchError::Join)?;
 
-                match (sub_result, eval_result) {
+                match (&mut sub_result, &eval_result) {
                     // if this is our first successful thread, use its result
-                    (Err(_), Ok(_)) => sub_result = eval_result,
+                    (Err(_), Ok(_)) => sub_result = eval_result.clone(),
                     // if both were successful, use the deepest result
                     (Ok(ref mut best_search), Ok(ref new_search)) => {
                         best_search.unify_with(new_search);
                     }
-                    // error cases cause nothing to happen
                     _ => (),
+                    // error cases cause nothing to happen
                 };
             }
 
-            if let Ok(ref info) = sub_result {
+            if sub_result.is_ok() {
                 // update best result and inform GUI
                 best_result = sub_result;
-                if let Ok(ref mut best_info) = best_result {
-                    best_info.unify_with(info);
-
-                    let elapsed = Instant::now() - tic;
+                let elapsed = Instant::now() - tic;
+                if let Ok(ref best_info) = best_result {
                     println!(
                         "{}",
                         UciMessage::Info(&[
-                            EngineInfo::Depth(depth),
-                            EngineInfo::Time(elapsed),
-                            EngineInfo::Nodes(best_info.num_nodes_evaluated),
-                            EngineInfo::NodeSpeed(
-                                best_info.num_nodes_evaluated * 1000
-                                    / (elapsed.as_millis() as u64 + 1)
-                            ),
-                            EngineInfo::HashFull(self.ttable.fill_rate_permill()),
+                            EngineInfo::Depth(best_info.depth),
                             EngineInfo::Score {
                                 eval: best_info.eval,
                                 is_lower_bound: false,
                                 is_upper_bound: false
-                            }
+                            },
+                            EngineInfo::Nodes(best_info.num_nodes_evaluated),
+                            EngineInfo::NodeSpeed(
+                                1000 * best_info.num_nodes_evaluated / elapsed.as_millis() as u64
+                            ),
+                            EngineInfo::Time(elapsed),
+                            EngineInfo::Pv(&best_info.pv),
                         ])
-                    );
+                    )
                 }
             }
         }

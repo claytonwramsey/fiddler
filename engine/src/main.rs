@@ -257,8 +257,8 @@ fn go(
                 println!(
                     "{}",
                     UciMessage::BestMove {
-                        m: info.best_move,
-                        ponder: None
+                        m: info.pv[0],
+                        ponder: info.pv.get(1).copied(),
                     }
                 );
             }

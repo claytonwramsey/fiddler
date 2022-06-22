@@ -102,22 +102,22 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
 
-    let (m, eval) = searcher.pvs(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true)?;
+    let (_, eval) = searcher.pvs::<true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true)?;
 
     Ok(SearchInfo {
-        best_move: m,
+        pv: searcher.pv,
         eval,
         num_transpositions: searcher.num_transpositions,
         num_nodes_evaluated: searcher.num_nodes_evaluated,
-        highest_successful_depth: depth,
+        depth,
     })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// Information about the search which will be returned at the end of a search.
 pub struct SearchInfo {
-    /// The best move in the position.
-    pub best_move: Move,
+    /// The principal variation of best moves in the sequence.
+    pub pv: Vec<Move>,
     /// The evaluation of the position.
     pub eval: Eval,
     /// The number of times a transposition table get was successful.
@@ -125,17 +125,17 @@ pub struct SearchInfo {
     /// The number of nodes evaluated in this search.
     pub num_nodes_evaluated: u64,
     /// The highest depth at which this search succeeded.
-    pub highest_successful_depth: u8,
+    pub depth: u8,
 }
 
 impl SearchInfo {
     /// Unify with another `SearchInfo`, selecting the most accurate evaluation
     /// (by depth) and summing the number of transpositions and nodes evaluated.
     pub fn unify_with(&mut self, other: &SearchInfo) {
-        if other.highest_successful_depth > self.highest_successful_depth {
-            self.best_move = other.best_move;
+        if other.depth > self.depth || other.depth == self.depth && other.eval > self.eval {
+            self.pv = other.pv.clone();
             self.eval = other.eval;
-            self.highest_successful_depth = other.highest_successful_depth;
+            self.depth = other.depth;
         }
         self.num_nodes_evaluated += other.num_nodes_evaluated;
         self.num_transpositions += other.num_transpositions;
@@ -148,6 +148,8 @@ impl SearchInfo {
 struct PVSearch<'a> {
     /// The transposition table.
     ttable: Arc<TTable>,
+    /// The principal variation.
+    pub pv: Vec<Move>,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
     killer_moves: Vec<Move>,
@@ -177,6 +179,7 @@ impl<'a> PVSearch<'a> {
     ) -> PVSearch {
         PVSearch {
             ttable,
+            pv: Vec::new(),
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
@@ -196,7 +199,7 @@ impl<'a> PVSearch<'a> {
     /// cause it to become negative. In the case where the search returns
     /// `Err`, the moves on `g` will not be correctly undone, so it is strongly
     /// recommended to pass in a reference to a copy of your original game.
-    pub fn pvs(
+    pub fn pvs<const PV: bool>(
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
@@ -214,16 +217,28 @@ impl<'a> PVSearch<'a> {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce(depth_to_go, depth_so_far, g, alpha, beta);
+            return self.quiesce::<PV>(depth_to_go, depth_so_far, g, alpha, beta);
         }
 
         self.increment_nodes()?;
+
+        if g.is_drawn_historically() {
+            if PV {
+                self.pv = Vec::new() // don't reuse old (now incorrect) PV
+            }
+            // required so that movepicker only needs to know about current
+            // position, and not about history
+            return Ok((Move::BAD_MOVE, Eval::DRAW));
+        }
 
         // mate distance pruning:
         alpha = max(-Eval::mate_in(0), alpha);
         beta = min(Eval::mate_in(1), beta);
         if alpha >= beta {
-            // even if we mated our opponent at the end of this search, we would 
+            if PV {
+                self.pv = Vec::new() // don't reuse old (now incorrect) PV
+            }
+            // even if we mated our opponent at the end of this search, we would
             // not achieve anything better than what we already had
             return Ok((Move::BAD_MOVE, alpha));
         }
@@ -237,28 +252,27 @@ impl<'a> PVSearch<'a> {
                 let m = edata.critical_move;
                 stored_move = Some(m);
                 if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
+                    if PV {
+                        self.pv = Vec::new(); // don't reuse old (now incorrect) PV
+                        self.update_pv(m, depth_so_far);
+                    }
                     // searching deeper will not find us an escape from or a
                     // faster mate if the fill tree was searched
                     return Ok((m, edata.lower_bound));
                 }
                 if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
-                    if edata.lower_bound >= beta {
-                        return Ok((m, edata.lower_bound));
-                    }
-                    if edata.upper_bound <= alpha {
-                        return Ok((m, edata.upper_bound));
-                    }
                     alpha = max(alpha, edata.lower_bound);
                     beta = min(beta, edata.upper_bound);
+                    if alpha >= beta {
+                        if PV {
+                            self.pv = Vec::new(); // don't reuse old PV
+                            self.update_pv(m, depth_so_far)
+                        }
+                        return Ok((m, alpha));
+                    }
                 }
             }
-        }
-
-        if g.is_drawn_historically() {
-            // required so that movepicker only needs to know about current
-            // position, and not about history
-            return Ok((Move::BAD_MOVE, Eval::DRAW));
         }
 
         let killer_index = depth_so_far as usize;
@@ -271,16 +285,16 @@ impl<'a> PVSearch<'a> {
         let mut moves_iter = MovePicker::new(*g.position(), stored_move, killer_move);
 
         // perform one search to satisfy PVS
-
-        // since no other moves were searched, there must be something left
-        // in the move picker for us unless the game is over
         let (m, delta) = match moves_iter.next() {
             Some(x) => x,
             None => {
+                if PV {
+                    self.pv = Vec::new() // don't reuse old (now incorrect) PV
+                }
                 return Ok((
                     Move::BAD_MOVE,
-                    leaf_evaluate(g) * (1 - 2 * g.board().player_to_move as i16),
-                ))
+                    leaf_evaluate(g).in_perspective(g.board().player_to_move),
+                ));
             }
         };
         // best move found so far
@@ -288,7 +302,7 @@ impl<'a> PVSearch<'a> {
         g.make_move(m, delta);
         // best score so far
         let mut best_score = -self
-            .pvs(
+            .pvs::<PV>(
                 depth_to_go - 1,
                 depth_so_far + 1,
                 g,
@@ -304,11 +318,15 @@ impl<'a> PVSearch<'a> {
         }
         alpha = max(best_score, alpha);
         if alpha >= beta {
+            // cutoff!
             if can_use_killers {
                 self.killer_moves[killer_index] = m;
             }
             if depth_so_far <= self.config.max_transposition_depth {
                 self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
+            }
+            if PV {
+                self.update_pv(m, depth_so_far);
             }
             return Ok((best_move, best_score));
         }
@@ -325,7 +343,7 @@ impl<'a> PVSearch<'a> {
                 false => depth_to_go - 1,
             };
             let mut score = -self
-                .pvs(
+                .pvs::<false>(
                     depth_to_search,
                     depth_so_far + 1,
                     g,
@@ -346,7 +364,7 @@ impl<'a> PVSearch<'a> {
                     false => -score.step_forward(),
                 };
                 score = -self
-                    .pvs(
+                    .pvs::<PV>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
@@ -379,6 +397,10 @@ impl<'a> PVSearch<'a> {
             self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
         }
 
+        if PV {
+            self.update_pv(m, depth_so_far);
+        }
+
         Ok((best_move, alpha))
     }
 
@@ -387,7 +409,7 @@ impl<'a> PVSearch<'a> {
     /// it needs to go. The given `depth_to_go` does not alter the power of the
     /// search, but serves as a handy tool for the search to understand where
     /// it is.
-    fn quiesce(
+    fn quiesce<const PV: bool>(
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
@@ -400,7 +422,7 @@ impl<'a> PVSearch<'a> {
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if !g.position().check_info.checkers.is_empty() {
-            return self.pvs(1, depth_so_far, g, alpha, beta, false);
+            return self.pvs::<PV>(1, depth_so_far, g, alpha, beta, false);
         }
 
         self.increment_nodes()?;
@@ -416,6 +438,9 @@ impl<'a> PVSearch<'a> {
 
         alpha = max(score, alpha);
         if alpha >= beta {
+            if PV {
+                self.pv = Vec::new();
+            }
             // beta cutoff, this line would not be selected because there is a
             // better option somewhere else
             return Ok((Move::BAD_MOVE, alpha));
@@ -429,7 +454,7 @@ impl<'a> PVSearch<'a> {
             g.make_move(m, delta);
             // zero-window search
             score = -self
-                .quiesce(
+                .quiesce::<false>(
                     depth_to_go - 1,
                     depth_so_far + 1,
                     g,
@@ -443,7 +468,7 @@ impl<'a> PVSearch<'a> {
                 // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
                 score = -self
-                    .quiesce(
+                    .quiesce::<PV>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
@@ -462,6 +487,14 @@ impl<'a> PVSearch<'a> {
             if alpha >= beta {
                 // Beta cutoff, we have  found a better line somewhere else
                 break;
+            }
+        }
+
+        if PV {
+            if best_move != Move::BAD_MOVE {
+                self.update_pv(best_move, depth_so_far);
+            } else {
+                self.pv = Vec::new();
             }
         }
 
@@ -520,6 +553,17 @@ impl<'a> PVSearch<'a> {
         self.nodes_since_limit_update = 0;
         Ok(())
     }
+
+    /// Add a move to the principal variation field, growing the principal
+    /// variation vector if necessary.
+    fn update_pv(&mut self, m: Move, depth: u8) {
+        if self.pv.len() <= depth as usize {
+            // this is a new root - make a brand-new principal variation
+            self.pv = vec![Move::BAD_MOVE; depth as usize + 1];
+        }
+
+        self.pv[depth as usize] = m;
+    }
 }
 
 #[cfg(test)]
@@ -559,7 +603,7 @@ pub mod tests {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             11,
         );
-        println!("best move: {} [{}]", info.best_move, info.eval);
+        println!("best move: {} [{}]", info.pv[0], info.eval);
     }
 
     #[test]
@@ -572,7 +616,7 @@ pub mod tests {
         );
         let m = Move::normal(Square::D1, Square::F3);
 
-        assert_eq!(info.best_move, m);
+        assert_eq!(info.pv[0], m);
     }
 
     /// A helper function which ensures that the evaluation of a position is

@@ -58,10 +58,7 @@ fn main() {
 
                 let r = e.evaluate(&g);
                 let info = r.unwrap();
-                println!(
-                    "depth {}: {} gives {}",
-                    info.highest_successful_depth, info.best_move, info.eval
-                );
+                println!("depth {}: {} gives {}", info.depth, info.pv[0], info.eval);
             }
             _ => {
                 println!("unrecognized mode of operation {:?}", args[0]);
