@@ -211,7 +211,8 @@ impl Game {
             return true;
         }
 
-        if self.history.last().unwrap().1 >= 50 {
+        if self.history.last().unwrap().1 >= 100 {
+            // 50 moves = 100 ply
             // draw by 50 move rule
             return true;
         }
