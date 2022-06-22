@@ -124,7 +124,7 @@ fn main() {
                     Some(fen) => Game::from_fen(&fen, static_evaluate).unwrap(),
                 };
                 for m in moves {
-                    game.make_move(m, value_delta(game.board(), m));
+                    game.try_move(m, value_delta(game.board(), m)).unwrap();
                 }
             }
             UciCommand::Go(opts) => {

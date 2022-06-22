@@ -255,10 +255,14 @@ impl<'a> PVSearch<'a> {
                     if PV {
                         self.pv = Vec::new(); // don't reuse old (now incorrect) PV
                         self.update_pv(m, depth_so_far);
+                    } else {
+                        // searching deeper will not find us an escape from or a
+                        // faster mate if the fill tree was searched
+
+                        // however the principal variation should be searched
+                        // the whole way just to prove it
+                        return Ok((m, edata.lower_bound));
                     }
-                    // searching deeper will not find us an escape from or a
-                    // faster mate if the fill tree was searched
-                    return Ok((m, edata.lower_bound));
                 }
                 if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
@@ -268,8 +272,10 @@ impl<'a> PVSearch<'a> {
                         if PV {
                             self.pv = Vec::new(); // don't reuse old PV
                             self.update_pv(m, depth_so_far)
+                        } else {
+                            // PV must be searched to whole depth
+                            return Ok((m, alpha));
                         }
-                        return Ok((m, alpha));
                     }
                 }
             }

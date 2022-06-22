@@ -205,7 +205,9 @@ impl Iterator for MovePicker {
                 let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
                 if capture_entry.1 .1 < Eval::DRAW {
                     // we are now in bad captures, move on
-                    self.phase = PickPhase::PreQuiet;
+                    self.phase = PickPhase::Killer;
+                    // make sure to leave this move in place
+                    self.capture_buffer[self.capture_index] = capture_entry;
                     return self.next();
                 }
                 // make sure to get a new capture next time
@@ -289,6 +291,44 @@ impl Iterator for MovePicker {
                 }
             }
             _ => (0, None),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fiddler_base::{
+        algebraic::algebraic_from_move,
+        movegen::{NoopNominator, ALL},
+    };
+
+    use super::*;
+
+    #[test]
+    /// Test that all moves are generated in the move picker and that there are
+    /// no duplicates.
+    fn test_generation_correctness() {
+        let pos = Position::from_fen(
+            "r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12",
+            Position::no_eval,
+        )
+        .unwrap();
+        let mp = MovePicker::new(pos, None, None);
+
+        let mp_moves = mp.map(|(m, _)| m);
+        let mg_moves = get_moves::<ALL, NoopNominator>(&pos);
+        for m in mp_moves.clone() {
+            assert!(mg_moves.contains(&(m, ())));
+            println!("{}", algebraic_from_move(m, &pos));
+        }
+
+        for (m, _) in mg_moves {
+            println!("looking for {m} in movepicker moves");
+            assert!(mp_moves.clone().any(|m2| m2 == m));
+        }
+
+        for m in mp_moves.clone() {
+            assert_eq!(mp_moves.clone().filter(|&m2| m2 == m).count(), 1);
         }
     }
 }

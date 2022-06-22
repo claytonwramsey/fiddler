@@ -53,9 +53,6 @@ non-Linux platforms
 coming from, but searches to the same depth can sometimes yield differing
 results.
 
-* On rare occasion, sometimes the engine misses simple one-move blunders. I'm
-also not sure what causes this.
-
 ## File structure
 
 Fiddler currently consists of four crates:
