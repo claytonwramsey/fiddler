@@ -251,19 +251,6 @@ impl<'a> PVSearch<'a> {
                 self.num_transpositions += 1;
                 let m = edata.critical_move;
                 stored_move = Some(m);
-                if edata.lower_bound == edata.upper_bound && edata.lower_bound.is_mate() {
-                    if PV {
-                        self.pv = Vec::new(); // don't reuse old (now incorrect) PV
-                        self.update_pv(m, depth_so_far);
-                    } else {
-                        // searching deeper will not find us an escape from or a
-                        // faster mate if the fill tree was searched
-
-                        // however the principal variation should be searched
-                        // the whole way just to prove it
-                        return Ok((m, edata.lower_bound));
-                    }
-                }
                 if edata.depth >= depth_to_go {
                     // this was a deeper search on the position
                     alpha = max(alpha, edata.lower_bound);
