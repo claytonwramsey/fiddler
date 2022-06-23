@@ -19,6 +19,14 @@ international master.
 
 * Integrated gradient descent tuner
 
+## Usage
+
+Fiddler is built like any Rust project, but has multiple binary files. To create
+the main UCI executable, navigate to the root of this repository and run
+`cargo build --release --bin fiddler_engine`. This will then create the
+executable `target/release/fiddler_engine` (or
+`target/release/fiddler_engine.exe` for Windows users).
+
 ## Future plans
 
 Below are my plans for the future of this engine, in roughly descending order of
