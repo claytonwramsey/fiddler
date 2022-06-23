@@ -34,7 +34,7 @@ interest:
 
 * Shuffle root move ordering across threads to improve parallelism speedup
 
-* Send back pondermoves
+* Support ponderhit and other UCI commands
 
 * Actual match data to support Elo estimates
 
