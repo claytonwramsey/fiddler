@@ -25,16 +25,9 @@
 //! contexts, the transposition table is the only way in which two threads can
 //! communicate about their search.
 //!
-//! Fiddler uses a lock-less atomic transposition table with a depth and a
-//! recency slot in each bucket. The primary idea for this approach comes from
-//! Hyatt and Mann, 2002. This lock-less approach is slow, however, and it may
-//! be that we must move to a
-//!
-//! Each entry (or bucket) has two slots which can store data. The recency slot
-//! is evicted every time that a new entry is created, and replaced by the new
-//! entry. Meanwhile, the depth slot is only evicted when an entry of greater
-//! depth is created, allowing us to keep entries which might save us lots of
-//! time in the future.
+//! Fiddler's transposition table has no locks and is unsafe; i.e. it has 
+//! concurrent access to the same entries. We simply accept that a a data race 
+//! is unlikely for now.
 
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
