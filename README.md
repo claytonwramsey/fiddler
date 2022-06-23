@@ -55,12 +55,6 @@ non-Linux platforms
 
 * PEXT sliding movegen on x86 architectures
 
-## Known issues
-
-* There seems to be some search instability. It's unclear exactly where this is
-coming from, but searches to the same depth can sometimes yield differing
-results.
-
 ## File structure
 
 Fiddler currently consists of four crates:

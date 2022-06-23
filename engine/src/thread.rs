@@ -133,7 +133,8 @@ impl MainSearch {
                             },
                             EngineInfo::Nodes(best_info.num_nodes_evaluated),
                             EngineInfo::NodeSpeed(
-                                1000 * best_info.num_nodes_evaluated / (elapsed.as_millis() + 1) as u64
+                                1000 * best_info.num_nodes_evaluated
+                                    / (elapsed.as_millis() + 1) as u64
                             ),
                             EngineInfo::Time(elapsed),
                             EngineInfo::Pv(&best_info.pv),
@@ -191,7 +192,7 @@ mod tests {
         transposition_speed_comparison(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             11,
-            8,
+            99,
             7,
         );
     }

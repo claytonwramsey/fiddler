@@ -273,9 +273,6 @@ impl Board {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
 
-        // capturing king is illegal
-        debug_assert!(!self[Piece::King].contains(to_sq));
-
         let player = self.player_to_move;
         let opponent = !player;
         //this length is used to determine whether it's not a move that a king

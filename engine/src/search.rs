@@ -612,7 +612,6 @@ pub mod tests {
             10,
         );
         let m = Move::normal(Square::D1, Square::F3);
-
         assert_eq!(info.pv[0], m);
     }
 

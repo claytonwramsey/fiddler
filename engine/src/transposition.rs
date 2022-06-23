@@ -25,9 +25,9 @@
 //! contexts, the transposition table is the only way in which two threads can
 //! communicate about their search.
 //!
-//! Fiddler's transposition table has no locks and is unsafe; i.e. it has 
-//! concurrent access to the same entries. We simply accept that a a data race 
-//! is unlikely for now.
+//! Fiddler's transposition table has no locks and is unsafe; i.e. it has
+//! concurrent access to the same entries. We require that the retrieved move 
+//! from a transposition table be checked for legality before it is played.
 
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -97,6 +97,18 @@ impl TTable {
         }
     }
 
+    pub fn with_size(size_mb: usize) -> TTable {
+        let max_num_entries = size_mb / size_of::<TTEntry>();
+        let new_size = if max_num_entries.is_power_of_two() {
+            max_num_entries
+        } else {
+            // round down to lower power of two
+            max_num_entries.next_power_of_two() >> 1
+        };
+
+        TTable::with_capacity(new_size.trailing_zeros() as usize)
+    }
+
     /// Create a transposition table with a fixed capacity. The capacity is
     /// *not* the number of entries, but rather log_2 of the number of entries.
     ///
@@ -129,12 +141,12 @@ impl TTable {
         }
         let idx = (hash_key & self.mask) as usize;
         let entry = unsafe { self.entries.add(idx) };
-        let entry_hash = unsafe { entry.as_ref().unwrap().hash };
-        if entry_hash == hash_key {
+        let entry_ref = unsafe { entry.as_ref().unwrap() };
+        if entry_ref.hash == hash_key && entry_ref.best_move.value() != 0 {
             // it's a match! Return a valid guard.
             TTEntryGuard {
                 valid: true,
-                hash: entry_hash,
+                hash: entry_ref.hash,
                 entry,
                 _phantom: PhantomData,
             }
@@ -303,7 +315,7 @@ impl<'a> TTEntryGuard<'a> {
     pub fn entry(&self) -> Option<&'a TTEntry> {
         if self.valid {
             // null case is handled by `as_ref()`
-            unsafe { self.entry.as_ref() }
+            unsafe {self.entry.as_ref()}
         } else {
             None
         }
@@ -358,5 +370,89 @@ mod tests {
         );
 
         assert_eq!(tt.get(12).entry(), Some(&entry));
+    }
+
+    #[test]
+    /// Test that writing to an empty table is a no-op.
+    fn attempt_write_empty_table() {
+        let tt = TTable::new();
+        let entry = TTEntry {
+            age: 0,
+            hash: 12,
+            depth: 5,
+            best_move: Move::normal(Square::E2, Square::E4),
+            lower_bound: Eval::DRAW,
+            upper_bound: Eval::centipawns(100),
+        };
+        tt.get(12).save(
+            entry.depth,
+            entry.best_move,
+            entry.lower_bound,
+            entry.upper_bound,
+        );
+
+        assert_eq!(tt.get(12).entry(), None);
+    }
+
+    #[test]
+    /// Test that entries are preserved after resizing a table.
+    fn entry_preserved_after_expand() {
+        let mut tt = TTable::with_size(1000);
+        let entry = TTEntry {
+            age: 0,
+            hash: 2022,
+            depth: 5,
+            best_move: Move::normal(Square::E2, Square::E4),
+            lower_bound: Eval::DRAW,
+            upper_bound: Eval::centipawns(100),
+        };
+        tt.get(2022).save(
+            entry.depth,
+            entry.best_move,
+            entry.lower_bound,
+            entry.upper_bound,
+        );
+        tt.resize(2000);
+
+        assert_eq!(tt.get(2022).entry(), Some(&entry));
+    }
+
+    #[test]
+    /// Test that an entry with the same has can overwrite another entry.
+    fn test_overwrite() {
+        let e0 = TTEntry {
+            age: 0,
+            hash: 2022,
+            depth: 5,
+            best_move: Move::normal(Square::E2, Square::E4),
+            lower_bound: Eval::DRAW,
+            upper_bound: Eval::centipawns(100),
+        };
+        let e1 = TTEntry {
+            age: 0,
+            hash: 2022,
+            depth: 7,
+            best_move: Move::normal(Square::E4, Square::E5),
+            lower_bound: Eval::BLACK_MATE,
+            upper_bound: -Eval::centipawns(100),
+        };
+
+        let tt = TTable::with_capacity(4);
+        
+        tt.get(2022).save(
+            e0.depth,
+            e0.best_move,
+            e0.lower_bound,
+            e0.upper_bound,
+        );
+
+        tt.get(2022).save(
+            e1.depth,
+            e1.best_move,
+            e1.lower_bound,
+            e1.upper_bound,
+        );
+
+        assert_eq!(tt.get(2022).entry(), Some(&e1));
     }
 }
