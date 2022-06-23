@@ -33,14 +33,11 @@ use fiddler_base::{
     Eval, Game, Move,
 };
 
-use crate::pick::CandidacyNominate;
+use crate::{pick::CandidacyNominate, transposition::TTEntryGuard};
 
 use super::{
-    config::SearchConfig,
-    evaluate::leaf_evaluate,
-    limit::SearchLimit,
-    pick::MovePicker,
-    transposition::{EvalData, TTable},
+    config::SearchConfig, evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker,
+    transposition::TTable,
 };
 
 use std::sync::Arc;
@@ -245,24 +242,23 @@ impl<'a> PVSearch<'a> {
 
         // Retrieve transposition data and use it to improve our estimate on
         // the position
-        let mut stored_move = None;
-        if depth_so_far <= self.config.max_transposition_depth {
-            if let Some(edata) = self.ttable.get(g.board().hash) {
-                self.num_transpositions += 1;
-                let m = edata.critical_move;
-                stored_move = Some(m);
-                if edata.depth >= depth_to_go {
-                    // this was a deeper search on the position
-                    alpha = max(alpha, edata.lower_bound);
-                    beta = min(beta, edata.upper_bound);
-                    if alpha >= beta {
-                        if PV {
-                            self.pv = Vec::new(); // don't reuse old PV
-                            self.update_pv(m, depth_so_far)
-                        } else {
-                            // PV must be searched to whole depth
-                            return Ok((m, alpha));
-                        }
+        let mut tt_move = None;
+        let tt_guard = self.ttable.get(g.board().hash);
+        if let Some(entry) = tt_guard.entry() {
+            self.num_transpositions += 1;
+            let m = entry.best_move;
+            tt_move = Some(m);
+            if entry.depth == depth_to_go as u8 {
+                // this was a deeper search on the position
+                alpha = max(alpha, entry.lower_bound);
+                beta = min(beta, entry.upper_bound);
+                if alpha >= beta {
+                    if PV {
+                        self.pv = Vec::new(); // don't reuse old PV
+                        self.update_pv(m, depth_so_far)
+                    } else {
+                        // PV must be searched to whole depth
+                        return Ok((m, alpha));
                     }
                 }
             }
@@ -275,7 +271,7 @@ impl<'a> PVSearch<'a> {
             false => None,
         };
 
-        let mut moves_iter = MovePicker::new(*g.position(), stored_move, killer_move);
+        let mut moves_iter = MovePicker::new(*g.position(), tt_move, killer_move);
 
         // perform one search to satisfy PVS
         let (m, delta) = match moves_iter.next() {
@@ -315,9 +311,14 @@ impl<'a> PVSearch<'a> {
             if can_use_killers {
                 self.killer_moves[killer_index] = m;
             }
-            if depth_so_far <= self.config.max_transposition_depth {
-                self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
-            }
+            self.ttable_store(
+                &mut self.ttable.get(g.board().hash),
+                depth_to_go,
+                alpha,
+                beta,
+                best_score,
+                best_move,
+            );
             if PV {
                 self.update_pv(m, depth_so_far);
             }
@@ -386,9 +387,14 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        if depth_so_far <= self.config.max_transposition_depth {
-            self.ttable_store(g, depth_to_go, alpha, beta, best_score, best_move);
-        }
+        self.ttable_store(
+            &mut self.ttable.get(g.board().hash),
+            depth_to_go,
+            alpha,
+            beta,
+            best_score,
+            best_move,
+        );
 
         if PV {
             self.update_pv(m, depth_so_far);
@@ -499,8 +505,8 @@ impl<'a> PVSearch<'a> {
     /// and `beta` are the upper and lower bounds on the overall position due
     /// to alpha-beta pruning.
     fn ttable_store(
-        &mut self,
-        g: &Game,
+        &self,
+        guard: &mut TTEntryGuard,
         depth: i8,
         alpha: Eval,
         beta: Eval,
@@ -515,15 +521,7 @@ impl<'a> PVSearch<'a> {
             true => score,
             false => Eval::MIN,
         };
-        self.ttable.store(
-            g.board().hash,
-            EvalData {
-                depth,
-                lower_bound,
-                upper_bound,
-                critical_move: best_move,
-            },
-        );
+        guard.save(depth as u8, best_move, lower_bound, upper_bound);
     }
 
     #[inline(always)]
@@ -581,7 +579,7 @@ pub mod tests {
         search(
             g,
             depth,
-            Arc::new(TTable::default()),
+            Arc::new(TTable::with_capacity(25)),
             &config,
             Arc::new(SearchLimit::default()),
             true,
@@ -608,7 +606,6 @@ pub mod tests {
             10,
         );
         let m = Move::normal(Square::D1, Square::F3);
-
         assert_eq!(info.pv[0], m);
     }
 

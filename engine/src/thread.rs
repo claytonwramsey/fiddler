@@ -58,7 +58,7 @@ impl MainSearch {
     pub fn new() -> MainSearch {
         MainSearch {
             config: SearchConfig::new(),
-            ttable: Arc::new(TTable::default()),
+            ttable: Arc::new(TTable::with_capacity(25)),
             limit: Arc::new(SearchLimit::new()),
         }
     }
@@ -73,7 +73,8 @@ impl MainSearch {
     /// of an internal bug or a critical OS interrupt. However, a timeout error
     /// is most likely if the search times out before it can do any computation.
     pub fn evaluate(&self, g: &Game) -> SearchResult {
-        self.ttable.age_up(2);
+        // TODO figure out how to correctly age up the transposition table
+        // self.ttable.age_up(2);
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
         for depth in 1..=self.config.depth {
@@ -132,7 +133,8 @@ impl MainSearch {
                             },
                             EngineInfo::Nodes(best_info.num_nodes_evaluated),
                             EngineInfo::NodeSpeed(
-                                1000 * best_info.num_nodes_evaluated / elapsed.as_millis() as u64
+                                1000 * best_info.num_nodes_evaluated
+                                    / (elapsed.as_millis() + 1) as u64
                             ),
                             EngineInfo::Time(elapsed),
                             EngineInfo::Pv(&best_info.pv),
@@ -158,40 +160,29 @@ impl Default for MainSearch {
 
 #[cfg(test)]
 mod tests {
-    use std::{cmp::max, time::Instant};
+    use std::time::Instant;
 
     use crate::evaluate::static_evaluate;
 
     use super::*;
 
-    /// Compare the speed of a search on a given transposition depth with its
-    /// adjacent depths.
-    fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: u8) {
-        let g = Game::from_fen(fen, static_evaluate).unwrap();
-        for tdepth in max(0, transposition_depth - 1)..=(transposition_depth + 1) {
-            let mut main = MainSearch::new();
-            main.config.depth = depth;
-            main.config.n_helpers = nhelpers;
-            main.config.max_transposition_depth = tdepth;
-
-            let tic = Instant::now();
-            main.evaluate(&g).unwrap();
-            let toc = Instant::now();
-            println!(
-                "tdepth {tdepth}: {:.3}s, hashfill {:.3}",
-                (toc - tic).as_secs_f32(),
-                main.ttable.fill_rate()
-            );
-        }
-    }
-
     #[test]
-    fn transposition_speed_fried_liver() {
-        transposition_speed_comparison(
+    fn search_fried_liver() {
+        let g = Game::from_fen(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            11,
-            8,
-            7,
+            static_evaluate,
+        )
+        .unwrap();
+        let mut main = MainSearch::new();
+        main.config.n_helpers = 15;
+        let tic = Instant::now();
+        let info = main.evaluate(&g).unwrap();
+        let toc = Instant::now();
+        println!(
+            "{:.3}s, hashfill {}, bestmove {}",
+            (toc - tic).as_secs_f32(),
+            main.ttable.fill_rate_permill(),
+            info.pv[0]
         );
     }
 }

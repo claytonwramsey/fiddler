@@ -18,7 +18,7 @@
 
 //! Full chess games, including history and metadata.
 
-use crate::movegen::{NoopNominator, ALL};
+use crate::movegen::{is_legal, NoopNominator, ALL};
 
 use super::{
     algebraic::algebraic_from_move,
@@ -101,6 +101,11 @@ impl Game {
     /// expected gain in evaluation for the player making the move. Typically,
     /// `delta` will be positive.
     pub fn make_move(&mut self, m: Move, delta: Score) {
+        #[cfg(debug_assertions)]
+        if !is_legal(m, self.position()) {
+            println!("an illegal move {m} is being attempted. History: {self}");
+            panic!();
+        }
         let previous_state = self.history.last().unwrap();
         let mut new_pos = previous_state.0;
 

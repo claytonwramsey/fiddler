@@ -272,6 +272,7 @@ impl Board {
     pub fn make_move(&mut self, m: Move) {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
+
         let player = self.player_to_move;
         let opponent = !player;
         //this length is used to determine whether it's not a move that a king

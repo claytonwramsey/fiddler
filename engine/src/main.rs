@@ -104,6 +104,13 @@ fn main() {
                         _ => debug_info("error: illegal parameter for `Thread Count`", debug),
                     },
                 },
+                "Hash" => match value {
+                    None => debug_info("error: no value given for hashsize", debug),
+                    Some(size_str) => match size_str.parse::<usize>() {
+                        Ok(_size_mb) => todo!(),
+                        _ => debug_info("error: illegal parameter for hash size", debug),
+                    },
+                },
                 _ => debug_info(&format!("error: unknown option key `{}`", name), debug),
             },
             UciCommand::NewGame => {

@@ -34,7 +34,7 @@ interest:
 
 * Shuffle root move ordering across threads to improve parallelism speedup
 
-* Send back pondermoves
+* Support ponderhit and other UCI commands
 
 * Actual match data to support Elo estimates
 
@@ -54,12 +54,6 @@ non-Linux platforms
 * Develop intelligent time-management schemes
 
 * PEXT sliding movegen on x86 architectures
-
-## Known issues
-
-* There seems to be some search instability. It's unclear exactly where this is
-coming from, but searches to the same depth can sometimes yield differing
-results.
 
 ## File structure
 

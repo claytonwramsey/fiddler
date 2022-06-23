@@ -185,6 +185,10 @@ impl Iterator for MovePicker {
                 match self.transposition_move {
                     None => self.next(),
                     Some(m) => {
+                        if !is_legal(m, &self.pos) {
+                            // Transposition collision occurred.
+                            return self.next();
+                        }
                         self.ignore(m);
                         Some((m, value_delta(&self.pos.board, m)))
                     }
