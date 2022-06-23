@@ -18,7 +18,7 @@
 
 //! Full chess games, including history and metadata.
 
-use crate::movegen::{NoopNominator, ALL, is_legal};
+use crate::movegen::{is_legal, NoopNominator, ALL};
 
 use super::{
     algebraic::algebraic_from_move,

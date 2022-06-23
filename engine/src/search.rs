@@ -243,24 +243,22 @@ impl<'a> PVSearch<'a> {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut tt_move = None;
-        if depth_so_far <= self.config.max_transposition_depth {
-            let tt_guard = self.ttable.get(g.board().hash);
-            if let Some(entry) = tt_guard.entry() {
-                self.num_transpositions += 1;
-                let m = entry.best_move;
-                tt_move = Some(m);
-                if entry.depth == depth_to_go as u8 {
-                    // this was a deeper search on the position
-                    alpha = max(alpha, entry.lower_bound);
-                    beta = min(beta, entry.upper_bound);
-                    if alpha >= beta {
-                        if PV {
-                            self.pv = Vec::new(); // don't reuse old PV
-                            self.update_pv(m, depth_so_far)
-                        } else {
-                            // PV must be searched to whole depth
-                            return Ok((m, alpha));
-                        }
+        let tt_guard = self.ttable.get(g.board().hash);
+        if let Some(entry) = tt_guard.entry() {
+            self.num_transpositions += 1;
+            let m = entry.best_move;
+            tt_move = Some(m);
+            if entry.depth == depth_to_go as u8 {
+                // this was a deeper search on the position
+                alpha = max(alpha, entry.lower_bound);
+                beta = min(beta, entry.upper_bound);
+                if alpha >= beta {
+                    if PV {
+                        self.pv = Vec::new(); // don't reuse old PV
+                        self.update_pv(m, depth_so_far)
+                    } else {
+                        // PV must be searched to whole depth
+                        return Ok((m, alpha));
                     }
                 }
             }
@@ -313,16 +311,14 @@ impl<'a> PVSearch<'a> {
             if can_use_killers {
                 self.killer_moves[killer_index] = m;
             }
-            if depth_so_far <= self.config.max_transposition_depth {
-                self.ttable_store(
-                    &mut self.ttable.get(g.board().hash),
-                    depth_to_go,
-                    alpha,
-                    beta,
-                    best_score,
-                    best_move,
-                );
-            }
+            self.ttable_store(
+                &mut self.ttable.get(g.board().hash),
+                depth_to_go,
+                alpha,
+                beta,
+                best_score,
+                best_move,
+            );
             if PV {
                 self.update_pv(m, depth_so_far);
             }
@@ -391,16 +387,14 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        if depth_so_far <= self.config.max_transposition_depth {
-            self.ttable_store(
-                &mut self.ttable.get(g.board().hash),
-                depth_to_go,
-                alpha,
-                beta,
-                best_score,
-                best_move,
-            );
-        }
+        self.ttable_store(
+            &mut self.ttable.get(g.board().hash),
+            depth_to_go,
+            alpha,
+            beta,
+            best_score,
+            best_move,
+        );
 
         if PV {
             self.update_pv(m, depth_so_far);

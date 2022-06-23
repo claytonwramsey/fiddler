@@ -26,7 +26,7 @@
 //! communicate about their search.
 //!
 //! Fiddler's transposition table has no locks and is unsafe; i.e. it has
-//! concurrent access to the same entries. We require that the retrieved move 
+//! concurrent access to the same entries. We require that the retrieved move
 //! from a transposition table be checked for legality before it is played.
 
 use std::{
@@ -312,10 +312,14 @@ impl Drop for TTable {
 impl<'a> TTEntryGuard<'a> {
     /// Get the entry pointed to by this guard. Will return `None` if the guard
     /// was created by a probe miss on the transposition table.
+    ///
+    /// Due to hash collision, the entry may not be correct for us. Therefore it
+    /// is prudent to check that the move in the transposition table is actually
+    /// legal before playing it.
     pub fn entry(&self) -> Option<&'a TTEntry> {
         if self.valid {
             // null case is handled by `as_ref()`
-            unsafe {self.entry.as_ref()}
+            unsafe { self.entry.as_ref() }
         } else {
             None
         }
@@ -438,20 +442,12 @@ mod tests {
         };
 
         let tt = TTable::with_capacity(4);
-        
-        tt.get(2022).save(
-            e0.depth,
-            e0.best_move,
-            e0.lower_bound,
-            e0.upper_bound,
-        );
 
-        tt.get(2022).save(
-            e1.depth,
-            e1.best_move,
-            e1.lower_bound,
-            e1.upper_bound,
-        );
+        tt.get(2022)
+            .save(e0.depth, e0.best_move, e0.lower_bound, e0.upper_bound);
+
+        tt.get(2022)
+            .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
 
         assert_eq!(tt.get(2022).entry(), Some(&e1));
     }

@@ -160,40 +160,29 @@ impl Default for MainSearch {
 
 #[cfg(test)]
 mod tests {
-    use std::{cmp::max, time::Instant};
+    use std::time::Instant;
 
     use crate::evaluate::static_evaluate;
 
     use super::*;
 
-    /// Compare the speed of a search on a given transposition depth with its
-    /// adjacent depths.
-    fn transposition_speed_comparison(fen: &str, depth: u8, transposition_depth: u8, nhelpers: u8) {
-        let g = Game::from_fen(fen, static_evaluate).unwrap();
-        for tdepth in max(0, transposition_depth - 1)..=(transposition_depth + 1) {
-            let mut main = MainSearch::new();
-            main.config.depth = depth;
-            main.config.n_helpers = nhelpers;
-            main.config.max_transposition_depth = tdepth;
-
-            let tic = Instant::now();
-            main.evaluate(&g).unwrap();
-            let toc = Instant::now();
-            println!(
-                "tdepth {tdepth}: {:.3}s, hashfill {}",
-                (toc - tic).as_secs_f32(),
-                main.ttable.fill_rate_permill()
-            );
-        }
-    }
-
     #[test]
-    fn transposition_speed_fried_liver() {
-        transposition_speed_comparison(
+    fn search_fried_liver() {
+        let g = Game::from_fen(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            11,
-            99,
-            7,
+            static_evaluate,
+        )
+        .unwrap();
+        let mut main = MainSearch::new();
+        main.config.n_helpers = 15;
+        let tic = Instant::now();
+        let info = main.evaluate(&g).unwrap();
+        let toc = Instant::now();
+        println!(
+            "{:.3}s, hashfill {}, bestmove {}",
+            (toc - tic).as_secs_f32(),
+            main.ttable.fill_rate_permill(),
+            info.pv[0]
         );
     }
 }
