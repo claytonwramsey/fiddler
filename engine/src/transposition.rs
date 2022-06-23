@@ -36,280 +36,334 @@
 //! depth is created, allowing us to keep entries which might save us lots of
 //! time in the future.
 
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::{
+    alloc::{alloc_zeroed, dealloc, realloc, Layout},
+    marker::PhantomData,
+    mem::size_of,
+    ptr::null,
+};
 
 use fiddler_base::{Eval, Move};
 
-/// Convenient bad-key value which may help with debugging.
-const BAD_HASH: u64 = 0xDEADBEEF;
-
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// A table which stores transposition data. It will automatically evict an
 /// "old" element if another one takes its place. It behaves much like a
 /// hash-map from positions to table-entries.
 pub struct TTable {
     /// List of all entries in the transposition table. The length of `entries`
-    /// must always be a power of two.
-    entries: Vec<TTableEntry>,
-    /// The mask used to convert a hash into the entry set.
-    mask: usize,
-    /// Number of occupied slots. Since each entry has two slots (for most
-    /// recent and deepest), this can be at most double the length of `entries`.
-    occupancy: AtomicUsize,
+    /// must always be a power of two. To allow concurrent access, we must use
+    /// unsafe code.
+    ///
+    /// If `entries` is null, then nothing has been allocated yet.
+    entries: *mut TTEntry,
+    /// The mask for retrieving entries from the table. Should always be 0 if
+    /// `entries` is null.
+    mask: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// A struct containing information about prior evaluation of a position.
-pub struct EvalData {
-    /// The depth to which the position was evaluated.
-    pub depth: i8,
-    /// A lower bound on the evaluation of the position.
+/// A safe-exposed API for accessing entries in a transposition table. The guard
+/// is annotated with a lifetime so that it cannot outlive the table it indexes
+/// into.
+pub struct TTEntryGuard<'a> {
+    /// Whether the entry we point to is actually valid.
+    valid: bool,
+    /// The hash which created the reference in the table.
+    hash: u64,
+    /// A pointer to the entry in the transposition table.
+    entry: *mut TTEntry,
+    /// Ensures that the guard does not outlive the table it points to.
+    _phantom: PhantomData<&'a TTable>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// An entry in the transposition table.
+pub struct TTEntry {
+    /// The age of the entry, i.e. the number of searches since this entry was
+    /// inserted.
+    age: u8,
+    /// The hash key of the entry.
+    hash: u64,
+    /// The depth to which this entry was searched.
+    pub depth: u8,
+    /// The best move in the position when this entry was searched. Will be
+    /// `Move::BAD_MOVE` when there are no moves or the best move is unknown.
+    pub best_move: Move,
+    /// The lower bound on the evaluation of the position.
     pub lower_bound: Eval,
-    /// An upper bound on the evaluation of the position.
+    /// The upper bound on the evaluation of the position.
     pub upper_bound: Eval,
-    /// The critical move in the position. Will be `Move::BAD_MOVE` if the
-    /// critical move is unknown.
-    pub critical_move: Move,
-}
-
-#[derive(Debug)]
-///  An entry in the transposition table.
-struct TTableEntry {
-    /// The most recently entered data in this entry.
-    pub recent: Slot,
-    /// The data with the deepest evaluation ever requested in this entry.
-    pub deepest: Slot,
-}
-
-#[derive(Debug)]
-struct Slot {
-    /// The hash which caused this entry. Used as a speedy way to avoid
-    /// comparing a whole board. The hash has been xor'd with the data to allow
-    /// for lockless access. Will be equal to `BAD_HASH` for empty entries.
-    pub hash: AtomicU64,
-    /// The corresponding data for this slot, including its age.
-    pub data: AtomicU64,
-}
-
-impl Slot {
-    fn empty() -> Slot {
-        Slot {
-            hash: AtomicU64::new(BAD_HASH),
-            data: AtomicU64::new(0),
-        }
-    }
 }
 
 impl TTable {
+    /// Construct a new TTable with no entries.
+    pub const fn new() -> TTable {
+        TTable {
+            entries: null::<TTEntry>() as *mut TTEntry,
+            mask: 0,
+        }
+    }
+
     /// Create a transposition table with a fixed capacity. The capacity is
     /// *not* the number of entries, but rather log_2 of the number of entries.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `capacity_log2` is large enough to cause
+    /// overflow.
     pub fn with_capacity(capacity_log2: usize) -> TTable {
-        let size = 1 << capacity_log2;
+        let n_entries = 1 << capacity_log2;
         TTable {
-            entries: (0..size)
-                .map(|_| TTableEntry {
-                    recent: Slot::empty(),
-                    deepest: Slot::empty(),
-                })
-                .collect(),
-            mask: (1 << capacity_log2) - 1,
-            occupancy: AtomicUsize::new(0),
+            entries: unsafe {
+                let layout = Layout::array::<TTEntry>(n_entries).unwrap();
+                alloc_zeroed(layout) as *mut TTEntry
+            },
+            mask: (n_entries - 1) as u64,
+        }
+    }
+
+    /// Get the evaluation data stored by this table for a given key, if it
+    /// exists. Returns `None` if no data corresponding to the key exists.
+    pub fn get<'a>(&self, hash_key: u64) -> TTEntryGuard<'a> {
+        if self.entries.is_null() {
+            // cannot index into empty table.
+            return TTEntryGuard {
+                valid: false,
+                hash: 0,
+                entry: self.entries,
+                _phantom: PhantomData,
+            };
+        }
+        let idx = (hash_key & self.mask) as usize;
+        let entry = unsafe { self.entries.add(idx) };
+        let entry_hash = unsafe { entry.as_ref().unwrap().hash };
+        if entry_hash == hash_key {
+            // it's a match! Return a valid guard.
+            TTEntryGuard {
+                valid: true,
+                hash: entry_hash,
+                entry,
+                _phantom: PhantomData,
+            }
+        } else {
+            // No match found. Return an invalid guard.
+            TTEntryGuard {
+                valid: false,
+                hash: hash_key,
+                entry,
+                _phantom: PhantomData,
+            }
+        }
+    }
+
+    /// Get an estimate of the fill rate proportion of this transposition table
+    /// out of 1000. Typically used for UCI.
+    pub fn fill_rate_permill(&self) -> u16 {
+        if self.entries.is_null() {
+            // I suppose a transposition table with no entries is 100% full.
+            1000
+        } else {
+            // take a sample of the first 1000 entries
+            let mut num_full = 0;
+
+            // if the size is lower than 1000, we will visit some entries twice,
+            // but I guess that's OK since it's meant to just be a rough
+            // estimate.
+            for idx_unbounded in 0..1000 {
+                let idx = (idx_unbounded & self.mask) as usize;
+                if unsafe { self.entries.add(idx).as_ref().unwrap().hash } != 0 {
+                    // a real entry lives here
+                    num_full += 1;
+                }
+            }
+            num_full
         }
     }
 
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
-    pub fn age_up(&self, max_age: u8) {
-        for entry in self.entries.iter() {
-            // no need to age up recent since it will be overwritten anyway
-            let hash = entry.deepest.hash.load(Ordering::Relaxed);
-            let datum = entry.deepest.data.load(Ordering::Relaxed);
-            if hash != BAD_HASH {
-                let new_age = unpack_age(datum) + 1;
-                if new_age < max_age {
-                    // the entry is not too old
-                    let new_datum = (datum & 0x00FFFFFFFFFFFFFF) | ((new_age as u64) << 56);
-                    let new_hash = hash ^ datum ^ new_datum;
-                    entry.deepest.hash.store(new_hash, Ordering::Relaxed);
-                    entry.deepest.data.store(new_datum, Ordering::Relaxed);
-                } else {
-                    // the entry is too old, evict it
-                    entry.deepest.hash.store(BAD_HASH, Ordering::Relaxed);
-                    entry.deepest.data.store(0, Ordering::Relaxed);
-                    self.occupancy.fetch_sub(1, Ordering::Relaxed);
-                }
+    pub fn age_up(&mut self, max_age: u8) {
+        for idx in 0..=self.mask as usize {
+            let entry: &mut TTEntry = unsafe { self.entries.add(idx).as_mut().unwrap() };
+            entry.age += 1;
+            if entry.age >= max_age {
+                *entry = TTEntry::new();
             }
         }
     }
 
-    /// Store some evaluation data in the transposition table.
-    pub fn store(&self, key: u64, value: EvalData) {
-        let index = key as usize & self.mask;
-        let entry = unsafe {
-            // We trust that this is safe since we modulo'd by the length.
-            self.entries.get_unchecked(index)
+    /// Resize the hash table to use no more than `size_mb` megabytes.
+    pub fn resize(&mut self, size_mb: usize) {
+        let max_num_entries = size_mb / size_of::<TTEntry>();
+        let new_size = if max_num_entries.is_power_of_two() {
+            max_num_entries
+        } else {
+            // round down to lower power of two
+            max_num_entries.next_power_of_two() >> 1
         };
-        let packed_data = pack(
-            0,
-            value.depth,
-            value.upper_bound,
-            value.lower_bound,
-            value.critical_move,
-        );
-        let modulated_hash = key ^ packed_data;
 
-        // check if we can overwrite the deepest entry
-        // don't overwrite the most recent entry if we don't have to
-        let slot_to_overwrite = {
-            let deepest_hash = entry.deepest.hash.load(Ordering::Relaxed);
-            if deepest_hash == BAD_HASH {
-                // overwriting an empty entry, increment occupancy
-                self.occupancy.fetch_add(1, Ordering::Relaxed);
-                &entry.deepest
-            } else {
-                let deepest_datum = entry.deepest.data.load(Ordering::Relaxed);
-                if unpack_depth(deepest_datum) <= value.depth {
-                    &entry.deepest
-                } else {
-                    if entry.recent.hash.load(Ordering::Relaxed) == BAD_HASH {
-                        // overwriting an empty entry, increment occupancy
-                        self.occupancy.fetch_add(1, Ordering::Relaxed);
-                    }
-                    &entry.recent
+        let old_entries = self.entries;
+        let old_size = self.mask as usize + 1;
+        if new_size == 0 {
+            unsafe {
+                dealloc(
+                    old_entries as *mut u8,
+                    Layout::array::<TTEntry>(old_size).unwrap(),
+                )
+            };
+            self.entries = null::<TTEntry>() as *mut TTEntry;
+            self.mask = 0;
+        } else if new_size < old_size {
+            // move entries down if possible
+            let new_mask = new_size - 1;
+            for idx in new_size..old_size {
+                // try to copy the entries which will be deallocated backward
+                let entry = unsafe { *self.entries.add(idx) };
+                if entry.hash != 0 {
+                    // if there was an entry at this index, move it down to fit
+                    // into the shrunken table
+                    let new_idx = idx & new_mask;
+                    // TODO more intelligently overwrite than just blindly
+                    // writing
+                    let new_entry_slot = unsafe { self.entries.add(new_idx).as_mut().unwrap() };
+                    *new_entry_slot = entry;
                 }
             }
-        };
+            // realloc to shrink this
+            self.entries = unsafe {
+                realloc(
+                    self.entries as *mut u8,
+                    Layout::array::<TTEntry>(old_size).unwrap(),
+                    new_size,
+                ) as *mut TTEntry
+            };
+            self.mask = new_mask as u64;
+        } else {
+            // the table is growing
+            self.entries = unsafe {
+                realloc(
+                    self.entries as *mut u8,
+                    Layout::array::<TTEntry>(old_size).unwrap(),
+                    new_size,
+                ) as *mut TTEntry
+            };
+            let new_mask = (new_size - 1) as u64;
 
-        slot_to_overwrite
-            .hash
-            .store(modulated_hash, Ordering::Relaxed);
-        slot_to_overwrite.data.store(packed_data, Ordering::Relaxed);
-    }
-
-    /// Get the evaluation data stored by this table for a given key, if it
-    /// exists. Returns `None` if no data corresponding to the key exists.
-    pub fn get(&self, hash_key: u64) -> Option<EvalData> {
-        let index = hash_key as usize & self.mask;
-        let entry = unsafe {
-            // We trust that this will not lead to a memory error because index
-            // was modulo'd by the length of entries.
-            self.entries.get_unchecked(index)
-        };
-
-        for slot in [&entry.deepest, &entry.recent] {
-            let value = slot.data.load(Ordering::Relaxed);
-            // check that the hash key would be stored as the same one which is
-            // already stored
-            // theoretically, this could result in an error due to hash
-            // collision, but we accept that this is rare enough
-            if value ^ hash_key == slot.hash.load(Ordering::Relaxed) {
-                return Some(unpack_data(value));
+            // the mask got bigger, so some entries may need to move right
+            for idx in 0..old_size {
+                let entry = unsafe { *self.entries.add(idx) };
+                if entry.hash != 0 {
+                    // if there was an entry at this index, move it up
+                    let new_idx = (entry.hash & new_mask) as usize;
+                    // TODO more intelligently overwrite than just blindly
+                    // writing
+                    let new_entry_slot = unsafe { self.entries.add(new_idx).as_mut().unwrap() };
+                    *new_entry_slot = entry;
+                }
             }
+
+            self.mask = new_mask;
         }
-
-        None
     }
 
-    #[allow(unused)]
-    /// Clear the transposition table. Will *not* lose any capacity.
-    pub fn clear(&mut self) {
-        self.entries = self
-            .entries
-            .iter()
-            .map(|_| TTableEntry {
-                recent: Slot::empty(),
-                deepest: Slot::empty(),
-            })
-            .collect();
-        self.occupancy.store(0, Ordering::Relaxed);
-    }
-
-    #[allow(unused)]
-    /// Get the fill proportion of this transposition table. The fill
-    /// proportion is 0 for an empty table and 1 for a completely full one.
-    pub fn fill_rate(&self) -> f32 {
-        (self.occupancy.load(Ordering::Relaxed) as f32) / (2. * self.entries.len() as f32)
-    }
-
-    /// Get the fill rate proportion of this transposition table out of 1000.
-    /// Typically used for UCI.
-    pub fn fill_rate_permill(&self) -> u16 {
-        (self.occupancy.load(Ordering::Relaxed) * 500 / self.entries.len()) as u16
-    }
-
-    /// Get the size of this transposition table, in bits.
+    /// Get the size of this table, in bits
     pub fn bit_size(&self) -> usize {
         self.mask.count_ones() as usize
     }
 }
 
-impl Default for TTable {
-    fn default() -> TTable {
-        TTable::with_capacity(20)
+impl TTEntry {
+    const fn new() -> TTEntry {
+        TTEntry {
+            age: 0,
+            hash: 0,
+            depth: 0,
+            best_move: Move::BAD_MOVE,
+            lower_bound: Eval::DRAW,
+            upper_bound: Eval::DRAW,
+        }
     }
 }
 
-#[inline(always)]
-/// Given a packed entry in the transposition table, get the age of the entry.
-const fn unpack_age(packed: u64) -> u8 {
-    (packed >> 56) as u8
-}
+unsafe impl Send for TTable {}
+unsafe impl Sync for TTable {}
 
-#[inline(always)]
-/// Given a packed entry in the transposition table, get the depth of the entry.
-const fn unpack_depth(packed: u64) -> i8 {
-    ((packed >> 48) & 0xFF) as i8
-}
-
-#[inline(always)]
-/// Unpack some data which was stored in the transposition table.
-const fn unpack_data(packed: u64) -> EvalData {
-    EvalData {
-        depth: unpack_depth(packed),
-        lower_bound: Eval::centipawns(((packed >> 32) & 0xFFFF) as i16),
-        upper_bound: Eval::centipawns(((packed >> 16) & 0xFFFF) as i16),
-        critical_move: Move::from_val((packed & 0xFFFF) as u16),
+impl Drop for TTable {
+    fn drop(&mut self) {
+        if !self.entries.is_null() {
+            let size = self.mask as usize + 1;
+            // memory was allocated, need to deallocate
+            unsafe {
+                dealloc(
+                    self.entries as *mut u8,
+                    Layout::array::<TTEntry>(size).unwrap(),
+                );
+            }
+        }
+        // if the size is zero, no allocation was performed
     }
 }
 
-#[inline(always)]
-/// Pack some data to be stored in the transposition table.
-const fn pack(
-    age: u8,
-    depth: i8,
-    upper_bound: Eval,
-    lower_bound: Eval,
-    critical_move: Move,
-) -> u64 {
-    (age as u64) << 56
-        | (depth as u64) << 48
-        | (upper_bound.centipawn_val() as u64) << 32
-        | (lower_bound.centipawn_val() as u64) << 16
-        | (critical_move.value() as u64)
+impl<'a> TTEntryGuard<'a> {
+    /// Get the entry pointed to by this guard. Will return `None` if the guard
+    /// was created by a probe miss on the transposition table.
+    pub fn entry(&self) -> Option<&'a TTEntry> {
+        if self.valid {
+            // null case is handled by `as_ref()`
+            unsafe { self.entry.as_ref() }
+        } else {
+            None
+        }
+    }
+
+    pub fn save(&mut self, depth: u8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
+        if !self.entry.is_null() {
+            unsafe {
+                *self.entry = TTEntry {
+                    age: 0,
+                    hash: self.hash,
+                    depth,
+                    best_move,
+                    lower_bound,
+                    upper_bound,
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use fiddler_base::Board;
+    use fiddler_base::{Eval, Move, Square};
+
+    use super::{TTEntry, TTable};
 
     #[test]
-    fn test_not_already_in() {
-        let ttable = TTable::default();
-        assert!(ttable.get(Board::default().hash).is_none());
+    /// Test that a hash table miss is correctly created.
+    fn test_guaranteed_miss() {
+        let tt = TTable::with_capacity(4);
+        assert!(tt.get(12345).entry().is_none());
     }
 
     #[test]
-    fn test_store_data() {
-        let ttable = TTable::default();
-        let b = Board::default();
-        let data = EvalData {
-            depth: 0,
-            upper_bound: Eval::DRAW,
+    /// Test that we correctly find a hit in a transposition table.
+    fn test_guaranteed_hit() {
+        let tt = TTable::with_capacity(4);
+        let entry = TTEntry {
+            age: 0,
+            hash: 12,
+            depth: 5,
+            best_move: Move::normal(Square::E2, Square::E4),
             lower_bound: Eval::DRAW,
-            critical_move: Move::BAD_MOVE,
+            upper_bound: Eval::centipawns(100),
         };
-        ttable.store(b.hash, data);
-        assert_eq!(ttable.get(b.hash), Some(data));
+        tt.get(12).save(
+            entry.depth,
+            entry.best_move,
+            entry.lower_bound,
+            entry.upper_bound,
+        );
+
+        assert_eq!(tt.get(12).entry(), Some(&entry));
     }
 }

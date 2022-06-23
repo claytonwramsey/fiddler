@@ -58,7 +58,7 @@ impl MainSearch {
     pub fn new() -> MainSearch {
         MainSearch {
             config: SearchConfig::new(),
-            ttable: Arc::new(TTable::default()),
+            ttable: Arc::new(TTable::with_capacity(25)),
             limit: Arc::new(SearchLimit::new()),
         }
     }
@@ -73,7 +73,8 @@ impl MainSearch {
     /// of an internal bug or a critical OS interrupt. However, a timeout error
     /// is most likely if the search times out before it can do any computation.
     pub fn evaluate(&self, g: &Game) -> SearchResult {
-        self.ttable.age_up(2);
+        // TODO figure out how to correctly age up the transposition table
+        // self.ttable.age_up(2);
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
         for depth in 1..=self.config.depth {
@@ -132,7 +133,7 @@ impl MainSearch {
                             },
                             EngineInfo::Nodes(best_info.num_nodes_evaluated),
                             EngineInfo::NodeSpeed(
-                                1000 * best_info.num_nodes_evaluated / elapsed.as_millis() as u64
+                                1000 * best_info.num_nodes_evaluated / (elapsed.as_millis() + 1) as u64
                             ),
                             EngineInfo::Time(elapsed),
                             EngineInfo::Pv(&best_info.pv),
@@ -178,9 +179,9 @@ mod tests {
             main.evaluate(&g).unwrap();
             let toc = Instant::now();
             println!(
-                "tdepth {tdepth}: {:.3}s, hashfill {:.3}",
+                "tdepth {tdepth}: {:.3}s, hashfill {}",
                 (toc - tic).as_secs_f32(),
-                main.ttable.fill_rate()
+                main.ttable.fill_rate_permill()
             );
         }
     }
