@@ -74,18 +74,20 @@ pub struct TTEntryGuard<'a> {
 pub struct TTEntry {
     /// The age of the entry, i.e. the number of searches since this entry was
     /// inserted.
-    age: u8,
+    age: u8, // 1 byte
     /// The hash key of the entry.
-    hash: u64,
+    hash: u64, // 8 bytes
     /// The depth to which this entry was searched.
-    pub depth: u8,
+    pub depth: u8, // 1 byte
     /// The best move in the position when this entry was searched. Will be
     /// `Move::BAD_MOVE` when there are no moves or the best move is unknown.
-    pub best_move: Move,
+    pub best_move: Move, // 2 bytes
     /// The lower bound on the evaluation of the position.
-    pub lower_bound: Eval,
+    pub lower_bound: Eval, // 2 bytes
     /// The upper bound on the evaluation of the position.
-    pub upper_bound: Eval,
+    pub upper_bound: Eval, // 2 bytes
+
+    // total size of an entry: 16 bytes. TODO think of ways of shrinking this.
 }
 
 impl TTable {
