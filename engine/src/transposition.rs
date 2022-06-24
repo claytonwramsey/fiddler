@@ -87,7 +87,7 @@ pub struct TTEntry {
     /// The upper bound on the evaluation of the position.
     pub upper_bound: Eval, // 2 bytes
 
-    // total size of an entry: 16 bytes. TODO think of ways of shrinking this.
+                           // total size of an entry: 16 bytes. TODO think of ways of shrinking this.
 }
 
 impl TTable {

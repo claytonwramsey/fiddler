@@ -29,7 +29,7 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    movegen::{get_moves, CAPTURES},
+    movegen::{get_moves, is_legal, CAPTURES},
     Eval, Game, Move,
 };
 
@@ -247,18 +247,20 @@ impl<'a> PVSearch<'a> {
         if let Some(entry) = tt_guard.entry() {
             self.num_transpositions += 1;
             let m = entry.best_move;
-            tt_move = Some(m);
-            if entry.depth == depth_to_go as u8 {
-                // this was a deeper search on the position
-                alpha = max(alpha, entry.lower_bound);
-                beta = min(beta, entry.upper_bound);
-                if alpha >= beta {
-                    if PV {
-                        self.pv = Vec::new(); // don't reuse old PV
-                        self.update_pv(m, depth_so_far)
-                    } else {
-                        // PV must be searched to whole depth
-                        return Ok((m, alpha));
+            if is_legal(m, g.position()) {
+                tt_move = Some(m);
+                if entry.depth == depth_to_go as u8 {
+                    // this was a deeper search on the position
+                    alpha = max(alpha, entry.lower_bound);
+                    beta = min(beta, entry.upper_bound);
+                    if alpha >= beta {
+                        if PV {
+                            self.pv = Vec::new(); // don't reuse old PV
+                            self.update_pv(m, depth_so_far)
+                        } else {
+                            // PV must be searched to whole depth
+                            return Ok((m, alpha));
+                        }
                     }
                 }
             }

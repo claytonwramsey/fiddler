@@ -128,6 +128,9 @@ impl MovePicker {
     /// Construct a `MovePicker` for a given position. Will generate moves, so
     /// it should only be created at a point in the search where moves must be
     /// generated.
+    ///
+    /// The transposition move must be legal, and should be
+    /// checked as such prior to instantiation.
     pub fn new(
         pos: Position,
         transposition_move: Option<Move>,
@@ -185,10 +188,7 @@ impl Iterator for MovePicker {
                 match self.transposition_move {
                     None => self.next(),
                     Some(m) => {
-                        if !is_legal(m, &self.pos) {
-                            // Transposition collision occurred.
-                            return self.next();
-                        }
+                        // we assume that m was checked for legality before
                         self.ignore(m);
                         Some((m, value_delta(&self.pos.board, m)))
                     }
