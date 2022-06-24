@@ -68,10 +68,6 @@ impl<T> From<PoisonError<T>> for SearchError {
 /// search, while the `Err` version contains a reason why the search failed.
 pub type SearchResult = Result<SearchInfo, SearchError>;
 
-/// The output type of a search. An `Err` may be given if, for instance,
-/// the search times out.
-type PVSResult = Result<(Move, Eval), SearchError>;
-
 #[inline(always)]
 /// Evaluate the given game. Return a pair containing the best move and its
 /// evaluation, as well as the depth to which the evaluation was searched. The
@@ -99,7 +95,7 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
 
-    let (_, eval) = searcher.pvs::<true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true)?;
+    let eval = searcher.pvs::<true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true)?;
 
     Ok(SearchInfo {
         pv: searcher.pv,
@@ -204,7 +200,7 @@ impl<'a> PVSearch<'a> {
         mut alpha: Eval,
         mut beta: Eval,
         allow_reduction: bool,
-    ) -> PVSResult {
+    ) -> Result<Eval, SearchError> {
         if self.is_main {
             self.limit.update_time()?;
         }
@@ -225,7 +221,7 @@ impl<'a> PVSearch<'a> {
             }
             // required so that movepicker only needs to know about current
             // position, and not about history
-            return Ok((Move::BAD_MOVE, Eval::DRAW));
+            return Ok(Eval::DRAW);
         }
 
         // mate distance pruning:
@@ -237,7 +233,7 @@ impl<'a> PVSearch<'a> {
             }
             // even if we mated our opponent at the end of this search, we would
             // not achieve anything better than what we already had
-            return Ok((Move::BAD_MOVE, alpha));
+            return Ok(alpha);
         }
 
         // Retrieve transposition data and use it to improve our estimate on
@@ -259,7 +255,7 @@ impl<'a> PVSearch<'a> {
                             self.update_pv(m, depth_so_far)
                         } else {
                             // PV must be searched to whole depth
-                            return Ok((m, alpha));
+                            return Ok(alpha);
                         }
                     }
                 }
@@ -282,10 +278,7 @@ impl<'a> PVSearch<'a> {
                 if PV {
                     self.pv = Vec::new() // don't reuse old (now incorrect) PV
                 }
-                return Ok((
-                    Move::BAD_MOVE,
-                    leaf_evaluate(g).in_perspective(g.board().player_to_move),
-                ));
+                return Ok(leaf_evaluate(g).in_perspective(g.board().player_to_move));
             }
         };
         // best move found so far
@@ -301,7 +294,6 @@ impl<'a> PVSearch<'a> {
                 -alpha.step_forward(),
                 allow_reduction,
             )?
-            .1
             .step_back();
         #[allow(unused_must_use)]
         {
@@ -324,7 +316,7 @@ impl<'a> PVSearch<'a> {
             if PV {
                 self.update_pv(m, depth_so_far);
             }
-            return Ok((best_move, best_score));
+            return Ok(best_score);
         }
 
         for (idx, (m, delta)) in moves_iter.enumerate() {
@@ -347,7 +339,6 @@ impl<'a> PVSearch<'a> {
                     -alpha.step_forward(),
                     allow_reduction,
                 )?
-                .1
                 .step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
@@ -368,7 +359,6 @@ impl<'a> PVSearch<'a> {
                         position_lower_bound,
                         allow_reduction,
                     )?
-                    .1
                     .step_back();
             }
             #[allow(unused_must_use)]
@@ -402,7 +392,7 @@ impl<'a> PVSearch<'a> {
             self.update_pv(m, depth_so_far);
         }
 
-        Ok((best_move, alpha))
+        Ok(alpha)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -417,7 +407,7 @@ impl<'a> PVSearch<'a> {
         g: &mut Game,
         mut alpha: Eval,
         beta: Eval,
-    ) -> PVSResult {
+    ) -> Result<Eval, SearchError> {
         let player = g.board().player_to_move;
 
         // Any position where the king is in check is nowhere near quiet
@@ -444,7 +434,7 @@ impl<'a> PVSearch<'a> {
             }
             // beta cutoff, this line would not be selected because there is a
             // better option somewhere else
-            return Ok((Move::BAD_MOVE, alpha));
+            return Ok(alpha);
         }
 
         let mut moves = get_moves::<CAPTURES, CandidacyNominate>(g.position());
@@ -462,7 +452,6 @@ impl<'a> PVSearch<'a> {
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
                 )?
-                .1
                 .step_back();
             if alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
@@ -476,7 +465,6 @@ impl<'a> PVSearch<'a> {
                         -beta.step_forward(),
                         -score.step_forward(),
                     )?
-                    .1
                     .step_back();
                 best_move = m;
             }
@@ -499,7 +487,7 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        Ok((best_move, alpha))
+        Ok(alpha)
     }
 
     /// Store data in the transposition table.

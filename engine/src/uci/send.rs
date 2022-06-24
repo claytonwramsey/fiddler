@@ -143,7 +143,7 @@ impl<'a> fmt::Display for UciMessage<'a> {
             UciMessage::BestMove { m, ponder } => {
                 write!(f, "bestmove {}", m.to_uci())?;
                 if let Some(pondermove) = ponder {
-                    write!(f, " ponder {pondermove}")?;
+                    write!(f, " ponder {}", pondermove.to_uci())?;
                 }
             }
             UciMessage::Info(info) => write_info(f, info)?,
