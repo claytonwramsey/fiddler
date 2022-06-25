@@ -24,7 +24,7 @@ use super::{
     algebraic::algebraic_from_move,
     movegen::{get_moves, has_moves, is_square_attacked_by, GenMode, NominateMove},
     position::PSTEvaluator,
-    Board, Color, Move, Piece, Position, Score, Square,
+    Board, Color, Move, Piece, Position, Score,
 };
 
 use nohash_hasher::IntMap;
@@ -199,8 +199,7 @@ impl Game {
             return (false, None);
         }
 
-        // we trust that the board is valid here and this will not lead to UB
-        let king_sq = unsafe { Square::unsafe_from(b[Piece::King] & b[b.player_to_move]) };
+        let king_sq = pos.king_sqs[b.player_to_move as usize];
         match is_square_attacked_by(b, king_sq, !b.player_to_move) {
             true => (true, Some(!b.player_to_move)),
             false => (true, None), // stalemate

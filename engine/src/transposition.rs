@@ -210,14 +210,19 @@ impl TTable {
         };
 
         let old_entries = self.entries;
-        let old_size = self.mask as usize + 1;
+        let mut old_size = self.mask as usize + 1;
+        if old_entries.is_null() {
+            old_size = 0;
+        }
         if new_size == 0 {
-            unsafe {
-                dealloc(
-                    old_entries as *mut u8,
-                    Layout::array::<TTEntry>(old_size).unwrap(),
-                )
-            };
+            if !old_entries.is_null() {
+                unsafe {
+                    dealloc(
+                        old_entries as *mut u8,
+                        Layout::array::<TTEntry>(old_size).unwrap(),
+                    )
+                };
+            }
             self.entries = null::<TTEntry>() as *mut TTEntry;
             self.mask = 0;
         } else if new_size < old_size {
@@ -247,12 +252,16 @@ impl TTable {
             self.mask = new_mask as u64;
         } else {
             // the table is growing
-            self.entries = unsafe {
-                realloc(
-                    self.entries as *mut u8,
-                    Layout::array::<TTEntry>(old_size).unwrap(),
-                    new_size,
-                ) as *mut TTEntry
+            self.entries = if old_entries.is_null() {
+                unsafe { alloc_zeroed(Layout::array::<TTEntry>(new_size).unwrap()) as *mut TTEntry }
+            } else {
+                unsafe {
+                    realloc(
+                        self.entries as *mut u8,
+                        Layout::array::<TTEntry>(old_size).unwrap(),
+                        new_size,
+                    ) as *mut TTEntry
+                }
             };
             let new_mask = (new_size - 1) as u64;
 
@@ -452,5 +461,28 @@ mod tests {
             .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
 
         assert_eq!(tt.get(2022).entry(), Some(&e1));
+    }
+
+    #[test]
+    /// Test that an empty transposition table, when resized, works correctly.
+    fn resize_empty_table() {
+        let mut tt = TTable::new();
+        tt.resize(2000);
+        let entry = TTEntry {
+            age: 0,
+            hash: 2022,
+            depth: 5,
+            best_move: Move::normal(Square::E2, Square::E4),
+            lower_bound: Eval::DRAW,
+            upper_bound: Eval::centipawns(100),
+        };
+        tt.get(2022).save(
+            entry.depth,
+            entry.best_move,
+            entry.lower_bound,
+            entry.upper_bound,
+        );
+
+        assert_eq!(tt.get(2022).entry(), Some(&entry));
     }
 }

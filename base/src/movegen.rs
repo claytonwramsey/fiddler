@@ -143,7 +143,7 @@ impl CheckInfo {
     /// board `b` is valid (i.e. only has one king of each color).
     pub fn about(b: &Board) -> CheckInfo {
         let kings = b[Piece::King];
-        // we trust the board is valid here
+        // SAFETY: We trust the board is valid here.
         let (white_king_sq, black_king_sq, king_sq) = unsafe {
             (
                 Square::unsafe_from(kings & b[Color::White]),
@@ -626,7 +626,7 @@ fn evasions<const M: GenMode, N: NominateMove>(pos: &Position, moves: &mut Vec<(
 
     // only look at non-king moves if we are not in double check
     if pos.check_info.checkers.has_single_bit() {
-        // this unsafe is fine because we already checked
+        // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
         // Look for blocks or captures
         let mut target_sqs = between(king_sq, checker_sq) | pos.check_info.checkers;

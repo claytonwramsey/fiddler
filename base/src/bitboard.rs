@@ -274,8 +274,8 @@ impl Iterator for Bitboard {
         if self.is_empty() {
             return None;
         }
-        // This will not cause UB because we already accounted for the empty
-        // board case.
+        // SAFETY: The empty bitboard case has been handled already, so the
+        // number of trailing zeros is between 0 and 63.
         let result = Some(unsafe { transmute(self.trailing_zeros() as u8) });
         self.0 &= self.0 - 1;
         result

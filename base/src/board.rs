@@ -19,9 +19,7 @@
 //! State representations of boards, which contain board state (such as piece
 //! positions), but neither history nor meta-information about a game.
 
-use super::{
-    movegen::is_square_attacked_by, zobrist, Bitboard, CastleRights, Color, Move, Piece, Square,
-};
+use super::{zobrist, Bitboard, CastleRights, Color, Move, Piece, Square};
 
 use std::{
     convert::TryFrom,
@@ -214,17 +212,6 @@ impl Board {
     /// Is the given move a capture in the current state of the board?
     pub fn is_move_capture(&self, m: Move) -> bool {
         self.occupancy().contains(m.to_square()) || m.is_en_passant()
-    }
-
-    #[inline(always)]
-    /// In the current state, is the king (i.e. player to move) in check?
-    pub fn is_king_checked(&self) -> bool {
-        let player = self.player_to_move;
-        is_square_attacked_by(
-            self,
-            unsafe { Square::unsafe_from(self[Piece::King] & self[player]) },
-            !player,
-        )
     }
 
     /// Check if the state of this board is valid,
@@ -501,8 +488,8 @@ impl Index<Piece> for Board {
     #[inline(always)]
     /// Get the squares occupied by the given piece.
     fn index(&self, index: Piece) -> &Self::Output {
-        // This will not fail because there are the same number of pieces as
-        // indices on `pieces`
+        // SAFETY: This will not fail because there are the same number of
+        // pieces as legal indices on `pieces`.
         unsafe { self.pieces.get_unchecked(index as usize) }
     }
 }
@@ -513,8 +500,8 @@ impl Index<Color> for Board {
     #[inline(always)]
     /// Get the squares occupied by the given piece.
     fn index(&self, index: Color) -> &Self::Output {
-        // This will not fail because there are the same number of colors as
-        // indices on `sides`
+        // SAFETY: This will not fail because there are the same number of
+        // colors as indices on `sides`.
         unsafe { self.sides.get_unchecked(index as usize) }
     }
 }

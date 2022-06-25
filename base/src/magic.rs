@@ -216,17 +216,21 @@ impl MagicTable {
     /// Create an empty `MagicTable`.
     fn new() -> MagicTable {
         let rtable = {
+            // SAFETY: We will immediately overwrite this.
             let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
             for elem in &mut data[..] {
                 *elem = MaybeUninit::new(Magic::new());
             }
+            // SAFETY: The entire block was overwritten with correct data.
             unsafe { transmute(data) }
         };
         let btable = {
+            // SAFETY: We will immediately overwrite this.
             let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
             for elem in &mut data[..] {
                 *elem = MaybeUninit::new(Magic::new());
             }
+            // SAFETY: The entire block was overwritten with correct data.
             unsafe { transmute(data) }
         };
         MagicTable {
@@ -343,11 +347,9 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 /// Get the attacks a square has, given a magic lookup table and the current
 /// occupancy.
 fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
-    // In defense of the unsafe blocks below: `sq` is a valid square, so
-    // accessing it by array lookup is OK. Additionally, we can trust that the
-    // key was masked correctly in `compute_magic_key` as it was shifted out
-    // properly. The speed benefit is extremely important here, as getting
-    // magic attacks will be called many tens of millions of times per second.
+    // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
+    // Additionally, we can trust that the key was masked correctly in
+    // `compute_magic_key` as it was shifted out properly.
     let magic_data = unsafe { table.get_unchecked(sq as usize) };
     let masked_occupancy = occupancy & magic_data.mask;
     let key = compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
