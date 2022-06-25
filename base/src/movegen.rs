@@ -379,6 +379,9 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
 #[inline(always)]
 /// Get all the legal moves on a board.
 pub fn get_moves<const M: GenMode, N: NominateMove>(pos: &Position) -> Vec<(Move, N::Output)> {
+    // prevent wonky generation modes
+    debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
+
     let mut moves;
     let in_check = !pos.check_info.checkers.is_empty();
 
