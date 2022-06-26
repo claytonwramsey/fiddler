@@ -239,7 +239,7 @@ impl<'a> PVSearch<'a> {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut tt_move = None;
-        let tt_guard = self.ttable.get(g.board().hash);
+        let mut tt_guard = self.ttable.get(g.board().hash);
         if let Some(entry) = tt_guard.entry() {
             self.num_transpositions += 1;
             let m = entry.best_move;
@@ -306,7 +306,7 @@ impl<'a> PVSearch<'a> {
                 self.killer_moves[killer_index] = m;
             }
             self.ttable_store(
-                &mut self.ttable.get(g.board().hash),
+                &mut tt_guard,
                 depth_to_go,
                 alpha,
                 beta,
@@ -380,7 +380,7 @@ impl<'a> PVSearch<'a> {
         }
 
         self.ttable_store(
-            &mut self.ttable.get(g.board().hash),
+            &mut tt_guard,
             depth_to_go,
             alpha,
             beta,

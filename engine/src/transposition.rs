@@ -336,6 +336,7 @@ impl<'a> TTEntryGuard<'a> {
         }
     }
 
+    /// Save the value pointed to by this entry guard. 
     pub fn save(&mut self, depth: u8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
         if !self.entry.is_null() {
             unsafe {
