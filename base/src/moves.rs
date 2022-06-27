@@ -245,7 +245,7 @@ mod tests {
         let b = Board::default();
         let m = Move::from_uci("e2e4", &b).unwrap();
         println!("{m}");
-        assert_eq!(m, Move::new(Square::E2, Square::E4, None, false, false));
+        assert_eq!(m, Move::normal(Square::E2, Square::E4));
     }
 
     #[test]
@@ -257,7 +257,33 @@ mod tests {
                     .unwrap(),
             )
             .unwrap(),
-            Move::new(Square::B7, Square::B8, Some(Piece::Queen), false, false),
+            Move::promoting(Square::B7, Square::B8, Piece::Queen),
+        );
+    }
+
+    #[test]
+    fn test_uci_move_capture() {
+        assert_eq!(
+            Move::from_uci(
+                "c8c1",
+                &Board::from_fen("1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R1R3K1 b - - 1 26")
+                    .unwrap()
+            )
+            .unwrap(),
+            Move::normal(Square::C8, Square::C1)
+        );
+    }
+
+    #[test]
+    fn test_uci_not_castle() {
+        assert_eq!(
+            Move::from_uci(
+                "e1c1",
+                &Board::from_fen("1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26")
+                    .unwrap()
+            )
+            .unwrap(),
+            Move::normal(Square::E1, Square::C1)
         );
     }
 }

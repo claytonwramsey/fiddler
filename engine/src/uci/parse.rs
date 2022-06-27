@@ -147,16 +147,20 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
         _ => return Err("illegal starting position token".to_string()),
     };
 
-    let board = Board::from_fen(
+    let mut board = Board::from_fen(
         start_fen
             .as_deref()
             .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
     )?;
 
     let mut moves = Vec::new();
-    for m_result in tokens.map(|tok| Move::from_uci(tok, &board)) {
+    for tok in tokens {
+        let m_result = Move::from_uci(tok, &board);
         match m_result {
-            Ok(m) => moves.push(m),
+            Ok(m) => {
+                board.make_move(m);
+                moves.push(m);
+            },
             Err(e) => return Err(format!("could not parse UCI move: {e}")),
         };
     }
@@ -257,6 +261,20 @@ mod tests {
             Ok(UciCommand::Position {
                 fen: Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1".into()),
                 moves: Vec::new()
+            })
+        );
+    }
+
+    #[test]
+    fn test_position_not_castle() {
+        assert_eq!(
+            parse_line(
+                "position fen 1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26 moves e1c1\n", 
+                &Board::default()
+            ), 
+            Ok(UciCommand::Position { 
+                fen: Some("1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26".into()), 
+                moves: vec![Move::normal(Square::E1, Square::C1)],
             })
         );
     }
