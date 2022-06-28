@@ -82,7 +82,7 @@ impl MainSearch {
 
             let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
 
-            for _thread_id in 0..=self.config.n_helpers {
+            for _thread_id in 0..self.config.n_helpers {
                 let ttable_arc = self.ttable.clone();
                 let limit_arc = self.limit.clone();
                 let config_copy = self.config;

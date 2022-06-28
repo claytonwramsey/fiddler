@@ -99,8 +99,8 @@ fn main() {
             UciCommand::SetOption { name, value } => match name.as_str() {
                 "Thread Count" => match value {
                     None => debug_info("error: no value given for number of threads", debug),
-                    Some(num_str) => match num_str.parse() {
-                        Ok(n) => searcher.write().unwrap().config.n_helpers = n,
+                    Some(num_str) => match num_str.parse::<u8>() {
+                        Ok(n) => {searcher.write().unwrap().config.n_helpers = n - 1},
                         _ => debug_info("error: illegal parameter for `Thread Count`", debug),
                     },
                 },
