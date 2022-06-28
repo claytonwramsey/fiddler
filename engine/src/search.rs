@@ -94,11 +94,19 @@ pub fn search(
     is_main: bool,
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
-
-    let eval = searcher.pvs::<true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, true)?;
+    let mut pv = Vec::new();
+    let eval = searcher.pvs::<true>(
+        depth as i8, 
+        0, 
+        &mut g, 
+        Eval::MIN, 
+        Eval::MAX, 
+        &mut pv, 
+        true
+    )?;
 
     Ok(SearchInfo {
-        pv: searcher.pv,
+        pv,
         eval,
         num_transpositions: searcher.num_transpositions,
         num_nodes_evaluated: searcher.num_nodes_evaluated,
@@ -109,7 +117,7 @@ pub fn search(
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Information about the search which will be returned at the end of a search.
 pub struct SearchInfo {
-    /// The principal variation of best moves in the sequence.
+    /// The principal variation.
     pub pv: Vec<Move>,
     /// The evaluation of the position.
     pub eval: Eval,
@@ -141,8 +149,6 @@ impl SearchInfo {
 struct PVSearch<'a> {
     /// The transposition table.
     ttable: Arc<TTable>,
-    /// The principal variation.
-    pub pv: Vec<Move>,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
     killer_moves: Vec<Move>,
@@ -172,7 +178,6 @@ impl<'a> PVSearch<'a> {
     ) -> PVSearch {
         PVSearch {
             ttable,
-            pv: Vec::new(),
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
@@ -192,6 +197,10 @@ impl<'a> PVSearch<'a> {
     /// cause it to become negative. In the case where the search returns
     /// `Err`, the moves on `g` will not be correctly undone, so it is strongly
     /// recommended to pass in a reference to a copy of your original game.
+    /// 
+    /// `parent_line` is the principal line from the parent node. The elements 
+    /// [1..] of the parent line will be updated with the resulting best reply 
+    /// if PV is true.
     pub fn pvs<const PV: bool>(
         &mut self,
         depth_to_go: i8,
@@ -199,6 +208,7 @@ impl<'a> PVSearch<'a> {
         g: &mut Game,
         mut alpha: Eval,
         mut beta: Eval,
+        parent_line: &mut Vec<Move>,
         allow_reduction: bool,
     ) -> Result<Eval, SearchError> {
         if self.is_main {
@@ -210,14 +220,14 @@ impl<'a> PVSearch<'a> {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce::<PV>(depth_to_go, depth_so_far, g, alpha, beta);
+            return self.quiesce::<PV>(depth_to_go, depth_so_far, g, alpha, beta, parent_line);
         }
 
         self.increment_nodes()?;
 
         if g.is_drawn_historically() {
             if PV {
-                self.pv = Vec::new() // don't reuse old (now incorrect) PV
+                parent_line.clear();
             }
             // required so that movepicker only needs to know about current
             // position, and not about history
@@ -228,9 +238,6 @@ impl<'a> PVSearch<'a> {
         alpha = max(-Eval::mate_in(0), alpha);
         beta = min(Eval::mate_in(1), beta);
         if alpha >= beta {
-            if PV {
-                self.pv = Vec::new() // don't reuse old (now incorrect) PV
-            }
             // even if we mated our opponent at the end of this search, we would
             // not achieve anything better than what we already had
             return Ok(alpha);
@@ -249,14 +256,9 @@ impl<'a> PVSearch<'a> {
                     // this was a deeper search on the position
                     alpha = max(alpha, entry.lower_bound);
                     beta = min(beta, entry.upper_bound);
-                    if alpha >= beta {
-                        if PV {
-                            self.pv = Vec::new(); // don't reuse old PV
-                            self.update_pv(m, depth_so_far)
-                        } else {
-                            // PV must be searched to whole depth
-                            return Ok(alpha);
-                        }
+                    if alpha >= beta && !PV {
+                        // PV must be searched to whole depth
+                        return Ok(alpha);
                     }
                 }
             }
@@ -276,13 +278,14 @@ impl<'a> PVSearch<'a> {
             Some(x) => x,
             None => {
                 if PV {
-                    self.pv = Vec::new() // don't reuse old (now incorrect) PV
+                    parent_line.clear();
                 }
                 return Ok(leaf_evaluate(g).in_perspective(g.board().player_to_move));
             }
         };
         // best move found so far
         let mut best_move = m;
+        let mut line = Vec::new();
         g.make_move(m, delta);
         // best score so far
         let mut best_score = -self
@@ -292,6 +295,7 @@ impl<'a> PVSearch<'a> {
                 g,
                 -beta.step_forward(),
                 -alpha.step_forward(),
+                &mut line,
                 allow_reduction,
             )?
             .step_back();
@@ -313,9 +317,6 @@ impl<'a> PVSearch<'a> {
                 best_score,
                 best_move,
             );
-            if PV {
-                self.update_pv(m, depth_so_far);
-            }
             return Ok(best_score);
         }
 
@@ -337,6 +338,7 @@ impl<'a> PVSearch<'a> {
                     g,
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
+                    &mut line,
                     allow_reduction,
                 )?
                 .step_back();
@@ -357,6 +359,7 @@ impl<'a> PVSearch<'a> {
                         g,
                         -beta.step_forward(),
                         position_lower_bound,
+                        &mut line,
                         allow_reduction,
                     )?
                     .step_back();
@@ -388,8 +391,8 @@ impl<'a> PVSearch<'a> {
             best_move,
         );
 
-        if PV {
-            self.update_pv(m, depth_so_far);
+        if PV && best_score < beta {
+            write_line(parent_line, best_move, &line);
         }
 
         Ok(alpha)
@@ -407,13 +410,14 @@ impl<'a> PVSearch<'a> {
         g: &mut Game,
         mut alpha: Eval,
         beta: Eval,
+        parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
         let player = g.board().player_to_move;
 
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if !g.position().check_info.checkers.is_empty() {
-            return self.pvs::<PV>(1, depth_so_far, g, alpha, beta, false);
+            return self.pvs::<PV>(1, depth_so_far, g, alpha, beta, parent_line, false);
         }
 
         self.increment_nodes()?;
@@ -429,9 +433,6 @@ impl<'a> PVSearch<'a> {
 
         alpha = max(score, alpha);
         if alpha >= beta {
-            if PV {
-                self.pv = Vec::new();
-            }
             // beta cutoff, this line would not be selected because there is a
             // better option somewhere else
             return Ok(alpha);
@@ -440,6 +441,7 @@ impl<'a> PVSearch<'a> {
         let mut moves = get_moves::<CAPTURES, CandidacyNominate>(g.position());
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut best_move = Move::BAD_MOVE;
+        let mut line = Vec::new();
 
         for (m, (delta, _)) in moves {
             g.make_move(m, delta);
@@ -451,6 +453,7 @@ impl<'a> PVSearch<'a> {
                     g,
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
+                    &mut line,
                 )?
                 .step_back();
             if alpha < score && score < beta {
@@ -464,6 +467,7 @@ impl<'a> PVSearch<'a> {
                         g,
                         -beta.step_forward(),
                         -score.step_forward(),
+                        &mut line,
                     )?
                     .step_back();
                 best_move = m;
@@ -479,11 +483,11 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        if PV {
+        if PV && score < beta {
             if best_move != Move::BAD_MOVE {
-                self.update_pv(best_move, depth_so_far);
+                write_line(parent_line, best_move, &line);
             } else {
-                self.pv = Vec::new();
+                parent_line.clear();
             }
         }
 
@@ -534,17 +538,12 @@ impl<'a> PVSearch<'a> {
         self.nodes_since_limit_update = 0;
         Ok(())
     }
+}
 
-    /// Add a move to the principal variation field, growing the principal
-    /// variation vector if necessary.
-    fn update_pv(&mut self, m: Move, depth: u8) {
-        if self.pv.len() <= depth as usize {
-            // this is a new root - make a brand-new principal variation
-            self.pv = vec![Move::BAD_MOVE; depth as usize + 1];
-        }
-
-        self.pv[depth as usize] = m;
-    }
+/// Write all of the contents of `line` into the section [1..] of `parent_line`.
+fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
+    parent_line.resize(1, m);
+    parent_line.extend(line);
 }
 
 #[cfg(test)]
