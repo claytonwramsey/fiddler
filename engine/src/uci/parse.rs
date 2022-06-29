@@ -160,7 +160,7 @@ fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> UciParseResult {
             Ok(m) => {
                 board.make_move(m);
                 moves.push(m);
-            },
+            }
             Err(e) => return Err(format!("could not parse UCI move: {e}")),
         };
     }

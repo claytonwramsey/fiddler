@@ -95,15 +95,7 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut pv = Vec::new();
-    let eval = searcher.pvs::<true>(
-        depth as i8, 
-        0, 
-        &mut g, 
-        Eval::MIN, 
-        Eval::MAX, 
-        &mut pv, 
-        true
-    )?;
+    let eval = searcher.pvs::<true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv, true)?;
 
     Ok(SearchInfo {
         pv,
@@ -133,7 +125,9 @@ impl SearchInfo {
     /// Unify with another `SearchInfo`, selecting the most accurate evaluation
     /// (by depth) and summing the number of transpositions and nodes evaluated.
     pub fn unify_with(&mut self, other: &SearchInfo) {
-        if other.depth > self.depth || other.depth == self.depth && other.eval > self.eval {
+        let other_is_better =
+            other.depth > self.depth || other.depth == self.depth && other.pv.len() > self.pv.len();
+        if other_is_better {
             self.pv = other.pv.clone();
             self.eval = other.eval;
             self.depth = other.depth;
@@ -197,9 +191,9 @@ impl<'a> PVSearch<'a> {
     /// cause it to become negative. In the case where the search returns
     /// `Err`, the moves on `g` will not be correctly undone, so it is strongly
     /// recommended to pass in a reference to a copy of your original game.
-    /// 
-    /// `parent_line` is the principal line from the parent node. The elements 
-    /// [1..] of the parent line will be updated with the resulting best reply 
+    ///
+    /// `parent_line` is the principal line from the parent node. The elements
+    /// \[1..\] of the parent line will be updated with the resulting best reply
     /// if PV is true.
     pub fn pvs<const PV: bool>(
         &mut self,
@@ -225,15 +219,6 @@ impl<'a> PVSearch<'a> {
 
         self.increment_nodes()?;
 
-        if g.is_drawn_historically() {
-            if PV {
-                parent_line.clear();
-            }
-            // required so that movepicker only needs to know about current
-            // position, and not about history
-            return Ok(Eval::DRAW);
-        }
-
         // mate distance pruning:
         alpha = max(-Eval::mate_in(0), alpha);
         beta = min(Eval::mate_in(1), beta);
@@ -241,6 +226,15 @@ impl<'a> PVSearch<'a> {
             // even if we mated our opponent at the end of this search, we would
             // not achieve anything better than what we already had
             return Ok(alpha);
+        }
+
+        if g.is_drawn_historically() {
+            if PV && alpha < Eval::DRAW && Eval::DRAW < beta {
+                parent_line.clear();
+            }
+            // required so that movepicker only needs to know about current
+            // position, and not about history
+            return Ok(Eval::DRAW);
         }
 
         // Retrieve transposition data and use it to improve our estimate on
@@ -254,11 +248,15 @@ impl<'a> PVSearch<'a> {
                 tt_move = Some(m);
                 if entry.depth == depth_to_go as u8 {
                     // this was a deeper search on the position
-                    alpha = max(alpha, entry.lower_bound);
                     beta = min(beta, entry.upper_bound);
-                    if alpha >= beta && !PV {
-                        // PV must be searched to whole depth
-                        return Ok(alpha);
+                    if entry.lower_bound > alpha {
+                        alpha = entry.lower_bound;
+                        if alpha >= beta {
+                            return Ok(alpha);
+                        }
+                        if PV {
+                            write_line(parent_line, m, &[]);
+                        }
                     }
                 }
             }
@@ -277,10 +275,12 @@ impl<'a> PVSearch<'a> {
         let (m, delta) = match moves_iter.next() {
             Some(x) => x,
             None => {
-                if PV {
+                let score = leaf_evaluate(g).in_perspective(g.board().player_to_move);
+                if PV && alpha < score && score < beta {
+                    alpha = score;
                     parent_line.clear();
                 }
-                return Ok(leaf_evaluate(g).in_perspective(g.board().player_to_move));
+                return Ok(alpha);
             }
         };
         // best move found so far
@@ -303,21 +303,26 @@ impl<'a> PVSearch<'a> {
         {
             g.undo();
         }
-        alpha = max(best_score, alpha);
-        if alpha >= beta {
-            // cutoff!
-            if can_use_killers {
-                self.killer_moves[killer_index] = m;
+        if best_score > alpha {
+            alpha = best_score;
+            if alpha >= beta {
+                // cutoff!
+                if can_use_killers {
+                    self.killer_moves[killer_index] = m;
+                }
+                self.ttable_store(
+                    &mut tt_guard,
+                    depth_to_go,
+                    alpha,
+                    beta,
+                    best_score,
+                    best_move,
+                );
+                return Ok(alpha);
             }
-            self.ttable_store(
-                &mut tt_guard,
-                depth_to_go,
-                alpha,
-                beta,
-                best_score,
-                best_move,
-            );
-            return Ok(best_score);
+            if PV {
+                write_line(parent_line, m, &line);
+            }
         }
 
         for (idx, (m, delta)) in moves_iter.enumerate() {
@@ -342,7 +347,7 @@ impl<'a> PVSearch<'a> {
                     allow_reduction,
                 )?
                 .step_back();
-            if alpha < score && score < beta {
+            if alpha < score && score < beta && (PV || late_move) {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
@@ -371,13 +376,18 @@ impl<'a> PVSearch<'a> {
             if score > best_score {
                 best_move = m;
                 best_score = score;
-                alpha = max(score, alpha);
-                if alpha >= beta {
-                    // Beta cutoff, we have  found a better line somewhere else
-                    if can_use_killers {
-                        self.killer_moves[killer_index] = m;
+                if score > alpha {
+                    alpha = score;
+                    if alpha >= beta {
+                        // Beta cutoff, we have  found a better line somewhere else
+                        if can_use_killers {
+                            self.killer_moves[killer_index] = m;
+                        }
+                        break;
+                    } 
+                    if PV {
+                        write_line(parent_line, m, &line);
                     }
-                    break;
                 }
             }
         }
@@ -390,10 +400,6 @@ impl<'a> PVSearch<'a> {
             best_score,
             best_move,
         );
-
-        if PV && best_score < beta {
-            write_line(parent_line, best_move, &line);
-        }
 
         Ok(alpha)
     }
@@ -431,16 +437,20 @@ impl<'a> PVSearch<'a> {
         // Put the score in perspective of the player.
         let mut score = leaf_evaluation.in_perspective(player);
 
-        alpha = max(score, alpha);
-        if alpha >= beta {
-            // beta cutoff, this line would not be selected because there is a
-            // better option somewhere else
-            return Ok(alpha);
+        if score > alpha {
+            alpha = score;
+            if alpha >= beta {
+                // beta cutoff, this line would not be selected because there is a
+                // better option somewhere else
+                return Ok(alpha);
+            }
+            if PV {
+                parent_line.clear();
+            }
         }
 
         let mut moves = get_moves::<CAPTURES, CandidacyNominate>(g.position());
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
-        let mut best_move = Move::BAD_MOVE;
         let mut line = Vec::new();
 
         for (m, (delta, _)) in moves {
@@ -456,7 +466,7 @@ impl<'a> PVSearch<'a> {
                     &mut line,
                 )?
                 .step_back();
-            if alpha < score && score < beta {
+            if PV && alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
@@ -470,24 +480,20 @@ impl<'a> PVSearch<'a> {
                         &mut line,
                     )?
                     .step_back();
-                best_move = m;
             }
             #[allow(unused_must_use)]
             {
                 g.undo();
             }
-            alpha = max(alpha, score);
-            if alpha >= beta {
-                // Beta cutoff, we have  found a better line somewhere else
-                break;
-            }
-        }
-
-        if PV && score < beta {
-            if best_move != Move::BAD_MOVE {
-                write_line(parent_line, best_move, &line);
-            } else {
-                parent_line.clear();
+            if score > alpha {
+                alpha = score;
+                if alpha >= beta {
+                    // Beta cutoff, we have  found a better line somewhere else
+                    break;
+                }
+                if PV {
+                    write_line(parent_line, m, &line)
+                }
             }
         }
 
@@ -543,6 +549,7 @@ impl<'a> PVSearch<'a> {
 /// Write all of the contents of `line` into the section [1..] of `parent_line`.
 fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
     parent_line.resize(1, m);
+    parent_line[0] = m;
     parent_line.extend(line);
 }
 
@@ -594,6 +601,11 @@ pub mod tests {
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             10,
         );
+        print!("[");
+        for m in info.pv.iter() {
+            print!("{m}, ")
+        }
+        println!("]");
         let m = Move::normal(Square::D1, Square::F3);
         assert_eq!(info.pv[0], m);
     }
