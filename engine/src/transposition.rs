@@ -191,18 +191,20 @@ impl TTable {
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
     pub fn age_up(&mut self, max_age: u8) {
-        for idx in 0..=self.mask as usize {
-            let entry: &mut TTEntry = unsafe { self.entries.add(idx).as_mut().unwrap() };
-            entry.age += 1;
-            if entry.age >= max_age {
-                *entry = TTEntry::new();
+        if !self.entries.is_null() {
+            for idx in 0..=self.mask as usize {
+                let entry: &mut TTEntry = unsafe { self.entries.add(idx).as_mut().unwrap() };
+                entry.age += 1;
+                if entry.age >= max_age {
+                    *entry = TTEntry::new();
+                }
             }
         }
     }
 
     /// Resize the hash table to use no more than `size_mb` megabytes.
     pub fn resize(&mut self, size_mb: usize) {
-        let max_num_entries = size_mb / size_of::<TTEntry>();
+        let max_num_entries = size_mb * 1_000_000 / size_of::<TTEntry>();
         let new_size = if max_num_entries.is_power_of_two() {
             max_num_entries
         } else {
@@ -247,7 +249,7 @@ impl TTable {
                 realloc(
                     self.entries as *mut u8,
                     Layout::array::<TTEntry>(old_size).unwrap(),
-                    new_size,
+                    new_size * size_of::<TTEntry>(),
                 ) as *mut TTEntry
             };
             self.mask = new_mask as u64;
@@ -256,16 +258,20 @@ impl TTable {
             self.entries = if old_entries.is_null() {
                 unsafe { alloc_zeroed(Layout::array::<TTEntry>(new_size).unwrap()) as *mut TTEntry }
             } else {
-                unsafe {
+                let ptr = unsafe {
                     realloc(
                         self.entries as *mut u8,
                         Layout::array::<TTEntry>(old_size).unwrap(),
-                        new_size,
+                        new_size * size_of::<TTEntry>(),
                     ) as *mut TTEntry
+                };
+                unsafe {
+                    // write the new block with zeros
+                    ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
+                ptr
             };
             let new_mask = (new_size - 1) as u64;
-
             // the mask got bigger, so some entries may need to move right
             for idx in 0..old_size {
                 let entry = unsafe { *self.entries.add(idx) };
@@ -289,7 +295,7 @@ impl TTable {
         if self.entries.is_null() {
             0
         } else {
-            size_of::<TTEntry>() * (self.mask as usize + 1)
+            size_of::<TTEntry>() * (self.mask as usize + 1) / 1_000_000
         }
     }
 

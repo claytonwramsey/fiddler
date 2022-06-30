@@ -54,7 +54,7 @@ impl MainSearch {
     pub fn new() -> MainSearch {
         MainSearch {
             config: SearchConfig::new(),
-            ttable: TTable::with_capacity(25),
+            ttable: TTable::with_capacity(5),
             limit: SearchLimit::new(),
         }
     }
