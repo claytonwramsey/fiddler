@@ -384,7 +384,7 @@ impl<'a> PVSearch<'a> {
                             self.killer_moves[killer_index] = m;
                         }
                         break;
-                    } 
+                    }
                     if PV {
                         write_line(parent_line, m, &line);
                     }

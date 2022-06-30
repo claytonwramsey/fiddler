@@ -269,10 +269,10 @@ mod tests {
     fn test_position_not_castle() {
         assert_eq!(
             parse_line(
-                "position fen 1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26 moves e1c1\n", 
+                "position fen 1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26 moves e1c1\n",
                 &Board::default()
-            ), 
-            Ok(UciCommand::Position { 
+            ),
+            Ok(UciCommand::Position {
                 fen: Some("1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26".into()), 
                 moves: vec![Move::normal(Square::E1, Square::C1)],
             })

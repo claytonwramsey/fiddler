@@ -73,8 +73,6 @@ impl MainSearch {
     /// of an internal bug or a critical OS interrupt. However, a timeout error
     /// is most likely if the search times out before it can do any computation.
     pub fn evaluate(&self, g: &Game) -> SearchResult {
-        // TODO figure out how to correctly age up the transposition table
-        // self.ttable.age_up(2);
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
         for depth in 1..=self.config.depth {
@@ -138,6 +136,7 @@ impl MainSearch {
                             ),
                             EngineInfo::Time(elapsed),
                             EngineInfo::Pv(&best_info.pv),
+                            EngineInfo::HashFull(self.ttable.fill_rate_permill()),
                         ])
                     )
                 }
