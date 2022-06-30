@@ -283,9 +283,14 @@ impl TTable {
         }
     }
 
-    /// Get the size of this table, in bits
-    pub fn bit_size(&self) -> usize {
-        self.mask.count_ones() as usize
+    /// Get the size of this table, in megabytes. Does not include the size of 
+    /// the struct itself, but rather just the heap-allocated table size.
+    pub fn size_mb(&self) -> usize {
+        if self.entries.is_null() {
+            0
+        } else {
+            size_of::<TTEntry>() * (self.mask as usize + 1)
+        }
     }
 
     /// Clear all entries in the table.

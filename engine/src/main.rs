@@ -85,6 +85,15 @@ fn main() {
                 );
                 searcher.write().unwrap().config.n_helpers = 15;
 
+                add_option(
+                    "Hash",
+                    OptionType::Spin { 
+                        default: searcher.read().unwrap().ttable.size_mb() as i64, 
+                        min: 0, 
+                        max: i64::MAX, // not my problem if you OOM your computer
+                    }
+                );
+
                 println!("{}", UciMessage::UciOk)
             }
             UciCommand::Debug(new_debug) => {
