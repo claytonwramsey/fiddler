@@ -24,11 +24,7 @@
 //! of the output from each individual search and composes it into a single
 //! easily-used structure for consumption in the main process.
 
-use std::{
-    sync::Arc,
-    thread::{spawn, JoinHandle},
-    time::Instant,
-};
+use std::{thread::scope, time::Instant};
 
 use fiddler_base::Game;
 
@@ -42,15 +38,15 @@ use super::{
     SearchError,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 /// The primary search thread for an engine.
 pub struct MainSearch {
     /// The configuration of the search, controlling the search parameters.
     pub config: SearchConfig,
     /// The transposition table, shared across all search threads.
-    pub ttable: Arc<TTable>,
+    pub ttable: TTable,
     /// The limit to the search.
-    pub limit: Arc<SearchLimit>,
+    pub limit: SearchLimit,
 }
 
 impl MainSearch {
@@ -58,8 +54,8 @@ impl MainSearch {
     pub fn new() -> MainSearch {
         MainSearch {
             config: SearchConfig::new(),
-            ttable: Arc::new(TTable::with_capacity(25)),
-            limit: Arc::new(SearchLimit::new()),
+            ttable: TTable::with_capacity(25),
+            limit: SearchLimit::new(),
         }
     }
 
@@ -75,79 +71,78 @@ impl MainSearch {
     pub fn evaluate(&self, g: &Game) -> SearchResult {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
-        for depth in 1..=self.config.depth {
-            // iterative deepening
+        scope(|s| {
+            for depth in 1..=self.config.depth {
+                // iterative deepening
 
-            let mut handles: Vec<JoinHandle<SearchResult>> = Vec::new();
+                let mut handles = Vec::new();
 
-            for _thread_id in 0..self.config.n_helpers {
-                let ttable_arc = self.ttable.clone();
-                let limit_arc = self.limit.clone();
-                let config_copy = self.config;
-                let gcopy = g.clone();
-                handles.push(spawn(move || {
-                    search(gcopy, depth, ttable_arc, &config_copy, limit_arc, false)
-                }));
-            }
+                for _thread_id in 0..self.config.n_helpers {
+                    let gcopy = g.clone();
+                    handles.push(s.spawn(move || {
+                        search(gcopy, depth, &self.ttable, &self.config, &self.limit, false)
+                    }));
+                }
 
-            // now it's our turn to think
-            let mut sub_result = search(
-                g.clone(),
-                depth,
-                self.ttable.clone(),
-                &self.config,
-                self.limit.clone(),
-                true,
-            );
+                // now it's our turn to think
+                let mut sub_result = search(
+                    g.clone(),
+                    depth,
+                    &self.ttable,
+                    &self.config,
+                    &self.limit,
+                    true,
+                );
 
-            for handle in handles {
-                let eval_result = handle.join().map_err(|_| SearchError::Join)?;
+                for handle in handles {
+                    let eval_result = handle.join().map_err(|_| SearchError::Join)?;
 
-                match (&mut sub_result, &eval_result) {
-                    // if this is our first successful thread, use its result
-                    (Err(_), Ok(_)) => sub_result = eval_result.clone(),
-                    // if both were successful, use the deepest result
-                    (Ok(ref mut best_search), Ok(ref new_search)) => {
-                        best_search.unify_with(new_search);
+                    match (&mut sub_result, &eval_result) {
+                        // if this is our first successful thread, use its result
+                        (Err(_), Ok(_)) => sub_result = eval_result.clone(),
+                        // if both were successful, use the deepest result
+                        (Ok(ref mut best_search), Ok(ref new_search)) => {
+                            best_search.unify_with(new_search);
+                        }
+                        _ => (),
+                        // error cases cause nothing to happen
+                    };
+                }
+
+                if sub_result.is_ok() {
+                    // update best result and inform GUI
+                    best_result = sub_result;
+                    let elapsed = Instant::now() - tic;
+                    if let Ok(ref best_info) = best_result {
+                        println!(
+                            "{}",
+                            UciMessage::Info(&[
+                                EngineInfo::Depth(best_info.depth),
+                                EngineInfo::Score {
+                                    eval: best_info.eval,
+                                    is_lower_bound: false,
+                                    is_upper_bound: false
+                                },
+                                EngineInfo::Nodes(best_info.num_nodes_evaluated),
+                                EngineInfo::NodeSpeed(
+                                    1000 * best_info.num_nodes_evaluated
+                                        / (elapsed.as_millis() + 1) as u64
+                                ),
+                                EngineInfo::Time(elapsed),
+                                EngineInfo::Pv(&best_info.pv),
+                                EngineInfo::HashFull(self.ttable.fill_rate_permill()),
+                            ])
+                        )
                     }
-                    _ => (),
-                    // error cases cause nothing to happen
-                };
-            }
-
-            if sub_result.is_ok() {
-                // update best result and inform GUI
-                best_result = sub_result;
-                let elapsed = Instant::now() - tic;
-                if let Ok(ref best_info) = best_result {
-                    println!(
-                        "{}",
-                        UciMessage::Info(&[
-                            EngineInfo::Depth(best_info.depth),
-                            EngineInfo::Score {
-                                eval: best_info.eval,
-                                is_lower_bound: false,
-                                is_upper_bound: false
-                            },
-                            EngineInfo::Nodes(best_info.num_nodes_evaluated),
-                            EngineInfo::NodeSpeed(
-                                1000 * best_info.num_nodes_evaluated
-                                    / (elapsed.as_millis() + 1) as u64
-                            ),
-                            EngineInfo::Time(elapsed),
-                            EngineInfo::Pv(&best_info.pv),
-                            EngineInfo::HashFull(self.ttable.fill_rate_permill()),
-                        ])
-                    )
                 }
             }
-        }
 
-        if let Ok(ref mut info) = best_result {
-            // normalize evaluation to be in absolute terms
-            info.eval = info.eval.in_perspective(g.board().player_to_move);
-        }
-        best_result
+            if let Ok(ref mut info) = best_result {
+                // normalize evaluation to be in absolute terms
+                info.eval = info.eval.in_perspective(g.board().player_to_move);
+            }
+            best_result
+        })
     }
 }
 

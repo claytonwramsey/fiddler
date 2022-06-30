@@ -40,7 +40,6 @@ use super::{
     transposition::TTable,
 };
 
-use std::sync::Arc;
 use std::{
     cmp::{max, min},
     sync::PoisonError,
@@ -88,9 +87,9 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 pub fn search(
     mut g: Game,
     depth: u8,
-    ttable: Arc<TTable>,
+    ttable: &TTable,
     config: &SearchConfig,
-    limit: Arc<SearchLimit>,
+    limit: &SearchLimit,
     is_main: bool,
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
@@ -142,7 +141,7 @@ impl SearchInfo {
 /// principal variation search.
 struct PVSearch<'a> {
     /// The transposition table.
-    ttable: Arc<TTable>,
+    ttable: &'a TTable,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
     /// shallow, etc).
     killer_moves: Vec<Move>,
@@ -155,7 +154,7 @@ struct PVSearch<'a> {
     /// The configuration of this search.
     config: &'a SearchConfig,
     /// The limit to this search.
-    limit: Arc<SearchLimit>,
+    limit: &'a SearchLimit,
     /// Whether this search is the main search.
     is_main: bool,
 }
@@ -165,11 +164,11 @@ impl<'a> PVSearch<'a> {
     /// configuration, and limit. `is_main` is whether the thread is a main
     /// search, responsible for certain synchronization activities.
     pub fn new(
-        ttable: Arc<TTable>,
+        ttable: &'a TTable,
         config: &'a SearchConfig,
-        limit: Arc<SearchLimit>,
+        limit: &'a SearchLimit,
         is_main: bool,
-    ) -> PVSearch {
+    ) -> PVSearch<'a> {
         PVSearch {
             ttable,
             killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
@@ -575,9 +574,9 @@ pub mod tests {
         search(
             g,
             depth,
-            Arc::new(TTable::with_capacity(25)),
+            &TTable::with_capacity(25),
             &config,
-            Arc::new(SearchLimit::default()),
+            &SearchLimit::default(),
             true,
         )
         .unwrap()

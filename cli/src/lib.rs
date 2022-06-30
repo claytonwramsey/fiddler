@@ -32,7 +32,7 @@ use fiddler_engine::{
 use std::{
     fmt,
     io::{self, BufRead},
-    sync::{Arc, Mutex},
+    sync::Mutex,
     time::Duration,
 };
 
@@ -46,8 +46,6 @@ pub struct FiddlerApp<'a> {
     input_stream: Box<dyn io::Read + 'a>,
     /// The output stream to send messages to.
     output_stream: Box<dyn io::Write + 'a>,
-    /// The condition on which search will stop.
-    limit: Arc<SearchLimit>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -292,7 +290,8 @@ impl<'a> FiddlerApp<'a> {
 
     /// Have the engine play a move.
     fn play_engine_move(&mut self) -> CommandResult {
-        self.limit
+        self.engine
+            .limit
             .start()
             .map_err(|_| String::from("poisoned limit locks"))?;
         let search_data = self
@@ -319,27 +318,22 @@ impl<'a> FiddlerApp<'a> {
     /// Set the internal search limit of this CLI, and update the searcher to
     /// match.
     fn set_limit(&mut self, limit: SearchLimit) {
-        let arc_limit = Arc::new(limit);
-        self.limit = arc_limit.clone();
-        self.engine.limit = arc_limit;
+        self.engine.limit = limit;
     }
 }
 
 impl<'a> Default for FiddlerApp<'a> {
     fn default() -> FiddlerApp<'a> {
-        let arc_limit = {
-            let mut limit = SearchLimit::new();
-            limit.search_duration = Mutex::new(Some(Duration::from_secs(5)));
-            Arc::new(limit)
-        };
+        let mut limit = SearchLimit::new();
+        limit.search_duration = Mutex::new(Some(Duration::from_secs(5)));
+
         let mut app = FiddlerApp {
             game: Game::new(),
             engine: MainSearch::new(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
-            limit: arc_limit.clone(),
         };
-        app.engine.limit = arc_limit;
+        app.engine.limit = limit;
         app.engine.config.n_helpers = 15;
         app
     }

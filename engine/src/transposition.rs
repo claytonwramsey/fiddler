@@ -287,6 +287,15 @@ impl TTable {
     pub fn bit_size(&self) -> usize {
         self.mask.count_ones() as usize
     }
+
+    /// Clear all entries in the table.
+    pub fn clear(&mut self) {
+        if !self.entries.is_null() {
+            let n_entries = self.mask as usize + 1;
+            // fill the whole table with zeros
+            unsafe { self.entries.write_bytes(0, n_entries) };
+        }
+    }
 }
 
 impl TTEntry {

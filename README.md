@@ -27,6 +27,10 @@ the main UCI executable, navigate to the root of this repository and run
 executable `target/release/fiddler_engine` (or
 `target/release/fiddler_engine.exe` for Windows users).
 
+Fiddler uses a feature from the as-yet unstable 1.63 edition of Rust, so you
+will need to use the nightly version. If you do not have the nightly compiler as
+your default, add `+nightly` to your build command.
+
 ## Future plans
 
 Below are my plans for the future of this engine, in roughly descending order of

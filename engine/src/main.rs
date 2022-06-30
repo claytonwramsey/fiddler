@@ -37,7 +37,6 @@ use fiddler_engine::{
     evaluate::{static_evaluate, value_delta},
     thread::MainSearch,
     time::get_search_time,
-    transposition::TTable,
     uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
 };
 
@@ -107,7 +106,9 @@ fn main() {
                 "Hash" => match value {
                     None => debug_info("error: no value given for hashsize", debug),
                     Some(size_str) => match size_str.parse::<usize>() {
-                        Ok(_size_mb) => todo!(),
+                        Ok(size_mb) => {
+                            searcher.write().unwrap().ttable.resize(size_mb);
+                        }
                         _ => debug_info("error: illegal parameter for hash size", debug),
                     },
                 },
@@ -122,8 +123,7 @@ fn main() {
                 // (in actuality, just make a new one to get around Arc
                 // immutability)
                 let mut searcher_guard = searcher.write().unwrap();
-                let old_bit_size = searcher_guard.ttable.bit_size();
-                searcher_guard.ttable = Arc::new(TTable::with_capacity(old_bit_size));
+                searcher_guard.ttable.clear();
             }
             UciCommand::Position { fen, moves } => {
                 game = match fen {
@@ -277,6 +277,8 @@ fn go(
             }
         }
         drop(searcher_guard);
+        // clean up after ourselves by aging up the transposition table
+        searcher_new_arc.write().unwrap().ttable.age_up(2);
     }))
 }
 
