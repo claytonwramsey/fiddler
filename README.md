@@ -36,8 +36,6 @@ your default, add `+nightly` to your build command.
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
 
-* Shuffle root move ordering across threads to improve parallelism speedup
-
 * Support ponderhit and other UCI commands
 
 * Actual match data to support Elo estimates
