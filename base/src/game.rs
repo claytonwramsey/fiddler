@@ -18,7 +18,7 @@
 
 //! Full chess games, including history and metadata.
 
-use crate::movegen::{is_legal, NoopNominator, ALL};
+use crate::movegen::is_legal;
 
 use super::{
     algebraic::algebraic_from_move,
@@ -127,7 +127,7 @@ impl Game {
     /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
     /// you that the move is illegal, and no state will be changed.
     pub fn try_move(&mut self, m: Move, delta: Score) -> Result<(), &'static str> {
-        if self.get_moves::<ALL, NoopNominator>().contains(&(m, ())) {
+        if is_legal(m, self.position()) {
             self.make_move(m, delta);
             Ok(())
         } else {
@@ -262,7 +262,7 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Board, Move, Square};
+    use crate::{Board, Move, Square, movegen::{ALL, NoopNominator}};
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board

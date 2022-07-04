@@ -207,12 +207,9 @@ impl Score {
 
     /// Blend the midgame and endgame
     pub fn blend(&self, phase: f32) -> Eval {
-        #[cfg(debug_assertions)]
-        {
-            // in test mode, require that the phase is between 0 and 1
-            assert!(0. <= phase);
-            assert!(phase <= 1.);
-        }
+        // in test mode, require that the phase is between 0 and 1
+        debug_assert!(0. <= phase);
+        debug_assert!(phase <= 1.);
 
         self.mg * phase + self.eg * (1. - phase)
     }

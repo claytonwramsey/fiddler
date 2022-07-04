@@ -55,10 +55,10 @@ use super::material;
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101010101010101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-33, -31);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-34, -28);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(7, 15);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(7, 46);
 
 /// Evaluate a leaf position on a game whose cumulative values have been
 /// computed correctly.
@@ -203,9 +203,9 @@ pub fn phase_of(b: &Board) -> f32 {
         }
         total
     };
-    let bounded_npm = max(MG_LIMIT, min(EG_LIMIT, mg_npm));
+    let bounded_npm = max(EG_LIMIT, min(MG_LIMIT, mg_npm));
 
-    (bounded_npm - EG_LIMIT).float_val() / (MG_LIMIT - EG_LIMIT).float_val()
+    (EG_LIMIT - bounded_npm).float_val() / (EG_LIMIT - MG_LIMIT).float_val()
 }
 
 #[cfg(test)]
@@ -232,5 +232,15 @@ mod tests {
     fn test_delta_promotion() {
         // undoubling capture promotion is possible
         delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
+    }
+
+    #[test]
+    fn test_certainly_endgame() {
+        assert_eq!(phase_of(&Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()), 0.0);
+    }
+
+    #[test]
+    fn test_certainly_midgame() {
+        assert_eq!(phase_of(&Board::default()), 1.0);
     }
 }

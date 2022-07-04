@@ -32,11 +32,11 @@ use fiddler_base::{Board, Color, Move, Piece, Score};
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {
     match pt {
-        Piece::Knight => Score::centipawns(288, 289),
-        Piece::Bishop => Score::centipawns(330, 331),
-        Piece::Rook => Score::centipawns(470, 452),
-        Piece::Queen => Score::centipawns(966, 965),
-        Piece::Pawn => Score::centipawns(101, 103), // comically, a pawn is not worth 100cp
+        Piece::Knight => Score::centipawns(289, 288),
+        Piece::Bishop => Score::centipawns(331, 328),
+        Piece::Rook => Score::centipawns(461, 456),
+        Piece::Queen => Score::centipawns(962, 969),
+        Piece::Pawn => Score::centipawns(103, 100), // comically, a pawn is not worth 100cp
         Piece::King => Score::centipawns(0, 0),
     }
 }

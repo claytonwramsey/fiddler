@@ -23,11 +23,11 @@ use crate::Board;
 use super::{Piece, Square};
 
 use std::{
-    fmt::{Display, Formatter},
+    fmt::{Display, Formatter, Debug},
     mem::transmute,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 /// The information of one move, containing its from- and to-squares, as well as
 /// its promote type.
 ///
@@ -217,6 +217,22 @@ impl Move {
     /// values returned from `Move::value()`.
     pub const fn from_val(val: u16) -> Move {
         Move(val)
+    }
+}
+
+impl Debug for Move {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.from_square(), self.to_square())?;
+        if let Some(pt) = self.promote_type() {
+            write!(f, "{}", pt.code())?;
+        }
+        if self.is_en_passant() {
+            write!(f, " [e.p.]")?;
+        }
+        if self.is_castle() {
+            write!(f, " [castle]")?;
+        }
+        Ok(())
     }
 }
 

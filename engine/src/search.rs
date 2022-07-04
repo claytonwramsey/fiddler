@@ -125,7 +125,7 @@ impl SearchInfo {
     /// (by depth) and summing the number of transpositions and nodes evaluated.
     pub fn unify_with(&mut self, other: &SearchInfo) {
         let other_is_better =
-            other.depth > self.depth || other.depth == self.depth && other.pv.len() > self.pv.len();
+            other.depth > self.depth || (other.depth == self.depth && other.pv.len() > self.pv.len());
         if other_is_better {
             self.pv = other.pv.clone();
             self.eval = other.eval;
@@ -245,14 +245,14 @@ impl<'a> PVSearch<'a> {
             let m = entry.best_move;
             if is_legal(m, g.position()) {
                 tt_move = Some(m);
-                if entry.depth == depth_to_go as u8 {
+                if entry.depth >= depth_to_go as u8 {
                     // this was a deeper search on the position
                     beta = min(beta, entry.upper_bound);
                     if entry.lower_bound > alpha {
-                        alpha = entry.lower_bound;
-                        if alpha >= beta {
+                        if entry.lower_bound >= beta {
                             return Ok(alpha);
                         }
+                        alpha = entry.lower_bound;
                         if PV {
                             write_line(parent_line, m, &[]);
                         }
@@ -325,12 +325,15 @@ impl<'a> PVSearch<'a> {
         }
 
         for (idx, (m, delta)) in moves_iter.enumerate() {
+            g.make_move(m, delta);
+
+            // Late move reduction. 
             let late_move = idx > self.config.num_early_moves
+                && !PV
                 && !g.board().is_move_capture(m)
                 && m.promote_type().is_none()
+                && !g.position().check_info.checkers.is_empty()
                 && allow_reduction;
-            g.make_move(m, delta);
-            // zero-window search
             let depth_to_search = match late_move {
                 true => depth_to_go - 2,
                 false => depth_to_go - 1,
@@ -346,23 +349,31 @@ impl<'a> PVSearch<'a> {
                     allow_reduction,
                 )?
                 .step_back();
-            if alpha < score && score < beta && (PV || late_move) {
+            if late_move && alpha < score {
+                // if the late move reduction failed high, retry the search.
+                score = -self
+                    .pvs::<false>(
+                        depth_to_go - 1,
+                        depth_so_far + 1,
+                        g,
+                        -alpha.step_forward() - Eval::centipawns(1),
+                        -alpha.step_forward(),
+                        &mut line,
+                        allow_reduction,
+                    )?
+                    .step_back();
+            }
+            if alpha < score && score < beta && PV {
                 // zero-window search failed high, so there is a better option
-                // in this tree. we already have a score from before that we
-                // can use as a lower bound in this search.
-                let position_lower_bound = match late_move {
-                    // if this was a late move, we can't use the previous
-                    // fail-high
-                    true => -alpha.step_forward(),
-                    false => -score.step_forward(),
-                };
+                // in this tree. We cannot use our previous fail-high score in 
+                // case of late move reduction.
                 score = -self
                     .pvs::<PV>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
                         -beta.step_forward(),
-                        position_lower_bound,
+                        -alpha.step_forward(),
                         &mut line,
                         allow_reduction,
                     )?
@@ -557,6 +568,7 @@ pub mod tests {
     use super::*;
     use crate::evaluate::static_evaluate;
     use fiddler_base::Move;
+    use fiddler_base::Score;
     use fiddler_base::Square;
 
     /// Helper function to search a position at a given depth.
@@ -566,20 +578,26 @@ pub mod tests {
     /// This function will panic if searching the position fails or the game is
     /// invalid.
     fn search_helper(fen: &str, depth: u8) -> SearchInfo {
-        let g = Game::from_fen(fen, static_evaluate).unwrap();
+        let mut g = Game::from_fen(fen, static_evaluate).unwrap();
         let config = SearchConfig {
             depth,
             ..Default::default()
         };
-        search(
-            g,
+        let info = search(
+            g.clone(),
             depth,
             &TTable::with_capacity(25),
             &config,
             &SearchLimit::default(),
             true,
-        )
-        .unwrap()
+        ).unwrap();
+
+        for &m in info.pv.iter() {
+            assert!(is_legal(m, g.position()));
+            g.make_move(m, Score::centipawns(0, 0));
+        }
+
+        info 
     }
 
     #[test]
@@ -640,7 +658,7 @@ pub mod tests {
         test_eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
             Eval::mate_in(9),
-            11,
+            9,
         );
     }
 }

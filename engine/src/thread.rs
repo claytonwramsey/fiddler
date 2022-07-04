@@ -154,30 +154,36 @@ impl Default for MainSearch {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
+
+    use fiddler_base::{movegen::is_legal, Score};
 
     use crate::evaluate::static_evaluate;
 
     use super::*;
 
-    #[test]
-    fn search_fried_liver() {
-        let g = Game::from_fen(
-            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+    fn search_helper(fen: &str, depth: u8) {
+        let mut g = Game::from_fen(
+            fen,
             static_evaluate,
         )
         .unwrap();
         let mut main = MainSearch::new();
         main.config.n_helpers = 15;
-        main.config.depth = 12;
-        let tic = Instant::now();
+        main.config.depth = depth;
         let info = main.evaluate(&g).unwrap();
-        let toc = Instant::now();
-        println!(
-            "{:.3}s, hashfill {}, bestmove {}",
-            (toc - tic).as_secs_f32(),
-            main.ttable.fill_rate_permill(),
-            info.pv[0]
-        );
+        for m in info.pv {
+            assert!(is_legal(m, g.position()));
+            g.make_move(m, Score::centipawns(0, 0));
+        }
+    }
+
+    #[test]
+    fn search_opening() {
+        search_helper("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5);
+    }
+
+    #[test]
+    fn search_fried_liver() {
+        search_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", 7);
     }
 }
