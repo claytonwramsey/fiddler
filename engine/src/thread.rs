@@ -162,11 +162,7 @@ mod tests {
     use super::*;
 
     fn search_helper(fen: &str, depth: u8) {
-        let mut g = Game::from_fen(
-            fen,
-            static_evaluate,
-        )
-        .unwrap();
+        let mut g = Game::from_fen(fen, static_evaluate).unwrap();
         let mut main = MainSearch::new();
         main.config.n_helpers = 15;
         main.config.depth = depth;
@@ -179,11 +175,17 @@ mod tests {
 
     #[test]
     fn search_opening() {
-        search_helper("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5);
+        search_helper(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            5,
+        );
     }
 
     #[test]
     fn search_fried_liver() {
-        search_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7", 7);
+        search_helper(
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+            7,
+        );
     }
 }

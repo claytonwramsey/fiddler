@@ -23,7 +23,7 @@ use crate::Board;
 use super::{Piece, Square};
 
 use std::{
-    fmt::{Display, Formatter, Debug},
+    fmt::{Debug, Display, Formatter},
     mem::transmute,
 };
 

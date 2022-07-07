@@ -236,7 +236,10 @@ mod tests {
 
     #[test]
     fn test_certainly_endgame() {
-        assert_eq!(phase_of(&Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()), 0.0);
+        assert_eq!(
+            phase_of(&Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()),
+            0.0
+        );
     }
 
     #[test]

@@ -428,7 +428,7 @@ pub fn has_moves(pos: &Position) -> bool {
         // King can probably get out on his own
         for to_sq in king_to_sqs {
             let m = Move::normal(king_square, to_sq);
-            if !is_move_self_check(pos, m) && !m.is_castle() {
+            if !is_move_self_check(pos, m) {
                 return true;
             }
         }
@@ -555,7 +555,7 @@ pub fn is_move_self_check(pos: &Position, m: Move) -> bool {
     let opponent = !player;
 
     if is_king_move {
-        if is_square_attacked_by(board, from_sq, opponent) {
+        if is_square_attacked_by(board, to_sq, opponent) {
             return true;
         }
         // The previous check skips moves where the king blocks himself. We
@@ -1316,6 +1316,19 @@ mod tests {
 
         assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
         assert!(!has_moves(&pos));
+    }
+
+    #[test]
+    /// Test that the king can actually move (and `has_moves` reflects that
+    /// fact).
+    fn king_can_move() {
+        let pos =
+            Position::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1", Position::no_eval).unwrap();
+
+        assert!(!get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(!get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(!get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
+        assert!(has_moves(&pos));
     }
 
     /// A helper function that will force that the given FEN will have loud

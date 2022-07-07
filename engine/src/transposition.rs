@@ -289,7 +289,7 @@ impl TTable {
         }
     }
 
-    /// Get the size of this table, in megabytes. Does not include the size of 
+    /// Get the size of this table, in megabytes. Does not include the size of
     /// the struct itself, but rather just the heap-allocated table size.
     pub fn size_mb(&self) -> usize {
         if self.entries.is_null() {

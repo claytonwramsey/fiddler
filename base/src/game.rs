@@ -262,7 +262,10 @@ impl Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Board, Move, Square, movegen::{ALL, NoopNominator}};
+    use crate::{
+        movegen::{NoopNominator, ALL},
+        Board, Move, Square,
+    };
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board
