@@ -183,17 +183,49 @@ impl<'a> PVSearch<'a> {
 
     #[allow(clippy::too_many_arguments)]
     /// Use Principal Variation Search to evaluate the given game to a depth.
-    /// This search uses Negamax, which inverts at every step to save on
-    /// branches. This will return a lower bound on the position's value for
-    /// the player to move, where said lower bound is exact if it is less than
-    /// `beta_in`. `depth_to_go` is signed because late-move-reduction may
-    /// cause it to become negative. In the case where the search returns
-    /// `Err`, the moves on `g` will not be correctly undone, so it is strongly
-    /// recommended to pass in a reference to a copy of your original game.
-    ///
-    /// `parent_line` is the principal line from the parent node. The elements
-    /// \[1..\] of the parent line will be updated with the resulting best reply
-    /// if PV is true.
+    /// 
+    /// At each node, the search will examine all legal moves and try to find 
+    /// the best line, recursively searching to `depth_to_go` moves deep. 
+    /// However, some heuristics will cause certain lines to be examined more 
+    /// deeply than `depth_to_go`, and some less so. When `depth_to_go` reaches 
+    /// zero, a quiescence search will be performed, preventing the evaluation 
+    /// of "loud" positions from giving incorrect results.
+    /// 
+    /// When the search is complete, the `Ok()` variant will contain the 
+    /// evaluation of the position.
+    /// 
+    /// # Inputs
+    /// * `depth_to_go`: The depth to search the position.
+    /// * `depth_so_far`: The depth of the recursive stack when this function 
+    ///     was called. At the start of the search, `depth_so_far` is 0.
+    /// * `g`: The game being played to be searched. 
+    ///     Although `g` is given as a mutable reference, we guarantee that if 
+    ///     `pvs()` returns `Ok()`, the state of `g` at the end of the function 
+    ///     call will be the same as when it started.
+    /// * `alpha`: A lower bound on the evaluation of a parent node, in 
+    ///     perspective of the player to move. 
+    ///     One way of thinking of `alpha` is that it is the best score that the 
+    ///     player to move could get if they made a move which did *not* cause 
+    ///     `pvs()` to be called in this position.
+    ///     When called externally, `alpha` should be equal to `Eval::MIN`.
+    /// * `beta`: An upper bound on the evaluation of a parent node, in 
+    ///     perspective of the player to move.
+    ///     `beta` can be thought of as the worst score that the opponent of the 
+    ///     current player to move could get if they decided not to allow the 
+    ///     current player to make a move.
+    ///     When called externally, `beta` should be equal to `Eval::MAX`.
+    /// * `parent_line`: The principal variation line of the parent position. 
+    ///     `parent_line` will be overwritten with the best line found by this 
+    ///     search, so long as it achieves an alpha cutoff at some point.
+    /// * `allow_reduction`: Whether this search should allow depth reductions. 
+    ///     Under most circumstances, this should be `true`.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will return an error under the conditions described in 
+    /// `SearchError`'s variants.
+    /// The most likely cause of an error will be `SearchError::Timeout`, which 
+    /// is returned if the limit times out while `pvs()` is running.
     pub fn pvs<const PV: bool>(
         &mut self,
         depth_to_go: i8,
@@ -305,7 +337,9 @@ impl<'a> PVSearch<'a> {
         if best_score > alpha {
             alpha = best_score;
             if alpha >= beta {
-                // cutoff!
+                // beta cutoff - the move we just played was so good that our 
+                // opponent would not have let us reach a position where we 
+                // could play it.
                 if can_use_killers {
                     self.killer_moves[killer_index] = m;
                 }
@@ -350,7 +384,8 @@ impl<'a> PVSearch<'a> {
                 )?
                 .step_back();
             if late_move && alpha < score {
-                // if the late move reduction failed high, retry the search.
+                // if the late move reduction failed high, retry the search at a 
+                // full depth.
                 score = -self
                     .pvs::<false>(
                         depth_to_go - 1,
@@ -363,7 +398,7 @@ impl<'a> PVSearch<'a> {
                     )?
                     .step_back();
             }
-            if alpha < score && score < beta && PV {
+            if PV && alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. We cannot use our previous fail-high score in 
                 // case of late move reduction.
@@ -389,7 +424,8 @@ impl<'a> PVSearch<'a> {
                 if score > alpha {
                     alpha = score;
                     if alpha >= beta {
-                        // Beta cutoff, we have  found a better line somewhere else
+                        // Beta cutoff - this move was so good that our opponent 
+                        // would not let get to a position where we can play it.
                         if can_use_killers {
                             self.killer_moves[killer_index] = m;
                         }
