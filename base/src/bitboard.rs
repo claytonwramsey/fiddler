@@ -260,9 +260,20 @@ impl From<Bitboard> for usize {
 }
 
 impl Display for Bitboard {
-    #[inline(always)]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Bitboard({:#18x})", self.0)
+        for row_idx in 0..8 {
+            for col_idx in 0..8 {
+                let bit = 1 << ((8 * (7 - row_idx)) + col_idx);
+                if bit & self.0 != 0 {
+                    write!(f, "1 ")?;
+                } else {
+                    write!(f, ". ")?;
+                }
+            }
+            writeln!(f)?;
+        }
+
+        Ok(())
     }
 }
 

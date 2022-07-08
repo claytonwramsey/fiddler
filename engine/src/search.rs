@@ -29,7 +29,7 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    movegen::{get_moves, has_moves, is_legal, NoopNominator, ALL, CAPTURES},
+    movegen::{get_moves, is_legal, CAPTURES},
     Eval, Game, Move,
 };
 
@@ -251,7 +251,7 @@ impl<'a> PVSearch<'a> {
 
         self.increment_nodes()?;
 
-        // mate distance pruning:
+        // mate distance pruning
         alpha = max(-Eval::mate_in(0), alpha);
         beta = min(Eval::mate_in(1), beta);
         if alpha >= beta {
@@ -280,10 +280,12 @@ impl<'a> PVSearch<'a> {
                 tt_move = Some(m);
                 if entry.depth >= depth_to_go as u8 {
                     // this was a deeper search on the position
+                    // we add and subtract 1 to prevent accidental alpha/beta
+                    // cutoffs in move searching.
                     beta = min(beta, entry.upper_bound);
                     if entry.lower_bound > alpha {
                         if entry.lower_bound >= beta {
-                            return Ok(alpha);
+                            return Ok(entry.lower_bound);
                         }
                         alpha = entry.lower_bound;
                         if PV {

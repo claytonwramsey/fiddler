@@ -428,7 +428,7 @@ pub fn has_moves(pos: &Position) -> bool {
         // King can probably get out on his own
         for to_sq in king_to_sqs {
             let m = Move::normal(king_square, to_sq);
-            if !is_move_self_check(pos, m) {
+            if validate(m, pos) {
                 return true;
             }
         }
@@ -445,16 +445,27 @@ pub fn has_moves(pos: &Position) -> bool {
         // we need not consider the castling squares because otherwise the king
         // would be able to escape naturally without castling
         for to_sq in king_to_sqs {
-            if !is_move_self_check(pos, Move::normal(king_square, to_sq)) {
+            if validate(Move::normal(king_square, to_sq), pos) {
                 return true;
             }
         }
     }
+    // SAFETY: We checked that the square is nonzero.
+    let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
+    // Look for blocks or captures
+    let target_sqs = between(king_square, checker_sq) | pos.check_info.checkers;
     for pt in Piece::NON_KING_TYPES {
-        // examine moves that other pieces can make
+        let mut target = target_sqs; // make a copy in case of en passant
+                                     // preventing check
+                                     // examine moves that other pieces can make
         for from_sq in b[pt] & player_occupancy {
             let to_bb = match pt {
-                Piece::Pawn => pawn_moves(b, from_sq, player),
+                Piece::Pawn => {
+                    if let Some(ep_sq) = b.en_passant_square {
+                        target |= Bitboard::from(ep_sq);
+                    }
+                    pawn_moves(b, from_sq, player)
+                }
                 Piece::Bishop => MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
                 Piece::Rook => MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
                 Piece::Queen => {
@@ -468,8 +479,8 @@ pub fn has_moves(pos: &Position) -> bool {
 
             // we need not handle promotion because pawn promotion also can
             // block
-            for to_sq in to_bb {
-                if !is_move_self_check(pos, Move::normal(from_sq, to_sq)) {
+            for to_sq in to_bb & target {
+                if validate(Move::normal(from_sq, to_sq), pos) {
                     return true;
                 }
             }
@@ -540,46 +551,6 @@ fn validate(m: Move, pos: &Position) -> bool {
     // it is reasonable to use `aligned()` here because there's no way a piece
     // can stay aligned in a move without keeping the pin appeased.
     (pinned & from_bb).is_empty() || aligned(m.from_square(), m.to_square(), king_sq)
-}
-
-/// In a given board state, is a move illegal because it would be a
-/// self-check?
-pub fn is_move_self_check(pos: &Position, m: Move) -> bool {
-    let board = &pos.board;
-    let from_sq = m.from_square();
-    let to_sq = m.to_square();
-    let player = board.player_to_move;
-    // Square where the king will be after this move ends.
-    let mut king_square = pos.king_sqs[player as usize];
-    let is_king_move = king_square == from_sq;
-    let opponent = !player;
-
-    if is_king_move {
-        if is_square_attacked_by(board, to_sq, opponent) {
-            return true;
-        }
-        // The previous check skips moves where the king blocks himself. We
-        // can use magic bitboards to find out the rest.
-        king_square = to_sq;
-    }
-    // Self checks can only happen by discovery (including by moving the
-    // king "out of its own way"), or by doing nothing about a check.
-    // Typically, only one square is emptied by moving. However, in en
-    // passant, two squares are emptied. We can check the results by masking
-    // out the squares which were emptied, and then seeing which attacks
-    // went through using magic bitboards.
-
-    let mut squares_emptied = Bitboard::from(from_sq);
-    if m.is_en_passant() {
-        squares_emptied |=
-            Bitboard::from(board.en_passant_square.unwrap() + opponent.pawn_direction());
-    }
-    let occupancy = (board.occupancy() & !squares_emptied) | Bitboard::from(from_sq);
-
-    let attackers = square_attackers_occupancy(board, king_square, opponent, occupancy);
-
-    //attackers which we will capture are not a threat
-    !(attackers & !Bitboard::from(m.to_square())).is_empty()
 }
 
 #[inline(always)]
@@ -1329,6 +1300,18 @@ mod tests {
         assert!(!get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
         assert!(!get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
         assert!(has_moves(&pos));
+    }
+
+    #[test]
+    /// Test (again) that in a mated position there are no legal moves.
+    fn no_moves_mated() {
+        let pos =
+            Position::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1", Position::no_eval).unwrap();
+
+        assert!(!has_moves(&pos));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
     }
 
     /// A helper function that will force that the given FEN will have loud
