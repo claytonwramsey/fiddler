@@ -252,8 +252,8 @@ impl<'a> PVSearch<'a> {
         self.increment_nodes()?;
 
         // mate distance pruning
-        alpha = max(-Eval::mate_in(0), alpha);
-        beta = min(Eval::mate_in(1), beta);
+        alpha = max(-Eval::mate_in(0) - Eval::centipawns(1), alpha);
+        beta = min(Eval::mate_in(1) + Eval::centipawns(1), beta);
         if alpha >= beta {
             // even if we mated our opponent at the end of this search, we would
             // not achieve anything better than what we already had
@@ -298,10 +298,7 @@ impl<'a> PVSearch<'a> {
 
         let killer_index = depth_so_far as usize;
         let can_use_killers = depth_so_far < self.config.depth;
-        let killer_move = match can_use_killers {
-            true => Some(self.killer_moves[killer_index]),
-            false => None,
-        };
+        let killer_move = can_use_killers.then(|| self.killer_moves[killer_index]);
 
         let mut moves_iter = MovePicker::new(*g.position(), tt_move, killer_move);
 
@@ -310,11 +307,11 @@ impl<'a> PVSearch<'a> {
             Some(x) => x,
             None => {
                 let score = leaf_evaluate(g).in_perspective(g.board().player_to_move);
-                if PV && alpha < score && score < beta {
+                if PV && alpha < score {
                     alpha = score;
                     parent_line.clear();
                 }
-                return Ok(alpha);
+                return Ok(max(alpha, score));
             }
         };
         // best move found so far
@@ -339,6 +336,9 @@ impl<'a> PVSearch<'a> {
         }
         if best_score > alpha {
             alpha = best_score;
+            if PV {
+                write_line(parent_line, m, &line);
+            }
             if alpha >= beta {
                 // beta cutoff - the move we just played was so good that our
                 // opponent would not have let us reach a position where we
@@ -355,9 +355,6 @@ impl<'a> PVSearch<'a> {
                     best_move,
                 );
                 return Ok(alpha);
-            }
-            if PV {
-                write_line(parent_line, m, &line);
             }
         }
 
@@ -428,6 +425,9 @@ impl<'a> PVSearch<'a> {
                 best_score = score;
                 if score > alpha {
                     alpha = score;
+                    if PV {
+                        write_line(parent_line, m, &line);
+                    }
                     if alpha >= beta {
                         // Beta cutoff - this move was so good that our opponent
                         // would not let get to a position where we can play it.
@@ -435,9 +435,6 @@ impl<'a> PVSearch<'a> {
                             self.killer_moves[killer_index] = m;
                         }
                         break;
-                    }
-                    if PV {
-                        write_line(parent_line, m, &line);
                     }
                 }
             }
@@ -543,7 +540,7 @@ impl<'a> PVSearch<'a> {
                     break;
                 }
                 if PV {
-                    write_line(parent_line, m, &line)
+                    write_line(parent_line, m, &line);
                 }
             }
         }
