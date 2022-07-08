@@ -94,7 +94,7 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut pv = Vec::new();
-    let eval = searcher.pvs::<true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv, true)?;
+    let eval = searcher.pvs::<true, true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv)?;
 
     Ok(SearchInfo {
         pv,
@@ -196,6 +196,9 @@ impl<'a> PVSearch<'a> {
     ///
     /// # Inputs
     ///
+    /// * `PV`: Whether this node is a principal variation node.
+    ///     At the root, this should be `true`.
+    /// * `REDUCE`: Whether heuristic depth reduction should be performed.
     /// * `depth_to_go`: The depth to search the position.
     /// * `depth_so_far`: The depth of the recursive stack when this function
     ///     was called. At the start of the search, `depth_so_far` is 0.
@@ -218,8 +221,6 @@ impl<'a> PVSearch<'a> {
     /// * `parent_line`: The principal variation line of the parent position.
     ///     `parent_line` will be overwritten with the best line found by this
     ///     search, so long as it achieves an alpha cutoff at some point.
-    /// * `allow_reduction`: Whether this search should allow depth reductions.
-    ///     Under most circumstances, this should be `true`.
     ///
     /// # Errors
     ///
@@ -227,7 +228,7 @@ impl<'a> PVSearch<'a> {
     /// `SearchError`'s variants.
     /// The most likely cause of an error will be `SearchError::Timeout`, which
     /// is returned if the limit times out while `pvs()` is running.
-    pub fn pvs<const PV: bool>(
+    pub fn pvs<const PV: bool, const REDUCE: bool>(
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
@@ -235,7 +236,6 @@ impl<'a> PVSearch<'a> {
         mut alpha: Eval,
         mut beta: Eval,
         parent_line: &mut Vec<Move>,
-        allow_reduction: bool,
     ) -> Result<Eval, SearchError> {
         if self.is_main {
             self.limit.update_time()?;
@@ -320,14 +320,13 @@ impl<'a> PVSearch<'a> {
         g.make_move(m, delta);
         // best score so far
         let mut best_score = -self
-            .pvs::<PV>(
+            .pvs::<PV, REDUCE>(
                 depth_to_go - 1,
                 depth_so_far + 1,
                 g,
                 -beta.step_forward(),
                 -alpha.step_forward(),
                 &mut line,
-                allow_reduction,
             )?
             .step_back();
         #[allow(unused_must_use)]
@@ -367,37 +366,35 @@ impl<'a> PVSearch<'a> {
             // a critical threat.
             let reduce_depth = idx > self.config.num_early_moves
                 && !PV
+                && REDUCE
                 && !g.board().is_move_capture(m)
                 && m.promote_type().is_none()
-                && g.position().check_info.checkers.is_empty()
-                && allow_reduction;
+                && g.position().check_info.checkers.is_empty();
             let depth_to_search = match reduce_depth {
                 true => depth_to_go - 2,
                 false => depth_to_go - 1,
             };
             let mut score = -self
-                .pvs::<false>(
+                .pvs::<false, REDUCE>(
                     depth_to_search,
                     depth_so_far + 1,
                     g,
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
                     &mut line,
-                    allow_reduction,
                 )?
                 .step_back();
             if reduce_depth && alpha < score {
                 // if the late move reduction failed high, retry the search at a
                 // full depth.
                 score = -self
-                    .pvs::<false>(
+                    .pvs::<false, REDUCE>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
                         -alpha.step_forward() - Eval::centipawns(1),
                         -alpha.step_forward(),
                         &mut line,
-                        allow_reduction,
                     )?
                     .step_back();
             }
@@ -405,14 +402,13 @@ impl<'a> PVSearch<'a> {
                 // zero-window search failed high, so there is a better option
                 // in this tree.
                 score = -self
-                    .pvs::<PV>(
+                    .pvs::<PV, REDUCE>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
                         -beta.step_forward(),
                         -score.step_forward(),
                         &mut line,
-                        allow_reduction,
                     )?
                     .step_back();
             }
@@ -471,7 +467,7 @@ impl<'a> PVSearch<'a> {
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if !g.position().check_info.checkers.is_empty() {
-            return self.pvs::<PV>(1, depth_so_far, g, alpha, beta, parent_line, false);
+            return self.pvs::<PV, false>(1, depth_so_far, g, alpha, beta, parent_line);
         }
 
         self.increment_nodes()?;
