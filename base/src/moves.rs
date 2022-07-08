@@ -257,7 +257,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_uci_move_normal() {
+    fn uci_move_normal() {
         let b = Board::default();
         let m = Move::from_uci("e2e4", &b).unwrap();
         println!("{m}");
@@ -265,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn test_uci_move_promotion() {
+    fn uci_move_promotion() {
         assert_eq!(
             Move::from_uci(
                 "b7b8q",
@@ -278,7 +278,7 @@ mod tests {
     }
 
     #[test]
-    fn test_uci_move_capture() {
+    fn uci_move_capture() {
         assert_eq!(
             Move::from_uci(
                 "c8c1",
@@ -291,7 +291,7 @@ mod tests {
     }
 
     #[test]
-    fn test_uci_not_castle() {
+    fn uci_not_castle() {
         assert_eq!(
             Move::from_uci(
                 "e1c1",

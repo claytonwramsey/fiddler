@@ -999,7 +999,7 @@ mod tests {
     #[test]
     /// Test that we can play Qf3+, the critical move in the Fried Liver
     /// opening.
-    fn test_best_queen_fried_liver() {
+    fn best_queen_fried_liver() {
         let m = Move::normal(Square::D1, Square::F3);
         // the fried liver position, before Qf3+
         let pos = Position::from_fen(
@@ -1016,7 +1016,7 @@ mod tests {
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
-    fn test_pawn_capture_generated() {
+    fn pawn_capture_generated() {
         // check that exf5 is generated
         let pos = Position::from_fen(
             "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
@@ -1033,7 +1033,7 @@ mod tests {
 
     #[test]
     /// The pawn is checking the king. Is move enumeration correct?
-    fn test_enumerate_pawn_checking_king() {
+    fn enumerate_pawn_checking_king() {
         let pos = Position::from_fen(
             "r1bq1b1r/ppp2kpp/2n5/3n4/2B5/8/PPP1pPPP/RN1Q1K1R w - - 0 10",
             Position::no_eval,
@@ -1049,7 +1049,7 @@ mod tests {
 
     #[test]
     /// In a mated position, make sure that the king has no moves.
-    fn test_white_mated_has_no_moves() {
+    fn white_mated_has_no_moves() {
         let pos = Position::from_fen(
             "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
             Position::no_eval,
@@ -1065,7 +1065,7 @@ mod tests {
 
     #[test]
     /// Check that the king has exactly one move in this position.
-    fn test_king_has_only_one_move() {
+    fn king_has_only_one_move() {
         let pos =
             Position::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2", Position::no_eval).unwrap();
         assert!(has_moves(&pos));
@@ -1075,7 +1075,7 @@ mod tests {
 
     #[test]
     /// Test that queenside castling actually works.
-    fn test_queenside_castle() {
+    fn queenside_castle() {
         let pos = Position::from_fen(
             "r3kb1r/ppp1p1pp/2nq1n2/1B1p4/3P4/2N2Q2/PPP2PPP/R1B1K2R b KQkq - 0 8",
             Position::no_eval,
@@ -1088,7 +1088,7 @@ mod tests {
 
     #[test]
     /// Test that Black cannot castle because there is a knight in the way.
-    fn test_no_queenside_castle_through_knight() {
+    fn no_queenside_castle_through_knight() {
         let pos = Position::from_fen(
             "rn2kbnr/ppp1pppp/3q4/3p4/6b1/8/PPPPPPPP/RNBQKBNR b KQkq - 5 4",
             Position::no_eval,
@@ -1103,35 +1103,35 @@ mod tests {
     #[test]
     /// Test that loud moves are generated correctly on the Fried Liver
     /// position.
-    fn test_get_loud_moves_fried_liver() {
+    fn get_loud_moves_fried_liver() {
         loud_moves_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7");
     }
 
     #[test]
     /// Test that loud moves are generated correctly in a position where en
     /// passant is possible.
-    fn test_get_loud_moves_en_passant() {
+    fn get_loud_moves_en_passant() {
         loud_moves_helper("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3");
     }
 
     #[test]
-    fn test_get_loud_moves_pawn_capture() {
+    fn get_loud_moves_pawn_capture() {
         loud_moves_helper("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2");
     }
 
     #[test]
-    fn test_get_loud_moves_rook_hanging() {
+    fn get_loud_moves_rook_hanging() {
         loud_moves_helper("rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5");
     }
 
     #[test]
-    fn test_recapture_knight_loud_move() {
+    fn recapture_knight_loud_move() {
         loud_moves_helper("r2q1bkr/ppp3pp/2n5/3Np3/6Q1/8/PPPP1PPP/R1B1K2R b KQ - 0 10");
     }
 
     #[test]
     /// Test that a king can escape check without capturing the checker.
-    fn test_king_escape_without_capture() {
+    fn king_escape_without_capture() {
         let pos = Position::from_fen(
             "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
             Position::no_eval,
@@ -1156,7 +1156,7 @@ mod tests {
 
     #[test]
     /// Test that Black can promote a piece (on e1).
-    fn test_black_can_promote() {
+    fn black_can_promote() {
         let pos = Position::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1", Position::no_eval).unwrap();
         let moves = get_moves::<ALL, NoopNominator>(&pos);
         for m in moves.iter() {
@@ -1167,7 +1167,7 @@ mod tests {
 
     #[test]
     /// Test that pawns cannot "wrap around" the side of the board.
-    fn test_no_wraparound() {
+    fn no_wraparound() {
         let pos = Position::from_fen(
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBPPP3/q4N2/Pp4PP/R2Q1RK1 b kq - 0 1",
             Position::no_eval,
@@ -1183,7 +1183,7 @@ mod tests {
     #[test]
     /// Test that a move flagged as en passant is illegal, even if it is an
     /// otherwise normal capture.
-    fn test_en_passant_illegal() {
+    fn en_passant_illegal() {
         let pos = Position::from_fen(
             "r6r/3n1pk1/p4p2/3p4/2p1p1q1/1P2P1P1/P1PP1P1P/R1B1R1K1 b - - 0 25",
             Position::no_eval,
@@ -1199,7 +1199,7 @@ mod tests {
     #[test]
     /// Test that a pawn cannot en passant if doing so would put the king in
     /// check.
-    fn test_en_passant_pinned() {
+    fn en_passant_pinned() {
         let pos = Position::from_fen(
             "8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2",
             Position::no_eval,
@@ -1214,7 +1214,7 @@ mod tests {
     #[test]
     /// Test that a move must be tagged as en passant to be considered legal to
     /// escape check.
-    fn test_en_passant_tagged() {
+    fn en_passant_tagged() {
         let pos = Position::from_fen(
             "2B1kb2/pp2pp2/7p/1PpQP3/2nK4/8/P1r4R/R7 w - c6 0 27",
             Position::no_eval,
@@ -1228,7 +1228,7 @@ mod tests {
     #[test]
     /// Test that a pinned piece cannot make a capture if it does not defend
     /// against the pin.
-    fn test_pinned_knight_capture() {
+    fn pinned_knight_capture() {
         let pos = Position::from_fen(
             "r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8",
             Position::no_eval,
@@ -1243,7 +1243,7 @@ mod tests {
 
     #[test]
     /// Test that en passant moves are generated correctly.
-    fn test_en_passant_generated() {
+    fn en_passant_generated() {
         // exf6 is en passant
         let pos = Position::from_fen(
             "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
@@ -1261,7 +1261,7 @@ mod tests {
     #[test]
     /// Test that a player can en passant out of check if it results in a
     /// checking pawn being captured.
-    fn test_en_passant_out_of_check() {
+    fn en_passant_out_of_check() {
         // bxc6 should be legal here
         let pos = Position::from_fen(
             "8/8/8/1Ppp3r/1KR2p1k/8/4P1P1/8 w - c6 0 3",
@@ -1278,7 +1278,7 @@ mod tests {
 
     #[test]
     /// Test that a position where a rook is horizontal to the king is mate.
-    fn test_horizontal_rook_mate() {
+    fn horizontal_rook_mate() {
         let pos = Position::from_fen(
             "r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32",
             Position::no_eval,

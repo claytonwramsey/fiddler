@@ -270,18 +270,18 @@ mod tests {
     use crate::Direction;
 
     #[test]
-    fn test_add_square_and_direction() {
+    fn add_square_and_direction() {
         assert_eq!(Square::A1 + Direction::EAST, Square::B1);
         assert_eq!(Square::A1 + Direction::NORTHEAST, Square::B2);
     }
 
     #[test]
-    fn test_add_direction_and_square() {
+    fn add_direction_and_square() {
         assert_eq!(Direction::EAST + Square::A1, Square::B1);
     }
 
     #[test]
-    fn test_square_from_algebraic() {
+    fn square_from_algebraic() {
         assert_eq!(Square::from_algebraic("e4"), Ok(Square::E4));
         assert_eq!(Square::from_algebraic("f7"), Ok(Square::F7));
     }

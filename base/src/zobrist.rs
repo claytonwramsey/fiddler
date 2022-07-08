@@ -604,7 +604,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_no_equal_hashes() {
+    fn no_equal_hashes() {
         // first, collect all the hash keys
         let mut hash_keys: Vec<u64> = Vec::new();
         hash_keys.extend(

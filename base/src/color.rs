@@ -78,7 +78,7 @@ mod tests {
     #[test]
     /// Test that the opposite color of `Color::White` is `Color::Black`, and
     /// vice versa.
-    fn test_opposite_color() {
+    fn opposite_color() {
         assert_eq!(Color::White, !Color::Black);
         assert_eq!(Color::Black, !Color::White);
     }
@@ -86,14 +86,14 @@ mod tests {
     #[test]
     /// Test that the direction for White pawns is north and the direction for
     /// Black pawns is south.
-    fn test_directions() {
+    fn directions() {
         assert_eq!(Color::White.pawn_direction(), Direction::NORTH);
         assert_eq!(Color::Black.pawn_direction(), Direction::SOUTH);
     }
 
     #[test]
     /// Test that the pawn promotion rank bitboards are correct.
-    fn test_pawn_promote_rank() {
+    fn pawn_promote_rank() {
         assert_eq!(
             Bitboard::new(0xFF00000000000000),
             Color::White.pawn_promote_rank()
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     /// Test that the start ranks for pawns are correct.
-    fn test_pawn_start_rank() {
+    fn pawn_start_rank() {
         assert_eq!(
             Color::White.pawn_start_rank(),
             Bitboard::new(0x000000000000FF00)

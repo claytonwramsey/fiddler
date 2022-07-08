@@ -311,7 +311,7 @@ mod tests {
     #[test]
     /// Test that all moves are generated in the move picker and that there are
     /// no duplicates.
-    fn test_generation_correctness() {
+    fn generation_correctness() {
         let pos = Position::from_fen(
             "r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12",
             Position::no_eval,

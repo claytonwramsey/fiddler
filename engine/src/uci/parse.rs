@@ -240,7 +240,7 @@ mod tests {
     #[test]
     /// Test that an ordinary "startpos" UCI position command is parsed
     /// correctly.
-    fn test_position_starting() {
+    fn position_starting() {
         assert_eq!(
             parse_line("position startpos moves\n", &Board::default()),
             Ok(UciCommand::Position {
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     /// Test that a FEN is properly loaded from a UCI position command.
-    fn test_position_fen() {
+    fn position_fen() {
         assert_eq!(
             parse_line(
                 "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves\n",
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn test_position_not_castle() {
+    fn position_not_castle() {
         assert_eq!(
             parse_line(
                 "position fen 1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26 moves e1c1\n",
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     /// Test that a FEN is properly loaded from a UCI position command.
-    fn test_position_fen_then_moves() {
+    fn position_fen_then_moves() {
         assert_eq!(
             parse_line("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves c7c5 g1f3\n", &Board::default()), 
             Ok(UciCommand::Position {
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     /// Test that an option with no value is correctly set.
-    fn test_setoption_key_only() {
+    fn setoption_key_only() {
         assert_eq!(
             parse_line("setoption name MyOption\n", &Board::default()),
             Ok(UciCommand::SetOption {
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     /// Test that a key-value pair for a setoption is correct.
-    fn test_setoption_key_value() {
+    fn setoption_key_value() {
         assert_eq!(
             parse_line("setoption name my option value 4 or 5\n", &Board::default()),
             Ok(UciCommand::SetOption {
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     /// Test that a simple `go` command is parsed correctly.
-    fn test_go_simple() {
+    fn go_simple() {
         assert_eq!(
             parse_line("go depth 7 nodes 25\n", &Board::default()),
             Ok(UciCommand::Go(vec![
@@ -334,7 +334,7 @@ mod tests {
     /// Test that a `go` command with every option is parsed correctly. In
     /// practice this command would be invalid since the `infinite` option
     /// would remove the validity of all others.
-    fn test_go_all() {
+    fn go_all() {
         assert_eq!(
             parse_line(
                 "go depth 7 nodes 250 infinite searchmoves e2e4 wtime 1 btime 2 winc 3 binc 4 movestogo 5 mate 6 movetime 7 ponder\n", 
@@ -360,7 +360,7 @@ mod tests {
     #[test]
     /// Test that a `go searchmoves` does not cause the moves to eat future
     /// options.
-    fn test_go_searchmoves() {
+    fn go_searchmoves() {
         assert_eq!(
             parse_line("go searchmoves e2e4 infinite\n", &Board::default()),
             Ok(UciCommand::Go(vec![
@@ -372,13 +372,13 @@ mod tests {
 
     #[test]
     /// Test that a `uci` command is parsed correctly.
-    fn test_uci() {
+    fn uci() {
         assert_eq!(parse_line("uci\n", &Board::default()), Ok(UciCommand::Uci));
     }
 
     #[test]
     /// Test that the `debug` commands are parsed correctly.
-    fn test_debug() {
+    fn debug() {
         assert_eq!(
             parse_line("debug on\n", &Board::default()),
             Ok(UciCommand::Debug(true))

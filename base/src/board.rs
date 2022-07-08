@@ -558,7 +558,7 @@ pub mod tests {
 
     #[test]
     /// Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
-    fn test_load_two_kings_fen() {
+    fn load_two_kings_fen() {
         let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
         assert_eq!(result, Ok(TWO_KINGS_BOARD));
     }
@@ -566,21 +566,21 @@ pub mod tests {
     #[test]
     /// Test that the start position of a normal chess game can be loaded from
     /// its FEN.
-    fn test_start_fen() {
+    fn start_fen() {
         let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         assert_eq!(result, Ok(Board::default()));
     }
 
     #[test]
     /// Test that we can play e4 on the first move of the game.
-    fn test_play_e4() {
-        test_move_helper(Board::default(), Move::normal(Square::E2, Square::E4));
+    fn play_e4() {
+        move_helper(Board::default(), Move::normal(Square::E2, Square::E4));
     }
 
     #[test]
     /// Test that a board with an en passant square can be loaded from a FEN
     /// correctly.
-    fn test_load_en_passant() {
+    fn load_en_passant() {
         // exf6 is en passant here
         let b = Board::from_fen("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
             .unwrap();
@@ -589,9 +589,9 @@ pub mod tests {
 
     #[test]
     /// Test that we can capture en passant.
-    fn test_en_passant() {
+    fn en_passant() {
         // exf6 is en passant here
-        test_fen_helper(
+        fen_helper(
             "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
             Move::normal(Square::E5, Square::F6),
         );
@@ -599,8 +599,8 @@ pub mod tests {
 
     #[test]
     /// Test that White can castle kingside.
-    fn test_white_kingide_castle() {
-        test_fen_helper(
+    fn white_kingide_castle() {
+        fen_helper(
             "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             Move::normal(Square::E1, Square::G1),
         );
@@ -608,9 +608,9 @@ pub mod tests {
 
     #[test]
     /// Test that White can promote their pawn to a queen
-    fn test_white_promote_queen() {
+    fn white_promote_queen() {
         // f7 pawn can promote
-        test_fen_helper(
+        fen_helper(
             "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1",
             Move::promoting(Square::F7, Square::F8, Piece::Queen),
         );
@@ -618,10 +618,10 @@ pub mod tests {
 
     #[test]
     /// Test that capturing a rook removes the right to castle with that rook.
-    fn test_no_castle_after_capture() {
+    fn no_castle_after_capture() {
         let m = Move::normal(Square::B2, Square::H8);
         // capturing the rook on h8 prevents castle rights
-        test_fen_helper(
+        fen_helper(
             "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5",
             m,
         );
@@ -629,10 +629,10 @@ pub mod tests {
 
     /// A helper function which will load a board from a FEN and then try
     /// running the given move on that board.
-    pub fn test_fen_helper(fen: &str, m: Move) {
+    pub fn fen_helper(fen: &str, m: Move) {
         let result = Board::from_fen(fen);
         match result {
-            Ok(board) => test_move_helper(board, m),
+            Ok(board) => move_helper(board, m),
             Err(_) => panic!("could not load FEN"),
         };
     }
@@ -640,16 +640,16 @@ pub mod tests {
     /// A helper function which will attempt to make a legal move on a board,
 
     /// and will fail assertions if the board's state was not changed correctly.
-    pub fn test_move_helper(board: Board, m: Move) {
+    pub fn move_helper(board: Board, m: Move) {
         //new_board will be mutated to reflect the move
         let mut new_board = board;
         new_board.make_move(m);
-        test_move_result_helper(board, new_board, m);
+        move_result_helper(board, new_board, m);
     }
 
     /// Test that `new_board` was created by playing the move `m` on
     /// `old_board`. Fails assertion if this is not the case.
-    pub fn test_move_result_helper(old_board: Board, new_board: Board, m: Move) {
+    pub fn move_result_helper(old_board: Board, new_board: Board, m: Move) {
         let mover_color = old_board.color_at_square(m.from_square()).unwrap();
         let mover_type = old_board.type_at_square(m.from_square()).unwrap();
 

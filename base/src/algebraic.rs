@@ -142,7 +142,7 @@ mod tests {
     #[test]
     /// Test that playing e4 can be successfully converted to its algebraic
     /// form.
-    fn test_e4_to_algebraic() {
+    fn e4_to_algebraic() {
         let pos = Position::default();
         let m = Move::normal(Square::E2, Square::E4);
 
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     /// Test that a mating move is correctly displayed.
-    fn test_mate() {
+    fn mate() {
         // Rb8# is the winning move
         let pos =
             Position::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
-    fn test_algebraic_from_pawn_capture() {
+    fn algebraic_from_pawn_capture() {
         // exf5 is legal here
         let pos = Position::from_fen(
             "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     /// Test that the opening move e4 can be converted from a string to a move.
-    fn test_move_from_e4() {
+    fn move_from_e4() {
         let pos = Position::default();
         let m = Move::normal(Square::E2, Square::E4);
         let s = "e4";
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     /// Test that capturing a pawn is parsed correctly.
-    fn test_move_from_pawn_capture() {
+    fn move_from_pawn_capture() {
         let pos = Position::from_fen(
             "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
             Position::no_eval,
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     /// Test that promotions are displayed correctly.
-    fn test_promotion() {
+    fn promotion() {
         // f7 pawn can promote
         let pos = Position::from_fen("8/5P2/2k5/4K3/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
         let m = Move::promoting(Square::F7, Square::F8, Piece::Queen);
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     /// Test that you get an error out when you give it a bad string.
-    fn test_bad_algebraic() {
+    fn bad_algebraic() {
         let pos = Position::default();
         let s = "garbage";
 
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     /// Test that algebraic moves are correctly disambiguated by their rank if
     /// needed.
-    fn test_rank_identifier() {
+    fn rank_identifier() {
         let pos = Position::from_fen(
             "rnbqkbnr/pppppppp/8/8/3P4/1N6/PPP1PPPP/RNBQKB1R w KQkq - 1 5",
             Position::no_eval,

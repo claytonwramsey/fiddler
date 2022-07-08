@@ -270,18 +270,18 @@ mod tests {
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board
     /// states update accordingly.
-    fn test_play_e4() {
+    fn play_e4() {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
         let old_board = *g.board();
         g.make_move(Move::normal(Square::E2, Square::E4), Score::DRAW);
         let new_board = g.board();
-        crate::board::tests::test_move_result_helper(old_board, *new_board, m);
+        crate::board::tests::move_result_helper(old_board, *new_board, m);
     }
 
     #[test]
     /// Test that a single move can be undone correctly.
-    fn test_undo_move() {
+    fn undo_move() {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
         g.make_move(m, Score::DRAW);
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     /// Test that an undo will fail if there is no history to undo.
-    fn test_illegal_undo() {
+    fn illegal_undo() {
         let mut g = Game::new();
         assert!(g.undo().is_err());
         assert_eq!(*g.board(), Board::default());
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     /// Test that we can undo multiple moves in a row.
-    fn test_undo_multiple_moves() {
+    fn undo_multiple_moves() {
         let mut g = Game::new();
         let m0 = Move::normal(Square::E2, Square::E4);
         let m1 = Move::normal(Square::E7, Square::E5);
@@ -312,7 +312,7 @@ mod tests {
     #[test]
     /// Test that a `Game` becomes exactly the same as what it started as if a
     /// move is undone.
-    fn test_undo_equality() {
+    fn undo_equality() {
         let mut g = Game::new();
         g.make_move(Move::normal(Square::E2, Square::E4), Score::DRAW);
         assert!(g.undo().is_ok());
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     /// Test that undoing a move results in the previous position.
-    fn test_undo_fried_liver() {
+    fn undo_fried_liver() {
         // the fried liver FEN
         let fen = "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7";
         let mut g = Game::from_fen(fen, Position::no_eval).unwrap();
@@ -334,14 +334,14 @@ mod tests {
 
     #[test]
     /// Test that undoing with no history results in an error.
-    fn test_undo_fail() {
+    fn undo_fail() {
         let mut g = Game::new();
         assert!(g.undo().is_err());
     }
 
     #[test]
     /// Test that a mated position is in fact over.
-    fn test_is_mate_over() {
+    fn is_mate_over() {
         // the position from the end of Scholar's mate
         let g = Game::from_fen(
             "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
@@ -355,7 +355,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_mate_over_2() {
+    fn is_mate_over_2() {
         let g: Game = Game::from_fen(
             "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
             Position::no_eval,
@@ -369,7 +369,7 @@ mod tests {
 
     #[test]
     /// Test that making a mate found in testing results in the game being over.
-    fn test_mate_in_1() {
+    fn mate_in_1() {
         // Rb8# is the winning move
         let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
         let m = Move::normal(Square::B6, Square::B8);
@@ -381,7 +381,7 @@ mod tests {
     #[test]
     /// Test that clearing a board has the same effect of replacing it with a
     /// default board, if the initial state was the initial board state.
-    fn test_clear_board() {
+    fn clear_board() {
         let mut g = Game::new();
         g.make_move(Move::normal(Square::E2, Square::E4), Score::DRAW);
         g.clear();
@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     /// Test that a king can escape check without capturing the checker.
-    fn test_king_escape_without_capture() {
+    fn king_escape_without_capture() {
         let g = Game::from_fen(
             "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
             Position::no_eval,

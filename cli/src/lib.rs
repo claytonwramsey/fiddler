@@ -346,14 +346,14 @@ mod tests {
 
     #[test]
     /// Test that the quit input yields a quit command.
-    fn test_parse_quit() {
+    fn parse_quit() {
         let app = FiddlerApp::default();
         assert_eq!(app.parse_command("/q"), Ok(Command::Quit));
     }
 
     #[test]
     /// Test that move input yields a move command.
-    fn test_parse_move() {
+    fn parse_move() {
         let app = FiddlerApp::default();
 
         assert_eq!(
@@ -367,7 +367,7 @@ mod tests {
 
     #[test]
     /// Test that load input yields a load fen command.
-    fn test_parse_load() {
+    fn parse_load() {
         let app = FiddlerApp::default();
         assert_eq!(
             app.parse_command("/l r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"),
@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     /// Test that executing a FEN load is successful.
-    fn test_execute_load() {
+    fn execute_load() {
         let mut app = FiddlerApp::default();
         assert_eq!(
             app.execute_command(Command::LoadFen(
@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     /// Test that we can parse an engine selection command.
-    fn test_parse_engine() {
+    fn parse_engine() {
         let app = FiddlerApp::default();
         assert_eq!(
             app.parse_command("/e m 8"),
@@ -409,7 +409,7 @@ mod tests {
 
     #[test]
     /// Test that a garbage input does not parse correctly.
-    fn test_garbage_failure() {
+    fn garbage_failure() {
         let app = FiddlerApp::default();
         assert!(app.parse_command("garbage").is_err());
     }

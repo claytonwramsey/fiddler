@@ -369,19 +369,19 @@ mod tests {
 
     #[test]
     /// Test that stepping forward a normal evaluation will make no changes.
-    fn test_step_forward_draw() {
+    fn step_forward_draw() {
         assert_eq!(Eval(0), Eval(0).step_forward());
     }
 
     #[test]
     /// Test that stepping backward a normal evaluation will make no changes.
-    fn test_step_backward_draw() {
+    fn step_backward_draw() {
         assert_eq!(Eval(0), Eval(0).step_back());
     }
 
     #[test]
     /// Test that stepping forward the highest non-mate will make no change.
-    fn test_step_forward_highest_non_mate() {
+    fn step_forward_highest_non_mate() {
         assert_eq!(
             Eval(Eval::MATE_CUTOFF),
             Eval(Eval::MATE_CUTOFF).step_forward()
@@ -390,13 +390,13 @@ mod tests {
 
     #[test]
     /// Test that stepping backward the highest non-mate will make no change.
-    fn test_step_bacwkard_highest_non_mate() {
+    fn step_bacwkard_highest_non_mate() {
         assert_eq!(Eval(Eval::MATE_CUTOFF), Eval(Eval::MATE_CUTOFF).step_back());
     }
 
     #[test]
     /// Test that stepping forward the lowest non-mate will make no change.
-    fn test_step_forward_lowest_non_mate() {
+    fn step_forward_lowest_non_mate() {
         assert_eq!(
             -Eval(Eval::MATE_CUTOFF),
             -Eval(Eval::MATE_CUTOFF).step_forward()
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     /// Test that stepping backward the lowest non-mate will make no change.
-    fn test_step_bacwkard_lowest_non_mate() {
+    fn step_bacwkard_lowest_non_mate() {
         assert_eq!(
             -Eval(Eval::MATE_CUTOFF),
             -Eval(Eval::MATE_CUTOFF).step_back()
@@ -415,7 +415,7 @@ mod tests {
     #[test]
     /// Test that stepping forward the mates closest to being a normal
     /// evaluation will correctly step forward.
-    fn test_step_forward_tightest_mates() {
+    fn step_forward_tighmates() {
         assert_eq!(
             Eval(Eval::MATE_CUTOFF + 2),
             Eval(Eval::MATE_CUTOFF + 1).step_forward()
@@ -428,7 +428,7 @@ mod tests {
     #[test]
     /// Test that stepping forward the mates closest to being a normal
     /// evaluation will correctly step forward.
-    fn test_step_backward_tightest_mates() {
+    fn step_backward_tighmates() {
         assert_eq!(
             Eval(Eval::MATE_CUTOFF + 1),
             Eval(Eval::MATE_CUTOFF + 2).step_back()
@@ -441,7 +441,7 @@ mod tests {
 
     #[test]
     /// Test that multiplying scores doesn't screw up and cause weird overflows.
-    fn test_score_multiply() {
+    fn score_multiply() {
         let s1 = Score::centipawns(-289, 0);
         let s2 = Score::centipawns(-289, -200);
         assert_eq!(s1 * 2i8, Score::centipawns(-578, 0));

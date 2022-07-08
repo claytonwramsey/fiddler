@@ -101,12 +101,12 @@ mod tests {
     }
 
     #[test]
-    fn test_delta_captures() {
+    fn delta_captures() {
         delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
     }
 
     #[test]
-    fn test_delta_promotion() {
+    fn delta_promotion() {
         // undoubling capture promotion is possible
         delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
     }

@@ -200,25 +200,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_add_directions() {
+    fn add_directions() {
         assert_eq!(Direction::NODIR + Direction::EAST, Direction::EAST);
         assert_eq!(Direction::EAST + Direction::WEST, Direction::NODIR);
     }
 
     #[test]
-    fn test_opposite_directions() {
+    fn opposite_directions() {
         assert_eq!(-Direction::EAST, Direction::WEST);
         assert_eq!(-Direction::NORTH, Direction::SOUTH);
     }
 
     #[test]
-    fn test_subtraction() {
+    fn subtraction() {
         assert_eq!(Direction::NORTHEAST - Direction::EAST, Direction::NORTH);
         assert_eq!(Direction::EAST - Direction::EAST, Direction::NODIR);
     }
 
     #[test]
-    fn test_direction_out_of_bounds() {
+    fn direction_out_of_bounds() {
         let bad_sq = Square::A1 + Direction::SOUTH;
         println!("{}", bad_sq);
     }

@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     /// Test an info message describing the current move.
-    fn test_info_currmove() {
+    fn info_currmove() {
         assert_eq!(
             format!(
                 "{}",
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     /// Test an info message describing a current move which is also a
     /// promotion.
-    fn test_info_currmove_promotion() {
+    fn info_currmove_promotion() {
         assert_eq!(
             format!(
                 "{}",
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     /// Test an info message which is composed of many different pieces of
     /// information.
-    fn test_info_composed() {
+    fn info_composed() {
         assert_eq!(
             format!(
                 "{}",
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     /// Test an id message.
-    fn test_id() {
+    fn id() {
         assert_eq!(
             format!(
                 "{}",
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     /// Test an option message for a checkbox.
-    fn test_option_check() {
+    fn option_check() {
         assert_eq!(
             format!(
                 "{}",
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     /// Test an option message for a spin-wheel.
-    fn test_option_spin() {
+    fn option_spin() {
         assert_eq!(
             format!(
                 "{}",
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     /// Test an option message for a combo-box.
-    fn test_option_combo() {
+    fn option_combo() {
         assert_eq!(
             format!(
                 "{}",
@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     /// Test an option message for string input.
-    fn test_option_string() {
+    fn option_string() {
         assert_eq!(
             format!(
                 "{}",
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     /// Test an option message for a button.
-    fn test_option_button() {
+    fn option_button() {
         assert_eq!(
             format!(
                 "{}",
@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     /// Test that best-moves are formatted correctly.
-    fn test_bestmove() {
+    fn bestmove() {
         assert_eq!(
             format!(
                 "{}",

@@ -578,7 +578,7 @@ mod tests {
     use crate::Square;
 
     #[test]
-    fn test_rook_mask() {
+    fn rook_mask() {
         //println!("{:064b}", get_rook_mask(A1).0);
         assert_eq!(get_rook_mask(Square::A1), Bitboard::new(0x000101010101017E));
 
@@ -590,7 +590,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bishop_mask() {
+    fn bishop_mask() {
         //println!("{:064b}", get_bishop_mask(A1).0);
         assert_eq!(
             get_bishop_mask(Square::A1),
@@ -611,7 +611,7 @@ mod tests {
     }
 
     #[test]
-    fn test_index_to_occupancy() {
+    fn valid_index_to_occupancy() {
         let mask = Bitboard::new(0b1111);
         for i in 0..16 {
             let occu = index_to_occupancy(i, mask);
@@ -624,13 +624,13 @@ mod tests {
     // search for.
     /*
     #[test]
-    fn test_magic_creation() {
+    fn magic_creation() {
         MagicTable::make();
     }
     */
 
     #[test]
-    fn test_magic_rook_attacks() {
+    fn magic_rook_attacks() {
         let mtable = MagicTable::load();
         //cases in order:
         //rook on A1 blocked by other pieces, so it only attacks its neighbors
@@ -645,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn test_magic_bishop_attacks() {
+    fn magic_bishop_attacks() {
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack
         //bishop on A8 is blocked by piece on B7, so it only has 1 attack
@@ -677,7 +677,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bishop_attacks() {
+    fn bishop_attacks() {
         let mtable = MagicTable::load();
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack

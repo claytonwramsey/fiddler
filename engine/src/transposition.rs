@@ -382,14 +382,14 @@ mod tests {
 
     #[test]
     /// Test that a hash table miss is correctly created.
-    fn test_guaranteed_miss() {
+    fn guaranteed_miss() {
         let tt = TTable::with_capacity(4);
         assert!(tt.get(12345).entry().is_none());
     }
 
     #[test]
     /// Test that we correctly find a hit in a transposition table.
-    fn test_guaranteed_hit() {
+    fn guaranteed_hit() {
         let tt = TTable::with_capacity(4);
         let entry = TTEntry {
             age: 0,
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     /// Test that an entry with the same has can overwrite another entry.
-    fn test_overwrite() {
+    fn overwrite() {
         let e0 = TTEntry {
             age: 0,
             hash: 2022,
