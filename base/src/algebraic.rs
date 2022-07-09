@@ -18,7 +18,10 @@
 
 //! Conversion functions between moves and their algebraic notation.
 
-use crate::{movegen::{NoopNominator, ALL}, Score};
+use crate::{
+    movegen::{NoopNominator, ALL},
+    Score,
+};
 
 use super::{
     movegen::{get_moves, is_square_attacked_by},

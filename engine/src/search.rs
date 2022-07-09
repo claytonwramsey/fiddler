@@ -94,7 +94,7 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut pv = Vec::new();
-    let eval = searcher.pvs::<true, true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv)?;
+    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv)?;
 
     Ok(SearchInfo {
         pv,
@@ -142,9 +142,9 @@ impl SearchInfo {
 struct PVSearch<'a> {
     /// The transposition table.
     ttable: &'a TTable,
-    /// The set of "killer" moves. Each index corresponds to a depth (0 is most
-    /// shallow, etc).
-    killer_moves: Vec<Move>,
+    // /// The set of "killer" moves. Each index corresponds to a depth (0 is most
+    // /// shallow, etc).
+    // killer_moves: Vec<Move>,
     /// The cumulative number of nodes evaluated in this evaluation.
     num_nodes_evaluated: u64,
     /// The cumulative number of nodes visited since we last updated the limit.
@@ -171,7 +171,7 @@ impl<'a> PVSearch<'a> {
     ) -> PVSearch<'a> {
         PVSearch {
             ttable,
-            killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
+            // killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
             num_transpositions: 0,
@@ -228,7 +228,7 @@ impl<'a> PVSearch<'a> {
     /// `SearchError`'s variants.
     /// The most likely cause of an error will be `SearchError::Timeout`, which
     /// is returned if the limit times out while `pvs()` is running.
-    pub fn pvs<const PV: bool, const REDUCE: bool>(
+    pub fn pvs<const PV: bool, const ROOT: bool, const REDUCE: bool>(
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
@@ -252,12 +252,15 @@ impl<'a> PVSearch<'a> {
         self.increment_nodes()?;
 
         // mate distance pruning
-        alpha = max(-Eval::mate_in(0) - Eval::centipawns(1), alpha);
-        beta = min(Eval::mate_in(1) + Eval::centipawns(1), beta);
-        if alpha >= beta {
-            // even if we mated our opponent at the end of this search, we would
-            // not achieve anything better than what we already had
-            return Ok(alpha);
+        // do not prune at the root, since mate in one is possible at the root
+        if !ROOT {
+            alpha = max(-Eval::mate_in(0), alpha);
+            beta = min(Eval::mate_in(1), beta);
+            if alpha >= beta {
+                // even if we mated our opponent at the end of this search, we would
+                // not achieve anything better than what we already had
+                return Ok(alpha);
+            }
         }
 
         if g.is_drawn_historically() {
@@ -278,117 +281,39 @@ impl<'a> PVSearch<'a> {
             let m = entry.best_move;
             if is_legal(m, g.position()) {
                 tt_move = Some(m);
-                if entry.depth >= depth_to_go as u8 {
-                    // this was a deeper search on the position
-                    // we add and subtract 1 to prevent accidental alpha/beta
-                    // cutoffs in move searching.
-                    beta = min(beta, entry.upper_bound);
-                    if entry.lower_bound > alpha {
-                        if entry.lower_bound >= beta {
-                            return Ok(entry.lower_bound);
-                        }
-                        alpha = entry.lower_bound;
-                        if PV {
-                            write_line(parent_line, m, &[]);
-                        }
+                // check if we can cutoff due to transposition table
+                if !PV && entry.depth as i8 >= depth_to_go {
+                    if entry.upper_bound <= alpha {
+                        return Ok(entry.upper_bound);
+                    } 
+                    if beta <= entry.lower_bound {
+                        return Ok(entry.lower_bound);
                     }
                 }
             }
         }
 
-        let killer_index = depth_so_far as usize;
-        let can_use_killers = depth_so_far < self.config.depth;
-        let killer_move = can_use_killers.then(|| self.killer_moves[killer_index]);
+        let moves_iter = MovePicker::new(*g.position(), tt_move, None);
+        let mut best_move = Move::BAD_MOVE;
+        let mut best_score = Eval::MIN;
 
-        let mut moves_iter = MovePicker::new(*g.position(), tt_move, killer_move);
-
-        // perform one search to satisfy PVS
-        let (m, delta) = match moves_iter.next() {
-            Some(x) => x,
-            None => {
-                let score = leaf_evaluate(g).in_perspective(g.board().player_to_move);
-                if PV && alpha < score {
-                    alpha = score;
-                    parent_line.clear();
-                }
-                return Ok(max(alpha, score));
-            }
-        };
-        // best move found so far
-        let mut best_move = m;
+        // The principal variation line, following the best move.
         let mut line = Vec::new();
-        g.make_move(m, delta);
-        // best score so far
-        let mut best_score = -self
-            .pvs::<PV, REDUCE>(
-                depth_to_go - 1,
-                depth_so_far + 1,
-                g,
-                -beta.step_forward(),
-                -alpha.step_forward(),
-                &mut line,
-            )?
-            .step_back();
-        #[allow(unused_must_use)]
-        {
-            g.undo();
-        }
-        if best_score > alpha {
-            alpha = best_score;
-            if PV {
-                write_line(parent_line, m, &line);
-            }
-            if alpha >= beta {
-                // beta cutoff - the move we just played was so good that our
-                // opponent would not have let us reach a position where we
-                // could play it.
-                if can_use_killers {
-                    self.killer_moves[killer_index] = m;
-                }
-                self.ttable_store(
-                    &mut tt_guard,
-                    depth_to_go,
-                    alpha,
-                    beta,
-                    best_score,
-                    best_move,
-                );
-                return Ok(alpha);
-            }
-        }
+        // The number of moves checked. If this is zero after the move search 
+        // loop, no moves were played.
+        let mut move_count = 0;
 
-        for (idx, (m, delta)) in moves_iter.enumerate() {
+        for (m, delta) in moves_iter {
+            move_count += 1;
             g.make_move(m, delta);
+            let mut score = Eval::MIN;
 
-            // Determine whether to reduce the depth to search.
-            // We want to make sure that we do not reduce the depth in positions
-            // which are highly dangerous, so that we don't accidentally ignore
-            // a critical threat.
-            let reduce_depth = idx > self.config.num_early_moves
-                && !PV
-                && REDUCE
-                && !g.board().is_move_capture(m)
-                && m.promote_type().is_none()
-                && g.position().check_info.checkers.is_empty();
-            let depth_to_search = match reduce_depth {
-                true => depth_to_go - 2,
-                false => depth_to_go - 1,
-            };
-            let mut score = -self
-                .pvs::<false, REDUCE>(
-                    depth_to_search,
-                    depth_so_far + 1,
-                    g,
-                    -alpha.step_forward() - Eval::centipawns(1),
-                    -alpha.step_forward(),
-                    &mut line,
-                )?
-                .step_back();
-            if reduce_depth && alpha < score {
-                // if the late move reduction failed high, retry the search at a
-                // full depth.
+            if !PV || move_count != 0 {
+                // For moves which are not the first move searched at a PV node,
+                // or for moves which are not in a PV node,
+                // perform a zero-window search of the position.
                 score = -self
-                    .pvs::<false, REDUCE>(
+                    .pvs::<false, false, REDUCE>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
@@ -398,43 +323,69 @@ impl<'a> PVSearch<'a> {
                     )?
                     .step_back();
             }
-            if PV && alpha < score && score < beta {
-                // zero-window search failed high, so there is a better option
-                // in this tree.
+
+            if PV && (move_count == 0 || (alpha < score && score < beta)) {
+                // Either this is the first move on a PV node, or the previous
+                // search returned a PV candidate.
                 score = -self
-                    .pvs::<PV, REDUCE>(
+                    .pvs::<true, false, REDUCE>(
                         depth_to_go - 1,
                         depth_so_far + 1,
                         g,
                         -beta.step_forward(),
-                        -score.step_forward(),
+                        -alpha.step_forward(),
                         &mut line,
                     )?
                     .step_back();
             }
-            #[allow(unused_must_use)]
-            {
-                g.undo();
-            }
+
+            let undo_result = g.undo();
+            debug_assert!(undo_result.is_ok());
+
             if score > best_score {
-                best_move = m;
                 best_score = score;
+                best_move = m;
+
                 if score > alpha {
-                    alpha = score;
+                    // if this move was better than what we've seen before, 
+                    // write it as the principal variation
                     if PV {
                         write_line(parent_line, m, &line);
                     }
-                    if alpha >= beta {
-                        // Beta cutoff - this move was so good that our opponent
-                        // would not let get to a position where we can play it.
-                        if can_use_killers {
-                            self.killer_moves[killer_index] = m;
-                        }
+
+                    if score < beta {
+                        // to keep alpha < beta, only write to alpha in this 
+                        // case
+                        alpha = score;
+                    } else {
+                        // Beta cutoff: we found a move that was so good that 
+                        // our opponent would never have let us play it in the 
+                        // first place. Therefore, we need not consider the 
+                        // other moves, since we wouldn't be allowed to play 
+                        // them either.
                         break;
                     }
                 }
-            }
+            } 
         }
+
+        if move_count == 0 {
+            // No moves were played, therefore this position is either a
+            // stalemate or a mate.
+            if PV {
+                parent_line.clear();
+            }
+
+            best_score = if g.position().check_info.checkers.is_empty() {
+                // stalemated
+                Eval::DRAW
+            } else {
+                // mated
+                -Eval::mate_in(0)
+            };
+        }
+
+        debug_assert!(Eval::MIN < best_score && best_score < Eval::MAX);
 
         self.ttable_store(
             &mut tt_guard,
@@ -445,7 +396,7 @@ impl<'a> PVSearch<'a> {
             best_move,
         );
 
-        Ok(alpha)
+        Ok(best_score)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -467,7 +418,7 @@ impl<'a> PVSearch<'a> {
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
         if !g.position().check_info.checkers.is_empty() {
-            return self.pvs::<PV, false>(1, depth_so_far, g, alpha, beta, parent_line);
+            return self.pvs::<PV, false, false>(1, depth_so_far, g, alpha, beta, parent_line);
         }
 
         self.increment_nodes()?;
@@ -475,9 +426,7 @@ impl<'a> PVSearch<'a> {
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
         let leaf_evaluation = leaf_evaluate(g);
-        /*if g.is_over().0 {
-            println!("{g}: {leaf_evaluation}");
-        }*/
+        // println!("{g}: {leaf_evaluation}");
         // Put the score in perspective of the player.
         let mut score = leaf_evaluation.in_perspective(player);
 
@@ -531,12 +480,12 @@ impl<'a> PVSearch<'a> {
             }
             if score > alpha {
                 alpha = score;
+                if PV {
+                    write_line(parent_line, m, &line);
+                }
                 if alpha >= beta {
                     // Beta cutoff, we have  found a better line somewhere else
                     break;
-                }
-                if PV {
-                    write_line(parent_line, m, &line);
                 }
             }
         }
@@ -638,10 +587,10 @@ pub mod tests {
 
     #[test]
     /// Test PVSearch's evaluation of the start position of the game.
-    pub fn eval_start() {
+    fn eval_start() {
         let info = search_helper(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            11,
+            8,
         );
         println!("best move: {} [{}]", info.pv[0], info.eval);
     }
@@ -652,7 +601,7 @@ pub mod tests {
     fn fried_liver() {
         let info = search_helper(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            10,
+            8,
         );
         print!("[");
         for m in info.pv.iter() {

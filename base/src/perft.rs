@@ -22,7 +22,10 @@
 
 use std::time::Instant;
 
-use crate::{movegen::{NoopNominator, ALL}, Score};
+use crate::{
+    movegen::{NoopNominator, ALL},
+    Score,
+};
 
 use super::{movegen::get_moves, Position};
 
