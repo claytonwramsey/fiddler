@@ -368,6 +368,11 @@ mod tests {
     }
 
     #[test]
+    fn startpos_not_over() {
+        assert!(!Game::default().is_over().0)
+    }
+
+    #[test]
     /// Test that making a mate found in testing results in the game being over.
     fn mate_in_1() {
         // Rb8# is the winning move

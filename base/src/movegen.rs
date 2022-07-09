@@ -417,7 +417,7 @@ pub fn has_moves(pos: &Position) -> bool {
     let player_occupancy = b[player];
     let opponent = !player;
     let occupancy = player_occupancy | b[opponent];
-    let legal_targets = !player_occupancy;
+    let mut legal_targets = !player_occupancy;
     let king_square = pos.king_sqs[player as usize];
     let king_attackers = pos.check_info.checkers;
     let king_to_sqs = KING_MOVES[king_square as usize] & !player_occupancy;
@@ -438,8 +438,13 @@ pub fn has_moves(pos: &Position) -> bool {
         if king_attackers.more_than_one() {
             return false;
         }
+        
+        // SAFETY: We checked that the square is nonzero.
+        let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
+        // Look for blocks or captures
+        legal_targets &= between(king_square, checker_sq) | pos.check_info.checkers;
 
-        // only blocks can save us from checks
+        // only blocks or captures can save us
     } else {
         // examine king moves normally
         // we need not consider the castling squares because otherwise the king
@@ -450,21 +455,16 @@ pub fn has_moves(pos: &Position) -> bool {
             }
         }
     }
-    // SAFETY: We checked that the square is nonzero.
-    let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
-    // Look for blocks or captures
-    let target_sqs = between(king_square, checker_sq) | pos.check_info.checkers;
     for pt in Piece::NON_KING_TYPES {
-        let mut target = target_sqs; // make a copy in case of en passant
-                                     // preventing check
-                                     // examine moves that other pieces can make
         for from_sq in b[pt] & player_occupancy {
             let to_bb = match pt {
                 Piece::Pawn => {
+                    let result = pawn_moves(b, from_sq, player);
                     if let Some(ep_sq) = b.en_passant_square {
-                        target |= Bitboard::from(ep_sq);
+                        result | Bitboard::from(ep_sq)
+                    } else {
+                        result
                     }
-                    pawn_moves(b, from_sq, player)
                 }
                 Piece::Bishop => MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
                 Piece::Rook => MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
@@ -479,7 +479,7 @@ pub fn has_moves(pos: &Position) -> bool {
 
             // we need not handle promotion because pawn promotion also can
             // block
-            for to_sq in to_bb & target {
+            for to_sq in to_bb {
                 if validate(Move::normal(from_sq, to_sq), pos) {
                     return true;
                 }
@@ -1312,6 +1312,12 @@ mod tests {
         assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
         assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
         assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
+    }
+
+    #[test]
+    /// Test that the start position of the game has moves.
+    fn startpos_has_moves() {
+        assert!(has_moves(&Position::default()))
     }
 
     /// A helper function that will force that the given FEN will have loud
