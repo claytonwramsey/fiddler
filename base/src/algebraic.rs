@@ -18,7 +18,7 @@
 
 //! Conversion functions between moves and their algebraic notation.
 
-use crate::movegen::{NoopNominator, ALL};
+use crate::{movegen::{NoopNominator, ALL}, Score};
 
 use super::{
     movegen::{get_moves, is_square_attacked_by},
@@ -112,7 +112,7 @@ pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     let mut poscopy = *pos;
     let player_color = b.player_to_move;
     let enemy_king_sq = pos.king_sqs[!player_color as usize];
-    poscopy.make_move(m, Position::NO_DELTA);
+    poscopy.make_move(m, Score::DRAW);
     if is_square_attacked_by(&poscopy.board, enemy_king_sq, player_color) {
         if get_moves::<ALL, NoopNominator>(&poscopy).is_empty() {
             s += "#";

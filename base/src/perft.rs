@@ -22,7 +22,7 @@
 
 use std::time::Instant;
 
-use crate::movegen::{NoopNominator, ALL};
+use crate::{movegen::{NoopNominator, ALL}, Score};
 
 use super::{movegen::get_moves, Position};
 
@@ -59,7 +59,7 @@ fn perft_search(pos: &Position, depth: u8, divide: bool) -> u64 {
     let mut pcopy;
     for m in moves {
         pcopy = *pos;
-        pcopy.make_move(m.0, Position::NO_DELTA);
+        pcopy.make_move(m.0, Score::DRAW);
         let perft_count = perft_search(&pcopy, depth - 1, false);
         if divide {
             println!("{}, {perft_count}", m.0);

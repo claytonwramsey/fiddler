@@ -46,9 +46,6 @@ pub struct Position {
 }
 
 impl Position {
-    /// An evaluation delta which causes no change.
-    pub const NO_DELTA: Score = Score::DRAW;
-
     /// Construct a position from a FEN.
     pub fn from_fen(fen: &str, pst_evaluator: PSTEvaluator) -> Result<Position, String> {
         let board = Board::from_fen(fen)?;
