@@ -320,9 +320,8 @@ impl<'a> PVSearch<'a> {
 
                 let do_lmr = REDUCE && (PV && move_count > 3) || (!PV && move_count > 1);
 
-                #[allow(clippy::if_same_then_else)]
                 let depth_to_search = if do_lmr {
-                    depth_to_go - 1
+                    depth_to_go - 2
                 } else {
                     depth_to_go - 1
                 };
@@ -669,7 +668,7 @@ pub mod tests {
         eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
             Eval::mate_in(9),
-            9,
+            11,
         );
     }
 }
