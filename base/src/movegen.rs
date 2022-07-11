@@ -438,7 +438,7 @@ pub fn has_moves(pos: &Position) -> bool {
         if king_attackers.more_than_one() {
             return false;
         }
-        
+
         // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(pos.check_info.checkers) };
         // Look for blocks or captures
@@ -460,11 +460,12 @@ pub fn has_moves(pos: &Position) -> bool {
             let to_bb = match pt {
                 Piece::Pawn => {
                     let result = pawn_moves(b, from_sq, player);
-                    if let Some(ep_sq) = b.en_passant_square {
-                        result | Bitboard::from(ep_sq)
-                    } else {
-                        result
-                    }
+                    legal_targets
+                        & if let Some(ep_sq) = b.en_passant_square {
+                            result | Bitboard::from(ep_sq)
+                        } else {
+                            result
+                        }
                 }
                 Piece::Bishop => MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
                 Piece::Rook => MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
@@ -1286,6 +1287,8 @@ mod tests {
         .unwrap();
 
         assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
         assert!(!has_moves(&pos));
     }
 
@@ -1304,7 +1307,7 @@ mod tests {
 
     #[test]
     /// Test (again) that in a mated position there are no legal moves.
-    fn no_moves_mated() {
+    fn no_moves_mated_ladder() {
         let pos =
             Position::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1", Position::no_eval).unwrap();
 

@@ -29,7 +29,7 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    movegen::{get_moves, is_legal, CAPTURES},
+    movegen::{get_moves, is_legal, CAPTURES, has_moves},
     Eval, Game, Move,
 };
 
@@ -40,10 +40,7 @@ use super::{
     transposition::TTable,
 };
 
-use std::{
-    cmp::{max, min},
-    sync::PoisonError,
-};
+use std::sync::PoisonError;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The types of errors which can occur during a search.
@@ -94,7 +91,8 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut pv = Vec::new();
-    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv)?;
+    let eval =
+        searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv)?;
 
     Ok(SearchInfo {
         pv,
@@ -252,19 +250,25 @@ impl<'a> PVSearch<'a> {
         self.increment_nodes()?;
 
         // mate distance pruning
-        // do not prune at the root, since mate in one is possible at the root
-        if !ROOT {
-            alpha = max(-Eval::mate_in(0), alpha);
-            beta = min(Eval::mate_in(1), beta);
-            if alpha >= beta {
-                // even if we mated our opponent at the end of this search, we would
-                // not achieve anything better than what we already had
-                return Ok(alpha);
+        if Eval::BLACK_MATE > alpha {
+            if PV {
+                parent_line.clear();
             }
+            if beta <= Eval::BLACK_MATE {
+                return Ok(Eval::BLACK_MATE);
+            }
+            alpha = Eval::BLACK_MATE;
+        }
+
+        if Eval::mate_in(1) < beta {
+            if Eval::mate_in(1) <= alpha {
+                return Ok(Eval::mate_in(1));
+            }
+            beta = Eval::mate_in(1);
         }
 
         if g.is_drawn_historically() {
-            if PV && alpha < Eval::DRAW && Eval::DRAW < beta {
+            if PV && alpha < Eval::DRAW {
                 parent_line.clear();
             }
             // required so that movepicker only needs to know about current
@@ -285,7 +289,7 @@ impl<'a> PVSearch<'a> {
                 if !PV && entry.depth as i8 >= depth_to_go {
                     if entry.upper_bound <= alpha {
                         return Ok(entry.upper_bound);
-                    } 
+                    }
                     if beta <= entry.lower_bound {
                         return Ok(entry.lower_bound);
                     }
@@ -297,21 +301,49 @@ impl<'a> PVSearch<'a> {
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;
 
-        // The principal variation line, following the best move.
-        let mut line = Vec::new();
-        // The number of moves checked. If this is zero after the move search 
+        // The number of moves checked. If this is zero after the move search
         // loop, no moves were played.
         let mut move_count = 0;
 
         for (m, delta) in moves_iter {
+            // The principal variation line, following the best move.
+            let mut line = Vec::new();
             move_count += 1;
             g.make_move(m, delta);
             let mut score = Eval::MIN;
+            let mut search_full_depth = false;
 
-            if !PV || move_count != 0 {
+            if !PV || move_count > 1 {
                 // For moves which are not the first move searched at a PV node,
                 // or for moves which are not in a PV node,
                 // perform a zero-window search of the position.
+
+                let do_lmr = REDUCE && (PV && move_count > 3) || (!PV && move_count > 1);
+
+                #[allow(clippy::if_same_then_else)]
+                let depth_to_search = if do_lmr {
+                    depth_to_go - 1
+                } else {
+                    depth_to_go - 1
+                };
+
+                score = -self
+                    .pvs::<false, false, REDUCE>(
+                        depth_to_search,
+                        depth_so_far + 1,
+                        g,
+                        -alpha.step_forward() - Eval::centipawns(1),
+                        -alpha.step_forward(),
+                        &mut line,
+                    )?
+                    .step_back();
+
+                // if the LMR search causes an alpha cutoff, ZW search again at
+                // full depth.
+                search_full_depth = score > alpha && depth_to_search < depth_to_go - 1;
+            }
+
+            if search_full_depth {
                 score = -self
                     .pvs::<false, false, REDUCE>(
                         depth_to_go - 1,
@@ -324,7 +356,8 @@ impl<'a> PVSearch<'a> {
                     .step_back();
             }
 
-            if PV && (move_count == 0 || (alpha < score && score < beta)) {
+            if PV && (move_count == 1 || (alpha < score && score < beta)) {
+
                 // Either this is the first move on a PV node, or the previous
                 // search returned a PV candidate.
                 score = -self
@@ -347,35 +380,33 @@ impl<'a> PVSearch<'a> {
                 best_move = m;
 
                 if score > alpha {
-                    // if this move was better than what we've seen before, 
+                    // if this move was better than what we've seen before,
                     // write it as the principal variation
                     if PV {
                         write_line(parent_line, m, &line);
                     }
 
                     if score < beta {
-                        // to keep alpha < beta, only write to alpha in this 
+                        // to keep alpha < beta, only write to alpha in this
                         // case
                         alpha = score;
                     } else {
-                        // Beta cutoff: we found a move that was so good that 
-                        // our opponent would never have let us play it in the 
-                        // first place. Therefore, we need not consider the 
-                        // other moves, since we wouldn't be allowed to play 
+                        // Beta cutoff: we found a move that was so good that
+                        // our opponent would never have let us play it in the
+                        // first place. Therefore, we need not consider the
+                        // other moves, since we wouldn't be allowed to play
                         // them either.
                         break;
                     }
                 }
-            } 
+            }
         }
+
+        debug_assert!((move_count == 0) != has_moves(g.position()));
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a
             // stalemate or a mate.
-            if PV {
-                parent_line.clear();
-            }
-
             best_score = if g.position().check_info.checkers.is_empty() {
                 // stalemated
                 Eval::DRAW
@@ -603,11 +634,6 @@ pub mod tests {
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             8,
         );
-        print!("[");
-        for m in info.pv.iter() {
-            print!("{m}, ")
-        }
-        println!("]");
         let m = Move::normal(Square::D1, Square::F3);
         assert_eq!(info.pv[0], m);
     }
