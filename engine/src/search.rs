@@ -64,7 +64,7 @@ impl<T> From<PoisonError<T>> for SearchError {
 /// search, while the `Err` version contains a reason why the search failed.
 pub type SearchResult = Result<SearchInfo, SearchError>;
 
-#[inline(always)]
+#[allow(clippy::too_many_arguments)]
 /// Evaluate the given game. Return a pair containing the best move and its
 /// evaluation, as well as the depth to which the evaluation was searched. The
 /// evaluation will be from the player's perspective, i.e. inverted if the
@@ -81,6 +81,12 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 ///
 /// `is_main` determines whether or not this search is the "main" search or a
 /// subjugate thread, and determines responsibilities as such.
+/// 
+/// `alpha` is a lower bound on the evaluation. This is primarily intended to be 
+/// used for aspiration windowing, and in most cases will be set to `Eval::MIN`.
+/// 
+/// `beta` is an upper bound on the evaluation. This is primarily intended to be 
+/// used for aspiration windowing, and in most cases will be set to `Eval::MAX`.
 pub fn search(
     mut g: Game,
     depth: u8,
@@ -88,11 +94,13 @@ pub fn search(
     config: &SearchConfig,
     limit: &SearchLimit,
     is_main: bool,
+    alpha: Eval,
+    beta: Eval,
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut pv = Vec::new();
     let eval =
-        searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, Eval::MIN, Eval::MAX, &mut pv)?;
+        searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, alpha, beta, &mut pv)?;
 
     Ok(SearchInfo {
         pv,
@@ -603,6 +611,8 @@ pub mod tests {
             &config,
             &SearchLimit::default(),
             true,
+            Eval::MIN,
+            Eval::MAX,
         )
         .unwrap();
 

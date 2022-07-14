@@ -26,7 +26,7 @@
 
 use std::{thread::scope, time::Instant};
 
-use fiddler_base::Game;
+use fiddler_base::{Game, Eval};
 
 use crate::uci::{EngineInfo, UciMessage};
 
@@ -71,6 +71,9 @@ impl MainSearch {
     pub fn evaluate(&self, g: &Game) -> SearchResult {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
+        
+        // The previous iteration's evaluation, used for windowing
+        let mut prev_eval = None; 
         scope(|s| {
             for depth in 1..=self.config.depth {
                 // iterative deepening
@@ -78,21 +81,13 @@ impl MainSearch {
                 let mut handles = Vec::new();
 
                 for _thread_id in 0..self.config.n_helpers {
-                    let gcopy = g.clone();
                     handles.push(s.spawn(move || {
-                        search(gcopy, depth, &self.ttable, &self.config, &self.limit, false)
+                        self.aspiration_search(g, depth, false, prev_eval)
                     }));
                 }
 
                 // now it's our turn to think
-                let mut sub_result = search(
-                    g.clone(),
-                    depth,
-                    &self.ttable,
-                    &self.config,
-                    &self.limit,
-                    true,
-                );
+                let mut sub_result = self.aspiration_search(g, depth, true, prev_eval);
 
                 for handle in handles {
                     let eval_result = handle.join().map_err(|_| SearchError::Join)?;
@@ -114,6 +109,7 @@ impl MainSearch {
                     best_result = sub_result;
                     let elapsed = Instant::now() - tic;
                     if let Ok(ref best_info) = best_result {
+                        prev_eval = Some(best_info.eval);
                         println!(
                             "{}",
                             UciMessage::Info(&[
@@ -149,6 +145,46 @@ impl MainSearch {
             best_result
         })
     }
+
+    fn aspiration_search(&self, g: &Game, depth: u8, main: bool, prev_eval: Option<Eval>) -> SearchResult {
+        if let Some(ev) = prev_eval {
+            // we have a previous score we can use to window this search
+            let (alpha, beta) = match depth & 0x1u8 {
+                // even depth means that we expect the evaluation to decrease
+                0 => (ev - Eval::centipawns(100), ev + Eval::centipawns(10)),
+                // odd depth means that we expect the evaluation to increase
+                1 => (ev - Eval::centipawns(10), ev + Eval::centipawns(100)),
+                _ => unreachable!(),
+            };
+            let window_result = search(
+                g.clone(), 
+                depth, 
+                &self.ttable, 
+                &self.config, 
+                &self.limit, 
+                main, 
+                alpha, 
+                beta
+            );
+
+            if let Ok(ref res) = window_result {
+                if alpha < res.eval && res.eval < beta {
+                    return window_result;
+                }
+            }
+        }
+
+        search(
+            g.clone(), 
+            depth, 
+            &self.ttable, 
+            &self.config, 
+            &self.limit, 
+            main, 
+            Eval::MIN, 
+            Eval::MAX
+        )
+    }
 }
 
 impl Default for MainSearch {
@@ -182,7 +218,7 @@ mod tests {
     fn search_opening() {
         search_helper(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            5,
+            10,
         );
     }
 
