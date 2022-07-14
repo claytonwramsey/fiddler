@@ -382,6 +382,10 @@ pub fn get_moves<const M: GenMode, N: NominateMove>(pos: &Position) -> Vec<(Move
     // prevent wonky generation modes
     debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
 
+    if pos.board.insufficient_material() {
+        return Vec::new();
+    }
+
     let mut moves;
     let in_check = !pos.check_info.checkers.is_empty();
 
@@ -421,6 +425,10 @@ pub fn has_moves(pos: &Position) -> bool {
     let king_square = pos.king_sqs[player as usize];
     let king_attackers = pos.check_info.checkers;
     let king_to_sqs = KING_MOVES[king_square as usize] & !player_occupancy;
+
+    if pos.board.insufficient_material() {
+        return false;
+    }
 
     if !king_attackers.is_empty() {
         // king is in check
@@ -995,6 +1003,8 @@ fn append_valid_moves<N: NominateMove>(
 #[cfg(test)]
 mod tests {
 
+    use crate::Score;
+
     use super::*;
 
     #[test]
@@ -1321,6 +1331,50 @@ mod tests {
     /// Test that the start position of the game has moves.
     fn startpos_has_moves() {
         assert!(has_moves(&Position::default()))
+    }
+
+    #[test]
+    /// Test that a king-versus-king endgame is a draw.
+    fn draw_kk() {
+        let pos = Position::from_fen("K1k5/8/8/8/8/8/8/8 w - - 0 1", |_| Score::DRAW).unwrap();
+
+        assert!(!has_moves(&pos));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
+    }
+
+    #[test]
+    /// Test that a king-bishop versus king endgame is a draw.
+    fn draw_kbk() {
+        let pos = Position::from_fen("KBk5/8/8/8/8/8/8/8 w - - 0 1", |_| Score::DRAW).unwrap();
+
+        assert!(!has_moves(&pos));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
+    }
+
+    #[test]
+    /// Test that a king-knight versus king endgame is a draw.
+    fn draw_knk() {
+        let pos = Position::from_fen("KNk5/8/8/8/8/8/8/8 w - - 0 1", |_| Score::DRAW).unwrap();
+
+        assert!(!has_moves(&pos));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
+    }
+
+    #[test]
+    /// Test that a same-colored king-bishop versus king-bishop endgame is a draw.
+    fn draw_kbkb() {
+        let pos = Position::from_fen("K1k5/8/8/8/3B4/8/3b4/8 w - - 0 1", |_| Score::DRAW).unwrap();
+
+        assert!(!has_moves(&pos));
+        assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
+        assert!(get_moves::<QUIETS, NoopNominator>(&pos).is_empty());
     }
 
     /// A helper function that will force that the given FEN will have loud
