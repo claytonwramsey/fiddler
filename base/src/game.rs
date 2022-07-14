@@ -324,11 +324,11 @@ mod tests {
     fn undo_fried_liver() {
         // the fried liver FEN
         let fen = "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7";
-        let mut g = Game::from_fen(fen, Position::no_eval).unwrap();
+        let mut g = Game::from_fen(fen, |_| Score::DRAW).unwrap();
         let m = Move::normal(Square::D1, Square::F3);
         g.make_move(m, Score::DRAW);
         assert_eq!(g.undo(), Ok(m));
-        assert_eq!(g, Game::from_fen(fen, Position::no_eval).unwrap());
+        assert_eq!(g, Game::from_fen(fen, |_| Score::DRAW).unwrap());
         assert_eq!(g.board(), &Board::from_fen(fen).unwrap());
     }
 
@@ -345,7 +345,7 @@ mod tests {
         // the position from the end of Scholar's mate
         let g = Game::from_fen(
             "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let moves = get_moves::<ALL, NoopNominator>(g.position());
@@ -358,7 +358,7 @@ mod tests {
     fn is_mate_over_2() {
         let g: Game = Game::from_fen(
             "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let moves = get_moves::<ALL, NoopNominator>(g.position());
@@ -376,7 +376,7 @@ mod tests {
     /// Test that making a mate found in testing results in the game being over.
     fn mate_in_1() {
         // Rb8# is the winning move
-        let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", Position::no_eval).unwrap();
+        let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", |_| Score::DRAW).unwrap();
         let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves::<ALL, NoopNominator>().contains(&(m, ())));
         g.make_move(m, Score::DRAW);
@@ -398,7 +398,7 @@ mod tests {
     fn king_escape_without_capture() {
         let g = Game::from_fen(
             "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let moves = g.get_moves::<ALL, NoopNominator>();

@@ -1015,7 +1015,7 @@ mod tests {
         // the fried liver position, before Qf3+
         let pos = Position::from_fen(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let moves = get_moves::<ALL, NoopNominator>(&pos);
@@ -1031,7 +1031,7 @@ mod tests {
         // check that exf5 is generated
         let pos = Position::from_fen(
             "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
@@ -1047,7 +1047,7 @@ mod tests {
     fn enumerate_pawn_checking_king() {
         let pos = Position::from_fen(
             "r1bq1b1r/ppp2kpp/2n5/3n4/2B5/8/PPP1pPPP/RN1Q1K1R w - - 0 10",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
 
@@ -1063,7 +1063,7 @@ mod tests {
     fn white_mated_has_no_moves() {
         let pos = Position::from_fen(
             "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         assert!(!has_moves(&pos));
@@ -1078,7 +1078,7 @@ mod tests {
     /// Check that the king has exactly one move in this position.
     fn king_has_only_one_move() {
         let pos =
-            Position::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2", Position::no_eval).unwrap();
+            Position::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2", |_| Score::DRAW).unwrap();
         assert!(has_moves(&pos));
         assert!(get_moves::<ALL, NoopNominator>(&pos).len() == 1);
         assert!(is_legal(Move::normal(Square::C8, Square::B8), &pos));
@@ -1089,7 +1089,7 @@ mod tests {
     fn queenside_castle() {
         let pos = Position::from_fen(
             "r3kb1r/ppp1p1pp/2nq1n2/1B1p4/3P4/2N2Q2/PPP2PPP/R1B1K2R b KQkq - 0 8",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let m = Move::castling(Square::E8, Square::C8);
@@ -1102,7 +1102,7 @@ mod tests {
     fn no_queenside_castle_through_knight() {
         let pos = Position::from_fen(
             "rn2kbnr/ppp1pppp/3q4/3p4/6b1/8/PPPPPPPP/RNBQKBNR b KQkq - 5 4",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let m = Move::castling(Square::E8, Square::C8);
@@ -1145,7 +1145,7 @@ mod tests {
     fn king_escape_without_capture() {
         let pos = Position::from_fen(
             "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let moves = get_moves::<ALL, NoopNominator>(&pos);
@@ -1168,7 +1168,7 @@ mod tests {
     #[test]
     /// Test that Black can promote a piece (on e1).
     fn black_can_promote() {
-        let pos = Position::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1", Position::no_eval).unwrap();
+        let pos = Position::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1", |_| Score::DRAW).unwrap();
         let moves = get_moves::<ALL, NoopNominator>(&pos);
         for m in moves.iter() {
             assert!(is_legal(m.0, &pos));
@@ -1181,7 +1181,7 @@ mod tests {
     fn no_wraparound() {
         let pos = Position::from_fen(
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBPPP3/q4N2/Pp4PP/R2Q1RK1 b kq - 0 1",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
 
@@ -1197,7 +1197,7 @@ mod tests {
     fn en_passant_illegal() {
         let pos = Position::from_fen(
             "r6r/3n1pk1/p4p2/3p4/2p1p1q1/1P2P1P1/P1PP1P1P/R1B1R1K1 b - - 0 25",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let m = Move::en_passant(Square::C4, Square::B3);
@@ -1213,7 +1213,7 @@ mod tests {
     fn en_passant_pinned() {
         let pos = Position::from_fen(
             "8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let moves = get_moves::<ALL, NoopNominator>(&pos);
@@ -1228,7 +1228,7 @@ mod tests {
     fn en_passant_tagged() {
         let pos = Position::from_fen(
             "2B1kb2/pp2pp2/7p/1PpQP3/2nK4/8/P1r4R/R7 w - c6 0 27",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
 
@@ -1242,7 +1242,7 @@ mod tests {
     fn pinned_knight_capture() {
         let pos = Position::from_fen(
             "r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
         let illegal_move = Move::normal(Square::D5, Square::C3);
@@ -1258,7 +1258,7 @@ mod tests {
         // exf6 is en passant
         let pos = Position::from_fen(
             "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
 
@@ -1276,7 +1276,7 @@ mod tests {
         // bxc6 should be legal here
         let pos = Position::from_fen(
             "8/8/8/1Ppp3r/1KR2p1k/8/4P1P1/8 w - c6 0 3",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
 
@@ -1292,7 +1292,7 @@ mod tests {
     fn horizontal_rook_mate() {
         let pos = Position::from_fen(
             "r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32",
-            Position::no_eval,
+            |_| Score::DRAW,
         )
         .unwrap();
 
@@ -1307,7 +1307,7 @@ mod tests {
     /// fact).
     fn king_can_move() {
         let pos =
-            Position::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1", Position::no_eval).unwrap();
+            Position::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1", |_| Score::DRAW).unwrap();
 
         assert!(!get_moves::<ALL, NoopNominator>(&pos).is_empty());
         assert!(!get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
@@ -1319,7 +1319,7 @@ mod tests {
     /// Test (again) that in a mated position there are no legal moves.
     fn no_moves_mated_ladder() {
         let pos =
-            Position::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1", Position::no_eval).unwrap();
+            Position::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1", |_| Score::DRAW).unwrap();
 
         assert!(!has_moves(&pos));
         assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
@@ -1380,7 +1380,7 @@ mod tests {
     /// A helper function that will force that the given FEN will have loud
     /// moves generated correctly.
     fn loud_moves_helper(fen: &str) {
-        let pos = Position::from_fen(fen, Position::no_eval).unwrap();
+        let pos = Position::from_fen(fen, |_| Score::DRAW).unwrap();
 
         let moves = get_moves::<ALL, NoopNominator>(&pos);
         let loud_moves = get_moves::<CAPTURES, NoopNominator>(&pos);

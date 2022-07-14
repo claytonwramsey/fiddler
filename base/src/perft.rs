@@ -38,7 +38,7 @@ use super::{movegen::get_moves, Position};
 ///
 /// This function will panic if `fen` is not a legal board.
 pub fn perft(fen: &str, depth: u8) -> u64 {
-    let pos = Position::from_fen(fen, Position::no_eval).unwrap();
+    let pos = Position::from_fen(fen, |_| Score::DRAW).unwrap();
     let tic = Instant::now();
     let num_nodes = perft_search(&pos, depth, true);
     let toc = Instant::now();

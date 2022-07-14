@@ -60,12 +60,6 @@ impl Position {
         })
     }
 
-    /// Helper function for initializing boards if you do not care about the
-    /// PST value of a board.
-    pub const fn no_eval(_: &Board) -> Score {
-        Score::DRAW
-    }
-
     #[inline(always)]
     /// Make a move on this position, updating the check info and PST values as
     /// needed. `delta` is the expected gain in PST evaluation that will
