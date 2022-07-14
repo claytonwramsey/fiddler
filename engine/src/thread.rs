@@ -132,7 +132,12 @@ impl MainSearch {
                                 EngineInfo::Pv(&best_info.pv),
                                 EngineInfo::HashFull(self.ttable.fill_rate_permill()),
                             ])
-                        )
+                        );
+                        if best_info.eval.is_mate() {
+                            // don't bother searching deeper if we already found 
+                            // mate
+                            break;
+                        }
                     }
                 }
             }
