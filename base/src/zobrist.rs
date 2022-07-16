@@ -57,7 +57,7 @@ pub fn ep_key(ep_square: Option<Square>) -> u64 {
 
 #[inline(always)]
 /// Get the Zobrist key for the player to move
-pub const fn player_to_move_key(player_to_move: Color) -> u64 {
+pub const fn player_key(player_to_move: Color) -> u64 {
     match player_to_move {
         Color::White => 0,
         Color::Black => BLACK_TO_MOVE_KEY,

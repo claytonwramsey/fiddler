@@ -22,12 +22,9 @@
 
 use std::time::Instant;
 
-use crate::{
-    movegen::{NoopNominator, ALL},
-    Score,
-};
+use crate::{game::NoTag, movegen::ALL, Board};
 
-use super::{movegen::get_moves, Position};
+use super::movegen::get_moves;
 
 #[allow(dead_code)]
 /// Perform a performance test on the move generator and print out facts. The
@@ -38,9 +35,9 @@ use super::{movegen::get_moves, Position};
 ///
 /// This function will panic if `fen` is not a legal board.
 pub fn perft(fen: &str, depth: u8) -> u64 {
-    let pos = Position::from_fen(fen, |_| Score::DRAW).unwrap();
+    let b = Board::from_fen(fen).unwrap();
     let tic = Instant::now();
-    let num_nodes = perft_search(&pos, depth, true);
+    let num_nodes = perft_search::<true>(&b, depth);
     let toc = Instant::now();
     let time = toc - tic;
     let speed = (num_nodes as f64) / time.as_secs_f64();
@@ -53,19 +50,19 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
 }
 
 /// The core search algorithm for perft.
-fn perft_search(pos: &Position, depth: u8, divide: bool) -> u64 {
+fn perft_search<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = get_moves::<ALL, NoopNominator>(pos);
+    let moves = get_moves::<ALL, NoTag>(b);
     let mut total = 0;
-    let mut pcopy;
-    for m in moves {
-        pcopy = *pos;
-        pcopy.make_move(m.0, Score::DRAW);
-        let perft_count = perft_search(&pcopy, depth - 1, false);
-        if divide {
-            println!("{}, {perft_count}", m.0);
+    let mut bcopy;
+    for (m, _) in moves {
+        bcopy = *b;
+        bcopy.make_move(m);
+        let perft_count = perft_search::<false>(&bcopy, depth - 1);
+        if DIVIDE {
+            println!("{}, {perft_count}", m);
         }
         total += perft_count;
     }

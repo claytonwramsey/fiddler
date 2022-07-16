@@ -19,6 +19,8 @@
 //! State representations of boards, which contain board state (such as piece
 //! positions), but neither history nor meta-information about a game.
 
+use crate::movegen::{between, square_attackers, MAGIC};
+
 use super::{zobrist, Bitboard, CastleRights, Color, Move, Piece, Square};
 
 use std::{
@@ -39,15 +41,31 @@ pub struct Board {
     /// queens, pawns, and kings.
     pieces: [Bitboard; Piece::NUM_TYPES],
     /// The color of the player to move.
-    pub player_to_move: Color,
+    pub player: Color,
     /// The square which can be moved to by a pawn in en passant. Will be
     /// `None` when a pawn has not moved two squares in the previous move.
     pub en_passant_square: Option<Square>,
     /// The rights of this piece for castling.
     pub castle_rights: CastleRights,
-    /// A saved internal hash. If the board is valid, the this value must ALWAYS
-    /// be equal to the output of `Board.get_fresh_hash()`.
+
+    /*
+        Below: metadata which is not critical for board representation, but
+        which is useful for performance.
+    */
+    /// A saved internal hash.
+    /// If the board is valid, the this value must ALWAYS be equal to the output
+    /// of `Board.get_fresh_hash()`.
     pub hash: u64,
+    /// The set of squares which is occupied by pieces which are checking the
+    /// king.
+    pub checkers: Bitboard,
+    /// The squares that the kings are living on.
+    /// `king_sqs[0]` is the location of the white king, and
+    /// `king_sqs[1]` is the location of the black king.
+    pub king_sqs: [Square; 2],
+    /// The set of squares containing pieces which are pinned, i.e. which are
+    /// blocking some sort of attack on `player`'s king.
+    pub pinned: Bitboard,
 }
 
 impl Board {
@@ -56,9 +74,12 @@ impl Board {
         sides: [Bitboard::EMPTY; 2],
         pieces: [Bitboard::EMPTY; 6],
         en_passant_square: None,
-        player_to_move: Color::White,
+        player: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 0,
+        checkers: Bitboard::EMPTY,
+        king_sqs: [Square::A1; 2],
+        pinned: Bitboard::EMPTY,
     };
 
     /// Create an empty board with no pieces or castle rights.
@@ -67,9 +88,12 @@ impl Board {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],
             en_passant_square: None,
-            player_to_move: Color::White,
+            player: Color::White,
             castle_rights: CastleRights::NO_RIGHTS,
             hash: 0,
+            checkers: Bitboard::EMPTY,
+            king_sqs: [Square::A1; 2],
+            pinned: Bitboard::EMPTY,
         };
         board.recompute_hash();
         board
@@ -119,10 +143,10 @@ impl Board {
         };
 
         //now compute player to move
-        let player_to_move_chr = fen_chrs
+        let player_chr = fen_chrs
             .next()
             .ok_or("reached end of string while parsing for player to move")?;
-        board.player_to_move = match player_to_move_chr {
+        board.player = match player_chr {
             'w' => Color::White,
             'b' => Color::Black,
             _ => return Err("unrecognized player to move".into()),
@@ -169,6 +193,13 @@ impl Board {
             board.en_passant_square = Some(Square::from_algebraic(&s)?);
         }
         board.recompute_hash();
+        board.king_sqs = [
+            Square::try_from(board[Piece::King] & board[Color::White])?,
+            Square::try_from(board[Piece::King] & board[Color::Black])?,
+        ];
+        board.checkers =
+            square_attackers(&board, board.king_sqs[board.player as usize], !board.player);
+        board.recompute_pinned();
         if !(board.is_valid()) {
             return Err("board state after loading was illegal".into());
         }
@@ -242,15 +273,24 @@ impl Board {
             return false;
         }
 
-        if !(self[Piece::King] & self[Color::White]).has_single_bit() {
+        let w_king_bb = self[Piece::King] & self[Color::White];
+        let b_king_bb = self[Piece::King] & self[Color::Black];
+
+        if w_king_bb != Bitboard::from(self.king_sqs[Color::White as usize]) {
             return false;
         }
 
-        if !(self[Piece::King] & self[Color::Black]).has_single_bit() {
+        if b_king_bb != Bitboard::from(self.king_sqs[Color::Black as usize]) {
             return false;
         }
 
-        //TODO check if castle rights are legal
+        if self.checkers
+            != square_attackers(self, self.king_sqs[self.player as usize], !self.player)
+        {
+            return false;
+        }
+
+        // TODO validate pinners
         true
     }
 
@@ -260,7 +300,7 @@ impl Board {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
 
-        let player = self.player_to_move;
+        let player = self.player;
         let opponent = !player;
         //this length is used to determine whether it's not a move that a king
         //or pawn could normally make
@@ -277,9 +317,9 @@ impl Board {
         }
         /* Promotion and normal piece movement */
         if let Some(p) = m.promote_type() {
-            self.add_piece(to_sq, p, self.player_to_move);
+            self.add_piece(to_sq, p, self.player);
         } else {
-            self.add_piece(to_sq, mover_type, self.player_to_move);
+            self.add_piece(to_sq, mover_type, self.player);
         }
         self.remove_known_piece(from_sq, mover_type, player);
 
@@ -306,7 +346,7 @@ impl Board {
 
         let mut rights_to_remove;
         if is_king_move {
-            rights_to_remove = CastleRights::color_rights(self.player_to_move);
+            rights_to_remove = CastleRights::color_rights(self.player);
             if is_long_move {
                 //a long move from a king means this must be a castle
                 //G file is file 6 (TODO move this to be a constant?)
@@ -322,7 +362,7 @@ impl Board {
                 let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
                 let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
                 self.remove_known_piece(rook_from_sq, Piece::Rook, player);
-                self.add_piece(rook_to_sq, Piece::Rook, self.player_to_move);
+                self.add_piece(rook_to_sq, Piece::Rook, self.player);
             }
         } else {
             //don't need to check if it's a rook because moving from this square
@@ -347,8 +387,23 @@ impl Board {
         self.remove_castle_rights(rights_to_remove);
 
         /* Updating player to move */
-        self.player_to_move = !self.player_to_move;
+        self.player = !self.player;
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+
+        /* Non-meta fields of the board are now in their final state. */
+
+        /* Update metadata */
+        // king squares
+        if is_king_move {
+            // update king locations
+            self.king_sqs[!self.player as usize] = m.to_square();
+        }
+
+        // checkers
+        self.checkers = square_attackers(self, self.king_sqs[self.player as usize], !self.player);
+
+        // pinned pieces
+        self.recompute_pinned()
     }
 
     #[inline(always)]
@@ -418,6 +473,26 @@ impl Board {
         self.hash = self.get_fresh_hash();
     }
 
+    /// Recompute the `pinned` metadata of this board.
+    fn recompute_pinned(&mut self) {
+        self.pinned = Bitboard::EMPTY;
+        let king_sq = self.king_sqs[self.player as usize];
+        let rook_mask = MAGIC.rook_attacks(Bitboard::EMPTY, king_sq);
+        let bishop_mask = MAGIC.bishop_attacks(Bitboard::EMPTY, king_sq);
+        let occupancy = self.occupancy();
+
+        let snipers = self[!self.player]
+            & ((rook_mask & (self[Piece::Queen] | self[Piece::Rook]))
+                | (bishop_mask & (self[Piece::Queen] | self[Piece::Bishop])));
+
+        for sniper_sq in snipers {
+            let between_bb = between(king_sq, sniper_sq);
+            if (between_bb & occupancy).has_single_bit() {
+                self.pinned |= between_bb;
+            }
+        }
+    }
+
     /// Determine whether this board represents a game which is over due to
     /// insufficient material.
     pub fn insufficient_material(&self) -> bool {
@@ -453,7 +528,7 @@ impl Board {
             }
         }
         hash ^= zobrist::ep_key(self.en_passant_square);
-        hash ^= zobrist::player_to_move_key(self.player_to_move);
+        hash ^= zobrist::player_key(self.player);
         hash
     }
 }
@@ -494,7 +569,7 @@ impl PartialEq for Board {
         self.sides == other.sides
             && self.pieces == other.pieces
             && self.en_passant_square == other.en_passant_square
-            && self.player_to_move == other.player_to_move
+            && self.player == other.player
             && self.castle_rights == other.castle_rights
     }
 }
@@ -539,9 +614,12 @@ impl Default for Board {
                 Bitboard::new(0x1000000000000010), //king
             ],
             en_passant_square: None,
-            player_to_move: Color::White,
+            player: Color::White,
             castle_rights: CastleRights::ALL_RIGHTS,
             hash: 0,
+            king_sqs: [Square::E1, Square::E8],
+            checkers: Bitboard::EMPTY,
+            pinned: Bitboard::EMPTY,
         };
         board.recompute_hash();
         board
@@ -568,9 +646,12 @@ pub mod tests {
             Bitboard::new(0x8000000000000001), //king
         ],
         en_passant_square: None,
-        player_to_move: Color::White,
+        player: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         hash: 3483926298739092744,
+        checkers: Bitboard::EMPTY,
+        king_sqs: [Square::A1, Square::H8],
+        pinned: Bitboard::EMPTY,
     };
 
     #[test]
@@ -690,7 +771,7 @@ pub mod tests {
             );
             assert_eq!(
                 new_board.color_at_square(old_board.en_passant_square.unwrap()),
-                Some(old_board.player_to_move)
+                Some(old_board.player)
             );
         }
 
@@ -715,7 +796,7 @@ pub mod tests {
             assert_eq!(new_board.type_at_square(rook_end_sq), Some(Piece::Rook));
             assert_eq!(
                 new_board.color_at_square(rook_end_sq),
-                Some(old_board.player_to_move)
+                Some(old_board.player)
             );
 
             assert!(!new_board

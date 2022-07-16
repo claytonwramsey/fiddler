@@ -55,9 +55,6 @@ pub mod perft;
 mod piece;
 pub use piece::Piece;
 
-mod position;
-pub use position::Position;
-
 mod square;
 pub use square::Square;
 

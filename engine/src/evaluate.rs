@@ -60,6 +60,12 @@ pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-34, -28);
 /// are not advanced past the 3rd rank.
 pub const OPEN_ROOK_VALUE: Score = Score::centipawns(7, 46);
 
+pub struct ScoreTag {}
+
+impl Tagger for ScoreTag {
+    
+}
+
 /// Evaluate a leaf position on a game whose cumulative values have been
 /// computed correctly.
 pub fn leaf_evaluate(g: &Game) -> Eval {
