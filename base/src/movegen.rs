@@ -1077,8 +1077,7 @@ mod tests {
     #[test]
     /// Check that the king has exactly one move in this position.
     fn king_has_only_one_move() {
-        let pos =
-            Position::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2", |_| Score::DRAW).unwrap();
+        let pos = Position::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2", |_| Score::DRAW).unwrap();
         assert!(has_moves(&pos));
         assert!(get_moves::<ALL, NoopNominator>(&pos).len() == 1);
         assert!(is_legal(Move::normal(Square::C8, Square::B8), &pos));
@@ -1211,11 +1210,8 @@ mod tests {
     /// Test that a pawn cannot en passant if doing so would put the king in
     /// check.
     fn en_passant_pinned() {
-        let pos = Position::from_fen(
-            "8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2",
-            |_| Score::DRAW,
-        )
-        .unwrap();
+        let pos = Position::from_fen("8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2", |_| Score::DRAW)
+            .unwrap();
         let moves = get_moves::<ALL, NoopNominator>(&pos);
         let m = Move::en_passant(Square::F4, Square::E3);
         assert!(!moves.contains(&(m, ())));
@@ -1274,11 +1270,8 @@ mod tests {
     /// checking pawn being captured.
     fn en_passant_out_of_check() {
         // bxc6 should be legal here
-        let pos = Position::from_fen(
-            "8/8/8/1Ppp3r/1KR2p1k/8/4P1P1/8 w - c6 0 3",
-            |_| Score::DRAW,
-        )
-        .unwrap();
+        let pos = Position::from_fen("8/8/8/1Ppp3r/1KR2p1k/8/4P1P1/8 w - c6 0 3", |_| Score::DRAW)
+            .unwrap();
 
         let m = Move::en_passant(Square::B5, Square::C6);
 
@@ -1290,10 +1283,9 @@ mod tests {
     #[test]
     /// Test that a position where a rook is horizontal to the king is mate.
     fn horizontal_rook_mate() {
-        let pos = Position::from_fen(
-            "r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32",
-            |_| Score::DRAW,
-        )
+        let pos = Position::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32", |_| {
+            Score::DRAW
+        })
         .unwrap();
 
         assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());
@@ -1306,8 +1298,7 @@ mod tests {
     /// Test that the king can actually move (and `has_moves` reflects that
     /// fact).
     fn king_can_move() {
-        let pos =
-            Position::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1", |_| Score::DRAW).unwrap();
+        let pos = Position::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1", |_| Score::DRAW).unwrap();
 
         assert!(!get_moves::<ALL, NoopNominator>(&pos).is_empty());
         assert!(!get_moves::<CAPTURES, NoopNominator>(&pos).is_empty());
@@ -1318,8 +1309,7 @@ mod tests {
     #[test]
     /// Test (again) that in a mated position there are no legal moves.
     fn no_moves_mated_ladder() {
-        let pos =
-            Position::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1", |_| Score::DRAW).unwrap();
+        let pos = Position::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1", |_| Score::DRAW).unwrap();
 
         assert!(!has_moves(&pos));
         assert!(get_moves::<ALL, NoopNominator>(&pos).is_empty());

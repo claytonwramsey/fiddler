@@ -26,7 +26,7 @@
 
 use std::{thread::scope, time::Instant};
 
-use fiddler_base::{Game, Eval};
+use fiddler_base::{Eval, Game};
 
 use crate::uci::{EngineInfo, UciMessage};
 
@@ -71,9 +71,9 @@ impl MainSearch {
     pub fn evaluate(&self, g: &Game) -> SearchResult {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
-        
+
         // The previous iteration's evaluation, used for windowing
-        let mut prev_eval = None; 
+        let mut prev_eval = None;
         scope(|s| {
             for depth in 1..=self.config.depth {
                 // iterative deepening
@@ -81,9 +81,8 @@ impl MainSearch {
                 let mut handles = Vec::new();
 
                 for _thread_id in 0..self.config.n_helpers {
-                    handles.push(s.spawn(move || {
-                        self.aspiration_search(g, depth, false, prev_eval)
-                    }));
+                    handles
+                        .push(s.spawn(move || self.aspiration_search(g, depth, false, prev_eval)));
                 }
 
                 // now it's our turn to think
@@ -130,7 +129,7 @@ impl MainSearch {
                             ])
                         );
                         if best_info.eval.is_mate() {
-                            // don't bother searching deeper if we already found 
+                            // don't bother searching deeper if we already found
                             // mate
                             break;
                         }
@@ -146,7 +145,13 @@ impl MainSearch {
         })
     }
 
-    fn aspiration_search(&self, g: &Game, depth: u8, main: bool, prev_eval: Option<Eval>) -> SearchResult {
+    fn aspiration_search(
+        &self,
+        g: &Game,
+        depth: u8,
+        main: bool,
+        prev_eval: Option<Eval>,
+    ) -> SearchResult {
         if let Some(ev) = prev_eval {
             // we have a previous score we can use to window this search
             let (alpha, beta) = match depth & 0x1u8 {
@@ -157,14 +162,14 @@ impl MainSearch {
                 _ => unreachable!(),
             };
             let window_result = search(
-                g.clone(), 
-                depth, 
-                &self.ttable, 
-                &self.config, 
-                &self.limit, 
-                main, 
-                alpha, 
-                beta
+                g.clone(),
+                depth,
+                &self.ttable,
+                &self.config,
+                &self.limit,
+                main,
+                alpha,
+                beta,
             );
 
             if let Ok(ref res) = window_result {
@@ -175,14 +180,14 @@ impl MainSearch {
         }
 
         search(
-            g.clone(), 
-            depth, 
-            &self.ttable, 
-            &self.config, 
-            &self.limit, 
-            main, 
-            Eval::MIN, 
-            Eval::MAX
+            g.clone(),
+            depth,
+            &self.ttable,
+            &self.config,
+            &self.limit,
+            main,
+            Eval::MIN,
+            Eval::MAX,
         )
     }
 }
@@ -193,7 +198,7 @@ impl Default for MainSearch {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, bench))]
 mod tests {
 
     use fiddler_base::{movegen::is_legal, Score};

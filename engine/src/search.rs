@@ -29,7 +29,7 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    movegen::{get_moves, is_legal, CAPTURES, has_moves},
+    movegen::{get_moves, has_moves, is_legal, CAPTURES},
     Eval, Game, Move,
 };
 
@@ -81,11 +81,11 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 ///
 /// `is_main` determines whether or not this search is the "main" search or a
 /// subjugate thread, and determines responsibilities as such.
-/// 
-/// `alpha` is a lower bound on the evaluation. This is primarily intended to be 
+///
+/// `alpha` is a lower bound on the evaluation. This is primarily intended to be
 /// used for aspiration windowing, and in most cases will be set to `Eval::MIN`.
-/// 
-/// `beta` is an upper bound on the evaluation. This is primarily intended to be 
+///
+/// `beta` is an upper bound on the evaluation. This is primarily intended to be
 /// used for aspiration windowing, and in most cases will be set to `Eval::MAX`.
 pub fn search(
     mut g: Game,
@@ -99,8 +99,7 @@ pub fn search(
 ) -> SearchResult {
     let mut searcher = PVSearch::new(ttable, config, limit, is_main);
     let mut pv = Vec::new();
-    let eval =
-        searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, alpha, beta, &mut pv)?;
+    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, alpha, beta, &mut pv)?;
 
     Ok(SearchInfo {
         pv,
@@ -364,7 +363,6 @@ impl<'a> PVSearch<'a> {
             }
 
             if PV && (move_count == 1 || (alpha < score && score < beta)) {
-
                 // Either this is the first move on a PV node, or the previous
                 // search returned a PV candidate.
                 score = -self

@@ -156,8 +156,7 @@ mod tests {
     /// Test that a mating move is correctly displayed.
     fn mate() {
         // Rb8# is the winning move
-        let pos =
-            Position::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", |_| Score::DRAW).unwrap();
+        let pos = Position::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1", |_| Score::DRAW).unwrap();
         let m = Move::normal(Square::B6, Square::B8);
 
         assert_eq!("Rb8#", algebraic_from_move(m, &pos));

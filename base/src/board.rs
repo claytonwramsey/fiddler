@@ -418,16 +418,19 @@ impl Board {
         self.hash = self.get_fresh_hash();
     }
 
-    /// Determine whether this board represents a game which is over due to 
+    /// Determine whether this board represents a game which is over due to
     /// insufficient material.
     pub fn insufficient_material(&self) -> bool {
         const DARK_SQUARES: Bitboard = Bitboard::new(0x5555555555555555);
         match self.occupancy().count_ones() {
             0 | 1 => unreachable!(), // a king is missing
-            2 => true, // only two kings
+            2 => true,               // only two kings
             3 => !(self[Piece::Knight] | self[Piece::Bishop]).is_empty(), //KNK or KBK
             // same colored bishops
-            4 => self[Piece::Bishop].more_than_one() && !(self[Piece::Bishop] & DARK_SQUARES).has_single_bit(),
+            4 => {
+                self[Piece::Bishop].more_than_one()
+                    && !(self[Piece::Bishop] & DARK_SQUARES).has_single_bit()
+            }
             _ => false,
         }
     }
