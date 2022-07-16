@@ -29,32 +29,70 @@ use std::{
     },
 };
 
-/// A bitboard to express sets of `Square`s.
-/// The LSB of the internal bitboard represents whether A1 is included; the
-/// second-lowest represents B1, and so on, until the MSB is H8.
-/// For example, `Bitboard(3)` represents the set `{A1, B1}`.
+/// A bitboard, which uses an integer to express a set of `Square`s. 
+/// This expression allows the efficient computation of set intersection, union, 
+/// disjunction, element selection, and more, all in constant time.
+/// 
+/// Nearly all board-related representations use `Bitboard`s as a key part of 
+/// their construction.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(u64);
 
 impl Bitboard {
-    /// An empty bitboard.
+    /// A bitboard representing the empty set. 
+    /// Accordingly, `Bitboard::EMPTY` contains no squares, and functions 
+    /// exactly like the empty set in all observable behavior.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let sq = Square::A1; // this could be any square
+    /// assert!(!Bitboard::EMPTY.contains(sq));
+    /// ```
     pub const EMPTY: Bitboard = Bitboard::new(0);
 
-    /// A bitboard containing all squares.
+    /// A bitboard containing all 64 squares on the board, i.e. the universal 
+    /// set. 
+    /// 
+    /// Often, it can be used as an efficient way to iterate over every square 
+    /// of a board.
+    /// 
+    /// # Examples
+    /// 
+    /// Basic usage:
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let sq = Square::A1;
+    /// assert!(Bitboard::ALL.contains(sq));
+    /// ```
+    /// 
+    /// Use as an iterator over all squares:
+    /// ```
+    /// use fiddler_base::{Bitboard};
+    /// 
+    /// for sq in Bitboard::ALL {
+    ///     println!("Now visiting square {sq}!");
+    /// }
+    /// ```
     pub const ALL: Bitboard = Bitboard::new(!0);
 
     #[inline(always)]
-    /// Construct a new Bitboard from a numeric literal.
+    /// Construct a new Bitboard from a numeric literal. Internally, `Bitboard`s 
     pub const fn new(x: u64) -> Bitboard {
         Bitboard(x)
     }
 
     #[inline(always)]
-    /// Determine whether a square of a bitboard is occupied.
+    /// Determine whether this bitboard contains a given square. 
+    /// 
     /// # Examples
+    /// 
     /// ```
-    /// # use fiddler_base::Bitboard;
-    /// # use fiddler_base::Square;
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
     /// assert!(Bitboard::new(1).contains(Square::A1));
     /// assert!(!(Bitboard::new(2).contains(Square::A1)));
     /// ```
@@ -63,14 +101,41 @@ impl Bitboard {
     }
 
     #[inline(always)]
-    /// Count the number of ones in this bitboard.
-    pub const fn count_ones(&self) -> u32 {
+    /// Add a square to the set of squares contained in this `Bitboard`.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let mut bb = Bitboard::EMPTY;
+    /// bb.insert(Square::A1);
+    /// assert!(bb.contains(Square::A1));
+    /// ```
+    pub fn insert(&mut self, sq: Square) {
+        self.0 |= 1 << sq as u8;
+    }
+
+    #[inline(always)]
+    /// Compute the number of squares contained in this `Bitboard`.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let mut bb = Bitboard::EMPTY;
+    /// assert!(bb.len() == 0);
+    /// bb.insert(Square::A1);
+    /// assert!(bb.len() == 1);
+    /// ```
+    pub const fn len(&self) -> u32 {
         self.0.count_ones()
     }
 
     #[inline(always)]
     /// Count the number of trailing zeros (i.e. empty squares between A1 and
-    /// the first non-emtpy square) in this bitboard. Alternately, this can be
+    /// the first non-empty square) in this bitboard. Alternately, this can be
     /// used to construct a `Square` from the lowest-rank square in this
     /// bitboard.
     pub const fn trailing_zeros(&self) -> u32 {
@@ -84,12 +149,23 @@ impl Bitboard {
     }
 
     /// Determine whether this bitboard is empty.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let mut bb = Bitboard::EMPTY;
+    /// assert!(bb.is_empty());
+    /// bb.insert(Square::A1);
+    /// assert!(!bb.is_empty());
+    /// ```
     pub const fn is_empty(&self) -> bool {
         self.0 == 0
     }
 
     /// Determine whether this bitboard has exactly one bit. Equivalent to
-    /// `Bitboard.count_ones() == 1`.
+    /// `Bitboard.len() == 1`.
     pub const fn has_single_bit(&self) -> bool {
         // 5 arithmetic operations,
         // faster than the 13 required for `count_ones() == 1`
@@ -108,7 +184,9 @@ impl BitAnd for Bitboard {
     #[inline(always)]
     /// Compute the intersection of the sets represented by this bitboard and
     /// the right-hand side.
+    /// 
     /// # Examples
+    /// 
     /// ```
     /// # use fiddler_base::Square;
     /// # use fiddler_base::Bitboard;

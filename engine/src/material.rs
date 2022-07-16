@@ -74,8 +74,8 @@ pub fn evaluate(b: &Board) -> Score {
         // Total the quantity of white and black pieces of this type, and
         // multiply their individual value to get the net effect on the eval.
         let pt_squares = b[pt];
-        let white_diff = (white_occupancy & pt_squares).count_ones() as i8
-            - (black_occupancy & pt_squares).count_ones() as i8;
+        let white_diff = (white_occupancy & pt_squares).len() as i8
+            - (black_occupancy & pt_squares).len() as i8;
         score += value(pt) * white_diff;
     }
 

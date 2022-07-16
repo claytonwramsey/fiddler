@@ -30,8 +30,20 @@ use super::{
 
 /// Given a `Move` and the `Board` it was played on, construct the
 /// algebraic-notation version of the move. Assumes the move was legal.
+/// 
 /// # Panics
-/// if the move given is illegal or otherwise invalid.
+/// 
+/// This function will panic if `m` is an illegal move.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use fiddler_base::{Move, Position, Square, algebraic::algebraic_from_move};
+/// 
+/// let pos = Position::default();
+/// let m = Move::normal(Square::E2, Square::E4);
+/// assert_eq!(algebraic_from_move(m, &pos), "e4");
+/// ```
 pub fn algebraic_from_move(m: Move, pos: &Position) -> String {
     //longest possible algebraic string would be something along the lines of
     //Qe4xd4# (7 chars)

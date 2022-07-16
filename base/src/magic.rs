@@ -318,7 +318,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
         table[i]
             .attacks
             .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
-        let num_points = table[i].mask.count_ones();
+        let num_points = table[i].mask.len();
         for j in 0..(1 << num_points) {
             let occupancy = index_to_occupancy(j, table[i].mask);
             let directions = if is_rook {
@@ -382,7 +382,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
             table[i].shift = 64 - BISHOP_BITS[i];
         }
         // number of squares where occupancy matters
-        let num_points = table[i].mask.count_ones();
+        let num_points = table[i].mask.len();
 
         // we know that there are at most 12 pieces that will matter when it
         // comes to attack lookups
@@ -514,7 +514,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 /// ```
 fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     let mut result = Bitboard::EMPTY;
-    let num_points = mask.count_ones();
+    let num_points = mask.len();
     let mut editable_mask = mask;
     // go from right to left in the bits of num_points,
     // and add an occupancy if something is there
@@ -546,7 +546,7 @@ fn directional_attacks(sq: Square, dirs: &[Direction], occupancy: Bitboard) -> B
                 break;
             }
             current_square += *dir;
-            result |= Bitboard::from(current_square);
+            result.insert(current_square);
             if occupancy.contains(current_square) {
                 break;
             }

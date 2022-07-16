@@ -422,7 +422,7 @@ impl Board {
     /// insufficient material.
     pub fn insufficient_material(&self) -> bool {
         const DARK_SQUARES: Bitboard = Bitboard::new(0x5555555555555555);
-        match self.occupancy().count_ones() {
+        match self.occupancy().len() {
             0 | 1 => unreachable!(), // a king is missing
             2 => true,               // only two kings
             3 => !(self[Piece::Knight] | self[Piece::Bishop]).is_empty(), //KNK or KBK

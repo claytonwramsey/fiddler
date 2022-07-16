@@ -284,8 +284,8 @@ fn extract(b: &Board) -> BoardFeatures {
     let phase = phase_of(b);
     // Indices 0..4: non-king piece values
     for pt in Piece::NON_KING_TYPES {
-        let n_white = (b[pt] & b[Color::White]).count_ones() as i8;
-        let n_black = (b[pt] & b[Color::Black]).count_ones() as i8;
+        let n_white = (b[pt] & b[Color::White]).len() as i8;
+        let n_black = (b[pt] & b[Color::Black]).len() as i8;
         let net = n_white - n_black;
         if net != 0 {
             let idx = 2 * (pt as usize);

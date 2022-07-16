@@ -211,7 +211,7 @@ impl CheckInfo {
                 blockers |= between_bb;
                 if let Some(color) = sq_color {
                     if !(board[color] & between_bb).is_empty() {
-                        pinners |= Bitboard::from(sniper_sq);
+                        pinners.insert(sniper_sq);
                     }
                 }
             }
@@ -361,7 +361,7 @@ pub fn is_legal(m: Move, pos: &Position) -> bool {
                 if let Some(ep_sq) = pos.board.en_passant_square {
                     if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
                         // allow en passants that let us escape check
-                        targets |= Bitboard::from(ep_sq);
+                        targets.insert(ep_sq);
                     }
                 }
 
@@ -588,7 +588,7 @@ fn non_evasions<const M: GenMode, N: NominateMove>(
     let mut pawn_targets = target_sqs;
     if M != QUIETS {
         if let Some(ep_sq) = pos.board.en_passant_square {
-            pawn_targets |= Bitboard::from(ep_sq);
+            pawn_targets.insert(ep_sq);
         }
     }
     pawn_assistant::<M, N>(pos, moves, pawn_targets);
@@ -626,7 +626,7 @@ fn evasions<const M: GenMode, N: NominateMove>(pos: &Position, moves: &mut Vec<(
                 // can en passant save us from check?
                 let ep_attacker_sq = ep_sq - player.pawn_direction();
                 if pos.check_info.checkers.contains(ep_attacker_sq) {
-                    pawn_targets |= Bitboard::from(ep_sq);
+                    pawn_targets.insert(ep_sq);
                 }
             }
         }
@@ -853,10 +853,10 @@ fn pawn_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
     let mut target_squares = Bitboard::EMPTY;
     //this will never be out of bounds because pawns don't live on promotion rank
     if !occupancy.contains(sq + dir) {
-        target_squares |= Bitboard::from(sq + dir);
+        target_squares.insert(sq + dir);
         //pawn is on start rank and double-move square is not occupied
         if !(start_rank & from_bb).is_empty() && !occupancy.contains(sq + 2 * dir) {
-            target_squares |= Bitboard::from(sq + 2 * dir);
+            target_squares.insert(sq + 2 * dir);
         }
     }
     target_squares |= pawn_captures(board, sq, color);
@@ -873,7 +873,7 @@ fn pawn_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
 fn pawn_captures(board: &Board, sq: Square, color: Color) -> Bitboard {
     let mut capture_mask = board[!color];
     if let Some(ep_square) = board.en_passant_square {
-        capture_mask |= Bitboard::from(ep_square);
+        capture_mask.insert(ep_square);
     }
 
     PAWN_ATTACKS[color as usize][sq as usize] & capture_mask
@@ -959,7 +959,7 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
             let start_sq = Square::try_from(i as u8).unwrap();
             let target_sq = start_sq + *dir;
             if target_sq.chebyshev_to(start_sq) <= max_dist {
-                *item |= Bitboard::from(target_sq);
+                item.insert(target_sq);
             }
         }
     }

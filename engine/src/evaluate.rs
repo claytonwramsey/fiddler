@@ -172,11 +172,11 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
         let col_pawns = pawns & col_mask;
 
         // all ones on the A column, shifted left by the col
-        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).count_ones() {
+        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
-        let num_white_doubled_pawns = match (white_occupancy & col_pawns).count_ones() {
+        let num_white_doubled_pawns = match (white_occupancy & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
@@ -199,7 +199,7 @@ pub fn phase_of(b: &Board) -> f32 {
     let mg_npm = {
         let mut total = Eval::DRAW;
         for pt in Piece::NON_PAWN_TYPES {
-            total += material::value(pt).mg * b[pt].count_ones();
+            total += material::value(pt).mg * b[pt].len();
         }
         total
     };
