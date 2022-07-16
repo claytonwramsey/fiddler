@@ -222,6 +222,12 @@ impl<T: Tagger> TaggedGame<T> {
         &self.history.last().unwrap().0
     }
 
+    #[inline(always)]
+    /// Get the cookie of the current state of the game.
+    pub fn cookie(&self) -> &T::Cookie {
+        &self.history.last().unwrap().2
+    }
+
     /// In the current state, is the game complete (i.e. is there no way the
     /// game can continue)? The return type has the first type as whether the
     /// game is over, and the second is the player which has won if the game is

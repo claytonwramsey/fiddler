@@ -32,9 +32,9 @@ use std::{
     time::Duration,
 };
 
-use fiddler_base::Game;
+use fiddler_base::game::Tagger;
 use fiddler_engine::{
-    evaluate::{static_evaluate, value_delta},
+    evaluate::{ScoreTag, ScoredGame},
     thread::MainSearch,
     time::get_search_time,
     uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
@@ -45,7 +45,7 @@ fn main() {
     // whether we are in debug mode
     let mut debug = false;
     let searcher = Arc::new(RwLock::new(MainSearch::new()));
-    let mut game = Game::new();
+    let mut game = ScoredGame::new();
     let mut search_handle = None;
 
     loop {
@@ -124,7 +124,7 @@ fn main() {
                 _ => debug_info(&format!("error: unknown option key `{}`", name), debug),
             },
             UciCommand::NewGame => {
-                game = Game::new();
+                game = ScoredGame::new();
                 // stop previous search
                 stop(&searcher, search_handle, debug);
                 search_handle = None;
@@ -136,11 +136,12 @@ fn main() {
             }
             UciCommand::Position { fen, moves } => {
                 game = match fen {
-                    None => Game::new(),
-                    Some(fen) => Game::from_fen(&fen, static_evaluate).unwrap(),
+                    None => ScoredGame::new(),
+                    Some(fen) => ScoredGame::from_fen(&fen).unwrap(),
                 };
                 for m in moves {
-                    game.try_move(m, value_delta(game.board(), m)).unwrap();
+                    game.try_move(m, ScoreTag::tag_move(m, game.board()))
+                        .unwrap();
                 }
             }
             UciCommand::Go(opts) => {
@@ -167,7 +168,7 @@ fn main() {
 fn go(
     opts: &[GoOption],
     searcher: &Arc<RwLock<MainSearch>>,
-    game: &Game,
+    game: &ScoredGame,
     debug: bool,
 ) -> Option<JoinHandle<()>> {
     // whether the last move given in the position should be considered the
@@ -249,7 +250,7 @@ fn go(
             movestogo,
             (winc, binc),
             (wtime.unwrap(), btime.unwrap()),
-            game.board().player_to_move,
+            game.board().player,
         ) as u64));
     }
     debug_info(&format!("search time: {:?}", *search_duration_guard), debug);

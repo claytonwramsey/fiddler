@@ -38,38 +38,23 @@
 use std::mem::swap;
 
 use fiddler_base::{
-    movegen::{get_moves, is_legal, NominateMove, CAPTURES, QUIETS},
-    Eval, Move, Position, Score,
+    game::Tagger,
+    movegen::{get_moves, is_legal, CAPTURES, QUIETS},
+    Board, Eval, Move, Score,
 };
 
 use crate::{
-    evaluate::{phase_of, value_delta},
+    evaluate::{phase_of, ScoreTag},
     material,
 };
 
-/// A move nomination strategy which computes a candidacy for each move, and
-/// also computes the move's effect on board evaluation.
-pub struct CandidacyNominate {}
-
-impl NominateMove for CandidacyNominate {
-    type Output = (Score, Eval);
-
-    #[inline(always)]
-    fn score(m: Move, pos: &Position) -> Self::Output {
-        let delta = value_delta(&pos.board, m);
-        (delta, candidacy(pos, m, delta))
-    }
-}
-
-#[allow(unused)]
 /// Create an estimate for how good a move is. `delta` is the PST difference
 /// created by this move. Requires that `m` must be a legal move in `pos`.
 ///
 /// # Panics
 ///
 /// This function may panic if the given move is illegal.
-pub fn candidacy(pos: &Position, m: Move, delta: Score) -> Eval {
-    let b = &pos.board;
+pub fn candidacy(b: &Board, m: Move, delta: Score) -> Eval {
     let mover_type = b.type_at_square(m.from_square()).unwrap();
     let phase = phase_of(b);
 
@@ -95,8 +80,8 @@ pub struct MovePicker {
     quiet_index: usize,
     /// The set of moves to ignore.
     ignored: Vec<Move>,
-    /// The game for which moves are being generated
-    pos: Position,
+    /// The board for which moves are being generated.
+    board: Board,
     /// The upcoming phase of move generation.
     phase: PickPhase,
     /// The move retreived from the transposition table.
@@ -132,7 +117,7 @@ impl MovePicker {
     /// The transposition move must be legal, and should be
     /// checked as such prior to instantiation.
     pub fn new(
-        pos: Position,
+        b: Board,
         transposition_move: Option<Move>,
         killer_move: Option<Move>,
     ) -> MovePicker {
@@ -142,7 +127,7 @@ impl MovePicker {
             capture_index: 0,
             quiet_index: 0,
             ignored: Vec::new(),
-            pos,
+            board: b,
             phase: PickPhase::Transposition,
             transposition_move,
             killer_move,
@@ -178,7 +163,7 @@ fn select_best(moves: &mut [(Move, (Score, Eval))], idx: usize) -> (Move, (Score
 }
 
 impl Iterator for MovePicker {
-    type Item = (Move, Score);
+    type Item = (Move, (Score, Eval));
 
     /// Get the next move which the move picker wants.
     fn next(&mut self) -> Option<Self::Item> {
@@ -190,14 +175,14 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         // we assume that m was checked for legality before
                         self.ignore(m);
-                        Some((m, value_delta(&self.pos.board, m)))
+                        Some((m, ScoreTag::tag_move(m, &self.board)))
                     }
                 }
             }
             PickPhase::PreGoodCapture => {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
-                self.capture_buffer = get_moves::<CAPTURES, CandidacyNominate>(&self.pos);
+                self.capture_buffer = get_moves::<CAPTURES, ScoreTag>(&self.board);
                 self.next()
             }
             PickPhase::GoodCapture => {
@@ -220,16 +205,16 @@ impl Iterator for MovePicker {
                     // don't bother with ignored moves
                     return self.next();
                 }
-                Some((capture_entry.0, capture_entry.1 .0))
+                Some(capture_entry)
             }
             PickPhase::Killer => {
                 self.phase = PickPhase::PreQuiet;
                 match self.killer_move {
                     None => self.next(),
-                    Some(m) => match is_legal(m, &self.pos) {
+                    Some(m) => match is_legal(m, &self.board) {
                         true => {
                             self.ignore(m);
-                            Some((m, value_delta(&self.pos.board, m)))
+                            Some((m, ScoreTag::tag_move(m, &self.board)))
                         }
                         false => self.next(),
                     },
@@ -238,7 +223,7 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                self.quiet_buffer = get_moves::<QUIETS, CandidacyNominate>(&self.pos);
+                self.quiet_buffer = get_moves::<QUIETS, ScoreTag>(&self.board);
                 self.next()
             }
             PickPhase::Quiet => {
@@ -253,7 +238,7 @@ impl Iterator for MovePicker {
                     // don't bother with ignored moves
                     return self.next();
                 }
-                Some((quiet_entry.0, quiet_entry.1 .0))
+                Some(quiet_entry)
             }
             PickPhase::BadCaptures => {
                 if self.capture_index >= self.capture_buffer.len() {
@@ -266,7 +251,7 @@ impl Iterator for MovePicker {
                     // don't bother with ignored moves
                     return self.next();
                 }
-                Some((capture_entry.0, capture_entry.1 .0))
+                Some(capture_entry)
             }
         }
     }
@@ -301,10 +286,7 @@ impl Iterator for MovePicker {
 
 #[cfg(test)]
 mod tests {
-    use fiddler_base::{
-        algebraic::algebraic_from_move,
-        movegen::{NoopNominator, ALL},
-    };
+    use fiddler_base::{algebraic::algebraic_from_move, game::NoTag, movegen::ALL};
 
     use super::*;
 
@@ -312,18 +294,15 @@ mod tests {
     /// Test that all moves are generated in the move picker and that there are
     /// no duplicates.
     fn generation_correctness() {
-        let pos = Position::from_fen(
-            "r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12",
-            |_| Score::DRAW,
-        )
-        .unwrap();
-        let mp = MovePicker::new(pos, None, None);
+        let b = Board::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
+            .unwrap();
+        let mp = MovePicker::new(b, None, None);
 
         let mp_moves = mp.map(|(m, _)| m);
-        let mg_moves = get_moves::<ALL, NoopNominator>(&pos);
+        let mg_moves = get_moves::<ALL, NoTag>(&b);
         for m in mp_moves.clone() {
             assert!(mg_moves.contains(&(m, ())));
-            println!("{}", algebraic_from_move(m, &pos));
+            println!("{}", algebraic_from_move(m, &b));
         }
 
         for (m, _) in mg_moves {

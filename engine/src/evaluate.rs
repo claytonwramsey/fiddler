@@ -41,10 +41,14 @@
 
 use std::cmp::{max, min};
 
-use fiddler_base::{Bitboard, Board, Color, Eval, Game, Move, Piece, Score};
+use fiddler_base::{
+    game::{TaggedGame, Tagger},
+    Bitboard, Board, Color, Eval, Move, Piece, Score,
+};
 
 use crate::{
     material::material_delta,
+    pick::candidacy,
     pst::{pst_delta, pst_evaluate},
 };
 
@@ -60,20 +64,52 @@ pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-34, -28);
 /// are not advanced past the 3rd rank.
 pub const OPEN_ROOK_VALUE: Score = Score::centipawns(7, 46);
 
-pub struct ScoreTag {}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScoreTag;
+
+pub type ScoredGame = TaggedGame<ScoreTag>;
 
 impl Tagger for ScoreTag {
-    
+    type Tag = (Score, Eval);
+    type Cookie = Score;
+
+    /// Compute the change in scoring that a move made on a board will cause.
+    fn tag_move(m: Move, b: &Board) -> Self::Tag {
+        let delta = pst_delta(b, m) + material_delta(b, m);
+        (delta, candidacy(b, m, delta))
+    }
+
+    fn update_cookie(
+        _: Move,
+        tag: &Self::Tag,
+        b: &Board,
+        prev_cookie: &Self::Cookie,
+    ) -> Self::Cookie {
+        match b.player {
+            Color::White => *prev_cookie + tag.0,
+            Color::Black => *prev_cookie - tag.0,
+        }
+    }
+
+    /// Compute a static, cumulative-invariant evaluation of a position.
+    /// It is much faster in search to use cumulative evaluation, but this should be used when
+    /// importing positions.
+    /// Static evaluation will not include the leaf rules (such as number of
+    /// doubled pawns), as this will be handled by `leaf_evaluate` at the end of
+    /// the search tree.
+    fn init_cookie(b: &Board) -> Self::Cookie {
+        material::evaluate(b) + pst_evaluate(b)
+    }
 }
 
 /// Evaluate a leaf position on a game whose cumulative values have been
 /// computed correctly.
-pub fn leaf_evaluate(g: &Game) -> Eval {
+pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
     let b = g.board();
 
     match g.is_over() {
         (true, Some(_)) => {
-            return match b.player_to_move {
+            return match b.player {
                 Color::Black => Eval::mate_in(0),
                 Color::White => -Eval::mate_in(0),
             }
@@ -84,27 +120,10 @@ pub fn leaf_evaluate(g: &Game) -> Eval {
         _ => {}
     };
 
-    let pos = g.position();
-    let b = &pos.board;
+    let b = g.board();
     let leaf_val = leaf_rules(b);
 
-    (leaf_val + pos.score).blend(phase_of(g.board()))
-}
-
-/// Compute the change in scoring that a move made on a board will cause. Used
-/// in tandem with `leaf_evaluate()`.
-pub fn value_delta(b: &Board, m: Move) -> Score {
-    pst_delta(b, m) + material_delta(b, m)
-}
-
-/// Compute a static, cumulative-invariant evaluation of a position. It is much
-/// faster in search to use cumulative evaluation, but this should be used when
-/// importing positions. Static evaluation will not include the leaf rules (such
-/// as number of doubled pawns), as this will be handled by `leaf_evaluate` at
-/// the end of the search tree.
-pub fn static_evaluate(b: &Board) -> Score {
-    material::evaluate(b) + pst_evaluate(b)
-    // leaf evaluations do not count here
+    (leaf_val + *g.cookie()).blend(phase_of(b))
 }
 
 /// Get the score gained from evaluations that are only performed at the leaf.
@@ -217,14 +236,14 @@ pub fn phase_of(b: &Board) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::movegen::{get_moves, NoopNominator, ALL};
+    use fiddler_base::movegen::ALL;
 
     fn delta_helper(fen: &str) {
-        let mut g = Game::from_fen(fen, static_evaluate).unwrap();
-        for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
-            g.make_move(m, value_delta(g.board(), m));
+        let mut g = ScoredGame::from_fen(fen).unwrap();
+        for (m, tag) in g.get_moves::<ALL>() {
+            g.make_move(m, tag);
             // println!("{g}");
-            assert_eq!(static_evaluate(g.board()), g.position().score);
+            assert_eq!(ScoreTag::init_cookie(g.board()), *g.cookie());
             g.undo().unwrap();
         }
     }

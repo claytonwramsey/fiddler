@@ -79,7 +79,7 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
         None => mover_type,
     };
     let end_idx = end_type as usize;
-    let (from_alt, to_alt) = match board.player_to_move {
+    let (from_alt, to_alt) = match board.player {
         Color::White => (from_sq, to_sq),
         Color::Black => (from_sq.opposite(), to_sq.opposite()),
     };
@@ -88,7 +88,7 @@ pub fn pst_delta(board: &Board, m: Move) -> Score {
     // you always lose the value of the square you moved from
     let mut delta = PST[end_idx][to_idx] - PST[mover_idx][from_idx];
 
-    if board[!board.player_to_move].contains(m.to_square()) {
+    if board[!board.player].contains(m.to_square()) {
         // conventional capture
         let to_opposite_idx = to_alt.opposite() as usize;
         let capturee_idx = board.type_at_square(to_sq).unwrap() as usize;
@@ -205,15 +205,19 @@ pub const PST: Pst = expand_table([
 mod tests {
 
     use super::*;
-    use fiddler_base::movegen::{get_moves, NoopNominator, ALL};
-    use fiddler_base::Game;
+    use fiddler_base::{game::Game, movegen::ALL};
 
     fn delta_helper(fen: &str) {
-        let mut g = Game::from_fen(fen, pst_evaluate).unwrap();
-        for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
-            g.make_move(m, pst_delta(g.board(), m));
+        let mut g = Game::from_fen(fen).unwrap();
+        let orig_eval = pst_evaluate(g.board());
+        for (m, _) in g.get_moves::<ALL>() {
+            let new_eval = match g.board().player {
+                Color::White => orig_eval + pst_delta(g.board(), m),
+                Color::Black => orig_eval - pst_delta(g.board(), m),
+            };
+            g.make_move(m, ());
             // println!("{g}");
-            assert_eq!(g.position().score, pst_evaluate(g.board()));
+            assert_eq!(new_eval, pst_evaluate(g.board()));
             g.undo().unwrap();
         }
     }

@@ -41,8 +41,7 @@ use direction::Direction;
 mod eval;
 pub use eval::{Eval, Score};
 
-mod game;
-pub use game::Game;
+pub mod game;
 
 mod magic;
 pub mod movegen;

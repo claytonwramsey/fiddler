@@ -20,13 +20,12 @@
 
 use fiddler_base::{
     algebraic::{algebraic_from_move, move_from_algebraic},
-    movegen::{get_moves, NoopNominator, ALL},
-    Game, Move,
+    movegen::ALL,
+    Move, game::Tagger,
 };
 use fiddler_engine::{
-    evaluate::{static_evaluate, value_delta},
     limit::SearchLimit,
-    thread::MainSearch,
+    thread::MainSearch, evaluate::{ScoreTag, ScoredGame},
 };
 
 use std::{
@@ -39,7 +38,7 @@ use std::{
 /// A text-based application for running Fiddler.
 pub struct FiddlerApp<'a> {
     /// The currently-played game.
-    game: Game,
+    game: ScoredGame,
     /// The currently-running engine to play against.,
     engine: MainSearch,
     /// The input stream to receive messages from.
@@ -212,7 +211,7 @@ impl<'a> FiddlerApp<'a> {
     /// correctly parse the move, or a string describing the error if it fails.
     fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, String> {
         let m_str = move_token.ok_or("no move token given")?;
-        Ok(move_from_algebraic(m_str, self.game.position())?)
+        Ok(move_from_algebraic(m_str, self.game.board())?)
     }
 
     /// Execute a CLI command. Returns a `CommandResult` describing the success
@@ -249,13 +248,13 @@ impl<'a> FiddlerApp<'a> {
 
     /// Attempt to load a FEN string into the game.
     fn load_fen(&mut self, fen: &str) -> CommandResult {
-        self.game = Game::from_fen(fen, static_evaluate)?;
+        self.game = ScoredGame::from_fen(fen)?;
         Ok(())
     }
 
     /// Attempt to play a move.
     fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
-        self.game.try_move(m, value_delta(self.game.board(), m))?;
+        self.game.try_move(m, ScoreTag::tag_move(m, self.game.board()))?;
         if engine_reply {
             self.play_engine_move()?;
         }
@@ -265,12 +264,11 @@ impl<'a> FiddlerApp<'a> {
 
     /// Print out a list of the available moves in this position.
     fn list_moves(&mut self) -> CommandResult {
-        let moves = get_moves::<ALL, NoopNominator>(self.game.position());
-        for m in moves.iter() {
+        for (m, _) in self.game.get_moves::<ALL>() {
             writeln!(
                 self.output_stream,
                 "{}",
-                algebraic_from_move(m.0, self.game.position())
+                algebraic_from_move(m, self.game.board())
             )
             .map_err(|_| "failed to write move list")?;
         }
@@ -303,13 +301,13 @@ impl<'a> FiddlerApp<'a> {
             self.output_stream,
             "depth {}: the engine played {}: {}",
             search_data.depth,
-            algebraic_from_move(search_data.pv[0], self.game.position()),
+            algebraic_from_move(search_data.pv[0], self.game.board()),
             search_data.eval
         )
         .map_err(|_| "failed to write to output")?;
         self.game.make_move(
             search_data.pv[0],
-            value_delta(self.game.board(), search_data.pv[0]),
+            ScoreTag::tag_move(search_data.pv[0], self.game.board())
         );
 
         Ok(())
@@ -328,7 +326,7 @@ impl<'a> Default for FiddlerApp<'a> {
         limit.search_duration = Mutex::new(Some(Duration::from_secs(5)));
 
         let mut app = FiddlerApp {
-            game: Game::new(),
+            game: ScoredGame::new(),
             engine: MainSearch::new(),
             input_stream: Box::new(io::stdin()),
             output_stream: Box::new(io::stdout()),
@@ -389,9 +387,8 @@ mod tests {
         );
         assert_eq!(
             app.game,
-            Game::from_fen(
+            ScoredGame::from_fen(
                 "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-                static_evaluate
             )
             .unwrap()
         );

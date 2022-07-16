@@ -26,9 +26,12 @@
 
 use std::{thread::scope, time::Instant};
 
-use fiddler_base::{Eval, Game};
+use fiddler_base::Eval;
 
-use crate::uci::{EngineInfo, UciMessage};
+use crate::{
+    evaluate::ScoredGame,
+    uci::{EngineInfo, UciMessage},
+};
 
 use super::{
     config::SearchConfig,
@@ -68,7 +71,7 @@ impl MainSearch {
     /// `SearchError`. Such errors are rare, and are generally either the result
     /// of an internal bug or a critical OS interrupt. However, a timeout error
     /// is most likely if the search times out before it can do any computation.
-    pub fn evaluate(&self, g: &Game) -> SearchResult {
+    pub fn evaluate(&self, g: &ScoredGame) -> SearchResult {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
 
@@ -139,7 +142,7 @@ impl MainSearch {
 
             if let Ok(ref mut info) = best_result {
                 // normalize evaluation to be in absolute terms
-                info.eval = info.eval.in_perspective(g.board().player_to_move);
+                info.eval = info.eval.in_perspective(g.board().player);
             }
             best_result
         })
@@ -147,7 +150,7 @@ impl MainSearch {
 
     fn aspiration_search(
         &self,
-        g: &Game,
+        g: &ScoredGame,
         depth: u8,
         main: bool,
         prev_eval: Option<Eval>,
@@ -203,19 +206,17 @@ mod tests {
 
     use fiddler_base::{movegen::is_legal, Score};
 
-    use crate::evaluate::static_evaluate;
-
     use super::*;
 
     fn search_helper(fen: &str, depth: u8) {
-        let mut g = Game::from_fen(fen, static_evaluate).unwrap();
+        let mut g = ScoredGame::from_fen(fen).unwrap();
         let mut main = MainSearch::new();
         main.config.n_helpers = 15;
         main.config.depth = depth;
         let info = main.evaluate(&g).unwrap();
         for m in info.pv {
-            assert!(is_legal(m, g.position()));
-            g.make_move(m, Score::centipawns(0, 0));
+            assert!(is_legal(m, g.board()));
+            g.make_move(m, (Score::DRAW, Eval::DRAW));
         }
     }
 

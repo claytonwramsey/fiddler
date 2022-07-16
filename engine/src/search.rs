@@ -29,11 +29,11 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    movegen::{get_moves, has_moves, is_legal, CAPTURES},
-    Eval, Game, Move,
+    movegen::{has_moves, is_legal, CAPTURES},
+    Eval, Move,
 };
 
-use crate::{pick::CandidacyNominate, transposition::TTEntryGuard};
+use crate::{evaluate::ScoredGame, transposition::TTEntryGuard};
 
 use super::{
     config::SearchConfig, evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker,
@@ -88,7 +88,7 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 /// `beta` is an upper bound on the evaluation. This is primarily intended to be
 /// used for aspiration windowing, and in most cases will be set to `Eval::MAX`.
 pub fn search(
-    mut g: Game,
+    mut g: ScoredGame,
     depth: u8,
     ttable: &TTable,
     config: &SearchConfig,
@@ -237,7 +237,7 @@ impl<'a> PVSearch<'a> {
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
-        g: &mut Game,
+        g: &mut ScoredGame,
         mut alpha: Eval,
         mut beta: Eval,
         parent_line: &mut Vec<Move>,
@@ -290,7 +290,7 @@ impl<'a> PVSearch<'a> {
         if let Some(entry) = tt_guard.entry() {
             self.num_transpositions += 1;
             let m = entry.best_move;
-            if is_legal(m, g.position()) {
+            if is_legal(m, g.board()) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
                 if !PV && entry.depth as i8 >= depth_to_go {
@@ -304,7 +304,7 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        let moves_iter = MovePicker::new(*g.position(), tt_move, None);
+        let moves_iter = MovePicker::new(*g.board(), tt_move, None);
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;
 
@@ -312,11 +312,11 @@ impl<'a> PVSearch<'a> {
         // loop, no moves were played.
         let mut move_count = 0;
 
-        for (m, delta) in moves_iter {
+        for (m, tag) in moves_iter {
             // The principal variation line, following the best move.
             let mut line = Vec::new();
             move_count += 1;
-            g.make_move(m, delta);
+            g.make_move(m, tag);
             let mut score = Eval::MIN;
             let mut search_full_depth = false;
 
@@ -407,12 +407,12 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        debug_assert!((move_count == 0) != has_moves(g.position()));
+        debug_assert!((move_count == 0) != has_moves(g.board()));
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a
             // stalemate or a mate.
-            best_score = if g.position().check_info.checkers.is_empty() {
+            best_score = if g.board().checkers.is_empty() {
                 // stalemated
                 Eval::DRAW
             } else {
@@ -444,16 +444,16 @@ impl<'a> PVSearch<'a> {
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
-        g: &mut Game,
+        g: &mut ScoredGame,
         mut alpha: Eval,
         beta: Eval,
         parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
-        let player = g.board().player_to_move;
+        let player = g.board().player;
 
         // Any position where the king is in check is nowhere near quiet
         // enough to evaluate.
-        if !g.position().check_info.checkers.is_empty() {
+        if !g.board().checkers.is_empty() {
             return self.pvs::<PV, false, false>(1, depth_so_far, g, alpha, beta, parent_line);
         }
 
@@ -478,12 +478,12 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        let mut moves = get_moves::<CAPTURES, CandidacyNominate>(g.position());
+        let mut moves = g.get_moves::<CAPTURES>();
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut line = Vec::new();
 
-        for (m, (delta, _)) in moves {
-            g.make_move(m, delta);
+        for (m, tag) in moves {
+            g.make_move(m, tag);
             // zero-window search
             score = -self
                 .quiesce::<false>(
@@ -584,10 +584,11 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
 
 #[cfg(test)]
 pub mod tests {
+    use crate::evaluate::ScoreTag;
+
     use super::*;
-    use crate::evaluate::static_evaluate;
+    use fiddler_base::game::Tagger;
     use fiddler_base::Move;
-    use fiddler_base::Score;
     use fiddler_base::Square;
 
     /// Helper function to search a position at a given depth.
@@ -597,7 +598,7 @@ pub mod tests {
     /// This function will panic if searching the position fails or the game is
     /// invalid.
     fn search_helper(fen: &str, depth: u8) -> SearchInfo {
-        let mut g = Game::from_fen(fen, static_evaluate).unwrap();
+        let mut g = ScoredGame::from_fen(fen).unwrap();
         let config = SearchConfig {
             depth,
             ..Default::default()
@@ -616,8 +617,8 @@ pub mod tests {
 
         for &m in info.pv.iter() {
             println!("{m}");
-            assert!(is_legal(m, g.position()));
-            g.make_move(m, Score::centipawns(0, 0));
+            assert!(is_legal(m, g.board()));
+            g.make_move(m, ScoreTag::tag_move(m, g.board()));
         }
 
         info

@@ -74,8 +74,8 @@ pub fn evaluate(b: &Board) -> Score {
         // Total the quantity of white and black pieces of this type, and
         // multiply their individual value to get the net effect on the eval.
         let pt_squares = b[pt];
-        let white_diff = (white_occupancy & pt_squares).len() as i8
-            - (black_occupancy & pt_squares).len() as i8;
+        let white_diff =
+            (white_occupancy & pt_squares).len() as i8 - (black_occupancy & pt_squares).len() as i8;
         score += value(pt) * white_diff;
     }
 
@@ -85,17 +85,19 @@ pub fn evaluate(b: &Board) -> Score {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::{
-        movegen::{get_moves, NoopNominator, ALL},
-        Game,
-    };
+    use fiddler_base::{game::Game, movegen::ALL};
 
     fn delta_helper(fen: &str) {
-        let mut g = Game::from_fen(fen, evaluate).unwrap();
-        for (m, _) in get_moves::<ALL, NoopNominator>(g.position()) {
-            g.make_move(m, material_delta(g.board(), m));
-            // println!("{g}");
-            assert_eq!(g.position().score, evaluate(g.board()));
+        let mut g = Game::from_fen(fen).unwrap();
+        let orig_eval = evaluate(g.board());
+        for (m, _) in g.get_moves::<ALL>() {
+            let delta = material_delta(g.board(), m);
+            let new_eval = match g.board().player {
+                Color::White => orig_eval + delta,
+                Color::Black => orig_eval - delta,
+            };
+            g.make_move(m, ());
+            assert_eq!(evaluate(g.board()), new_eval);
             g.undo().unwrap();
         }
     }
