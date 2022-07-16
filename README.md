@@ -73,13 +73,6 @@ evaluation.
 * `cli` contains a command-line interface for testing the engine. We intend to
 eventually retire the CLI.
 
-## Known issues
-
-* Often the principal variation output in UCI is corrupted, and gives
-illegal moves.
-
-* Sometimes the engine misses simple mate-in-one replies.
-
 ## Contributing
 
 If you are interested in contributing to Fiddler, please open a pull request.
