@@ -33,7 +33,10 @@ use fiddler_base::{
     Eval, Move,
 };
 
-use crate::{evaluate::ScoredGame, transposition::TTEntryGuard};
+use crate::{
+    evaluate::ScoredGame,
+    transposition::{TTEntry, TTEntryGuard},
+};
 
 use super::{
     config::SearchConfig, evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker,
@@ -259,7 +262,7 @@ impl<'a> PVSearch<'a> {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce::<PV>(depth_to_go, depth_so_far, g, alpha, beta, parent_line);
+            return self.quiesce::<PV>(depth_so_far, g, alpha, beta, parent_line);
         }
 
         self.increment_nodes()?;
@@ -451,7 +454,6 @@ impl<'a> PVSearch<'a> {
     /// it is.
     fn quiesce<const PV: bool>(
         &mut self,
-        depth_to_go: i8,
         depth_so_far: u8,
         g: &mut ScoredGame,
         mut alpha: Eval,
@@ -469,6 +471,19 @@ impl<'a> PVSearch<'a> {
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
+        let mut tt_guard = self.ttable.get(g.board().hash);
+        if let Some(entry) = tt_guard.entry() {
+            if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES {
+                // this was a deeper search, just use it
+                if entry.upper_bound <= alpha {
+                    return Ok(entry.upper_bound);
+                }
+                if beta <= entry.lower_bound {
+                    return Ok(entry.lower_bound);
+                }
+            }
+        }
+
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
         let leaf_evaluation = leaf_evaluate(g);
@@ -482,12 +497,21 @@ impl<'a> PVSearch<'a> {
                 parent_line.clear();
             }
             if alpha >= beta {
+                self.ttable_store(
+                    &mut tt_guard,
+                    TTEntry::DEPTH_CAPTURES,
+                    alpha,
+                    beta,
+                    score,
+                    Move::BAD_MOVE,
+                );
                 // beta cutoff, this line would not be selected because there is a
                 // better option somewhere else
-                return Ok(alpha);
+                return Ok(score);
             }
         }
 
+        let mut best_score = score;
         let mut moves = g.get_moves::<CAPTURES>();
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut line = Vec::new();
@@ -497,7 +521,6 @@ impl<'a> PVSearch<'a> {
             // zero-window search
             score = -self
                 .quiesce::<false>(
-                    depth_to_go - 1,
                     depth_so_far + 1,
                     g,
                     -alpha.step_forward() - Eval::centipawns(1),
@@ -511,7 +534,6 @@ impl<'a> PVSearch<'a> {
                 // can use as a lower bound in this search.
                 score = -self
                     .quiesce::<PV>(
-                        depth_to_go - 1,
                         depth_so_far + 1,
                         g,
                         -beta.step_forward(),
@@ -524,19 +546,30 @@ impl<'a> PVSearch<'a> {
             {
                 g.undo();
             }
-            if score > alpha {
-                alpha = score;
-                if PV {
-                    write_line(parent_line, m, &line);
-                }
-                if alpha >= beta {
-                    // Beta cutoff, we have  found a better line somewhere else
-                    break;
+            if score > best_score {
+                best_score = score;
+                if score > alpha {
+                    alpha = score;
+                    if PV {
+                        write_line(parent_line, m, &line);
+                    }
+                    if alpha >= beta {
+                        // Beta cutoff, we have  found a better line somewhere else
+                        break;
+                    }
                 }
             }
         }
 
-        Ok(alpha)
+        self.ttable_store(
+            &mut tt_guard,
+            TTEntry::DEPTH_CAPTURES,
+            alpha,
+            beta,
+            best_score,
+            Move::BAD_MOVE,
+        );
+        Ok(best_score)
     }
 
     /// Store data in the transposition table.
@@ -560,7 +593,7 @@ impl<'a> PVSearch<'a> {
             true => score,
             false => Eval::MIN,
         };
-        guard.save(depth as u8, best_move, lower_bound, upper_bound);
+        guard.save(depth, best_move, lower_bound, upper_bound);
     }
 
     #[inline(always)]

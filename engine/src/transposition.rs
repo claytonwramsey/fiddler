@@ -77,8 +77,9 @@ pub struct TTEntry {
     age: u8, // 1 byte
     /// The hash key of the entry.
     hash: u64, // 8 bytes
-    /// The depth to which this entry was searched.
-    pub depth: u8, // 1 byte
+    /// The depth to which this entry was searched. If the depth is negative,
+    /// this means that it was a special type of search.
+    pub depth: i8, // 1 byte
     /// The best move in the position when this entry was searched. Will be
     /// `Move::BAD_MOVE` when there are no moves or the best move is unknown.
     pub best_move: Move, // 2 bytes
@@ -358,7 +359,7 @@ impl<'a> TTEntryGuard<'a> {
     }
 
     /// Save the value pointed to by this entry guard.
-    pub fn save(&mut self, depth: u8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
+    pub fn save(&mut self, depth: i8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
@@ -372,6 +373,11 @@ impl<'a> TTEntryGuard<'a> {
             }
         }
     }
+}
+
+impl TTEntry {
+    /// A stand-in value for the depth to which captures only are searched.
+    pub const DEPTH_CAPTURES: i8 = -1;
 }
 
 #[cfg(test)]
