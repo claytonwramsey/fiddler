@@ -40,7 +40,7 @@ use super::{
     transposition::TTable,
 };
 
-use std::sync::PoisonError;
+use std::{cmp::max, sync::PoisonError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The types of errors which can occur during a search.
@@ -107,6 +107,7 @@ pub fn search(
         num_transpositions: searcher.num_transpositions,
         num_nodes_evaluated: searcher.num_nodes_evaluated,
         depth,
+        selective_depth: searcher.selective_depth,
     })
 }
 
@@ -123,6 +124,9 @@ pub struct SearchInfo {
     pub num_nodes_evaluated: u64,
     /// The highest depth at which this search succeeded.
     pub depth: u8,
+    /// The selective search depth, i.e. the highest depth to which any position
+    /// was considered.
+    pub selective_depth: u8,
 }
 
 impl SearchInfo {
@@ -136,6 +140,7 @@ impl SearchInfo {
             self.eval = other.eval;
             self.depth = other.depth;
         }
+        self.selective_depth = max(self.selective_depth, other.selective_depth);
         self.num_nodes_evaluated += other.num_nodes_evaluated;
         self.num_transpositions += other.num_transpositions;
     }
@@ -162,6 +167,8 @@ struct PVSearch<'a> {
     limit: &'a SearchLimit,
     /// Whether this search is the main search.
     is_main: bool,
+    /// The highest depth to which any line was searched.
+    selective_depth: u8,
 }
 
 impl<'a> PVSearch<'a> {
@@ -183,6 +190,7 @@ impl<'a> PVSearch<'a> {
             config,
             limit,
             is_main,
+            selective_depth: 0,
         }
     }
 
@@ -255,6 +263,7 @@ impl<'a> PVSearch<'a> {
         }
 
         self.increment_nodes()?;
+        self.selective_depth = max(self.selective_depth, depth_so_far);
 
         // mate distance pruning
         if Eval::BLACK_MATE > alpha {
@@ -458,6 +467,7 @@ impl<'a> PVSearch<'a> {
         }
 
         self.increment_nodes()?;
+        self.selective_depth = max(self.selective_depth, depth_so_far);
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.

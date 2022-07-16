@@ -18,9 +18,9 @@
 
 use std::env;
 
-use fiddler_base::{perft::perft};
+use fiddler_base::perft::perft;
 use fiddler_cli::FiddlerApp;
-use fiddler_engine::{thread::MainSearch, evaluate::ScoredGame};
+use fiddler_engine::{evaluate::ScoredGame, thread::MainSearch};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -46,7 +46,7 @@ fn main() {
             "bench" => {
                 // for now, just run a benchmark on the fried liver fen
                 let g = ScoredGame::from_fen(
-                    "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7"
+                    "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
                 )
                 .unwrap();
 

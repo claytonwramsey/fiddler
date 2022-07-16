@@ -20,12 +20,14 @@
 
 use fiddler_base::{
     algebraic::{algebraic_from_move, move_from_algebraic},
+    game::Tagger,
     movegen::ALL,
-    Move, game::Tagger,
+    Move,
 };
 use fiddler_engine::{
+    evaluate::{ScoreTag, ScoredGame},
     limit::SearchLimit,
-    thread::MainSearch, evaluate::{ScoreTag, ScoredGame},
+    thread::MainSearch,
 };
 
 use std::{
@@ -254,7 +256,8 @@ impl<'a> FiddlerApp<'a> {
 
     /// Attempt to play a move.
     fn try_move(&mut self, m: Move, engine_reply: bool) -> CommandResult {
-        self.game.try_move(m, ScoreTag::tag_move(m, self.game.board()))?;
+        self.game
+            .try_move(m, ScoreTag::tag_move(m, self.game.board()))?;
         if engine_reply {
             self.play_engine_move()?;
         }
@@ -307,7 +310,7 @@ impl<'a> FiddlerApp<'a> {
         .map_err(|_| "failed to write to output")?;
         self.game.make_move(
             search_data.pv[0],
-            ScoreTag::tag_move(search_data.pv[0], self.game.board())
+            ScoreTag::tag_move(search_data.pv[0], self.game.board()),
         );
 
         Ok(())
@@ -387,10 +390,8 @@ mod tests {
         );
         assert_eq!(
             app.game,
-            ScoredGame::from_fen(
-                "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            )
-            .unwrap()
+            ScoredGame::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",)
+                .unwrap()
         );
     }
 

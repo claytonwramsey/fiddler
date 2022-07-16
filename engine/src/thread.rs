@@ -129,6 +129,7 @@ impl MainSearch {
                                 EngineInfo::Time(elapsed),
                                 EngineInfo::Pv(&best_info.pv),
                                 EngineInfo::HashFull(self.ttable.fill_rate_permill()),
+                                EngineInfo::SelDepth(best_info.selective_depth),
                             ])
                         );
                         if best_info.eval.is_mate() {
