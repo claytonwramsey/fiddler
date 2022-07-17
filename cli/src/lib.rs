@@ -18,12 +18,7 @@
 
 //! Tools for constructing a command-line interface for using Fiddler.
 
-use fiddler_base::{
-    algebraic::{algebraic_from_move, move_from_algebraic},
-    game::Tagger,
-    movegen::ALL,
-    Move,
-};
+use fiddler_base::{game::Tagger, movegen::ALL, Move};
 use fiddler_engine::{
     evaluate::{ScoreTag, ScoredGame},
     limit::SearchLimit,
@@ -213,7 +208,7 @@ impl<'a> FiddlerApp<'a> {
     /// correctly parse the move, or a string describing the error if it fails.
     fn parse_move_token(&self, move_token: Option<&str>) -> Result<Move, String> {
         let m_str = move_token.ok_or("no move token given")?;
-        Ok(move_from_algebraic(m_str, self.game.board())?)
+        Ok(Move::from_algebraic(m_str, self.game.board())?)
     }
 
     /// Execute a CLI command. Returns a `CommandResult` describing the success
@@ -271,7 +266,7 @@ impl<'a> FiddlerApp<'a> {
             writeln!(
                 self.output_stream,
                 "{}",
-                algebraic_from_move(m, self.game.board())
+                m.to_algebraic(self.game.board()).unwrap()
             )
             .map_err(|_| "failed to write move list")?;
         }
@@ -304,7 +299,7 @@ impl<'a> FiddlerApp<'a> {
             self.output_stream,
             "depth {}: the engine played {}: {}",
             search_data.depth,
-            algebraic_from_move(search_data.pv[0], self.game.board()),
+            search_data.pv[0].to_algebraic(self.game.board()).unwrap(),
             search_data.eval
         )
         .map_err(|_| "failed to write to output")?;

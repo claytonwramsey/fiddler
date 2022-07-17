@@ -21,8 +21,6 @@
 
 // Many module elements are re-exported to make names more ergonomic to access.
 
-pub mod algebraic;
-
 mod bitboard;
 pub use crate::bitboard::Bitboard;
 

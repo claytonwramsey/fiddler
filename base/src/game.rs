@@ -21,7 +21,6 @@
 use crate::movegen::is_legal;
 
 use super::{
-    algebraic::algebraic_from_move,
     movegen::{get_moves, has_moves, is_square_attacked_by, GenMode},
     Board, Color, Move, Piece,
 };
@@ -37,7 +36,10 @@ use std::{
 /// A struct containing game information, which unlike a `Board`, knows about
 /// its history and can do things like repetition timing.
 ///
-/// `T` is
+/// `T` is a *tagger*, which will apply tags to moves.
+/// `T` also uses a cookie to annotate boards.
+/// This allows consumers of `TaggedGame`s to annotate boards and moves
+/// efficiently, saving on allocations.
 pub struct TaggedGame<T: Tagger> {
     /// The last element in `history` is the current state of the board. The
     /// first element should be the starting position of the game, and in
@@ -111,7 +113,12 @@ impl<T: Tagger> TaggedGame<T> {
         }
     }
 
-    /// Con
+    /// Construct a new `TaggedGame` using the Forsyth-Edwards notation
+    /// description of its position.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an `Err` if the FEN string is invalid.
     pub fn from_fen(fen: &str) -> Result<TaggedGame<T>, String> {
         let b = Board::from_fen(fen)?;
         // TODO extract 50 move rule from the FEN
@@ -294,9 +301,9 @@ impl<T: Tagger> Default for TaggedGame<T> {
 impl<T: Tagger> Display for TaggedGame<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for i in 0..self.moves.len() {
-            let board: &Board = &self.history[i].0;
+            let board = &self.history[i].0;
             let m = self.moves[i];
-            write!(f, "{} ", algebraic_from_move(m, board))?;
+            write!(f, "{} ", m.to_algebraic(board).unwrap())?;
         }
 
         Ok(())

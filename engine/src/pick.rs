@@ -286,7 +286,7 @@ impl Iterator for MovePicker {
 
 #[cfg(test)]
 mod tests {
-    use fiddler_base::{algebraic::algebraic_from_move, game::NoTag, movegen::ALL};
+    use fiddler_base::{game::NoTag, movegen::ALL};
 
     use super::*;
 
@@ -302,7 +302,7 @@ mod tests {
         let mg_moves = get_moves::<ALL, NoTag>(&b);
         for m in mp_moves.clone() {
             assert!(mg_moves.contains(&(m, ())));
-            println!("{}", algebraic_from_move(m, &b));
+            println!("{}", m.to_algebraic(&b).unwrap());
         }
 
         for (m, _) in mg_moves {
