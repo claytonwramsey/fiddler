@@ -1,20 +1,23 @@
 # `fiddler-tuner`: a gradient-descent tuner for the Fiddler chess engine
 
-`fiddler-tuner` is a simple implementation of gradient descent for Fiddler. I
-don't mean to brag, but it just so happens to be 🔥 blazing fast 🔥: capable of
-evaluating over 60 million nodes per second on my little laptop, without even
-getting into the spaghetti that is GPU programming.
+`fiddler-tuner` is a simple implementation of gradient descent for Fiddler.
 
 ## Usage
 
-After compiling the tuner, simply run `fiddler_tuner <location of your database
-file here>`. The database file must have a table titled `evaluations`, which
-must have a row for each board and also have two columns: `fen` (containing the
-string FEN representation of the board) and `eval` (containing the
-floating-point evaluation of the position).
+After compiling the tuner, simply run
+`fiddler_tuner <location of your EPD file here>`.
+The EPD file is a sequence of lines, each containing the FEN for a position and
+the final outcome of the game.
+For example, the following would be a valid EPD file:
 
-I personally use [this](<https://storage.googleapis.com/chesspic/datasets/2021-07-31-lichess-evaluations-37MM.db.gz>)
-database file, with 37M positions.
+```epd
+rnb1kbnr/pp1pppp1/7p/2q5/5P2/N1P1P3/P2P2PP/R1BQKBNR w KQkq - c9 "1/2-1/2";
+8/8/1p1k4/1P6/8/3p3P/1r4P1/5K2 w - - c9 "0-1";
+8/6P1/8/1pk1r3/6RP/8/3K4/8 b - - c9 "1-0";
+```
+
+Fiddler was tuned with a dataset created by the method outlined in
+[Zurichess](https://bitbucket.org/zurichess/zurichess/wiki/Choosing%20positions%20for%20Texel's%20Tuning%20Method).
 
 ## Approach
 
@@ -65,7 +68,7 @@ $$
     \boldsymbol{x}
 $$
 
-Conveniently, this means that we can compute $\nabla_wE(w)$ in a single pass
+Conveniently, this means that we can compute $\nabla_w E(w)$ in a single pass
 over the dataset.
 
 ## Implementation

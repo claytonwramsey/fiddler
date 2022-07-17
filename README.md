@@ -44,9 +44,6 @@ interest:
 
 * Tablebase support
 
-* Move away from `rusqlite` for tuner DB access so that the tuner can be run on
-non-Linux platforms
-
 * Opening book support
 
 * Add a mate-searching thread
