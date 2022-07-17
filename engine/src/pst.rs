@@ -26,7 +26,9 @@
 
 use std::{intrinsics::transmute, mem::MaybeUninit};
 
-use fiddler_base::{Board, Color, Move, Piece, Score, Square};
+use fiddler_base::{Board, Color, Move, Piece, Square};
+
+use crate::evaluate::Score;
 
 /// A lookup table for piece values. The outer index is the type of the piece
 /// (in order of Pawn, Knight, Bishop, Rook, Queen, and King)

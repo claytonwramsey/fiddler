@@ -38,9 +38,6 @@ pub use color::Color;
 mod direction;
 use direction::Direction;
 
-mod eval;
-pub use eval::{Eval, Score};
-
 pub mod game;
 
 mod magic;

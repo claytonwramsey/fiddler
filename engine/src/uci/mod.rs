@@ -30,10 +30,9 @@
 //! For a full specification of the UCI standard, see
 //! [here](https://backscattering.de/).
 
-use crate::Move;
-
 mod parse;
 mod send;
+use fiddler_base::Move;
 pub use parse::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

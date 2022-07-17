@@ -36,7 +36,9 @@ use std::{
     ptr::null,
 };
 
-use fiddler_base::{Eval, Move};
+use fiddler_base::Move;
+
+use crate::evaluate::Eval;
 
 #[derive(Clone, Debug)]
 /// A table which stores transposition data. It will automatically evict an
@@ -382,9 +384,9 @@ impl TTEntry {
 
 #[cfg(test)]
 mod tests {
-    use fiddler_base::{Eval, Move, Square};
+    use fiddler_base::{Move, Square};
 
-    use super::{TTEntry, TTable};
+    use super::*;
 
     #[test]
     /// Test that a hash table miss is correctly created.

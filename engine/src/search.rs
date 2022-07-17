@@ -30,11 +30,11 @@
 
 use fiddler_base::{
     movegen::{has_moves, is_legal, CAPTURES},
-    Eval, Move,
+    Move,
 };
 
 use crate::{
-    evaluate::ScoredGame,
+    evaluate::{Eval, ScoredGame},
     transposition::{TTEntry, TTEntryGuard},
 };
 

@@ -27,7 +27,9 @@
 //! chess player worth their salt might tell you that bishops are a little more
 //! valuable than knights. Empirically, the engine agrees.
 
-use fiddler_base::{Board, Color, Move, Piece, Score};
+use fiddler_base::{Board, Color, Move, Piece};
+
+use crate::evaluate::Score;
 
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {

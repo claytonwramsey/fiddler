@@ -20,7 +20,6 @@
 //! evaluating positions, searching trees, storing data, configuring engines,
 //! and more.
 
-use fiddler_base::{Eval, Move};
 use search::SearchError;
 
 mod config;

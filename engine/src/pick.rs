@@ -40,11 +40,11 @@ use std::mem::swap;
 use fiddler_base::{
     game::Tagger,
     movegen::{get_moves, is_legal, CAPTURES, QUIETS},
-    Board, Eval, Move, Score,
+    Board, Move,
 };
 
 use crate::{
-    evaluate::{phase_of, ScoreTag},
+    evaluate::{phase_of, Eval, Score, ScoreTag},
     material,
 };
 

@@ -18,9 +18,7 @@
 
 //! Parser for UCI messages from the GUI.
 
-use fiddler_base::Board;
-
-use crate::Move;
+use fiddler_base::{Board, Move};
 
 use super::{GoOption, UciCommand};
 

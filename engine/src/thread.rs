@@ -26,10 +26,8 @@
 
 use std::{thread::scope, time::Instant};
 
-use fiddler_base::Eval;
-
 use crate::{
-    evaluate::ScoredGame,
+    evaluate::{Eval, ScoredGame},
     uci::{EngineInfo, UciMessage},
 };
 
@@ -205,7 +203,9 @@ impl Default for MainSearch {
 #[cfg(any(test, bench))]
 mod tests {
 
-    use fiddler_base::{movegen::is_legal, Score};
+    use fiddler_base::movegen::is_legal;
+
+    use crate::evaluate::Score;
 
     use super::*;
 
