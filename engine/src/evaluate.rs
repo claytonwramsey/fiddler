@@ -139,10 +139,10 @@ impl Tagger for ScoreTag {
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101010101010101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-34, -28);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-25, -26);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(7, 46);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(5, 78);
 
 /// Evaluate a leaf position on a game whose cumulative values have been
 /// computed correctly.

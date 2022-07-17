@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::{env, path::Path, sync::Arc, time::Instant};
+use std::{env, sync::Arc, time::Instant, fs::File, io::{BufReader, BufRead}, error::Error};
 
 use fiddler_base::{Board, Color, Piece, Square};
 use fiddler_engine::{
@@ -26,15 +26,6 @@ use fiddler_engine::{
 };
 use libm::expf;
 use rand::Rng;
-use rusqlite::Connection;
-
-/// A datum of training data.
-struct TrainingDatum {
-    /// The string describing the FEN of the position.
-    fen: String,
-    /// The evaluation of the position.
-    eval: f32,
-}
 
 /// The input feature set of a board. Each element is a (key, value) pair where
 /// the key is the index of the value in the full feature vector.
@@ -49,9 +40,6 @@ pub fn main() {
     let args: Vec<String> = env::args().collect();
     // first argument is the name of the binary
     let path_str = &args[1..].join(" ");
-    println!("path is `{path_str}`");
-    let path = Path::new(path_str);
-    let db = Connection::open(path).unwrap();
     let mut weights = load_weights();
     fuzz(&mut weights, 0.05);
     let mut learn_rate = 5.;
@@ -59,22 +47,11 @@ pub fn main() {
 
     let nthreads = 16;
     let tic = Instant::now();
-    let mut statement = db.prepare("SELECT fen, eval FROM evaluations").unwrap();
 
     // construct the datasets.
     // Outer vector: each element for one datum
     // Inner vector: each element for one feature-quantity pair
-    let input_sets: Vec<(BoardFeatures, f32)> = statement
-        .query_map([], |row| {
-            Ok(TrainingDatum {
-                fen: row.get(0)?,
-                eval: row.get(1)?,
-            })
-        })
-        .unwrap()
-        .map(|res| res.unwrap())
-        .map(|datum| (extract(&Board::from_fen(&datum.fen).unwrap()), datum.eval))
-        .collect();
+    let input_sets = extract_epd(path_str).unwrap();
 
     let input_arc = Arc::new(input_sets);
     let toc = Instant::now();
@@ -92,6 +69,33 @@ pub fn main() {
     }
 
     print_weights(&weights);
+}
+
+/// Expand an EPD file into a set of features that can be used for training.
+fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn Error>> {
+    let file = File::open(location)?;
+    let reader = BufReader::new(file);
+    let mut data = Vec::new();
+
+    for line_result in reader.lines() {
+        let line = line_result?;
+        let mut split_line = line.split('"');
+        // first part of the split is the FEN, second is the score, last is just 
+        // a semicolon
+        let fen = split_line.next().ok_or("no FEN given")?;
+        let b = Board::from_fen(fen)?;
+        let features = extract(&b);
+        let score_str = split_line.next().ok_or("no result given")?;
+        let score = match score_str {
+            "1/2-1/2" => 0.5,
+            "0-1" => 0.,
+            "1-0" => 1.,
+            _ => Err("unknown score string")?,
+        };
+        data.push((features, score));
+    }
+
+    Ok(data)
 }
 
 /// Perform one step of PST training, and update the weights to reflect this.
@@ -142,8 +146,8 @@ fn train_step(
     new_weights
 }
 
-/// Construct the gradient vector for a subset of the input data. Also provides
-/// the sum of the squared error.
+/// Construct the gradient vector for a subset of the input data. 
+/// Also provides the sum of the squared error.
 fn train_thread(
     input: &[(BoardFeatures, f32)],
     weights: &[f32],
@@ -151,13 +155,11 @@ fn train_thread(
 ) -> (Vec<f32>, f32) {
     let mut grad = vec![0.; weights.len()];
     let mut sum_se = 0.;
-    for datum in input {
-        let features = &datum.0;
-        let sigm_expected = sigmoid(datum.1, sigmoid_scale);
+    for (features, sigm_expected) in input {
         let sigm_eval = sigmoid(evaluate(features, weights), sigmoid_scale);
-        let err = 2. * (sigm_expected - sigm_eval);
+        let err = sigm_expected - sigm_eval;
         let coeff = -sigmoid_scale * sigm_eval * (1. - sigm_eval) * err;
-        // gradient descent
+        // construct the gradient
         for &(idx, feat_val) in features {
             grad[idx] += feat_val * coeff;
         }

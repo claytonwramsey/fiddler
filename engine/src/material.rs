@@ -34,11 +34,11 @@ use crate::evaluate::Score;
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {
     match pt {
-        Piece::Knight => Score::centipawns(289, 288),
-        Piece::Bishop => Score::centipawns(331, 328),
-        Piece::Rook => Score::centipawns(461, 456),
-        Piece::Queen => Score::centipawns(962, 969),
-        Piece::Pawn => Score::centipawns(103, 100), // comically, a pawn is not worth 100cp
+        Piece::Knight => Score::centipawns(371, 291),
+        Piece::Bishop => Score::centipawns(400, 319),
+        Piece::Rook => Score::centipawns(579, 450),
+        Piece::Queen => Score::centipawns(1062, 966),
+        Piece::Pawn => Score::centipawns(131, 107), // comically, a pawn is not worth 100cp
         Piece::King => Score::centipawns(0, 0),
     }
 }
