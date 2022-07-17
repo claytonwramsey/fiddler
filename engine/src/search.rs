@@ -286,7 +286,7 @@ impl<'a> PVSearch<'a> {
             beta = Eval::mate_in(1);
         }
 
-        if g.is_drawn_historically() {
+        if g.is_drawn_historically() || g.board().insufficient_material() {
             if PV && alpha < Eval::DRAW {
                 parent_line.clear();
             }

@@ -233,7 +233,7 @@ impl<T: Tagger> TaggedGame<T> {
     /// game is over, and the second is the player which has won if the game is
     /// over. It will be `None` for a draw.
     pub fn is_over(&self) -> (bool, Option<Color>) {
-        if self.is_drawn_historically() {
+        if self.is_drawn_historically() || self.board().insufficient_material() {
             return (true, None);
         }
         let b = self.board();
@@ -249,8 +249,8 @@ impl<T: Tagger> TaggedGame<T> {
         }
     }
 
-    /// Has this game been drawn due to its move history (i.e. due to the 50
-    /// move rule or due to repetition)?
+    /// Has this game been drawn due to history (i.e. repetition or the 50 move
+    /// rule)?
     pub fn is_drawn_historically(&self) -> bool {
         let num_reps = *self.repetitions.get(&self.board().hash).unwrap_or(&0);
         if num_reps >= 3 {
@@ -263,6 +263,7 @@ impl<T: Tagger> TaggedGame<T> {
             // draw by 50 move rule
             return true;
         }
+
         false
     }
 
