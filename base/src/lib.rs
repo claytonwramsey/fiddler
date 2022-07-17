@@ -44,8 +44,6 @@ pub mod movegen;
 mod moves;
 pub use moves::Move;
 
-pub mod perft;
-
 mod piece;
 pub use piece::Piece;
 

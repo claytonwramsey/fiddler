@@ -18,7 +18,7 @@
 
 use std::env;
 
-use fiddler_base::perft::perft;
+use fiddler_base::movegen::perft;
 use fiddler_cli::FiddlerApp;
 use fiddler_engine::{evaluate::ScoredGame, thread::MainSearch};
 
