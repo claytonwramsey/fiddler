@@ -1184,40 +1184,40 @@ mod tests {
         /// Test that a king-versus-king endgame is a draw.
         fn draw_kk() {
             let b = Board::from_fen("K1k5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-    
+
             assert!(!has_moves(&b));
             assert!(get_moves::<ALL, NoTag>(&b).is_empty());
             assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
             assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
         }
-    
+
         #[test]
         /// Test that a king-bishop versus king endgame is a draw.
         fn draw_kbk() {
             let b = Board::from_fen("KBk5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-    
+
             assert!(!has_moves(&b));
             assert!(get_moves::<ALL, NoTag>(&b).is_empty());
             assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
             assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
         }
-    
+
         #[test]
         /// Test that a king-knight versus king endgame is a draw.
         fn draw_knk() {
             let b = Board::from_fen("KNk5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-    
+
             assert!(!has_moves(&b));
             assert!(get_moves::<ALL, NoTag>(&b).is_empty());
             assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
             assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
         }
-    
+
         #[test]
         /// Test that a same-colored king-bishop versus king-bishop endgame is a draw.
         fn draw_kbkb() {
             let b = Board::from_fen("K1k5/8/8/8/3B4/8/3b4/8 w - - 0 1").unwrap();
-    
+
             assert!(!has_moves(&b));
             assert!(get_moves::<ALL, NoTag>(&b).is_empty());
             assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
@@ -1225,10 +1225,9 @@ mod tests {
         }
     }
 
-
     mod perft {
         use super::*;
-    
+
         fn perft_assistant(fen: &str, node_counts: &[u64]) {
             for (i, num) in node_counts.iter().enumerate() {
                 assert_eq!(*num, perft(fen, i as u8));
@@ -1243,7 +1242,7 @@ mod tests {
                 &[1, 20, 400, 8_902, 197_281, 4_865_609, 119_060_324],
             );
         }
-    
+
         #[test]
         /// Test the perft values for the
         /// [Kiwipete](https://www.chessprogramming.org/Perft_Results#Position_2)
@@ -1254,7 +1253,7 @@ mod tests {
                 &[1, 48, 2039, 97_862, 4_085_603, 193_690_690],
             );
         }
-    
+
         #[test]
         fn endgame() {
             // https://www.chessprogramming.org/Perft_Results#Position_3
@@ -1263,7 +1262,7 @@ mod tests {
                 &[1, 14, 191, 2_812, 43_238, 674_624, 11_030_083, 178_633_661],
             );
         }
-    
+
         #[test]
         /// Test the perft values for an unbalanced position. Uses results from
         /// [the CPW wiki](https://www.chessprogramming.org/Perft_Results#Position_4).
@@ -1273,7 +1272,7 @@ mod tests {
                 &[1, 6, 264, 9_467, 422_333, 15_833_292],
             )
         }
-    
+
         #[test]
         fn edwards() {
             // https://www.chessprogramming.org/Perft_Results#Position_5
@@ -1282,7 +1281,7 @@ mod tests {
                 &[1, 44, 1_486, 62_379, 2_103_487, 89_941_194],
             );
         }
-    
+
         #[test]
         fn edwards2() {
             // https://www.chessprogramming.org/Perft_Results#Position_6

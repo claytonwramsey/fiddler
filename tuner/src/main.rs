@@ -16,7 +16,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::{env, sync::Arc, time::Instant, fs::File, io::{BufReader, BufRead}, error::Error};
+use std::{
+    env,
+    error::Error,
+    fs::File,
+    io::{BufRead, BufReader},
+    sync::Arc,
+    time::Instant,
+};
 
 use fiddler_base::{Board, Color, Piece, Square};
 use fiddler_engine::{
@@ -80,7 +87,7 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn Erro
     for line_result in reader.lines() {
         let line = line_result?;
         let mut split_line = line.split('"');
-        // first part of the split is the FEN, second is the score, last is just 
+        // first part of the split is the FEN, second is the score, last is just
         // a semicolon
         let fen = split_line.next().ok_or("no FEN given")?;
         let b = Board::from_fen(fen)?;
@@ -146,7 +153,7 @@ fn train_step(
     new_weights
 }
 
-/// Construct the gradient vector for a subset of the input data. 
+/// Construct the gradient vector for a subset of the input data.
 /// Also provides the sum of the squared error.
 fn train_thread(
     input: &[(BoardFeatures, f32)],
