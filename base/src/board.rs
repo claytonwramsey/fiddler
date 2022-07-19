@@ -69,21 +69,54 @@ pub struct Board {
 }
 
 impl Board {
-    /// A "bad" board value which can be used as a debug value.
-    pub const BAD_BOARD: Board = Board {
-        sides: [Bitboard::EMPTY; 2],
-        pieces: [Bitboard::EMPTY; 6],
-        en_passant_square: None,
-        player: Color::White,
-        castle_rights: CastleRights::NO_RIGHTS,
-        hash: 0,
-        checkers: Bitboard::EMPTY,
-        king_sqs: [Square::A1; 2],
-        pinned: Bitboard::EMPTY,
-    };
 
-    /// Create an empty board with no pieces or castle rights.
-    fn empty() -> Board {
+    /// Construct a `Board` from the standard chess starting position.
+    pub fn new() -> Board {
+        let mut board = Board {
+            sides: [
+                Bitboard::new(0x000000000000FFFF), //white
+                Bitboard::new(0xFFFF000000000000), //black
+            ],
+            pieces: [
+                Bitboard::new(0x4200000000000042), //knight
+                Bitboard::new(0x2400000000000024), //bishop
+                Bitboard::new(0x8100000000000081), //rook
+                Bitboard::new(0x0800000000000008), //queen
+                Bitboard::new(0x00FF00000000FF00), //pawn
+                Bitboard::new(0x1000000000000010), //king
+            ],
+            en_passant_square: None,
+            player: Color::White,
+            castle_rights: CastleRights::ALL_RIGHTS,
+            hash: 0,
+            king_sqs: [Square::E1, Square::E8],
+            checkers: Bitboard::EMPTY,
+            pinned: Bitboard::EMPTY,
+        };
+        board.recompute_hash();
+        board
+    }
+
+    /// Create a Board populated from some FEN and load it.
+    /// 
+    /// # Errors 
+    /// 
+    /// Will return `Err` if the FEN is invalid with a string describing why it
+    /// failed.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler_base::Board;
+    /// 
+    /// let default_board = Board::new();
+    /// let fen_board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")?;
+    /// assert_eq!(default_board, fen_board);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn from_fen(fen: &str) -> Result<Board, &str> {
         let mut board = Board {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],
@@ -95,15 +128,6 @@ impl Board {
             king_sqs: [Square::A1; 2],
             pinned: Bitboard::EMPTY,
         };
-        board.recompute_hash();
-        board
-    }
-
-    /// Create a Board populated from some FEN and load it.
-    /// Will return `Err` if the FEN is invalid with a string describing why it
-    /// failed.
-    pub fn from_fen(fen: &str) -> Result<Board, String> {
-        let mut board = Board::empty();
         let mut fen_chrs = fen.chars();
         let mut r = 7; //current row parsed
         let mut c = 0; //current col parsed
@@ -139,7 +163,7 @@ impl Board {
 
         //now a space
         if fen_chrs.next() != Some(' ') {
-            return Err("expected space after board array section of FEN".into());
+            return Err("expected space after board array section of FEN");
         };
 
         //now compute player to move
@@ -149,12 +173,12 @@ impl Board {
         board.player = match player_chr {
             'w' => Color::White,
             'b' => Color::Black,
-            _ => return Err("unrecognized player to move".into()),
+            _ => return Err("unrecognized player to move"),
         };
 
         //now a space
         if fen_chrs.next() != Some(' ') {
-            return Err("expected space after player to move section of FEN".into());
+            return Err("expected space after player to move section of FEN");
         }
 
         //determine castle rights
@@ -171,7 +195,7 @@ impl Board {
                 'k' => CastleRights::king_castle(Color::Black),
                 'q' => CastleRights::queen_castle(Color::Black),
                 '-' => CastleRights::NO_RIGHTS,
-                _ => return Err("unrecognized castle rights character".into()),
+                _ => return Err("unrecognized castle rights character"),
             };
             castle_chr = fen_chrs
                 .next()
@@ -201,14 +225,24 @@ impl Board {
             square_attackers(&board, board.king_sqs[board.player as usize], !board.player);
         board.recompute_pinned();
         if !(board.is_valid()) {
-            return Err("board state after loading was illegal".into());
+            return Err("board state after loading was illegal");
         }
         //Ignore move clocks
         Ok(board)
     }
 
     #[inline(always)]
-    /// Get the squares occupied by pieces.
+    /// Get the squares occupied by the pieces of each type (i.e. Black or 
+    /// White).
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Board, Bitboard};
+    /// 
+    /// let board = Board::new();
+    /// assert_eq!(board.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
+    /// ```
     pub fn occupancy(&self) -> Bitboard {
         self[Color::White] | self[Color::Black]
     }
@@ -216,6 +250,16 @@ impl Board {
     #[inline(always)]
     /// Get the type of the piece occupying a given square.
     /// Returns `None` if there are no pieces occupying the square.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Board, Piece, Square};
+    /// 
+    /// let board = Board::new();
+    /// assert_eq!(board.type_at_square(Square::E1), Some(Piece::King));
+    /// assert_eq!(board.type_at_square(Square::E4), None)
+    /// ```
     pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
         for pt in Piece::ALL_TYPES {
             if self[pt].contains(sq) {
@@ -228,6 +272,16 @@ impl Board {
     #[inline(always)]
     /// Get the color of a piece occupying a current square.
     /// Returns `None` if there are no pieces occupying the square.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Board, Color, Square};
+    /// 
+    /// let board = Board::new();
+    /// assert_eq!(board.color_at_square(Square::E1), Some(Color::White));
+    /// assert_eq!(board.color_at_square(Square::E4), None)
+    /// ```
     pub fn color_at_square(&self, sq: Square) -> Option<Color> {
         let bb = Bitboard::from(sq);
         if !(self[Color::Black] & bb).is_empty() {
@@ -240,14 +294,32 @@ impl Board {
     }
 
     #[inline(always)]
-    /// Is the given move a capture in the current state of the board?
+    /// Is the given move a capture in the current state of the board? Requires 
+    /// that `m` is a legal move. En passant qualifies as a capture.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler_base::{Board, Move, Square};
+    /// 
+    /// // Scandinavian defense. White can play exd5 to capture Black's pawn or 
+    /// // play e5 (among other moves).
+    /// let board = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
+    /// // exd5
+    /// assert!(board.is_move_capture(Move::normal(Square::E4, Square::D5)));
+    /// // e5
+    /// assert!(!board.is_move_capture(Move::normal(Square::E4, Square::E5)));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn is_move_capture(&self, m: Move) -> bool {
         self.occupancy().contains(m.to_square()) || m.is_en_passant()
     }
 
-    /// Check if the state of this board is valid,
+    /// Check if the state of this board is valid.
     /// Returns false if the board is invalid.
-    pub fn is_valid(&self) -> bool {
+    fn is_valid(&self) -> bool {
         let mut sides_checksum = Bitboard::EMPTY;
         let mut sides_checkor = Bitboard::EMPTY;
         let mut pieces_checksum = Bitboard::EMPTY;
@@ -296,6 +368,22 @@ impl Board {
 
     /// Apply the given move to the board. Will assume the move is legal (unlike
     /// `try_move()`). Also requires that this board is currently valid.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler_base::{Board, Move, Square};
+    /// 
+    /// let mut board = Board::new();
+    /// // board after 1. e4 is played
+    /// let board_after_e4 = Board::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")?;
+    /// 
+    /// board.make_move(Move::normal(Square::E2, Square::E4));
+    /// assert_eq!(board, board_after_e4);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn make_move(&mut self, m: Move) {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
@@ -407,17 +495,10 @@ impl Board {
     }
 
     #[inline(always)]
-    /// Remove the piece at `sq` from this board.
-    fn remove_piece(&mut self, sq: Square) {
-        if let Some(p) = self.type_at_square(sq) {
-            self.remove_known_piece(sq, p, self.color_at_square(sq).unwrap());
-        }
-    }
-
-    #[inline(always)]
-    /// Remove a piece of a known type at a square, which will be slightly more
-    /// efficient than `remove_piece`.
-    pub fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
+    /// Remove a piece of a known type at a square. 
+    /// Will break the validity of the board if there is no piece of type `pt` 
+    /// and color `color` at `sq`.
+    fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
         let mask = Bitboard::from(sq);
         self.hash ^= zobrist::square_key(sq, Some(pt), color);
         let removal_mask = !mask;
@@ -440,17 +521,6 @@ impl Board {
         self.hash ^= zobrist::square_key(sq, Some(pt), color);
     }
 
-    #[inline(always)]
-    /// Set the piece at a given position to be a certain piece. This is safe,
-    /// and will not result in any issues regarding hash legality. If the given
-    /// piece type is None, the color given will be ignored.
-    pub fn set_piece(&mut self, sq: Square, pt: Option<Piece>, color: Color) {
-        self.remove_piece(sq);
-        if let Some(p) = pt {
-            self.add_piece(sq, p, color);
-        }
-    }
-
     /// Remove the given `CastleRights` from this board's castling rights, and
     /// update the internal hash of the board to match.
     fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
@@ -469,7 +539,7 @@ impl Board {
     #[inline(always)]
     /// Recompute the Zobrist hash of this board and set it to the saved hash
     /// value.
-    pub fn recompute_hash(&mut self) {
+    fn recompute_hash(&mut self) {
         self.hash = self.get_fresh_hash();
     }
 
@@ -495,8 +565,22 @@ impl Board {
 
     /// Determine whether this board represents a game which is over due to
     /// insufficient material.
+    /// 
+    /// # Examples 
+    /// 
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler_base::Board;
+    /// 
+    /// // Same-color bishops on a KBKB endgame is a draw by insufficient 
+    /// // material in FIDE rules.
+    /// let board = Board::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
+    /// assert!(board.insufficient_material());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn insufficient_material(&self) -> bool {
-        const DARK_SQUARES: Bitboard = Bitboard::new(0x5555555555555555);
+        const DARK_SQUARES: Bitboard = Bitboard::new(0xAA55AA55AA55AA55);
         match self.occupancy().len() {
             0 | 1 => unreachable!(), // a king is missing
             2 => true,               // only two kings
@@ -600,34 +684,12 @@ impl Index<Color> for Board {
 
 impl Default for Board {
     fn default() -> Board {
-        let mut board = Board {
-            sides: [
-                Bitboard::new(0x000000000000FFFF), //white
-                Bitboard::new(0xFFFF000000000000), //black
-            ],
-            pieces: [
-                Bitboard::new(0x4200000000000042), //knight
-                Bitboard::new(0x2400000000000024), //bishop
-                Bitboard::new(0x8100000000000081), //rook
-                Bitboard::new(0x0800000000000008), //queen
-                Bitboard::new(0x00FF00000000FF00), //pawn
-                Bitboard::new(0x1000000000000010), //king
-            ],
-            en_passant_square: None,
-            player: Color::White,
-            castle_rights: CastleRights::ALL_RIGHTS,
-            hash: 0,
-            king_sqs: [Square::E1, Square::E8],
-            checkers: Bitboard::EMPTY,
-            pinned: Bitboard::EMPTY,
-        };
-        board.recompute_hash();
-        board
+        Board::new()
     }
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use crate::square::*;
 

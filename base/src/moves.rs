@@ -234,7 +234,6 @@ impl Move {
         // longest possible algebraic string would be something along the lines
         // of Qe4xd4#, exd8=Q#, and O-O-O+
         let mut s = String::with_capacity(7);
-        assert!(b.is_valid());
         if !is_legal(*self, b) {
             // can't make an algebraic form of an illegal move
             return Err(());

@@ -321,10 +321,12 @@ mod tests {
     fn play_e4() {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
-        let old_board = *g.board();
-        g.make_move(Move::normal(Square::E2, Square::E4), ());
+        let mut old_board = *g.board();
+        g.make_move(m, ());
         let new_board = g.board();
-        crate::board::tests::move_result_helper(old_board, *new_board, m);
+
+        old_board.make_move(m);
+        assert_eq!(old_board, *new_board);
     }
 
     #[test]

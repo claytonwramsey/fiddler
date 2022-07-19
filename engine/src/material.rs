@@ -54,10 +54,10 @@ pub fn material_delta(b: &Board, m: Move) -> Score {
     };
     let mut gain = capturee_type.map_or_else(|| Score::centipawns(0, 0), value);
 
-    if m.is_promotion() {
+    if let Some(promote_type) = m.promote_type() {
         // we already checked that m is a promotion, so we can trust that it has
         // a promotion
-        gain += value(unsafe { m.promote_type().unwrap_unchecked() });
+        gain += value(promote_type);
         gain -= value(Piece::Pawn);
     }
 

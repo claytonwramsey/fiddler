@@ -32,4 +32,6 @@ opt-level = 3
 opt-level = 3
 lto = true
 overflow-checks = false
+panic = "abort"
+codegen-units = 1
 # debug = 1 # used for profiling

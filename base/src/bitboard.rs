@@ -80,7 +80,21 @@ impl Bitboard {
     pub const ALL: Bitboard = Bitboard::new(!0);
 
     #[inline(always)]
-    /// Construct a new Bitboard from a numeric literal. Internally, `Bitboard`s
+    /// Construct a new Bitboard from a numeric literal. 
+    /// Internally, `Bitboard`s are 64-bit integers, where the LSB represents 
+    /// whether the square A1 is an element, the second-least bit represents the 
+    /// square A2, and so on.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let mut bb = Bitboard::EMPTY;
+    /// bb.insert(Square::A1);
+    /// 
+    /// assert_eq!(bb, Bitboard::new(1));
+    /// ```
     pub const fn new(x: u64) -> Bitboard {
         Bitboard(x)
     }
@@ -166,13 +180,39 @@ impl Bitboard {
 
     /// Determine whether this bitboard has exactly one bit. Equivalent to
     /// `Bitboard.len() == 1`.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let mut bb = Bitboard::EMPTY;
+    /// assert!(!bb.has_single_bit());
+    /// bb.insert(Square::A1);
+    /// assert!(bb.has_single_bit());
+    /// bb.insert(Square::A2);
+    /// assert!(!bb.has_single_bit());
+    /// ```
     pub const fn has_single_bit(&self) -> bool {
         // 5 arithmetic operations,
         // faster than the 13 required for `count_ones() == 1`
         self.0 != 0 && (self.0 & self.0.overflowing_sub(1).0) == 0
     }
 
-    /// Determine whether more than one bit is set in this bitboard.
+    /// Determine whether this bitboard conains more than one `Square`.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let mut bb = Bitboard::EMPTY;
+    /// assert!(!bb.more_than_one());
+    /// bb.insert(Square::A1);
+    /// assert!(!bb.more_than_one());
+    /// bb.insert(Square::A2);
+    /// assert!(bb.more_than_one());
+    /// ```
     pub const fn more_than_one(&self) -> bool {
         (self.0 & self.0.overflowing_sub(1).0) != 0
     }
