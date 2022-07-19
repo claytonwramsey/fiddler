@@ -462,12 +462,6 @@ impl<'a> PVSearch<'a> {
     ) -> Result<Eval, SearchError> {
         let player = g.board().player;
 
-        // Any position where the king is in check is nowhere near quiet
-        // enough to evaluate.
-        if !g.board().checkers.is_empty() {
-            return self.pvs::<PV, false, false>(1, depth_so_far, g, alpha, beta, parent_line);
-        }
-
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
