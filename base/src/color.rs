@@ -34,30 +34,52 @@ pub enum Color {
 impl Color {
     #[inline(always)]
     /// Get the direction that a pawn of the given color normally moves.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_base::{Color, Direction};
+    ///
+    /// assert_eq!(Color::White.pawn_direction(), Direction::NORTH);
+    /// ```
     pub const fn pawn_direction(&self) -> Direction {
-        match self {
-            Color::White => Direction::NORTH,
-            Color::Black => Direction::SOUTH,
-        }
+        const DIRS: [Direction; 2] = [Direction::NORTH, Direction::SOUTH];
+        DIRS[*self as usize]
     }
 
     #[inline(always)]
     /// Get the promotion rank of a given color.
+    ///
+    /// ```
+    /// use fiddler_base::{Color, Bitboard};
+    ///
+    /// assert_eq!(Color::Black.pawn_promote_rank(), Bitboard::new(0xFF));
+    /// ```
     pub const fn pawn_promote_rank(&self) -> Bitboard {
-        match self {
-            Color::White => Bitboard::new(0xFF00000000000000),
-            Color::Black => Bitboard::new(0x00000000000000FF),
-        }
+        const PROMOTE_RANKS: [Bitboard; 2] = [
+            Bitboard::new(0xFF00000000000000),
+            Bitboard::new(0x00000000000000FF),
+        ];
+        PROMOTE_RANKS[*self as usize]
     }
 
     #[inline(always)]
     /// Get a `Bitboard` with 1's on the start rank of the pawn of the given
     /// color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_base::{Color, Bitboard};
+    ///
+    /// assert_eq!(Color::White.pawn_start_rank(), Bitboard::new(0xFF00));
+    /// ```
     pub const fn pawn_start_rank(&self) -> Bitboard {
-        match self {
-            Color::White => Bitboard::new(0x000000000000FF00),
-            Color::Black => Bitboard::new(0x00FF000000000000),
-        }
+        const START_RANKS: [Bitboard; 2] = [
+            Bitboard::new(0x000000000000FF00),
+            Bitboard::new(0x00FF000000000000),
+        ];
+        START_RANKS[*self as usize]
     }
 }
 

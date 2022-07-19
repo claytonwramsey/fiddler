@@ -121,6 +121,16 @@ pub const QUIETS: GenMode = 2;
 /// Determine whether any given move is legal, given a position in which it
 /// could be played. Requires that the move must have been legal on *some*
 /// board, but not necessarily the given one.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler_base::{Board, Move, movegen::is_legal, Square};
+///
+/// let board = Board::new();
+/// assert!(is_legal(Move::normal(Square::E2, Square::E4), &board));
+/// assert!(!is_legal(Move::normal(Square::E2, Square::D4), &board));
+/// ```
 pub fn is_legal(m: Move, b: &Board) -> bool {
     let from_sq = m.from_square();
     let to_sq = m.to_square();
@@ -248,7 +258,59 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 }
 
 #[inline(always)]
-/// Get all the legal moves on a board.
+/// Get the legal moves in a board.
+///
+/// `M` is the generation mode of move generation: it specifies which subset of
+/// all legal moves to generate. There are currently 3 legal generation modes:
+///
+/// * `ALL` will generate all legal moves.
+/// * `CAPTURES` will generate all captures, including en passant.
+/// * `QUIETS` will generate all quiet (i.e. non-capture) moves.
+///
+/// `T` is a tagger for moves: it contains a callback function to tag moves as
+/// they are generated so that the user can save on total heap allocations.
+/// If no tag is needed, you can use `fiddler_base::game::NoTag` to avoid
+/// wasting effort tagging each move.
+///
+/// # Examples
+///
+/// Generate all legal moves:
+/// ```
+/// use fiddler_base::{Board, game::NoTag, movegen::{ALL, is_legal, get_moves}};
+///
+/// let b = Board::new();
+/// for (m, _) in get_moves::<ALL, NoTag>(&b) {
+///     assert!(is_legal(m, &b));
+/// }
+/// ```
+///
+/// Generate captures:
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>>{
+/// use fiddler_base::{Board, game::NoTag, Move, movegen::{CAPTURES, is_legal, get_moves}, Square};
+///
+/// // Scandinavian defense. The only legal capture is exd5.
+/// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
+///
+/// assert_eq!(
+///     get_moves::<CAPTURES, NoTag>(&b),
+///     vec![(Move::normal(Square::E4, Square::D5), ())],
+/// );
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Generate quiet moves:
+///
+/// ```
+/// use fiddler_base::{Board, game::NoTag, movegen::{QUIETS, is_legal, get_moves}};
+///
+/// let b = Board::new();
+/// for (m, _) in get_moves::<QUIETS, NoTag>(&b) {
+///     assert!(is_legal(m, &b));
+///     assert!(!b.is_move_capture(m));
+/// }
+/// ```
 pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> {
     // prevent wonky generation modes
     debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
@@ -284,8 +346,20 @@ pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> 
     moves
 }
 
-/// Does the player to move have any legal moves in this position? Requires
-/// that the board is legal (i.e. has one of each king) to be correct.
+/// Does the player to move have any legal moves in this position?
+/// Requires that the board is legal (i.e. has one of each king) to be correct.
+///
+/// Note that since a `Board` does not contain historical information, it will
+/// still return `true` on positions with repetition.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler_base::{Board, movegen::has_moves};
+///
+/// let b = Board::new();
+/// assert!(has_moves(&b));
+/// ```
 pub fn has_moves(b: &Board) -> bool {
     let player = b.player;
     let player_occupancy = b[player];
@@ -431,6 +505,17 @@ fn validate(m: Move, b: &Board) -> bool {
 
 #[inline(always)]
 /// In a given board state, is a square attacked by the given color?
+/// Squares which are threatened by only non-capture moves (i.e. pawn-pushes)
+/// will not qualify as attacked.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler_base::{Board, Square, Color, movegen::is_square_attacked_by};
+///
+/// let b = Board::new();
+/// assert!(is_square_attacked_by(&b, Square::E2, Color::White));
+/// ```
 pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
     !square_attackers(board, sq, color).is_empty()
 }
@@ -510,6 +595,20 @@ fn evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Ta
 #[inline(always)]
 /// Get the attackers of a given color on a square as a `Bitboard`
 /// representing the squares of the attackers.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler_base::{Bitboard, Board, Square, Color, movegen::square_attackers};
+///
+/// let b = Board::new();
+/// let mut attackers = Bitboard::EMPTY;
+/// attackers.insert(Square::E1);
+/// attackers.insert(Square::D1);
+/// attackers.insert(Square::F1);
+/// attackers.insert(Square::G1);
+/// assert_eq!(square_attackers(&b, Square::E2, Color::White), attackers);
+/// ```
 pub fn square_attackers(board: &Board, sq: Square, color: Color) -> Bitboard {
     square_attackers_occupancy(board, sq, color, board.occupancy())
 }

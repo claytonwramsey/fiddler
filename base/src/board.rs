@@ -69,7 +69,6 @@ pub struct Board {
 }
 
 impl Board {
-
     /// Construct a `Board` from the standard chess starting position.
     pub fn new() -> Board {
         let mut board = Board {
@@ -98,18 +97,18 @@ impl Board {
     }
 
     /// Create a Board populated from some FEN and load it.
-    /// 
-    /// # Errors 
-    /// 
+    ///
+    /// # Errors
+    ///
     /// Will return `Err` if the FEN is invalid with a string describing why it
     /// failed.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::Board;
-    /// 
+    ///
     /// let default_board = Board::new();
     /// let fen_board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")?;
     /// assert_eq!(default_board, fen_board);
@@ -232,14 +231,14 @@ impl Board {
     }
 
     #[inline(always)]
-    /// Get the squares occupied by the pieces of each type (i.e. Black or 
+    /// Get the squares occupied by the pieces of each type (i.e. Black or
     /// White).
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler_base::{Board, Bitboard};
-    /// 
+    ///
     /// let board = Board::new();
     /// assert_eq!(board.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
     /// ```
@@ -250,12 +249,12 @@ impl Board {
     #[inline(always)]
     /// Get the type of the piece occupying a given square.
     /// Returns `None` if there are no pieces occupying the square.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler_base::{Board, Piece, Square};
-    /// 
+    ///
     /// let board = Board::new();
     /// assert_eq!(board.type_at_square(Square::E1), Some(Piece::King));
     /// assert_eq!(board.type_at_square(Square::E4), None)
@@ -272,12 +271,12 @@ impl Board {
     #[inline(always)]
     /// Get the color of a piece occupying a current square.
     /// Returns `None` if there are no pieces occupying the square.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler_base::{Board, Color, Square};
-    /// 
+    ///
     /// let board = Board::new();
     /// assert_eq!(board.color_at_square(Square::E1), Some(Color::White));
     /// assert_eq!(board.color_at_square(Square::E4), None)
@@ -294,16 +293,16 @@ impl Board {
     }
 
     #[inline(always)]
-    /// Is the given move a capture in the current state of the board? Requires 
+    /// Is the given move a capture in the current state of the board? Requires
     /// that `m` is a legal move. En passant qualifies as a capture.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::{Board, Move, Square};
-    /// 
-    /// // Scandinavian defense. White can play exd5 to capture Black's pawn or 
+    ///
+    /// // Scandinavian defense. White can play exd5 to capture Black's pawn or
     /// // play e5 (among other moves).
     /// let board = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
     /// // exd5
@@ -368,17 +367,17 @@ impl Board {
 
     /// Apply the given move to the board. Will assume the move is legal (unlike
     /// `try_move()`). Also requires that this board is currently valid.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::{Board, Move, Square};
-    /// 
+    ///
     /// let mut board = Board::new();
     /// // board after 1. e4 is played
     /// let board_after_e4 = Board::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")?;
-    /// 
+    ///
     /// board.make_move(Move::normal(Square::E2, Square::E4));
     /// assert_eq!(board, board_after_e4);
     /// # Ok(())
@@ -495,8 +494,8 @@ impl Board {
     }
 
     #[inline(always)]
-    /// Remove a piece of a known type at a square. 
-    /// Will break the validity of the board if there is no piece of type `pt` 
+    /// Remove a piece of a known type at a square.
+    /// Will break the validity of the board if there is no piece of type `pt`
     /// and color `color` at `sq`.
     fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
         let mask = Bitboard::from(sq);
@@ -565,14 +564,14 @@ impl Board {
 
     /// Determine whether this board represents a game which is over due to
     /// insufficient material.
-    /// 
-    /// # Examples 
-    /// 
+    ///
+    /// # Examples
+    ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::Board;
-    /// 
-    /// // Same-color bishops on a KBKB endgame is a draw by insufficient 
+    ///
+    /// // Same-color bishops on a KBKB endgame is a draw by insufficient
     /// // material in FIDE rules.
     /// let board = Board::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
     /// assert!(board.insufficient_material());

@@ -34,7 +34,7 @@ mod color;
 pub use color::Color;
 
 mod direction;
-use direction::Direction;
+pub use direction::Direction;
 
 pub mod game;
 
