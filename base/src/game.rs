@@ -22,7 +22,7 @@ use crate::movegen::is_legal;
 
 use super::{
     movegen::{get_moves, has_moves, is_square_attacked_by, GenMode},
-    Board, Color, Move, Piece,
+    Board, Color, Move,
 };
 
 use nohash_hasher::IntMap;
@@ -46,7 +46,7 @@ pub struct TaggedGame<T: Tagger> {
     /// between are sequential board states from the entire game. The right
     /// half of the tuple is the number of moves since a pawn-move or capture
     /// was made, and should start at 0.
-    history: Vec<(Board, u8, T::Cookie)>,
+    history: Vec<(Board, T::Cookie)>,
     /// The list, in order, of all moves made in the game. They should all be
     /// valid moves. The length of `moves` should always be one less than the
     /// length of `history`.
@@ -103,7 +103,7 @@ impl<T: Tagger> TaggedGame<T> {
     pub fn new() -> TaggedGame<T> {
         let b = Board::default();
         TaggedGame {
-            history: vec![(b, 0, T::init_cookie(&b))],
+            history: vec![(b, T::init_cookie(&b))],
             moves: Vec::new(),
             repetitions: {
                 let mut map = IntMap::default();
@@ -123,7 +123,7 @@ impl<T: Tagger> TaggedGame<T> {
         let b = Board::from_fen(fen)?;
         // TODO extract 50 move rule from the FEN
         Ok(TaggedGame {
-            history: vec![(b, 0, T::init_cookie(&b))],
+            history: vec![(b, T::init_cookie(&b))],
             moves: Vec::new(),
             repetitions: {
                 let mut map = IntMap::default();
@@ -140,7 +140,7 @@ impl<T: Tagger> TaggedGame<T> {
         let start_board = self.history[0].0;
         self.moves.clear();
         self.repetitions.clear();
-        //since we cleared this, or_insert will always be called
+        // since we cleared this, or_insert will always be called
         self.repetitions.entry(start_board.hash).or_insert(1);
     }
 
@@ -158,19 +158,12 @@ impl<T: Tagger> TaggedGame<T> {
         let previous_state = self.history.last().unwrap();
         let mut new_board = previous_state.0;
 
-        let move_timeout = match new_board.is_move_capture(m)
-            || new_board[Piece::Pawn].contains(m.from_square())
-        {
-            true => 0,
-            false => previous_state.1 + 1,
-        };
         new_board.make_move(m);
         let num_reps = self.repetitions.entry(new_board.hash).or_insert(0);
         *num_reps += 1;
         self.history.push((
             new_board,
-            move_timeout,
-            T::update_cookie(m, &tag, &previous_state.0, &previous_state.2),
+            T::update_cookie(m, &tag, &previous_state.0, &previous_state.1),
         ));
         self.moves.push(m);
     }
@@ -232,7 +225,7 @@ impl<T: Tagger> TaggedGame<T> {
     #[inline(always)]
     /// Get the cookie of the current state of the game.
     pub fn cookie(&self) -> &T::Cookie {
-        &self.history.last().unwrap().2
+        &self.history.last().unwrap().1
     }
 
     /// In the current state, is the game complete (i.e. is there no way the
@@ -240,7 +233,7 @@ impl<T: Tagger> TaggedGame<T> {
     /// game is over, and the second is the player which has won if the game is
     /// over. It will be `None` for a draw.
     pub fn is_over(&self) -> (bool, Option<Color>) {
-        if self.is_drawn_historically() || self.board().insufficient_material() {
+        if self.drawn_by_repetition() {
             return (true, None);
         }
         let b = self.board();
@@ -258,16 +251,10 @@ impl<T: Tagger> TaggedGame<T> {
 
     /// Has this game been drawn due to history (i.e. repetition or the 50 move
     /// rule)?
-    pub fn is_drawn_historically(&self) -> bool {
+    pub fn drawn_by_repetition(&self) -> bool {
         let num_reps = *self.repetitions.get(&self.board().hash).unwrap_or(&0);
         if num_reps >= 3 {
             // draw by repetition
-            return true;
-        }
-
-        if self.history.last().unwrap().1 >= 100 {
-            // 50 moves = 100 ply
-            // draw by 50 move rule
             return true;
         }
 
@@ -277,7 +264,7 @@ impl<T: Tagger> TaggedGame<T> {
     /// Get the legal moves in this position. Will be empty if the position is
     /// drawn or the game is over.
     pub fn get_moves<const M: GenMode>(&self) -> Vec<(Move, T::Tag)> {
-        if self.is_drawn_historically() {
+        if self.drawn_by_repetition() {
             return Vec::new();
         }
 

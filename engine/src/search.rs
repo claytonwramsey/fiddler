@@ -286,7 +286,7 @@ impl<'a> PVSearch<'a> {
             beta = Eval::mate_in(1);
         }
 
-        if g.is_drawn_historically() || g.board().insufficient_material() {
+        if g.drawn_by_repetition() || g.board().is_drawn() {
             if PV && alpha < Eval::DRAW {
                 parent_line.clear();
             }
@@ -429,7 +429,7 @@ impl<'a> PVSearch<'a> {
                 Eval::DRAW
             } else {
                 // mated
-                -Eval::mate_in(0)
+                Eval::BLACK_MATE
             };
         }
 
@@ -460,10 +460,10 @@ impl<'a> PVSearch<'a> {
         beta: Eval,
         parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
-        let player = g.board().player;
-
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
+
+        let player = g.board().player;
 
         let mut tt_guard = self.ttable.get(g.board().hash);
         if let Some(entry) = tt_guard.entry() {
@@ -491,6 +491,13 @@ impl<'a> PVSearch<'a> {
                 parent_line.clear();
             }
             if alpha >= beta {
+                // make sure that we didn't accidentally assume we could leaf 
+                // evaluate an "ended" position
+                match g.is_over() {
+                    (true, None) => return Ok(Eval::DRAW),
+                    (true, Some(_)) => return Ok(Eval::BLACK_MATE),
+                    _ => (),
+                };
                 self.ttable_store(
                     &mut tt_guard,
                     TTEntry::DEPTH_CAPTURES,
@@ -507,6 +514,17 @@ impl<'a> PVSearch<'a> {
 
         let mut best_score = score;
         let mut moves = g.get_moves::<CAPTURES>();
+        if moves.is_empty() {
+            // In the overwhelming majority of cases, we will not be calling
+            // `quiesce` on a game which is over.
+            // Therefore we hedge our bets by only checking if the game has
+            // ended now.
+            match g.is_over() {
+                (true, None) => best_score = Eval::DRAW,
+                (true, Some(_)) => best_score = Eval::BLACK_MATE,
+                _ => (),
+            };
+        }
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut line = Vec::new();
 

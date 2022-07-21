@@ -312,7 +312,7 @@ impl Move {
         let enemy_king_sq = b.king_sqs[!b.player as usize];
         bcopy.make_move(*self);
         if is_square_attacked_by(&bcopy, enemy_king_sq, b.player) {
-            if get_moves::<ALL, NoTag>(&bcopy).is_empty() && !bcopy.insufficient_material() {
+            if get_moves::<ALL, NoTag>(&bcopy).is_empty() && !bcopy.is_drawn() {
                 s += "#";
             } else {
                 s += "+";

@@ -32,8 +32,7 @@ use std::{
 };
 
 #[derive(Copy, Clone, Debug, Eq)]
-/// A representation of a position. Does not handle the repetition or turn
-/// timer.
+/// A representation of a position. Does not handle the repetition.
 pub struct Board {
     /// The squares ocupied by White and Black, respectively.
     sides: [Bitboard; 2],
@@ -42,11 +41,14 @@ pub struct Board {
     pieces: [Bitboard; Piece::NUM_TYPES],
     /// The color of the player to move.
     pub player: Color,
-    /// The square which can be moved to by a pawn in en passant. Will be
-    /// `None` when a pawn has not moved two squares in the previous move.
+    /// The square which can be moved to by a pawn in en passant.
+    /// Will be `None` when a pawn has not moved two squares in the previous
+    /// move.
     pub en_passant_square: Option<Square>,
     /// The rights of this piece for castling.
     pub castle_rights: CastleRights,
+    /// The number of plies that have passed since a capture or pawn push has been made.
+    rule50: u8,
 
     /*
         Below: metadata which is not critical for board representation, but
@@ -87,6 +89,7 @@ impl Board {
             en_passant_square: None,
             player: Color::White,
             castle_rights: CastleRights::ALL_RIGHTS,
+            rule50: 0,
             hash: 0,
             king_sqs: [Square::E1, Square::E8],
             checkers: Bitboard::EMPTY,
@@ -122,6 +125,7 @@ impl Board {
             en_passant_square: None,
             player: Color::White,
             castle_rights: CastleRights::NO_RIGHTS,
+            rule50: 0,
             hash: 0,
             checkers: Bitboard::EMPTY,
             king_sqs: [Square::A1; 2],
@@ -201,9 +205,9 @@ impl Board {
                 .ok_or("reached end of string while parsing castle rights")?;
         }
 
-        //castle rights searching ate the space, so no need to check for it
+        // castle rights searching ate the space, so no need to check for it
 
-        //en passant square
+        // en passant square
         let ep_file_chr = fen_chrs
             .next()
             .ok_or("reached EOF while parsing en passant characters")?;
@@ -214,7 +218,36 @@ impl Board {
             let mut s = String::from(ep_file_chr);
             s.push(ep_rank_chr);
             board.en_passant_square = Some(Square::from_algebraic(&s)?);
+        } 
+
+        // now a space
+        if fen_chrs.next() != Some(' ') {
+            return Err("expected space after en passant square section of FEN");
         }
+
+        // 50 move tumer
+        let mut rule50_buf = String::new();
+        // there may be more digits
+        loop {
+            match fen_chrs.next() {
+                Some(' ') => break,
+                Some(c) if c.is_ascii_digit() => rule50_buf.push(c),
+                Some(_) => return Err("illegal character for rule50 counter"),
+                None => return Err("reached end of string while parsing rule 50"),
+            };
+        }
+
+        match rule50_buf.parse() {
+            Ok(num) if num <= 100 => board.rule50 = num,
+            Ok(_) => return Err("illegal number for rule50 counter"),
+            Err(e) => {
+                println!("{rule50_buf}");
+                println!("{e}");
+                return Err("could not parse number for rule50")
+            },
+        };
+
+        // updating metadata
         board.recompute_hash();
         board.king_sqs = [
             Square::try_from(board[Piece::King] & board[Color::White])?,
@@ -365,8 +398,9 @@ impl Board {
         true
     }
 
-    /// Apply the given move to the board. Will assume the move is legal (unlike
-    /// `try_move()`). Also requires that this board is currently valid.
+    /// Apply the given move to the board.
+    /// Will assume the move is legal.
+    /// Requires that this board is currently valid.
     ///
     /// # Examples
     ///
@@ -477,6 +511,13 @@ impl Board {
         self.player = !self.player;
         self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
 
+        /* Updating 50-move-rule */
+        if is_pawn_move || capturee.is_some() {
+            self.rule50 = 0;
+        } else {
+            self.rule50 += 1;
+        }
+
         /* Non-meta fields of the board are now in their final state. */
 
         /* Update metadata */
@@ -562,23 +603,36 @@ impl Board {
         }
     }
 
-    /// Determine whether this board represents a game which is over due to
-    /// insufficient material.
+    /// Determine whether this board is now drawn due to either insufficient
+    /// material or by the 50 move rule.
     ///
     /// # Examples
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::Board;
+    /// 
+    /// // Start position of the game is not a draw.
+    /// let board0 = Board::new();
+    /// assert!(!board0.is_drawn());
     ///
     /// // Same-color bishops on a KBKB endgame is a draw by insufficient
     /// // material in FIDE rules.
-    /// let board = Board::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
-    /// assert!(board.insufficient_material());
+    /// let board1 = Board::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
+    /// assert!(board1.is_drawn());
+    ///
+    /// // Draw by 50 move rule timeout.
+    /// let board2 = Board::from_fen("r1bqkbnr/pppppppp/2n5/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 100 102")?;
+    /// assert!(board2.is_drawn());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn insufficient_material(&self) -> bool {
+    pub fn is_drawn(&self) -> bool {
+        // 50 move rule = 100 ply
+        if self.rule50 >= 100 {
+            return true;
+        }
+        // check for drawn by insufficient material
         const DARK_SQUARES: Bitboard = Bitboard::new(0xAA55AA55AA55AA55);
         match self.occupancy().len() {
             0 | 1 => unreachable!(), // a king is missing
@@ -709,6 +763,7 @@ mod tests {
         en_passant_square: None,
         player: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
+        rule50: 0,
         hash: 3483926298739092744,
         checkers: Bitboard::EMPTY,
         king_sqs: [Square::A1, Square::H8],

@@ -148,24 +148,7 @@ pub const OPEN_ROOK_VALUE: Score = Score::centipawns(5, 78);
 /// computed correctly.
 pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
     let b = g.board();
-
-    match g.is_over() {
-        (true, Some(_)) => {
-            return match b.player {
-                Color::Black => Eval::mate_in(0),
-                Color::White => -Eval::mate_in(0),
-            }
-        }
-        (true, None) => {
-            return Eval::DRAW;
-        }
-        _ => {}
-    };
-
-    let b = g.board();
-    let leaf_val = leaf_rules(b);
-
-    (leaf_val + *g.cookie()).blend(phase_of(b))
+    (leaf_rules(b) + *g.cookie()).blend(phase_of(b))
 }
 
 /// Get the score gained from evaluations that are only performed at the leaf.
@@ -326,7 +309,9 @@ impl Eval {
     /// not be changed, but mates will be moved one closer to 0. When the
     /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined
     /// behavior.
+    ///
     /// # Examples
+    ///
     /// ```
     /// use fiddler_engine::evaluate::Eval;
     /// let current_eval = Eval::mate_in(0);
@@ -353,7 +338,9 @@ impl Eval {
     }
 
     /// Get the number of moves until a mated position, assuming perfect play.
+    ///
     /// # Examples
+    ///
     /// ```
     /// use fiddler_engine::evaluate::Eval;
     /// let ev1 = Eval::pawns(2.5);

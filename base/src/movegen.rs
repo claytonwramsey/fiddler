@@ -315,7 +315,7 @@ pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> 
     // prevent wonky generation modes
     debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
 
-    if b.insufficient_material() {
+    if b.is_drawn() {
         return Vec::new();
     }
 
@@ -370,7 +370,7 @@ pub fn has_moves(b: &Board) -> bool {
     let king_attackers = b.checkers;
     let king_to_sqs = KING_MOVES[king_square as usize] & !player_occupancy;
 
-    if b.insufficient_material() {
+    if b.is_drawn() {
         return false;
     }
 
@@ -1348,7 +1348,7 @@ mod tests {
         /// position.
         fn kiwipete() {
             perft_assistant(
-                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
                 &[1, 48, 2039, 97_862, 4_085_603, 193_690_690],
             );
         }
@@ -1357,7 +1357,7 @@ mod tests {
         fn endgame() {
             // https://www.chessprogramming.org/Perft_Results#Position_3
             perft_assistant(
-                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ",
+                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
                 &[1, 14, 191, 2_812, 43_238, 674_624, 11_030_083, 178_633_661],
             );
         }
