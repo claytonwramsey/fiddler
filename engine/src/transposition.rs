@@ -50,7 +50,7 @@ pub struct TTable {
     /// unsafe code.
     ///
     /// If `entries` is null, then nothing has been allocated yet.
-    entries: *mut TTEntry,
+    buckets: *mut Bucket,
     /// The mask for retrieving entries from the table. Should always be 0 if
     /// `entries` is null.
     mask: u64,
@@ -71,14 +71,27 @@ pub struct TTEntryGuard<'a> {
     _phantom: PhantomData<&'a TTable>,
 }
 
+const BUCKET_SIZE: usize = 3;
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A `Bucket` is a container for transposition table entries, designed to make 
+/// cache access faster. 
+/// The core idea is that we can load all the entries sent to a specific index 
+/// in the transposition table all fit in one cache line.
+struct Bucket {
+    pub entries: [TTEntry; BUCKET_SIZE],
+    /// Padding bits to make a bucket exactly 32 bytes, the size of a cache line.
+    _pad: [u8; 2],
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// An entry in the transposition table.
 pub struct TTEntry {
-    /// The age of the entry, i.e. the number of searches since this entry was
-    /// inserted.
-    age: u8, // 1 byte
-    /// The hash key of the entry.
-    hash: u64, // 8 bytes
+    /// A packed tag containing the age of the entry in the lower 7 bits and a 
+    /// bit to determine whether this entry is unused in the highest bit.
+    tag: u8, // 1 byte
+    /// The lower 16 bits hash key of the entry.
+    key_low16: u16, // 2 bytes
     /// The depth to which this entry was searched. If the depth is negative,
     /// this means that it was a special type of search.
     pub depth: i8, // 1 byte
@@ -90,86 +103,121 @@ pub struct TTEntry {
     /// The upper bound on the evaluation of the position.
     pub upper_bound: Eval, // 2 bytes
 
-                           // total size of an entry: 16 bytes. TODO think of ways of shrinking this.
+                           // total size of an entry: 10 bytes. TODO think of ways of shrinking this.
 }
 
 impl TTable {
     /// Construct a new TTable with no entries.
     pub const fn new() -> TTable {
         TTable {
-            entries: null::<TTEntry>() as *mut TTEntry,
+            buckets: null::<Bucket>() as *mut Bucket,
             mask: 0,
         }
     }
 
+    /// Construct a TTable with a given size, in megabytes.
     pub fn with_size(size_mb: usize) -> TTable {
-        let max_num_entries = size_mb / size_of::<TTEntry>();
-        let new_size = if max_num_entries.is_power_of_two() {
-            max_num_entries
+        let max_num_buckets = size_mb / size_of::<Bucket>();
+        let new_size = if max_num_buckets.is_power_of_two() {
+            max_num_buckets
         } else {
             // round down to lower power of two
-            max_num_entries.next_power_of_two() >> 1
+            max_num_buckets.next_power_of_two() >> 1
         };
 
         TTable::with_capacity(new_size.trailing_zeros() as usize)
     }
 
     /// Create a transposition table with a fixed capacity. The capacity is
-    /// *not* the number of entries, but rather log_2 of the number of entries.
+    /// *not* the number of entries, but rather log_2 of the number of buckets.
     ///
     /// # Panics
     ///
     /// This function will panic if `capacity_log2` is large enough to cause
     /// overflow.
     pub fn with_capacity(capacity_log2: usize) -> TTable {
-        let n_entries = 1 << capacity_log2;
+        let n_buckets = 1 << capacity_log2;
         TTable {
-            entries: unsafe {
-                let layout = Layout::array::<TTEntry>(n_entries).unwrap();
-                alloc_zeroed(layout) as *mut TTEntry
+            buckets: unsafe {
+                let layout = Layout::array::<Bucket>(n_buckets).unwrap();
+                alloc_zeroed(layout) as *mut Bucket
             },
-            mask: (n_entries - 1) as u64,
+            mask: (n_buckets - 1) as u64,
         }
+    }
+
+    #[inline(always)]
+    /// Compute the index for an entry with a given key.
+    fn index_for(&self, hash_key: u64) -> usize {
+        ((hash_key >> 16) & self.mask) as usize
     }
 
     /// Get the evaluation data stored by this table for a given key, if it
     /// exists. Returns `None` if no data corresponding to the key exists.
     pub fn get<'a>(&self, hash_key: u64) -> TTEntryGuard<'a> {
-        if self.entries.is_null() {
+        if self.buckets.is_null() {
             // cannot index into empty table.
             return TTEntryGuard {
                 valid: false,
                 hash: 0,
-                entry: self.entries,
+                entry: null::<TTEntry>() as *mut TTEntry,
                 _phantom: PhantomData,
             };
         }
-        let idx = (hash_key & self.mask) as usize;
-        let entry = unsafe { self.entries.add(idx) };
-        let entry_ref = unsafe { entry.as_ref().unwrap() };
-        if entry_ref.hash == hash_key && entry_ref.best_move.value() != 0 {
-            // it's a match! Return a valid guard.
-            TTEntryGuard {
-                valid: true,
-                hash: entry_ref.hash,
-                entry,
-                _phantom: PhantomData,
+        let idx = self.index_for(hash_key);
+        let bucket = unsafe {self.buckets.add(idx)};
+        let mut entry_ptr = bucket as *mut TTEntry;
+
+        // first, see if we can find a match in the bucket
+        for _ in 0..BUCKET_SIZE {
+            let entry_ref = unsafe {entry_ptr.as_ref().unwrap()};
+            if entry_ref.key_low16 == hash_key as u16 && (entry_ref.tag & 0x80 != 0) {
+                // it's a match!
+                return TTEntryGuard {
+                    valid: true,
+                    hash: hash_key,
+                    entry: entry_ptr,
+                    _phantom: PhantomData
+                };
             }
-        } else {
-            // No match found. Return an invalid guard.
-            TTEntryGuard {
-                valid: false,
-                hash: hash_key,
-                entry,
-                _phantom: PhantomData,
-            }
+            entry_ptr = unsafe{ entry_ptr.add(1) }
         }
+
+        // no match found. pick the oldest entry to replace
+        entry_ptr = bucket as *mut TTEntry;
+        let mut eldest_entry = entry_ptr;
+        let mut eldest_age = 0;
+        for _ in 0..BUCKET_SIZE {
+            let entry_ref = unsafe {entry_ptr.as_ref().unwrap()};
+            if entry_ref.tag & 0x80 == 0 {
+                return TTEntryGuard {
+                    valid: false,
+                    hash: hash_key,
+                    entry: entry_ptr,
+                    _phantom: PhantomData
+                }
+            }
+            let age = entry_ref.tag & 0x7F;
+            if age > eldest_age {
+                eldest_entry = entry_ptr;
+                eldest_age = age;
+            }
+            entry_ptr = unsafe{ entry_ptr.add(1) }
+        }
+
+        TTEntryGuard {
+            valid: false,
+            hash: hash_key,
+            entry: eldest_entry,
+            _phantom: PhantomData
+        }
+
     }
 
     /// Get an estimate of the fill rate proportion of this transposition table
     /// out of 1000. Typically used for UCI.
     pub fn fill_rate_permill(&self) -> u16 {
-        if self.entries.is_null() {
+        if self.buckets.is_null() {
             // I suppose a transposition table with no entries is 100% full.
             1000
         } else {
@@ -181,25 +229,24 @@ impl TTable {
             // estimate.
             for idx_unbounded in 0..1000 {
                 // prevent overflow
-                let idx = (idx_unbounded & self.mask) as usize;
-                if unsafe { self.entries.add(idx).as_ref().unwrap().hash } != 0 {
-                    // a real entry lives here
-                    num_full += 1;
-                }
+                let bucket = unsafe {self.buckets.add(self.index_for(idx_unbounded)).as_ref().unwrap()};
+                num_full += bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
             }
-            num_full
+            (num_full / BUCKET_SIZE) as u16
         }
     }
 
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
     pub fn age_up(&mut self, max_age: u8) {
-        if !self.entries.is_null() {
-            for idx in 0..=self.mask as usize {
-                let entry: &mut TTEntry = unsafe { self.entries.add(idx).as_mut().unwrap() };
-                entry.age += 1;
-                if entry.age >= max_age {
-                    *entry = TTEntry::new();
+        debug_assert!(max_age <= 0x7F);
+        if !self.buckets.is_null() {
+            for idx in 0..=self.mask {
+                let bucket = unsafe {self.buckets.add(self.index_for(idx)).as_mut().unwrap()};
+                for entry in bucket.entries.iter_mut() {
+                    if entry.tag & 0x7F > max_age {
+                        *entry = TTEntry::new();
+                    }
                 }
             }
         }
@@ -207,7 +254,7 @@ impl TTable {
 
     /// Resize the hash table to use no more than `size_mb` megabytes.
     pub fn resize(&mut self, size_mb: usize) {
-        let max_num_entries = size_mb * 1_000_000 / size_of::<TTEntry>();
+        let max_num_entries = size_mb * 1_000_000 / size_of::<Bucket>();
         let new_size = if max_num_entries.is_power_of_two() {
             max_num_entries
         } else {
@@ -215,99 +262,69 @@ impl TTable {
             max_num_entries.next_power_of_two() >> 1
         };
 
-        let old_entries = self.entries;
+        let old_buckets = self.buckets;
         let mut old_size = self.mask as usize + 1;
-        if old_entries.is_null() {
+        if old_buckets.is_null() {
             old_size = 0;
         }
         if new_size == 0 {
-            if !old_entries.is_null() {
+            if !old_buckets.is_null() {
                 unsafe {
                     dealloc(
-                        old_entries as *mut u8,
-                        Layout::array::<TTEntry>(old_size).unwrap(),
+                        old_buckets as *mut u8,
+                        Layout::array::<Bucket>(old_size).unwrap(),
                     )
                 };
             }
-            self.entries = null::<TTEntry>() as *mut TTEntry;
+            self.buckets = null::<Bucket>() as *mut Bucket;
             self.mask = 0;
         } else if new_size < old_size {
             // move entries down if possible
             let new_mask = new_size - 1;
             for idx in new_size..old_size {
                 // try to copy the entries which will be deallocated backward
-                let entry = unsafe { *self.entries.add(idx) };
-                if entry.hash != 0 {
-                    // if there was an entry at this index, move it down to fit
-                    // into the shrunken table
-                    let new_idx = idx & new_mask;
-                    // TODO more intelligently overwrite than just blindly
-                    // writing
-                    let new_entry_slot = unsafe { self.entries.add(new_idx).as_mut().unwrap() };
-                    *new_entry_slot = entry;
-                }
+                let bucket = unsafe { *self.buckets.add(idx) };
+                // if there was an entry at this index, move it down to fit
+                // into the shrunken table
+                let new_idx = idx & new_mask;
+                // TODO more intelligently overwrite than just blindly
+                // writing
+                let new_bucket_slot = unsafe { self.buckets.add(new_idx).as_mut().unwrap() };
+                *new_bucket_slot = bucket;
             }
             // realloc to shrink this
-            self.entries = unsafe {
+            self.buckets = unsafe {
                 realloc(
-                    self.entries as *mut u8,
-                    Layout::array::<TTEntry>(old_size).unwrap(),
-                    new_size * size_of::<TTEntry>(),
-                ) as *mut TTEntry
+                    self.buckets as *mut u8,
+                    Layout::array::<Bucket>(old_size).unwrap(),
+                    new_size * size_of::<Bucket>(),
+                ) as *mut Bucket
             };
             self.mask = new_mask as u64;
         } else {
             // the table is growing
-            self.entries = if old_entries.is_null() {
-                unsafe { alloc_zeroed(Layout::array::<TTEntry>(new_size).unwrap()) as *mut TTEntry }
-            } else {
-                let ptr = unsafe {
-                    realloc(
-                        self.entries as *mut u8,
-                        Layout::array::<TTEntry>(old_size).unwrap(),
-                        new_size * size_of::<TTEntry>(),
-                    ) as *mut TTEntry
-                };
-                unsafe {
-                    // write the new block with zeros
-                    ptr.add(old_size).write_bytes(0, new_size - old_size);
-                }
-                ptr
-            };
-            let new_mask = (new_size - 1) as u64;
-            // the mask got bigger, so some entries may need to move right
-            for idx in 0..old_size {
-                let entry = unsafe { *self.entries.add(idx) };
-                if entry.hash != 0 {
-                    // if there was an entry at this index, move it up
-                    let new_idx = (entry.hash & new_mask) as usize;
-                    // TODO more intelligently overwrite than just blindly
-                    // writing
-                    let new_entry_slot = unsafe { self.entries.add(new_idx).as_mut().unwrap() };
-                    *new_entry_slot = entry;
-                }
-            }
+            self.buckets = unsafe { alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()) as *mut Bucket };
 
-            self.mask = new_mask;
+            self.mask = (new_size - 1) as u64;
         }
     }
 
     /// Get the size of this table, in megabytes. Does not include the size of
     /// the struct itself, but rather just the heap-allocated table size.
     pub fn size_mb(&self) -> usize {
-        if self.entries.is_null() {
+        if self.buckets.is_null() {
             0
         } else {
-            size_of::<TTEntry>() * (self.mask as usize + 1) / 1_000_000
+            size_of::<Bucket>() * (self.mask as usize + 1) / 1_000_000
         }
     }
 
     /// Clear all entries in the table.
     pub fn clear(&mut self) {
-        if !self.entries.is_null() {
+        if !self.buckets.is_null() {
             let n_entries = self.mask as usize + 1;
             // fill the whole table with zeros
-            unsafe { self.entries.write_bytes(0, n_entries) };
+            unsafe { self.buckets.write_bytes(0, n_entries) };
         }
     }
 }
@@ -315,8 +332,8 @@ impl TTable {
 impl TTEntry {
     const fn new() -> TTEntry {
         TTEntry {
-            age: 0,
-            hash: 0,
+            tag: 0,
+            key_low16: 0,
             depth: 0,
             best_move: Move::BAD_MOVE,
             lower_bound: Eval::DRAW,
@@ -330,13 +347,13 @@ unsafe impl Sync for TTable {}
 
 impl Drop for TTable {
     fn drop(&mut self) {
-        if !self.entries.is_null() {
+        if !self.buckets.is_null() {
             let size = self.mask as usize + 1;
             // memory was allocated, need to deallocate
             unsafe {
                 dealloc(
-                    self.entries as *mut u8,
-                    Layout::array::<TTEntry>(size).unwrap(),
+                    self.buckets as *mut u8,
+                    Layout::array::<Bucket>(size).unwrap(),
                 );
             }
         }
@@ -365,8 +382,8 @@ impl<'a> TTEntryGuard<'a> {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
-                    age: 0,
-                    hash: self.hash,
+                    tag: 0x80,
+                    key_low16: self.hash as u16,
                     depth,
                     best_move,
                     lower_bound,
@@ -400,8 +417,8 @@ mod tests {
     fn guaranteed_hit() {
         let tt = TTable::with_capacity(4);
         let entry = TTEntry {
-            age: 0,
-            hash: 12,
+            tag: 0x80,
+            key_low16: 12,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
             lower_bound: Eval::DRAW,
@@ -422,8 +439,8 @@ mod tests {
     fn attempt_write_empty_table() {
         let tt = TTable::new();
         let entry = TTEntry {
-            age: 0,
-            hash: 12,
+            tag: 0x80,
+            key_low16: 12,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
             lower_bound: Eval::DRAW,
@@ -440,42 +457,19 @@ mod tests {
     }
 
     #[test]
-    /// Test that entries are preserved after resizing a table.
-    fn entry_preserved_after_expand() {
-        let mut tt = TTable::with_size(1000);
-        let entry = TTEntry {
-            age: 0,
-            hash: 2022,
-            depth: 5,
-            best_move: Move::normal(Square::E2, Square::E4),
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::centipawns(100),
-        };
-        tt.get(2022).save(
-            entry.depth,
-            entry.best_move,
-            entry.lower_bound,
-            entry.upper_bound,
-        );
-        tt.resize(2000);
-
-        assert_eq!(tt.get(2022).entry(), Some(&entry));
-    }
-
-    #[test]
-    /// Test that an entry with the same has can overwrite another entry.
+    /// Test that an entry with the same hash can overwrite another entry.
     fn overwrite() {
         let e0 = TTEntry {
-            age: 0,
-            hash: 2022,
+            tag: 0x80,
+            key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
             lower_bound: Eval::DRAW,
             upper_bound: Eval::centipawns(100),
         };
         let e1 = TTEntry {
-            age: 0,
-            hash: 2022,
+            tag: 0x80,
+            key_low16: 2022,
             depth: 7,
             best_move: Move::normal(Square::E4, Square::E5),
             lower_bound: Eval::BLACK_MATE,
@@ -499,8 +493,8 @@ mod tests {
         let mut tt = TTable::new();
         tt.resize(2000);
         let entry = TTEntry {
-            age: 0,
-            hash: 2022,
+            tag: 0x80,
+            key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
             lower_bound: Eval::DRAW,
@@ -514,5 +508,11 @@ mod tests {
         );
 
         assert_eq!(tt.get(2022).entry(), Some(&entry));
+    }
+
+    #[test]
+    /// Test that a `Bucket` is in fact the size of a cache line.
+    fn bucket_size() {
+        assert_eq!(size_of::<Bucket>(), 32);
     }
 }
