@@ -18,94 +18,92 @@
 
 //! Generation and verification of legal moves in a position.
 
+use once_cell::sync::Lazy;
+
 use crate::game::{NoTag, Tagger};
 
 use super::{magic::MagicTable, moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
 
-use lazy_static::lazy_static;
 use std::{convert::TryFrom, time::Instant};
 
-// Construct common lookup tables for use in move generation.
-lazy_static! {
-    /// A master copy of the main magic table. Used for generating bishop,
-    /// rook, and queen moves.
-    pub (crate) static ref MAGIC: MagicTable = MagicTable::load();
+/// A master copy of the main magic table. Used for generating bishop,
+/// rook, and queen moves.
+pub(crate) static MAGIC: Lazy<MagicTable> = Lazy::new(MagicTable::load);
 
-    /// A lookup table for the squares on a line between any two squares,
-    /// either down a row like a rook or diagonal like a bishop.
-    /// `lines[A1][B2]` would return a bitboard with active squares down the
-    /// main diagonal.
-    static ref LINES: [[Bitboard; 64]; 64] = {
-        let mut lines = [[Bitboard::EMPTY; 64]; 64];
+/// A lookup table for the squares on a line between any two squares,
+/// either down a row like a rook or diagonal like a bishop.
+/// `lines[A1][B2]` would return a bitboard with active squares down the
+/// main diagonal.
+static LINES: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
+    let mut lines = [[Bitboard::EMPTY; 64]; 64];
 
-        for sq1 in Bitboard::ALL {
-            let bishop_1 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq1);
-            let rook_1 = MAGIC.rook_attacks(Bitboard::EMPTY, sq1);
-            for sq2 in Bitboard::ALL {
-                if bishop_1.contains(sq2) {
-                    let bishop_2 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq2);
-                    lines[sq1 as usize][sq2 as usize] |=
-                        Bitboard::from(sq1) | Bitboard::from(sq2);
-                    lines[sq1 as usize][sq2 as usize] |= bishop_1 & bishop_2;
-                }
-                if rook_1.contains(sq2) {
-                    let rook_2 = MAGIC.rook_attacks(Bitboard::EMPTY, sq2);
-                    lines[sq1 as usize][sq2 as usize] |=
-                        Bitboard::from(sq1) | Bitboard::from(sq2);
+    for sq1 in Bitboard::ALL {
+        let bishop_1 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq1);
+        let rook_1 = MAGIC.rook_attacks(Bitboard::EMPTY, sq1);
+        for sq2 in Bitboard::ALL {
+            if bishop_1.contains(sq2) {
+                let bishop_2 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq2);
+                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
+                lines[sq1 as usize][sq2 as usize] |= bishop_1 & bishop_2;
+            }
+            if rook_1.contains(sq2) {
+                let rook_2 = MAGIC.rook_attacks(Bitboard::EMPTY, sq2);
+                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
 
-                    lines[sq1 as usize][sq2 as usize] |= rook_1 & rook_2;
-                }
+                lines[sq1 as usize][sq2 as usize] |= rook_1 & rook_2;
             }
         }
+    }
 
-        lines
-    };
+    lines
+});
 
-    /// A lookup table for the squares "between" two other squares, either down
-    /// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
-    /// would return a `Bitboard` with A2 as its only active square.
-    static ref BETWEEN: [[Bitboard; 64]; 64] = {
-        // start with an unitialized value and then set it element-wise
-        let mut between = [[Bitboard::EMPTY; 64]; 64];
+/// A lookup table for the squares "between" two other squares, either down
+/// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
+/// would return a `Bitboard` with A2 as its only active square.
+static BETWEEN: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
+    // start with an unitialized value and then set it element-wise
+    let mut between = [[Bitboard::EMPTY; 64]; 64];
 
-        for sq1 in Bitboard::ALL {
-            for sq2 in Bitboard::ALL {
-                if MAGIC.bishop_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
-                    let bishop1 = MAGIC.bishop_attacks(
-                        Bitboard::from(sq2), sq1);
-                    let bishop2 = MAGIC.bishop_attacks(
-                        Bitboard::from(sq1), sq2);
+    for sq1 in Bitboard::ALL {
+        for sq2 in Bitboard::ALL {
+            if MAGIC.bishop_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
+                let bishop1 = MAGIC.bishop_attacks(Bitboard::from(sq2), sq1);
+                let bishop2 = MAGIC.bishop_attacks(Bitboard::from(sq1), sq2);
 
-                    between[sq1 as usize][sq2 as usize] |= bishop1 & bishop2;
-                }
-                if MAGIC.rook_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
-                    let rook1 = MAGIC.rook_attacks(Bitboard::from(sq2), sq1);
-                    let rook2 = MAGIC.rook_attacks(Bitboard::from(sq1), sq2);
+                between[sq1 as usize][sq2 as usize] |= bishop1 & bishop2;
+            }
+            if MAGIC.rook_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
+                let rook1 = MAGIC.rook_attacks(Bitboard::from(sq2), sq1);
+                let rook2 = MAGIC.rook_attacks(Bitboard::from(sq1), sq2);
 
-                    between[sq1 as usize][sq2 as usize] |= rook1 & rook2;
-                }
+                between[sq1 as usize][sq2 as usize] |= rook1 & rook2;
             }
         }
+    }
 
-        between
-    };
+    between
+});
 
-    /// A bitboard of all the squares a knight can move to if its position is
-    /// the index of the list.
-    static ref KNIGHT_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KNIGHT_STEPS, 2);
+/// A bitboard of all the squares a knight can move to if its position is
+/// the index of the list.
+static KNIGHT_MOVES: Lazy<[Bitboard; 64]> =
+    Lazy::new(|| create_step_attacks(&Direction::KNIGHT_STEPS, 2));
 
-    /// A bitboard of all the squares a king can move to if his position is the
-    /// index in the list.
-    static ref KING_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KING_STEPS, 1);
+/// A bitboard of all the squares a king can move to if his position is the
+/// index in the list.
+static KING_MOVES: Lazy<[Bitboard; 64]> =
+    Lazy::new(|| create_step_attacks(&Direction::KING_STEPS, 1));
 
-    /// A bitboard of all the squares which a pawn on the given square can
-    /// attack. The first index is for White's pawn attacks, the second is for
-    /// Black's.
-    pub (crate) static ref PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
+/// A bitboard of all the squares which a pawn on the given square can
+/// attack. The first index is for White's pawn attacks, the second is for
+/// Black's.
+pub(crate) static PAWN_ATTACKS: Lazy<[[Bitboard; 64]; 2]> = Lazy::new(|| {
+    [
         create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
         create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
-    ];
-}
+    ]
+});
 
 /// The types of move generation. These are used in const generics, as enums are
 /// not supported in const generics.
