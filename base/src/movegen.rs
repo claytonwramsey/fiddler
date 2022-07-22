@@ -980,6 +980,9 @@ fn perft_search<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
         return 1;
     }
     let moves = get_moves::<ALL, NoTag>(b);
+    if depth == 1 {
+        return moves.len() as u64;
+    }
     let mut total = 0;
     let mut bcopy;
     for (m, _) in moves {
