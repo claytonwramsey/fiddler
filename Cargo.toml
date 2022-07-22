@@ -20,13 +20,13 @@ members = [
     "base",
     "engine",
     "tuner",
-    "cli",
 ]
 
 [profile.test]
 debug = true
 # must be highly optimized for speed, since searching and perft is done in tests
 opt-level = 3 
+lto = true
 
 [profile.release]
 opt-level = 3
@@ -34,4 +34,3 @@ lto = true
 overflow-checks = false
 panic = "abort"
 codegen-units = 1
-# debug = 1 # used for profiling

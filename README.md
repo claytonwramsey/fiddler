@@ -67,9 +67,6 @@ UCI executable.
 * `tuner` contains the tuner, which will automatically tune constant values for
 evaluation.
 
-* `cli` contains a command-line interface for testing the engine. We intend to
-eventually retire the CLI.
-
 ## Contributing
 
 If you are interested in contributing to Fiddler, please open a pull request.
