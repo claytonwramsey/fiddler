@@ -40,14 +40,6 @@ impl CastleRights {
     /// A `CastleRights` where no rights are available.
     pub const NO_RIGHTS: CastleRights = CastleRights(0);
 
-    /// A `CastleRights` where White has all rights, and Black has no rights.
-    /// The phrasing of this constant is unfortunate.
-    pub const WHITERIGHTS: CastleRights = CastleRights(3);
-
-    /// A `CastleRights` where Black has all rights, and White has no rights.
-    /// The phrasing of this constant is unfortunate.
-    pub const BLACKRIGHTS: CastleRights = CastleRights(12);
-
     /// Create a `CastleRights` for kingside castling on one side.
     #[inline(always)]
     pub const fn king_castle(color: Color) -> CastleRights {
