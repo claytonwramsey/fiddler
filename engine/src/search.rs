@@ -460,6 +460,11 @@ impl<'a> PVSearch<'a> {
         beta: Eval,
         parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
+        if !g.board().checkers.is_empty() {
+            // don't allow settling if we are in check
+            return self.pvs::<PV, false, false>(1, depth_so_far, g, alpha, beta, parent_line);
+        }
+
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
 

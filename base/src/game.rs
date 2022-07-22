@@ -21,7 +21,7 @@
 use crate::movegen::is_legal;
 
 use super::{
-    movegen::{get_moves, has_moves, is_square_attacked_by, GenMode},
+    movegen::{get_moves, has_moves, GenMode},
     Board, Color, Move,
 };
 
@@ -242,10 +242,9 @@ impl<T: Tagger> TaggedGame<T> {
             return (false, None);
         }
 
-        let king_sq = b.king_sqs[b.player as usize];
-        match is_square_attacked_by(b, king_sq, !b.player) {
-            true => (true, Some(!b.player)),
-            false => (true, None), // stalemate
+        match b.checkers.is_empty() {
+            false => (true, Some(!b.player)),
+            true => (true, None), // stalemate
         }
     }
 
