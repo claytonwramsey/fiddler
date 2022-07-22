@@ -101,7 +101,7 @@ lazy_static! {
     /// A bitboard of all the squares which a pawn on the given square can
     /// attack. The first index is for White's pawn attacks, the second is for
     /// Black's.
-    static ref PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
+    pub (crate) static ref PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
         create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
         create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
     ];

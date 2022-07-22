@@ -496,7 +496,7 @@ impl<'a> PVSearch<'a> {
                 parent_line.clear();
             }
             if alpha >= beta {
-                // make sure that we didn't accidentally assume we could leaf 
+                // make sure that we didn't accidentally assume we could leaf
                 // evaluate an "ended" position
                 match g.is_over() {
                     (true, None) => return Ok(Eval::DRAW),

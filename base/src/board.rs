@@ -19,7 +19,7 @@
 //! State representations of boards, which contain board state (such as piece
 //! positions), but neither history nor meta-information about a game.
 
-use crate::movegen::{between, square_attackers, MAGIC};
+use crate::movegen::{between, square_attackers, MAGIC, PAWN_ATTACKS};
 
 use super::{zobrist, Bitboard, CastleRights, Color, Move, Piece, Square};
 
@@ -218,7 +218,7 @@ impl Board {
             let mut s = String::from(ep_file_chr);
             s.push(ep_rank_chr);
             board.en_passant_square = Some(Square::from_algebraic(&s)?);
-        } 
+        }
 
         // now a space
         if fen_chrs.next() != Some(' ') {
@@ -243,8 +243,8 @@ impl Board {
             Err(e) => {
                 println!("{rule50_buf}");
                 println!("{e}");
-                return Err("could not parse number for rule50")
-            },
+                return Err("could not parse number for rule50");
+            }
         };
 
         // updating metadata
@@ -410,7 +410,7 @@ impl Board {
     ///
     /// let mut board = Board::new();
     /// // board after 1. e4 is played
-    /// let board_after_e4 = Board::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")?;
+    /// let board_after_e4 = Board::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")?;
     ///
     /// board.make_move(Move::normal(Square::E2, Square::E4));
     /// assert_eq!(board, board_after_e4);
@@ -454,9 +454,20 @@ impl Board {
         //remove previous EP square from hash
         self.hash ^= zobrist::ep_key(self.en_passant_square);
         //update EP square
-        self.en_passant_square = match is_pawn_move && is_long_move {
-            true => Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()),
-            false => None,
+        if is_pawn_move && is_long_move {
+            let ep_candidate =
+                Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
+            if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
+                & self[Piece::Pawn]
+                & self[opponent])
+                .is_empty()
+            {
+                self.en_passant_square = None;
+            } else {
+                self.en_passant_square = Some(ep_candidate);
+            }
+        } else {
+            self.en_passant_square = None;
         };
         //insert new EP key into hash
         self.hash ^= zobrist::ep_key(self.en_passant_square);
@@ -611,7 +622,7 @@ impl Board {
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::Board;
-    /// 
+    ///
     /// // Start position of the game is not a draw.
     /// let board0 = Board::new();
     /// assert!(!board0.is_drawn());
