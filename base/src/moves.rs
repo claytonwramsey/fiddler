@@ -62,6 +62,7 @@ impl Move {
     const EN_PASSANT_FLAG: u16 = 0xC000;
 
     #[inline(always)]
+    #[must_use]
     /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
     ///
     /// # Panics
@@ -94,6 +95,7 @@ impl Move {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having
     /// any extra special flags.
     pub const fn normal(from_square: Square, to_square: Square) -> Move {
@@ -101,6 +103,7 @@ impl Move {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Create a `Move` with the given promotion type. The promote type must
     /// not be a pawn or a king.
     pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
@@ -108,53 +111,61 @@ impl Move {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub const fn castling(from_square: Square, to_square: Square) -> Move {
         Move::new(from_square, to_square, None, true, false)
     }
 
     #[inline(always)]
+    #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub const fn en_passant(from_square: Square, to_square: Square) -> Move {
         Move::new(from_square, to_square, None, false, true)
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the target square of this move.
-    pub const fn to_square(&self) -> Square {
+    pub const fn to_square(self) -> Square {
         // Masking out the bottom bits will make this always valid.
         unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the square that a piece moves from to execute this move.
-    pub const fn from_square(&self) -> Square {
+    pub const fn from_square(self) -> Square {
         // Masking out the bottom bits will make this always valid
         unsafe { transmute((self.0 & 63u16) as u8) }
     }
 
     #[inline(always)]
+    #[must_use]
     /// Determine whether this move is marked as a promotion.
-    pub const fn is_promotion(&self) -> bool {
+    pub const fn is_promotion(self) -> bool {
         self.0 & Move::FLAG_MASK == Move::PROMOTE_FLAG
     }
 
     #[inline(always)]
+    #[must_use]
     /// Determine whether this move is marked as a castle.
-    pub const fn is_castle(&self) -> bool {
+    pub const fn is_castle(self) -> bool {
         self.0 & Move::FLAG_MASK == Move::CASTLE_FLAG
     }
 
     #[inline(always)]
+    #[must_use]
     /// Determine whether this move is marked as an en passant capture.
-    pub const fn is_en_passant(&self) -> bool {
+    pub const fn is_en_passant(self) -> bool {
         self.0 & Move::FLAG_MASK == Move::EN_PASSANT_FLAG
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the promotion type of this move. The resulting type will never be a
     /// pawn or a king.
-    pub const fn promote_type(&self) -> Option<Piece> {
+    pub const fn promote_type(self) -> Option<Piece> {
         if self.is_promotion() {
             Some(unsafe { std::mem::transmute(((self.0 >> 12) & 3u16) as u8) })
         } else {
@@ -164,6 +175,15 @@ impl Move {
 
     /// Convert a move from its UCI representation. Requires the board the move
     /// was played on to determine extra flags about the move.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will return an `Err` if `s` describes an illegal algebraic 
+    /// move.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic in case of an internal error.
     pub fn from_uci(s: &str, board: &Board) -> Result<Move, &'static str> {
         if !(s.len() == 4 || s.len() == 5) {
             return Err("string was neither a normal move or a promotion");
@@ -196,8 +216,9 @@ impl Move {
         ))
     }
 
+    #[must_use]
     /// Construct a UCI string version of this move.
-    pub fn to_uci(&self) -> String {
+    pub fn to_uci(self) -> String {
         match self.promote_type() {
             None => format!("{}{}", self.from_square(), self.to_square()),
             Some(p) => format!(
@@ -217,6 +238,10 @@ impl Move {
     ///
     /// This function will return an `Err` if the move is illegal on the given
     /// board.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic in the case of an internal error.
     ///
     /// # Examples
     ///
@@ -230,11 +255,11 @@ impl Move {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_algebraic(&self, b: &Board) -> Result<String, ()> {
+    pub fn to_algebraic(self, b: &Board) -> Result<String, ()> {
         // longest possible algebraic string would be something along the lines
         // of Qe4xd4#, exd8=Q#, and O-O-O+
         let mut s = String::with_capacity(7);
-        if !is_legal(*self, b) {
+        if !is_legal(self, b) {
             // can't make an algebraic form of an illegal move
             return Err(());
         }
@@ -248,7 +273,7 @@ impl Move {
             }
         } else {
             let mover_type = b.type_at_square(self.from_square()).unwrap();
-            let is_move_capture = b.is_move_capture(*self);
+            let is_move_capture = b.is_move_capture(self);
             let other_moves = get_moves::<ALL, NoTag>(b).into_iter().map(|x| x.0);
             let from_sq = self.from_square();
 
@@ -266,7 +291,7 @@ impl Move {
             }
 
             for other_move in other_moves {
-                if *self != other_move
+                if self != other_move
                     && other_move.to_square() == self.to_square()
                     && other_move.from_square() != self.from_square()
                     && b.type_at_square(other_move.from_square()).unwrap() == mover_type
@@ -310,7 +335,7 @@ impl Move {
         // Determine if the move was a check or a mate.
         let mut bcopy = *b;
         let enemy_king_sq = b.king_sqs[!b.player as usize];
-        bcopy.make_move(*self);
+        bcopy.make_move(self);
         if is_square_attacked_by(&bcopy, enemy_king_sq, b.player) {
             if get_moves::<ALL, NoTag>(&bcopy).is_empty() && !bcopy.is_drawn() {
                 s += "#";
@@ -329,6 +354,10 @@ impl Move {
     ///
     /// This function will return an `Err` if `s` is not a valid
     /// algebraically-represented move in `b`.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic in the case of an internal error.
     pub fn from_algebraic(s: &str, b: &Board) -> Result<Move, &'static str> {
         get_moves::<ALL, NoTag>(b)
             .into_iter()
@@ -338,13 +367,15 @@ impl Move {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get a number representing this move uniquely. The value may change from
     /// version to version.
-    pub const fn value(&self) -> u16 {
+    pub const fn value(self) -> u16 {
         self.0
     }
 
     #[inline(always)]
+    #[must_use]
     /// Reconstruct a move based on its `value`. Should only be used with
     /// values returned from `Move::value()`.
     pub const fn from_val(val: u16) -> Move {

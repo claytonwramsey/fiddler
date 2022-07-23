@@ -80,6 +80,7 @@ impl Bitboard {
     pub const ALL: Bitboard = Bitboard::new(!0);
 
     #[inline(always)]
+    #[must_use]
     /// Construct a new Bitboard from a numeric literal.
     /// Internally, `Bitboard`s are 64-bit integers, where the LSB represents
     /// whether the square A1 is an element, the second-least bit represents the
@@ -100,6 +101,7 @@ impl Bitboard {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Determine whether this bitboard contains a given square.
     ///
     /// # Examples
@@ -110,7 +112,7 @@ impl Bitboard {
     /// assert!(Bitboard::new(1).contains(Square::A1));
     /// assert!(!(Bitboard::new(2).contains(Square::A1)));
     /// ```
-    pub const fn contains(&self, square: Square) -> bool {
+    pub const fn contains(self, square: Square) -> bool {
         self.0 & (1 << square as u8) != 0
     }
 
@@ -131,6 +133,7 @@ impl Bitboard {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Compute the number of squares contained in this `Bitboard`.
     ///
     /// # Examples
@@ -143,25 +146,29 @@ impl Bitboard {
     /// bb.insert(Square::A1);
     /// assert!(bb.len() == 1);
     /// ```
-    pub const fn len(&self) -> u32 {
+    pub const fn len(self) -> u32 {
         self.0.count_ones()
     }
 
     #[inline(always)]
+    #[must_use]
     /// Count the number of trailing zeros (i.e. empty squares between A1 and
     /// the first non-empty square) in this bitboard. Alternately, this can be
     /// used to construct a `Square` from the lowest-rank square in this
     /// bitboard.
-    pub const fn trailing_zeros(&self) -> u32 {
+    pub const fn trailing_zeros(self) -> u32 {
         self.0.trailing_zeros()
     }
 
+    #[must_use]
     /// Count the number of leading zeros (i.e. empty squares between H8 and
     /// the highest non-empty square). Will be zero if H8 is occupied.
-    pub const fn leading_zeros(&self) -> u32 {
+    pub const fn leading_zeros(self) -> u32 {
         self.0.leading_zeros()
     }
 
+    #[must_use]
+    #[inline(always)]
     /// Determine whether this bitboard is empty.
     ///
     /// # Examples
@@ -174,10 +181,12 @@ impl Bitboard {
     /// bb.insert(Square::A1);
     /// assert!(!bb.is_empty());
     /// ```
-    pub const fn is_empty(&self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
+    #[must_use]
+    #[inline(always)]
     /// Determine whether this bitboard has exactly one bit. Equivalent to
     /// `Bitboard.len() == 1`.
     ///
@@ -193,12 +202,13 @@ impl Bitboard {
     /// bb.insert(Square::A2);
     /// assert!(!bb.has_single_bit());
     /// ```
-    pub const fn has_single_bit(&self) -> bool {
+    pub const fn has_single_bit(self) -> bool {
         // 5 arithmetic operations,
         // faster than the 13 required for `count_ones() == 1`
         self.0 != 0 && (self.0 & self.0.overflowing_sub(1).0) == 0
     }
 
+    #[must_use]
     /// Determine whether this bitboard conains more than one `Square`.
     ///
     /// # Examples
@@ -213,7 +223,7 @@ impl Bitboard {
     /// bb.insert(Square::A2);
     /// assert!(bb.more_than_one());
     /// ```
-    pub const fn more_than_one(&self) -> bool {
+    pub const fn more_than_one(self) -> bool {
         (self.0 & self.0.overflowing_sub(1).0) != 0
     }
 }
@@ -280,9 +290,10 @@ impl Shl<i8> for Bitboard {
 
     #[inline(always)]
     fn shl(self, rhs: i8) -> Self::Output {
-        match rhs < 0 {
-            false => Bitboard(self.0 << rhs),
-            true => Bitboard(self.0 >> -rhs),
+        if rhs < 0 {
+            Bitboard(self.0 << rhs)
+        } else {
+            Bitboard(self.0 >> -rhs)
         }
     }
 }
@@ -373,7 +384,10 @@ impl From<Square> for Bitboard {
 
 impl From<Bitboard> for usize {
     fn from(bb: Bitboard) -> Self {
-        bb.0 as usize
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            bb.0 as usize
+        }
     }
 }
 
@@ -382,10 +396,10 @@ impl Display for Bitboard {
         for row_idx in 0..8 {
             for col_idx in 0..8 {
                 let bit = 1 << ((8 * (7 - row_idx)) + col_idx);
-                if bit & self.0 != 0 {
-                    write!(f, "1 ")?;
-                } else {
+                if bit & self.0 == 0 {
                     write!(f, ". ")?;
+                } else {
+                    write!(f, "1 ")?;
                 }
             }
             writeln!(f)?;
@@ -395,6 +409,7 @@ impl Display for Bitboard {
     }
 }
 
+#[allow(clippy::copy_iterator)]
 impl Iterator for Bitboard {
     type Item = Square;
 
@@ -405,7 +420,14 @@ impl Iterator for Bitboard {
         }
         // SAFETY: The empty bitboard case has been handled already, so the
         // number of trailing zeros is between 0 and 63.
-        let result = Some(unsafe { transmute(self.trailing_zeros() as u8) });
+        let result = Some(unsafe {
+            transmute(
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    self.trailing_zeros() as u8
+                },
+            )
+        });
         self.0 &= self.0 - 1;
         result
     }

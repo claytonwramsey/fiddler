@@ -18,11 +18,11 @@
 
 //! Thread management and synchronization.
 //!
-//! This is the meat of parallelism in the engine: a `MainSearch` is responsible 
-//! for corralling all the threads and getting them to work together and on 
-//! time. 
-//! The main search also collects all of the output from each individual search 
-//! and composes it into a single easily-used structure for consumption in the 
+//! This is the meat of parallelism in the engine: a `MainSearch` is responsible
+//! for corralling all the threads and getting them to work together and on
+//! time.
+//! The main search also collects all of the output from each individual search
+//! and composes it into a single easily-used structure for consumption in the
 //! main process.
 
 use std::{thread::scope, time::Instant};

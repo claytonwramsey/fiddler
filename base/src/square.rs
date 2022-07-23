@@ -106,6 +106,8 @@ pub enum Square {
 
 impl Square {
     #[inline(always)]
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
     pub fn new(rank: usize, file: usize) -> Option<Square> {
@@ -113,27 +115,38 @@ impl Square {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
-    pub const fn rank(&self) -> usize {
-        (*self as u8 >> 3u8) as usize
+    pub const fn rank(self) -> usize {
+        (self as u8 >> 3u8) as usize
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the integer representing the file (0 -> A, ...) of this square.
     pub const fn file(self) -> usize {
         (self as u8 & 7u8) as usize
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the Chebyshev distance to another square.
     pub fn chebyshev_to(&self, rhs: Square) -> u8 {
-        let rankdiff = ((rhs.rank() as i16) - (self.rank() as i16)).abs();
-        let filediff = ((rhs.file() as i16) - (self.file() as i16)).abs();
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_possible_wrap,
+            clippy::cast_sign_loss
+        )]
+        {
+            let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).abs();
+            let filediff = ((rhs.file() as i8) - (self.file() as i8)).abs();
 
-        max(rankdiff, filediff) as u8
+            max(rankdiff, filediff) as u8
+        }
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get what this square would appear to be from the point of view of the
     /// opposing player.
     ///
@@ -152,6 +165,15 @@ impl Square {
     /// Convert an algebraic string (such as 'e7') to a square.
     /// To get an `Ok` result, the string must be two characters.
     /// The file must be in lowercase.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will return an `Err` if `s` is not a legal algebraic 
+    /// square.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic in the case of an internal error.
     pub fn from_algebraic(s: &str) -> Result<Square, &'static str> {
         if s.len() != 2 {
             return Err("square name must be 2 characters");
@@ -169,6 +191,8 @@ impl Square {
         Ok(Square::new(rank - 1, file).unwrap())
     }
 
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     /// Unsafely convert a `Bitboard` to a `Square` by creating the square
     /// representing its lowest occupied bit. Will result in undefined behavior
     /// (most likely a `Square` whose enum value is not in 0..64) if the given
@@ -182,6 +206,7 @@ impl Square {
         transmute(bb.trailing_zeros() as u8)
     }
 
+    #[must_use]
     /// Get the name of the file of this square. For instance, the square
     /// representing A1 will have the name "a".
     pub fn file_name(&self) -> &str {
@@ -203,6 +228,7 @@ impl Square {
 impl Add<Direction> for Square {
     type Output = Square;
     #[inline(always)]
+    #[allow(clippy::cast_sign_loss)]
     fn add(self, rhs: Direction) -> Self::Output {
         // Apply the modulo to prevent UB.
         unsafe { transmute(((self as i8) + rhs.0) as u8 & 63) }
@@ -234,6 +260,7 @@ impl Sub<Square> for Square {
 impl Sub<Direction> for Square {
     type Output = Square;
     #[inline(always)]
+    #[allow(clippy::cast_sign_loss)]
     fn sub(self, rhs: Direction) -> Self::Output {
         Square::try_from(((self as i8) - (rhs.0)) as u8 & 63u8).unwrap()
     }
@@ -245,6 +272,7 @@ impl TryFrom<Bitboard> for Square {
     /// Create the square closest to A1 (prioritizing rank) on the given
     /// bitboard.
     #[inline(always)]
+    #[allow(clippy::cast_possible_truncation)]
     fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
         Square::try_from(bb.trailing_zeros() as u8)
     }

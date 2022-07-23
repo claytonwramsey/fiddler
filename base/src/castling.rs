@@ -23,10 +23,10 @@ use super::Color;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-/// A simple struct to store a piece's castling rights. Internally, the bits of 
+/// A simple struct to store a piece's castling rights. Internally, the bits of
 /// the rights flag each represent one castling right.
-/// 
-/// Only the lower 4 bits of these rights are used. Internally, the bits have 
+///
+/// Only the lower 4 bits of these rights are used. Internally, the bits have
 /// the following assignments:
 /// * `1 << 0` (LSB): White kingside castling.
 /// * `1 << 1`: White queenside castling.
@@ -69,14 +69,14 @@ impl CastleRights {
 
     #[inline(always)]
     /// Can the given color legally castle kingside?
-    pub fn is_kingside_castle_legal(&self, color: Color) -> bool {
-        *self & CastleRights::king_castle(color) != CastleRights::NO_RIGHTS
+    pub fn is_kingside_castle_legal(self, color: Color) -> bool {
+        self & CastleRights::king_castle(color) != CastleRights::NO_RIGHTS
     }
 
     #[inline(always)]
     /// Can the given color legally castle kingside?
-    pub fn is_queenside_castle_legal(&self, color: Color) -> bool {
-        *self & CastleRights::queen_castle(color) != CastleRights::NO_RIGHTS
+    pub fn is_queenside_castle_legal(self, color: Color) -> bool {
+        self & CastleRights::queen_castle(color) != CastleRights::NO_RIGHTS
     }
 }
 

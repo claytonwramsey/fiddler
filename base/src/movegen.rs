@@ -22,13 +22,13 @@ use once_cell::sync::Lazy;
 
 use crate::game::{NoTag, Tagger};
 
-use super::{magic::MagicTable, moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
+use super::{magic::AttacksTable, moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
 
 use std::{convert::TryFrom, time::Instant};
 
 /// A master copy of the main magic table. Used for generating bishop,
 /// rook, and queen moves.
-pub(crate) static MAGIC: Lazy<MagicTable> = Lazy::new(MagicTable::load);
+pub(crate) static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
 
 /// A lookup table for the squares on a line between any two squares,
 /// either down a row like a rook or diagonal like a bishop.
@@ -116,9 +116,15 @@ pub const CAPTURES: GenMode = 1;
 /// The mode identifier for `get_moves()` to generate non-captures only.
 pub const QUIETS: GenMode = 2;
 
+#[must_use]
 /// Determine whether any given move is legal, given a position in which it
-/// could be played. Requires that the move must have been legal on *some*
-/// board, but not necessarily the given one.
+/// could be played.
+/// Requires that the move must have been legal on *some* board, but not
+/// necessarily the given one.
+///
+/// # Panics
+///
+/// This function might panic, but this is only due to an internal error.
 ///
 /// # Examples
 ///
@@ -256,6 +262,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 }
 
 #[inline(always)]
+#[must_use]
 /// Get the legal moves in a board.
 ///
 /// `M` is the generation mode of move generation: it specifies which subset of
@@ -320,30 +327,28 @@ pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> 
     let mut moves;
     let in_check = !b.checkers.is_empty();
 
-    match in_check {
-        false => {
-            // in the overwhelming majority of cases, there are fewer than 50
-            // legal moves total
-            let capacity = match M {
-                ALL => 50,
-                CAPTURES => 8,
-                QUIETS => 40,
-                _ => unreachable!(),
-            };
-            moves = Vec::with_capacity(capacity);
-            non_evasions::<M, T>(b, &mut moves);
-        }
-        true => {
-            // in the overwhelming majority of cases, there are 8 or fewer
-            // legal evasions if the king is in check
-            moves = Vec::with_capacity(8);
-            evasions::<M, T>(b, &mut moves);
-        }
+    if in_check {
+        // in the overwhelming majority of cases, there are 8 or fewer
+        // legal evasions if the king is in check
+        moves = Vec::with_capacity(8);
+        evasions::<M, T>(b, &mut moves);
+    } else {
+        // in the overwhelming majority of cases, there are fewer than 50
+        // legal moves total
+        let capacity = match M {
+            ALL => 50,
+            CAPTURES => 8,
+            QUIETS => 40,
+            _ => unreachable!(),
+        };
+        moves = Vec::with_capacity(capacity);
+        non_evasions::<M, T>(b, &mut moves);
     };
 
     moves
 }
 
+#[must_use]
 /// Does the player to move have any legal moves in this position?
 /// Requires that the board is legal (i.e. has one of each king) to be correct.
 ///
@@ -372,7 +377,16 @@ pub fn has_moves(b: &Board) -> bool {
         return false;
     }
 
-    if !king_attackers.is_empty() {
+    if king_attackers.is_empty() {
+        // examine king moves normally
+        // we need not consider the castling squares because otherwise the king
+        // would be able to escape naturally without castling
+        for to_sq in king_to_sqs {
+            if validate(Move::normal(king_square, to_sq), b) {
+                return true;
+            }
+        }
+    } else {
         // king is in check
 
         // King can probably get out on his own
@@ -395,15 +409,6 @@ pub fn has_moves(b: &Board) -> bool {
         legal_targets &= between(king_square, checker_sq) | b.checkers;
 
         // only blocks or captures can save us
-    } else {
-        // examine king moves normally
-        // we need not consider the castling squares because otherwise the king
-        // would be able to escape naturally without castling
-        for to_sq in king_to_sqs {
-            if validate(Move::normal(king_square, to_sq), b) {
-                return true;
-            }
-        }
     }
     for pt in Piece::NON_KING_TYPES {
         for from_sq in b[pt] & player_occupancy {
@@ -425,7 +430,7 @@ pub fn has_moves(b: &Board) -> bool {
                         & legal_targets
                 }
                 Piece::Knight => KNIGHT_MOVES[from_sq as usize] & legal_targets,
-                _ => Bitboard::EMPTY,
+                Piece::King => Bitboard::EMPTY,
             };
 
             // we need not handle promotion because pawn promotion also can
@@ -502,6 +507,7 @@ fn validate(m: Move, b: &Board) -> bool {
 }
 
 #[inline(always)]
+#[must_use]
 /// In a given board state, is a square attacked by the given color?
 /// Squares which are threatened by only non-capture moves (i.e. pawn-pushes)
 /// will not qualify as attacked.
@@ -591,6 +597,7 @@ fn evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Ta
 }
 
 #[inline(always)]
+#[must_use]
 /// Get the attackers of a given color on a square as a `Bitboard`
 /// representing the squares of the attackers.
 ///
@@ -664,8 +671,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     let rank8 = player.pawn_promote_rank();
     let not_rank8 = !rank8;
     let rank3 = match player {
-        Color::White => Bitboard::new(0xFF0000),
-        Color::Black => Bitboard::new(0xFF0000000000),
+        Color::White => Bitboard::new(0x0000_0000_00FF_0000),
+        Color::Black => Bitboard::new(0x0000_FF00_0000_0000),
     };
     let direction = player.pawn_direction();
     let doubledir = 2 * direction;
@@ -695,6 +702,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     }
 
     if M != QUIETS {
+        const NOT_WEST: Bitboard = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
+        const NOT_EAST: Bitboard = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
         // pawn captures
         let capture_dir_e = direction + Direction::EAST;
         let capture_dir_w = direction + Direction::WEST;
@@ -702,8 +711,6 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let capture_mask = opponents & target;
 
         // prevent pawns from capturing by wraparound
-        const NOT_WEST: Bitboard = Bitboard::new(0xFEFEFEFEFEFEFEFE);
-        const NOT_EAST: Bitboard = Bitboard::new(0x7F7F7F7F7F7F7F7F);
         let capture_e = ((pawns & NOT_EAST) << capture_dir_e.0) & capture_mask;
         let capture_w = ((pawns & NOT_WEST) << capture_dir_w.0) & capture_mask;
 
@@ -778,7 +785,7 @@ fn normal_piece_assistant<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>,
     let bishop_movers = (board[Piece::Bishop] | queens) & allies;
 
     for sq in board[Piece::Knight] & allies {
-        append_valid_normal::<T>(sq, KNIGHT_MOVES[sq as usize] & legal_targets, b, moves)
+        append_valid_normal::<T>(sq, KNIGHT_MOVES[sq as usize] & legal_targets, b, moves);
     }
     for sq in bishop_movers {
         append_valid_normal::<T>(
@@ -855,8 +862,8 @@ fn castles<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
 
     // the squares the king must pass through to reach the castled position
     let kingside_castle_passthrough_sqs = match player {
-        Color::White => Bitboard::new(0x0000000000000060),
-        Color::Black => Bitboard::new(0x6000000000000000),
+        Color::White => Bitboard::new(0x0000_0000_0000_0060),
+        Color::Black => Bitboard::new(0x6000_0000_0000_0000),
     };
 
     let can_kingside_castle = b.castle_rights.is_kingside_castle_legal(player)
@@ -872,8 +879,8 @@ fn castles<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
     // now, repeat the same process for queenside castling
 
     let queenside_castle_passthrough_sqs = match player {
-        Color::White => Bitboard::new(0x000000000000000E),
-        Color::Black => Bitboard::new(0x0E00000000000000),
+        Color::White => Bitboard::new(0x0000_0000_0000_000E),
+        Color::Black => Bitboard::new(0x0E00_0000_0000_0000),
     };
 
     let can_queenside_castle = b.castle_rights.is_queenside_castle_legal(player)
@@ -888,6 +895,7 @@ fn castles<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
 }
 
 #[inline(always)]
+#[must_use]
 /// Get a bitboard of all the squares between the two given squares, along
 /// the moves of a bishop or rook.
 pub fn between(sq1: Square, sq2: Square) -> Bitboard {
@@ -895,6 +903,7 @@ pub fn between(sq1: Square, sq2: Square) -> Bitboard {
 }
 
 #[inline(always)]
+#[must_use]
 /// Determine whether three squares are aligned according to rook or bishop
 /// directions.
 pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
@@ -907,6 +916,7 @@ pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
 fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard::EMPTY; 64];
     for (i, item) in attacks.iter_mut().enumerate() {
+        #[allow(clippy::cast_possible_truncation)]
         for dir in dirs {
             let start_sq = Square::try_from(i as u8).unwrap();
             let target_sq = start_sq + *dir;
@@ -952,6 +962,8 @@ fn append_valid_moves<T: Tagger>(
     }
 }
 
+#[must_use]
+#[allow(clippy::cast_precision_loss, clippy::similar_names)]
 /// Perform a performance test on the move generator and print out facts. The
 /// input fen is the FEN of the board to start from, and the depth is the depth
 /// from which to generate moves.
@@ -1039,7 +1051,7 @@ mod tests {
 
         let moves = get_moves::<ALL, NoTag>(&b);
 
-        for m2 in moves.iter() {
+        for m2 in &moves {
             assert!(is_legal(m2.0, &b));
         }
     }
@@ -1129,11 +1141,11 @@ mod tests {
             Move::normal(Square::E6, Square::E7),
             Move::normal(Square::F6, Square::G4),
         ];
-        for m in moves.iter() {
+        for m in &moves {
             assert!(expected_moves.contains(&m.0));
             assert!(is_legal(m.0, &b));
         }
-        for em in expected_moves.iter() {
+        for em in &expected_moves {
             assert!(moves.contains(&(*em, ())));
             assert!(is_legal(*em, &b));
         }
@@ -1144,7 +1156,7 @@ mod tests {
     fn black_can_promote() {
         let b = Board::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1").unwrap();
         let moves = get_moves::<ALL, NoTag>(&b);
-        for m in moves.iter() {
+        for m in &moves {
             assert!(is_legal(m.0, &b));
         }
         assert!(moves.contains(&(Move::promoting(Square::E2, Square::E1, Piece::Queen), ())));
@@ -1274,7 +1286,7 @@ mod tests {
     #[test]
     /// Test that the start position of the game has moves.
     fn startpos_has_moves() {
-        assert!(has_moves(&Board::default()))
+        assert!(has_moves(&Board::default()));
     }
 
     mod draws {
@@ -1328,6 +1340,7 @@ mod tests {
     mod perft {
         use super::*;
 
+        #[allow(clippy::cast_possible_truncation)]
         fn perft_assistant(fen: &str, node_counts: &[u64]) {
             for (i, num) in node_counts.iter().enumerate() {
                 assert_eq!(*num, perft(fen, i as u8));
@@ -1370,7 +1383,7 @@ mod tests {
             perft_assistant(
                 "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
                 &[1, 6, 264, 9_467, 422_333, 15_833_292],
-            )
+            );
         }
 
         #[test]
@@ -1400,12 +1413,12 @@ mod tests {
         let moves = get_moves::<ALL, NoTag>(&b);
         let loud_moves = get_moves::<CAPTURES, NoTag>(&b);
 
-        for loud_move in loud_moves.iter() {
+        for loud_move in &loud_moves {
             assert!(moves.contains(loud_move));
             assert!(b.is_move_capture(loud_move.0));
         }
 
-        for normal_move in moves.iter() {
+        for normal_move in &moves {
             assert!(is_legal(normal_move.0, &b));
             if b.is_move_capture(normal_move.0) {
                 assert!(loud_moves.contains(normal_move));

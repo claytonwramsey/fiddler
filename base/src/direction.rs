@@ -139,6 +139,7 @@ impl Direction {
         Direction::NORTHWEST,
     ];
 
+    #[must_use]
     #[inline(always)]
     /// Create a new Direction based on how far it moves in rank and file.
     pub const fn new(rank_step: i8, file_step: i8) -> Direction {

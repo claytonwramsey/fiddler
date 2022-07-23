@@ -30,15 +30,6 @@ use std::{
 /// The number of times to try generating magics.
 const NUM_MAGIC_TRIES: u64 = 10_000_000;
 
-/// The diagonal going from A1 to H8.
-const MAIN_DIAG: Bitboard = Bitboard::new(0x8040201008040201);
-
-/// The diagonal going from A8 to H1.
-const ANTI_DIAG: Bitboard = Bitboard::new(0x0102040810204080);
-
-/// A Bitboard made of 1's around the ring of the board, and 0's in the middle
-const RING_MASK: Bitboard = Bitboard::new(0xFF818181818181FF);
-
 /// A saved list of magics for rooks created using the generator. Some magics
 /// for sizes below the required bitshift amount were taken from the
 /// Chessprogramming Wiki.
@@ -207,76 +198,78 @@ const BISHOP_BITS: [u8; 64] = [
 
 #[derive(Clone, Debug)]
 /// A complete magic table which can generate moves for rooks and bishops.
-pub struct MagicTable {
-    rook_magic: [Magic; 64],
-    bishop_magic: [Magic; 64],
+pub struct AttacksTable {
+    rook_table: [SquareAttacks; 64],
+    bishop_table: [SquareAttacks; 64],
 }
 
-impl MagicTable {
-    /// Create an empty `MagicTable`.
-    fn new() -> MagicTable {
-        let rtable = {
+impl AttacksTable {
+    /// Create an empty `AttacksTable`.
+    fn new() -> AttacksTable {
+        let rook_table = {
             // SAFETY: We will immediately overwrite this.
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
+            let mut data: [MaybeUninit<SquareAttacks>; 64] =
+                unsafe { MaybeUninit::uninit().assume_init() };
             for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic::new());
+                *elem = MaybeUninit::new(SquareAttacks::new());
             }
             // SAFETY: The entire block was overwritten with correct data.
             unsafe { transmute(data) }
         };
-        let btable = {
+        let bishop_table = {
             // SAFETY: We will immediately overwrite this.
-            let mut data: [MaybeUninit<Magic>; 64] = unsafe { MaybeUninit::uninit().assume_init() };
+            let mut data: [MaybeUninit<SquareAttacks>; 64] =
+                unsafe { MaybeUninit::uninit().assume_init() };
             for elem in &mut data[..] {
-                *elem = MaybeUninit::new(Magic::new());
+                *elem = MaybeUninit::new(SquareAttacks::new());
             }
             // SAFETY: The entire block was overwritten with correct data.
             unsafe { transmute(data) }
         };
-        MagicTable {
-            rook_magic: rtable,
-            bishop_magic: btable,
+        AttacksTable {
+            rook_table,
+            bishop_table,
         }
     }
 
-    /// Create a pre-loaded `MagicTable`.
-    pub fn load() -> MagicTable {
-        let mut mtable = MagicTable::new();
-        load_magic_helper(&mut mtable.rook_magic, true);
-        load_magic_helper(&mut mtable.bishop_magic, false);
+    /// Create a pre-loaded `AttacksTable`.
+    pub fn load() -> AttacksTable {
+        let mut table = AttacksTable::new();
+        load_magic_helper(&mut table.rook_table, true);
+        load_magic_helper(&mut table.bishop_table, false);
 
-        mtable
+        table
     }
 
     #[allow(unused)]
-    /// Create a `MagicTable` from scratch, generating new magics.
-    pub fn make() -> MagicTable {
-        let mut mtable = MagicTable::new();
-        make_magic_helper(&mut mtable.rook_magic, true);
-        make_magic_helper(&mut mtable.bishop_magic, false);
+    /// Create a `AttacksTable` from scratch, generating new magics.
+    pub fn make() -> AttacksTable {
+        let mut table = AttacksTable::new();
+        make_magic_helper(&mut table.rook_table, true);
+        make_magic_helper(&mut table.bishop_table, false);
 
-        mtable
+        table
     }
 
     #[inline(always)]
     /// Get the attacks that a rook on `sq` could make with the reference table
-    /// `mtable`.
+    /// `table`.
     pub fn rook_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
-        get_attacks(occupancy, sq, &self.rook_magic)
+        get_attacks(occupancy, sq, &self.rook_table)
     }
 
     #[inline(always)]
     /// Get the attacks that a bishop on `sq` could make with the reference
-    /// table `mtable`.
+    /// table `table`.
     pub fn bishop_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
-        get_attacks(occupancy, sq, &self.bishop_magic)
+        get_attacks(occupancy, sq, &self.bishop_table)
     }
 }
 
 /// A structure containing all the information needed to generate moves for a
 /// rook or bishop.
 #[derive(Clone, Debug)]
-struct Magic {
+struct SquareAttacks {
     /// A mask which, when &ed with the occupancy bitboard, will give only the
     /// bits that matter when computing moves.
     pub mask: Bitboard,
@@ -288,10 +281,10 @@ struct Magic {
     pub shift: u8,
 }
 
-impl Magic {
-    /// Create an empty `Magic`.
-    fn new() -> Magic {
-        Magic {
+impl SquareAttacks {
+    /// Create an empty `SquareAttacks`.
+    fn new() -> SquareAttacks {
+        SquareAttacks {
             mask: Bitboard::EMPTY,
             magic: Bitboard::EMPTY,
             attacks: Vec::new(),
@@ -300,9 +293,10 @@ impl Magic {
     }
 }
 
-/// A helper function to load data into a `MagicTable`. `is_rook` is `true` if
+/// A helper function to load data into a `AttacksTable`. `is_rook` is `true` if
 /// you are loading data for a rook, and `false` for a bishop.
-fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
+fn load_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
+    #[allow(clippy::cast_possible_truncation)]
     for i in 0..64 {
         // square of the piece making attacks
         let sq = Square::try_from(i as u8).unwrap();
@@ -346,7 +340,7 @@ fn load_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
 
 /// Get the attacks a square has, given a magic lookup table and the current
 /// occupancy.
-fn get_attacks(occupancy: Bitboard, sq: Square, table: &[Magic; 64]) -> Bitboard {
+fn get_attacks(occupancy: Bitboard, sq: Square, table: &[SquareAttacks; 64]) -> Bitboard {
     // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
     // Additionally, we can trust that the key was masked correctly in
     // `compute_magic_key` as it was shifted out properly.
@@ -370,7 +364,8 @@ fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
 ///
 /// Will panic if this helper function is unable to compute each magic value in
 /// the specified number of tries.
-fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
+fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
+    #[allow(clippy::cast_possible_truncation)]
     for i in 0..64 {
         // square of the piece making attacks
         let sq = Square::try_from(i as u8).unwrap();
@@ -426,14 +421,7 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
                 break;
             }
         }
-        if !found_magic {
-            println!(
-                "failed to find {} magic for square {sq}",
-                if is_rook { "rook" } else { "bishop" }
-            );
-            panic!();
-        } else {
-            // found a magic, populate the attack vector
+        if found_magic {// found a magic, populate the attack vector
             table[i]
                 .attacks
                 .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
@@ -441,6 +429,12 @@ fn make_magic_helper(table: &mut [Magic; 64], is_rook: bool) {
                 let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
                 table[i].attacks[key] = attacks[j];
             }
+        } else {
+            println!(
+                "failed to find {} magic for square {sq}",
+                if is_rook { "rook" } else { "bishop" }
+            );
+            panic!();
         }
     }
 }
@@ -454,7 +448,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
     let row_mask = Bitboard::new(0x7E << (8 * (index / 8)));
     // sequence of 1s down the same col as the piece to move, except on the
     // ends
-    let col_mask = Bitboard::new(0x0001010101010100 << (index % 8));
+    let col_mask = Bitboard::new(0x0001_0101_0101_0100 << (index % 8));
     // note: pieces at the end of the travel don't matter, which is why the
     // masks arent' uniform
 
@@ -466,17 +460,24 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 /// Create the mask for the relevant bits in magic of a bishop. `sq` is the
 /// square that a bishop would be on to receiver this mask.
 fn get_bishop_mask(sq: Square) -> Bitboard {
+    /// The diagonal going from A1 to H8.
+    const MAIN_DIAG: Bitboard = Bitboard::new(0x8040_2010_0804_0201);
+    /// The diagonal going from A8 to H1.
+    const ANTI_DIAG: Bitboard = Bitboard::new(0x0102_0408_1020_4080);
+    /// A Bitboard made of 1's around the ring of the board, and 0's in the middle
+    const RING_MASK: Bitboard = Bitboard::new(0xFF81_8181_8181_81FF);
+
     // thank u chessprogramming wiki for this code
     let i = sq as i32;
     let main_diag = 8 * (i & 7) - (i as i32 & 56);
-    let main_lshift = -main_diag & (main_diag >> 31);
-    let main_rshift = main_diag & (-main_diag >> 31);
-    let main_diag_mask = (MAIN_DIAG >> main_rshift) << main_lshift;
+    let main_left_shift = -main_diag & (main_diag >> 31);
+    let main_right_shift = main_diag & (-main_diag >> 31);
+    let main_diag_mask = (MAIN_DIAG >> main_right_shift) << main_left_shift;
 
     let anti_diag = 56 - 8 * (i & 7) - (i & 56);
-    let anti_lshift = -anti_diag & (anti_diag >> 31);
-    let anti_rshift = anti_diag & (-anti_diag >> 31);
-    let anti_diag_mask = (ANTI_DIAG >> anti_rshift) << anti_lshift;
+    let anti_left_shift = -anti_diag & (anti_diag >> 31);
+    let anti_right_shift = anti_diag & (-anti_diag >> 31);
+    let anti_diag_mask = (ANTI_DIAG >> anti_right_shift) << anti_left_shift;
 
     (main_diag_mask ^ anti_diag_mask) & !RING_MASK
 }
@@ -580,13 +581,22 @@ mod tests {
     #[test]
     fn rook_mask() {
         //println!("{:064b}", get_rook_mask(A1).0);
-        assert_eq!(get_rook_mask(Square::A1), Bitboard::new(0x000101010101017E));
+        assert_eq!(
+            get_rook_mask(Square::A1),
+            Bitboard::new(0x0001_0101_0101_017E)
+        );
 
         //println!("{:064b}", get_rook_mask(E1).0);
-        assert_eq!(get_rook_mask(Square::E1), Bitboard::new(0x001010101010106E));
+        assert_eq!(
+            get_rook_mask(Square::E1),
+            Bitboard::new(0x0010_1010_1010_106E)
+        );
 
         //println!("{:064b}", get_rook_mask(E5).0);
-        assert_eq!(get_rook_mask(Square::E5), Bitboard::new(0x0010106E10101000));
+        assert_eq!(
+            get_rook_mask(Square::E5),
+            Bitboard::new(0x0010_106E_1010_1000)
+        );
     }
 
     #[test]
@@ -594,19 +604,19 @@ mod tests {
         //println!("{:064b}", get_bishop_mask(A1).0);
         assert_eq!(
             get_bishop_mask(Square::A1),
-            Bitboard::new(0x0040201008040200)
+            Bitboard::new(0x0040_2010_0804_0200)
         );
 
         //println!("{:064b}", get_bishop_mask(E1).0);
         assert_eq!(
             get_bishop_mask(Square::E1),
-            Bitboard::new(0x0000000002442800)
+            Bitboard::new(0x0000_0000_0244_2800)
         );
 
         //println!("{:064b}", get_bishop_mask(E5).0);
         assert_eq!(
             get_bishop_mask(Square::E5),
-            Bitboard::new(0x0044280028440200)
+            Bitboard::new(0x0044_2800_2844_0200)
         );
     }
 
@@ -625,13 +635,13 @@ mod tests {
     /*
     #[test]
     fn magic_creation() {
-        MagicTable::make();
+        AttacksTable::make();
     }
     */
 
     #[test]
     fn magic_rook_attacks() {
-        let mtable = MagicTable::load();
+        let table = AttacksTable::load();
         //cases in order:
         //rook on A1 blocked by other pieces, so it only attacks its neighbors
         //likewise, but there are other pieces on the board to be masked out
@@ -639,23 +649,23 @@ mod tests {
         let squares = [Square::A1, Square::A1];
         let attacks = [Bitboard::new(0x102), Bitboard::new(0x102)];
         for i in 0..1 {
-            let resulting_attack = mtable.rook_attacks(occupancies[i], squares[i]);
+            let resulting_attack = table.rook_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }
 
     #[test]
     fn magic_bishop_attacks() {
-        //cases in order:
-        //bishop on A1 is blocked by piece on B2, so it only has 1 attack
-        //bishop on A8 is blocked by piece on B7, so it only has 1 attack
-        //bishop is in board start position on C1
-        //bishop in board start position on F1
+        // cases in order:
+        // bishop on A1 is blocked by piece on B2, so it only has 1 attack
+        // bishop on A8 is blocked by piece on B7, so it only has 1 attack
+        // bishop is in board start position on C1
+        // bishop in board start position on F1
         let occupancies = [
-            Bitboard::new(0x0000000000000201), //
-            Bitboard::new(0x0102000000000000), //
-            Bitboard::new(0xFFFF00000000FFFF), //
-            Bitboard::new(0xFFFF00000000FFFF), //
+            Bitboard::new(0x0000_0000_0000_0201), //
+            Bitboard::new(0x0102_0000_0000_0000), //
+            Bitboard::new(0xFFFF_0000_0000_FFFF), //
+            Bitboard::new(0xFFFF_0000_0000_FFFF), //
         ];
         let squares = [
             Square::A1, //
@@ -664,10 +674,10 @@ mod tests {
             Square::F1, //
         ];
         let attacks = [
-            Bitboard::new(0x0000000000000200), //
-            Bitboard::new(0x0002000000000000), //
-            Bitboard::new(0x0000000000000A00), //
-            Bitboard::new(0x0000000000005000), //
+            Bitboard::new(0x0000_0000_0000_0200), //
+            Bitboard::new(0x0002_0000_0000_0000), //
+            Bitboard::new(0x0000000000000A00),    //
+            Bitboard::new(0x0000000000005000),    //
         ];
         for i in 0..3 {
             let resulting_attack =
@@ -678,7 +688,7 @@ mod tests {
 
     #[test]
     fn bishop_attacks() {
-        let mtable = MagicTable::load();
+        let table = AttacksTable::load();
         //cases in order:
         //bishop on A1 is blocked by piece on B2, so it only has 1 attack
         //bishop on A8 is blocked by piece on B7, so it only has 1 attack
@@ -703,7 +713,7 @@ mod tests {
             Bitboard::new(0x0000000000005000), //
         ];
         for i in 0..3 {
-            let resulting_attack = mtable.bishop_attacks(occupancies[i], squares[i]);
+            let resulting_attack = table.bishop_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }

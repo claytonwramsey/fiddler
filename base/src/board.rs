@@ -71,20 +71,21 @@ pub struct Board {
 }
 
 impl Board {
+    #[must_use]
     /// Construct a `Board` from the standard chess starting position.
     pub fn new() -> Board {
         let mut board = Board {
             sides: [
-                Bitboard::new(0x000000000000FFFF), //white
-                Bitboard::new(0xFFFF000000000000), //black
+                Bitboard::new(0x0000_0000_0000_FFFF), //white
+                Bitboard::new(0xFFFF_0000_0000_0000), //black
             ],
             pieces: [
-                Bitboard::new(0x4200000000000042), //knight
-                Bitboard::new(0x2400000000000024), //bishop
-                Bitboard::new(0x8100000000000081), //rook
-                Bitboard::new(0x0800000000000008), //queen
-                Bitboard::new(0x00FF00000000FF00), //pawn
-                Bitboard::new(0x1000000000000010), //king
+                Bitboard::new(0x4200_0000_0000_0042), //knight
+                Bitboard::new(0x2400_0000_0000_0024), //bishop
+                Bitboard::new(0x8100_0000_0000_0081), //rook
+                Bitboard::new(0x0800_0000_0000_0008), //queen
+                Bitboard::new(0x00FF_0000_0000_FF00), //pawn
+                Bitboard::new(0x1000_0000_0000_0010), //king
             ],
             en_passant_square: None,
             player: Color::White,
@@ -142,15 +143,19 @@ impl Board {
             let chr = fen_chrs
                 .next()
                 .ok_or("reached end of FEN before board was fully parsed")?;
-            let is_white = chr.is_uppercase();
-            let pt = chr.to_uppercase().next().and_then(Piece::from_code);
-            let color = match is_white {
-                true => Color::White,
-                false => Color::Black,
+            let color = if chr.is_uppercase() {
+                Color::White
+            } else {
+                Color::Black
             };
+            let pt = chr.to_uppercase().next().and_then(Piece::from_code);
             if let Some(p) = pt {
                 //character is a piece type
-                board.add_piece(Square::new(r, c).unwrap(), p, color);
+                board.add_piece(
+                    Square::new(r, c).ok_or("invalid structure of FEN")?,
+                    p,
+                    color,
+                );
                 c += 1;
             } else if chr == '/' {
                 //row divider
@@ -264,6 +269,7 @@ impl Board {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the squares occupied by the pieces of each type (i.e. Black or
     /// White).
     ///
@@ -280,6 +286,7 @@ impl Board {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the type of the piece occupying a given square.
     /// Returns `None` if there are no pieces occupying the square.
     ///
@@ -302,6 +309,7 @@ impl Board {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the color of a piece occupying a current square.
     /// Returns `None` if there are no pieces occupying the square.
     ///
@@ -326,6 +334,7 @@ impl Board {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Is the given move a capture in the current state of the board? Requires
     /// that `m` is a legal move. En passant qualifies as a capture.
     ///
@@ -401,6 +410,10 @@ impl Board {
     /// Apply the given move to the board.
     /// Will assume the move is legal.
     /// Requires that this board is currently valid.
+    ///
+    /// # Panics
+    /// This function may or may not panic if `m` is not a legal move.
+    /// However, you can trust that it will never panic if `m` is legal.
     ///
     /// # Examples
     ///
@@ -480,16 +493,13 @@ impl Board {
         if is_king_move {
             rights_to_remove = CastleRights::color_rights(self.player);
             if is_long_move {
-                //a long move from a king means this must be a castle
-                //G file is file 6 (TODO move this to be a constant?)
+                // a long move from a king means this must be a castle
+                // G file is file 6 (TODO move this to be a constant?)
                 let is_kingside_castle = to_sq.file() == 6;
-                let rook_from_file = match is_kingside_castle {
-                    true => 7,  //rook moves from H file for kingside castling
-                    false => 0, //rook moves from A file for queenside
-                };
-                let rook_to_file = match is_kingside_castle {
-                    true => 5,  //rook moves to F file for kingside
-                    false => 3, //rook moves to D file for queenside
+                let (rook_from_file, rook_to_file) = if is_kingside_castle {
+                    (7, 5) // rook moves from H file for kingside castling
+                } else {
+                    (0, 3) // rook moves from A to D for queenside caslting
                 };
                 let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
                 let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
@@ -542,7 +552,7 @@ impl Board {
         self.checkers = square_attackers(self, self.king_sqs[self.player as usize], !self.player);
 
         // pinned pieces
-        self.recompute_pinned()
+        self.recompute_pinned();
     }
 
     #[inline(always)]
@@ -614,6 +624,7 @@ impl Board {
         }
     }
 
+    #[must_use]
     /// Determine whether this board is now drawn due to either insufficient
     /// material or by the 50 move rule.
     ///
@@ -639,12 +650,12 @@ impl Board {
     /// # }
     /// ```
     pub fn is_drawn(&self) -> bool {
+        const DARK_SQUARES: Bitboard = Bitboard::new(0xAA55_AA55_AA55_AA55);
         // 50 move rule = 100 ply
         if self.rule50 >= 100 {
             return true;
         }
         // check for drawn by insufficient material
-        const DARK_SQUARES: Bitboard = Bitboard::new(0xAA55AA55AA55AA55);
         match self.occupancy().len() {
             0 | 1 => unreachable!(), // a king is missing
             2 => true,               // only two kings
@@ -755,27 +766,27 @@ impl Default for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::square::*;
+    use crate::square::Square;
 
     /// A board with the white king on A1 and the black king on H8.
     const TWO_KINGS_BOARD: Board = Board {
         sides: [
-            Bitboard::new(0x0000000000000001), //white
-            Bitboard::new(0x8000000000000000), //black
+            Bitboard::new(1),                     //white
+            Bitboard::new(0x8000_0000_0000_0000), //black
         ],
         pieces: [
-            Bitboard::new(0x0000000000000000), //pawn
-            Bitboard::new(0x0000000000000000), //knight
-            Bitboard::new(0x0000000000000000), //bishop
-            Bitboard::new(0x0000000000000000), //rook
-            Bitboard::new(0x0000000000000000), //queen
-            Bitboard::new(0x8000000000000001), //king
+            Bitboard::new(0),                     //pawn
+            Bitboard::new(0),                     //knight
+            Bitboard::new(0),                     //bishop
+            Bitboard::new(0),                     //rook
+            Bitboard::new(0),                     //queen
+            Bitboard::new(0x8000_0000_0000_0001), //king
         ],
         en_passant_square: None,
         player: Color::White,
         castle_rights: CastleRights::NO_RIGHTS,
         rule50: 0,
-        hash: 3483926298739092744,
+        hash: 3_483_926_298_739_092_744,
         checkers: Bitboard::EMPTY,
         king_sqs: [Square::A1, Square::H8],
         pinned: Bitboard::EMPTY,
@@ -855,11 +866,7 @@ mod tests {
     /// A helper function which will load a board from a FEN and then try
     /// running the given move on that board.
     pub fn fen_helper(fen: &str, m: Move) {
-        let result = Board::from_fen(fen);
-        match result {
-            Ok(board) => move_helper(board, m),
-            Err(_) => panic!("could not load FEN"),
-        };
+        move_helper(Board::from_fen(fen).unwrap(), m);
     }
 
     /// A helper function which will attempt to make a legal move on a board,

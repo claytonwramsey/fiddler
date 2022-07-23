@@ -22,7 +22,7 @@ use crate::movegen::is_legal;
 
 use super::{
     movegen::{get_moves, has_moves, GenMode},
-    Board, Color, Move,
+    Board, Move,
 };
 
 use nohash_hasher::IntMap;
@@ -32,6 +32,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// A struct containing game information, which unlike a `Board`, knows about
 /// its history and can do things like repetition timing.
@@ -98,6 +99,7 @@ pub trait Tagger {
 }
 
 impl<T: Tagger> TaggedGame<T> {
+    #[must_use]
     /// Construct a new `Game` in the conventional chess starting position. The
     /// cumulative evaluation will be initialized to zero.
     pub fn new() -> TaggedGame<T> {
@@ -149,7 +151,14 @@ impl<T: Tagger> TaggedGame<T> {
     /// be made from the default state of a `Board`. `delta` is the
     /// expected gain in evaluation for the player making the move. Typically,
     /// `delta` will be positive.
-    pub fn make_move(&mut self, m: Move, tag: T::Tag) {
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if `m` is not a legal move.
+    /// However, it is not guaranteed to.
+    /// It is recommended to only call `make_move` with moves that were already
+    /// validated.
+    pub fn make_move(&mut self, m: Move, tag: &T::Tag) {
         #[cfg(debug_assertions)]
         if !is_legal(m, self.board()) {
             println!("an illegal move {m} is being attempted. History: {self}");
@@ -163,16 +172,19 @@ impl<T: Tagger> TaggedGame<T> {
         *num_reps += 1;
         self.history.push((
             new_board,
-            T::update_cookie(m, &tag, &previous_state.0, &previous_state.1),
+            T::update_cookie(m, tag, &previous_state.0, &previous_state.1),
         ));
         self.moves.push(m);
     }
 
-    /// Attempt to play a move, which may or may not be legal. If the move is
-    /// legal, the move will be executed and the state will change, then
-    /// `Ok(())` will be returned. If not, an `Err` will be returned to inform
-    /// you that the move is illegal, and no state will be changed.
-    pub fn try_move(&mut self, m: Move, tag: T::Tag) -> Result<(), &'static str> {
+    /// Attempt to play a move, which may or may not be legal. Will return
+    /// `Ok(())` if `m` was a legal move.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an `Err` describing the source of the problem
+    /// if `m` is illegal.
+    pub fn try_move(&mut self, m: Move, tag: &T::Tag) -> Result<(), &str> {
         if is_legal(m, self.board()) {
             self.make_move(m, tag);
             Ok(())
@@ -181,19 +193,17 @@ impl<T: Tagger> TaggedGame<T> {
         }
     }
 
-    /// Undo the most recent move. The return will be `Ok` if there are moves
-    /// left to undo, with the internal value being the move that was undone,
-
-    /// and `Err` if there are no moves to undo.
+    /// Undo the most recent move. This function will return `Ok()` if there was
+    /// history to undo.
+    /// The move inside the `Ok` variant will be the most recent move played.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an `Err` if the history of this game has no
+    /// more positions left to undo.
     pub fn undo(&mut self) -> Result<Move, &'static str> {
-        let m_removed = match self.moves.pop() {
-            Some(m) => m,
-            None => return Err("no moves to remove"),
-        };
-        let b_removed = match self.history.pop() {
-            Some(p) => p.0,
-            None => return Err("no boards in history"),
-        };
+        let m_removed = self.moves.pop().ok_or("no moves to remove")?;
+        let b_removed = self.history.pop().ok_or("no boards in history")?.0;
         let num_reps = self.repetitions.entry(b_removed.hash).or_insert(1);
         *num_reps -= 1;
         if *num_reps == 0 {
@@ -203,51 +213,51 @@ impl<T: Tagger> TaggedGame<T> {
         Ok(m_removed)
     }
 
-    /// Undo a set number of moves. Returns an Err if you attempt to remove too
-    /// many moves (and will not undo anything if that is the case).
-    pub fn undo_n(&mut self, nmoves: usize) -> Result<(), &'static str> {
-        if nmoves > self.moves.len() {
-            return Err("attempted to remove more moves than are in history");
-        }
-        for _ in 0..nmoves {
-            self.undo()?;
-        }
-        Ok(())
-    }
-
     #[inline(always)]
-    /// Get the position representing the current state of the game. Will panic
-    /// if there is no history, but this should never happen.
+    #[must_use]
+    /// Get the position representing the current state of the game.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic due to an internal error eliminating all
+    /// history from the internal board. However, this is very unlikely.
     pub fn board(&self) -> &Board {
         &self.history.last().unwrap().0
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the cookie of the current state of the game.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic due to an internal error eliminating all
+    /// history from the internal board. However, this is very unlikely.
     pub fn cookie(&self) -> &T::Cookie {
         &self.history.last().unwrap().1
     }
 
+    #[must_use]
     /// In the current state, is the game complete (i.e. is there no way the
-    /// game can continue)? The return type has the first type as whether the
-    /// game is over, and the second is the player which has won if the game is
-    /// over. It will be `None` for a draw.
-    pub fn is_over(&self) -> (bool, Option<Color>) {
-        if self.drawn_by_repetition() {
-            return (true, None);
-        }
+    /// game can continue)?
+    ///
+    /// The returned value will be `(false, false)` if the game is ongoing,
+    /// `(true, false)` if the game is a draw, and `(true, true)` if the game is
+    /// over by mate.
+    pub fn is_over(&self) -> (bool, bool) {
         let b = self.board();
+        if self.drawn_by_repetition() || b.is_drawn() {
+            return (true, false);
+        }
 
         if has_moves(b) {
-            return (false, None);
+            return (false, false);
         }
 
-        match b.checkers.is_empty() {
-            false => (true, Some(!b.player)),
-            true => (true, None), // stalemate
-        }
+        (true, !b.checkers.is_empty())
     }
 
+    #[must_use]
     /// Has this game been drawn due to history (i.e. repetition or the 50 move
     /// rule)?
     pub fn drawn_by_repetition(&self) -> bool {
@@ -260,6 +270,7 @@ impl<T: Tagger> TaggedGame<T> {
         false
     }
 
+    #[must_use]
     /// Get the legal moves in this position. Will be empty if the position is
     /// drawn or the game is over.
     pub fn get_moves<const M: GenMode>(&self) -> Vec<(Move, T::Tag)> {
@@ -272,6 +283,7 @@ impl<T: Tagger> TaggedGame<T> {
 
     // no need for `is_empty` since history should always be nonempty
     #[allow(clippy::len_without_is_empty)]
+    #[must_use]
     /// Get the number of total positions in this history of this game.
     pub fn len(&self) -> usize {
         self.history.len()
@@ -308,7 +320,7 @@ mod tests {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
         let mut old_board = *g.board();
-        g.make_move(m, ());
+        g.make_move(m, &());
         let new_board = g.board();
 
         old_board.make_move(m);
@@ -320,7 +332,7 @@ mod tests {
     fn undo_move() {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
-        g.make_move(m, ());
+        g.make_move(m, &());
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(*g.board(), Board::default());
     }
@@ -339,9 +351,10 @@ mod tests {
         let mut g = Game::new();
         let m0 = Move::normal(Square::E2, Square::E4);
         let m1 = Move::normal(Square::E7, Square::E5);
-        g.make_move(m0, ());
-        g.make_move(m1, ());
-        assert_eq!(g.undo_n(2), Ok(()));
+        g.make_move(m0, &());
+        g.make_move(m1, &());
+        g.undo().unwrap();
+        g.undo().unwrap();
         assert_eq!(*g.board(), Board::default());
     }
 
@@ -350,7 +363,7 @@ mod tests {
     /// move is undone.
     fn undo_equality() {
         let mut g = Game::new();
-        g.make_move(Move::normal(Square::E2, Square::E4), ());
+        g.make_move(Move::normal(Square::E2, Square::E4), &());
         assert!(g.undo().is_ok());
         assert_eq!(g, Game::new());
     }
@@ -362,7 +375,7 @@ mod tests {
         let fen = "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7";
         let mut g = Game::from_fen(fen).unwrap();
         let m = Move::normal(Square::D1, Square::F3);
-        g.make_move(m, ());
+        g.make_move(m, &());
         assert_eq!(g.undo(), Ok(m));
         assert_eq!(g, Game::from_fen(fen).unwrap());
         assert_eq!(g.board(), &Board::from_fen(fen).unwrap());
@@ -384,7 +397,7 @@ mod tests {
         let moves = g.get_moves::<ALL>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
-        assert_eq!(g.is_over(), (true, Some(Color::White)));
+        assert_eq!(g.is_over(), (true, true));
     }
 
     #[test]
@@ -394,12 +407,12 @@ mod tests {
         let moves = g.get_moves::<ALL>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
-        assert_eq!(g.is_over(), (true, Some(Color::Black)));
+        assert_eq!(g.is_over(), (true, true));
     }
 
     #[test]
     fn startpos_not_over() {
-        assert!(!Game::default().is_over().0)
+        assert!(!Game::default().is_over().0);
     }
 
     #[test]
@@ -409,8 +422,8 @@ mod tests {
         let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1").unwrap();
         let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves::<ALL>().contains(&(m, ())));
-        g.make_move(m, ());
-        assert_eq!(g.is_over(), (true, Some(Color::White)));
+        g.make_move(m, &());
+        assert_eq!(g.is_over(), (true, true));
     }
 
     #[test]
@@ -418,7 +431,7 @@ mod tests {
     /// default board, if the initial state was the initial board state.
     fn clear_board() {
         let mut g = Game::new();
-        g.make_move(Move::normal(Square::E2, Square::E4), ());
+        g.make_move(Move::normal(Square::E2, Square::E4), &());
         g.clear();
         assert_eq!(g, Game::new());
     }
@@ -435,10 +448,10 @@ mod tests {
             Move::normal(Square::E6, Square::E7),
             Move::normal(Square::F6, Square::G4),
         ];
-        for m in moves.iter() {
+        for m in &moves {
             assert!(expected_moves.contains(&m.0));
         }
-        for em in expected_moves.iter() {
+        for em in &expected_moves {
             assert!(moves.contains(&(*em, ())));
         }
     }

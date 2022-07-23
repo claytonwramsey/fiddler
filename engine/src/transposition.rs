@@ -74,14 +74,14 @@ pub struct TTEntryGuard<'a> {
 const BUCKET_SIZE: usize = 3;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// A `Bucket` is a container for transposition table entries, designed to make 
-/// cache access faster. 
-/// The core idea is that we can load all the entries sent to a specific index 
+/// A `Bucket` is a container for transposition table entries, designed to make
+/// cache access faster.
+/// The core idea is that we can load all the entries sent to a specific index
 /// in the transposition table all fit in one cache line.
 struct Bucket {
     /// A block of entries.
     pub entries: [TTEntry; BUCKET_SIZE],
-    /// Padding bits to make a bucket exactly 32 bytes, the size of a cache 
+    /// Padding bits to make a bucket exactly 32 bytes, the size of a cache
     /// line.
     _pad: [u8; 2],
 }
@@ -89,7 +89,7 @@ struct Bucket {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// An entry in the transposition table.
 pub struct TTEntry {
-    /// A packed tag containing the age of the entry in the lower 7 bits and a 
+    /// A packed tag containing the age of the entry in the lower 7 bits and a
     /// bit to determine whether this entry is unused in the highest bit.
     tag: u8, // 1 byte
     /// The lower 16 bits hash key of the entry.
@@ -167,22 +167,22 @@ impl TTable {
             };
         }
         let idx = self.index_for(hash_key);
-        let bucket = unsafe {self.buckets.add(idx)};
+        let bucket = unsafe { self.buckets.add(idx) };
         let mut entry_ptr = bucket as *mut TTEntry;
 
         // first, see if we can find a match in the bucket
         for _ in 0..BUCKET_SIZE {
-            let entry_ref = unsafe {entry_ptr.as_ref().unwrap()};
+            let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
             if entry_ref.key_low16 == hash_key as u16 && (entry_ref.tag & 0x80 != 0) {
                 // it's a match!
                 return TTEntryGuard {
                     valid: true,
                     hash: hash_key,
                     entry: entry_ptr,
-                    _phantom: PhantomData
+                    _phantom: PhantomData,
                 };
             }
-            entry_ptr = unsafe{ entry_ptr.add(1) }
+            entry_ptr = unsafe { entry_ptr.add(1) }
         }
 
         // no match found. pick the oldest entry to replace
@@ -190,30 +190,29 @@ impl TTable {
         let mut eldest_entry = entry_ptr;
         let mut eldest_age = 0;
         for _ in 0..BUCKET_SIZE {
-            let entry_ref = unsafe {entry_ptr.as_ref().unwrap()};
+            let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
             if entry_ref.tag & 0x80 == 0 {
                 return TTEntryGuard {
                     valid: false,
                     hash: hash_key,
                     entry: entry_ptr,
-                    _phantom: PhantomData
-                }
+                    _phantom: PhantomData,
+                };
             }
             let age = entry_ref.tag & 0x7F;
             if age > eldest_age {
                 eldest_entry = entry_ptr;
                 eldest_age = age;
             }
-            entry_ptr = unsafe{ entry_ptr.add(1) }
+            entry_ptr = unsafe { entry_ptr.add(1) }
         }
 
         TTEntryGuard {
             valid: false,
             hash: hash_key,
             entry: eldest_entry,
-            _phantom: PhantomData
+            _phantom: PhantomData,
         }
-
     }
 
     /// Get an estimate of the fill rate proportion of this transposition table
@@ -231,7 +230,12 @@ impl TTable {
             // estimate.
             for idx_unbounded in 0..1000 {
                 // prevent overflow
-                let bucket = unsafe {self.buckets.add((idx_unbounded & self.mask) as usize).as_ref().unwrap()};
+                let bucket = unsafe {
+                    self.buckets
+                        .add((idx_unbounded & self.mask) as usize)
+                        .as_ref()
+                        .unwrap()
+                };
                 num_full += bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
             }
             (num_full / BUCKET_SIZE) as u16
@@ -244,7 +248,7 @@ impl TTable {
         debug_assert!(max_age <= 0x7F);
         if !self.buckets.is_null() {
             for idx in 0..=self.mask {
-                let bucket = unsafe {self.buckets.add(self.index_for(idx)).as_mut().unwrap()};
+                let bucket = unsafe { self.buckets.add(self.index_for(idx)).as_mut().unwrap() };
                 for entry in bucket.entries.iter_mut() {
                     if entry.tag & 0x7F > max_age {
                         *entry = TTEntry::new();
@@ -305,7 +309,8 @@ impl TTable {
             self.mask = new_mask as u64;
         } else {
             // the table is growing
-            self.buckets = unsafe { alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()) as *mut Bucket };
+            self.buckets =
+                unsafe { alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()) as *mut Bucket };
 
             self.mask = (new_size - 1) as u64;
         }

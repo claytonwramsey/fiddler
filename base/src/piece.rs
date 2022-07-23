@@ -72,8 +72,9 @@ impl Piece {
         Piece::Pawn,
     ];
 
+    #[must_use]
     /// Get the FEN code of this piece as an uppercase string.
-    pub const fn code(self) -> &'static str {
+    pub const fn code(&self) -> &'static str {
         match self {
             Piece::Knight => "N",
             Piece::Bishop => "B",
@@ -84,6 +85,7 @@ impl Piece {
         }
     }
 
+    #[must_use]
     /// Given a FEN character, convert it to a piece type. Must be uppercase.
     pub const fn from_code(c: char) -> Option<Piece> {
         match c {

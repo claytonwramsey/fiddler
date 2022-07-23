@@ -33,6 +33,7 @@ pub enum Color {
 
 impl Color {
     #[inline(always)]
+    #[must_use]
     /// Get the direction that a pawn of the given color normally moves.
     ///
     /// # Examples
@@ -48,6 +49,7 @@ impl Color {
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the promotion rank of a given color.
     ///
     /// ```
@@ -57,13 +59,14 @@ impl Color {
     /// ```
     pub const fn pawn_promote_rank(&self) -> Bitboard {
         const PROMOTE_RANKS: [Bitboard; 2] = [
-            Bitboard::new(0xFF00000000000000),
-            Bitboard::new(0x00000000000000FF),
+            Bitboard::new(0xFF00_0000_0000_0000),
+            Bitboard::new(0x0000_0000_0000_00FF),
         ];
         PROMOTE_RANKS[*self as usize]
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get a `Bitboard` with 1's on the start rank of the pawn of the given
     /// color.
     ///
@@ -76,8 +79,8 @@ impl Color {
     /// ```
     pub const fn pawn_start_rank(&self) -> Bitboard {
         const START_RANKS: [Bitboard; 2] = [
-            Bitboard::new(0x000000000000FF00),
-            Bitboard::new(0x00FF000000000000),
+            Bitboard::new(0x0000_0000_0000_FF00),
+            Bitboard::new(0x00FF_0000_0000_0000),
         ];
         START_RANKS[*self as usize]
     }
@@ -117,11 +120,11 @@ mod tests {
     /// Test that the pawn promotion rank bitboards are correct.
     fn pawn_promote_rank() {
         assert_eq!(
-            Bitboard::new(0xFF00000000000000),
+            Bitboard::new(0xFF00_0000_0000_0000),
             Color::White.pawn_promote_rank()
         );
         assert_eq!(
-            Bitboard::new(0x00000000000000FF),
+            Bitboard::new(0x0000_0000_0000_00FF),
             Color::Black.pawn_promote_rank()
         );
     }
@@ -131,11 +134,11 @@ mod tests {
     fn pawn_start_rank() {
         assert_eq!(
             Color::White.pawn_start_rank(),
-            Bitboard::new(0x000000000000FF00)
+            Bitboard::new(0x0000_0000_0000_FF00)
         );
         assert_eq!(
             Color::Black.pawn_start_rank(),
-            Bitboard::new(0x00FF000000000000)
+            Bitboard::new(0x00FF_0000_0000_0000)
         );
     }
 }
