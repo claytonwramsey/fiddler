@@ -34,140 +34,140 @@ const NUM_MAGIC_TRIES: u64 = 10_000_000;
 /// for sizes below the required bitshift amount were taken from the
 /// Chessprogramming Wiki.
 const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
-    Bitboard::new(0x4080_0020_4000_1480), //a1
-    Bitboard::new(0x0040_0010_0140_2000), //b1
-    Bitboard::new(0x0300_2000_1810_4100), //c1
-    Bitboard::new(0x2100_0409_0110_0120), //d1
-    Bitboard::new(0x8a00_0600_0408_2070), //e1
-    Bitboard::new(0x0080_0144_0002_0080), //f1
-    Bitboard::new(0x1100_2500_208a_0004), //g1
-    Bitboard::new(0x0900_0042_2201_8100), //h1
-    Bitboard::new(0x0208_8002_28c0_0081), //a2
-    Bitboard::new(0x2280_4010_0340_2000), //b2
-    Bitboard::new(0x0008_8010_0020_0184), //c2
-    Bitboard::new(0x0001_0020_1000_0900), //d2
-    Bitboard::new(0x0182_0006_0010_6008), //e2
-    Bitboard::new(0x2058_8004_0080_0200), //f2
-    Bitboard::new(0x0004_8002_0080_0900), //g2
-    Bitboard::new(0x052d_0012_0040_a100), //h2
-    Bitboard::new(0x0540_0880_0080_24c1), //a3
-    Bitboard::new(0x2000_8480_4002_2000), //b3
-    Bitboard::new(0x0400_4100_1100_6000), //c3
-    Bitboard::new(0x0040_a100_3001_0108), //d3
-    Bitboard::new(0x1204_8080_0800_0402), //e3
-    Bitboard::new(0x0802_8080_0400_2201), //f3
-    Bitboard::new(0x1002_8080_5200_0500), //g3
-    Bitboard::new(0x0004_0a00_2112_4184), //h3
-    Bitboard::new(0x0640_0128_8008_8040), //a4
-    Bitboard::new(0x8410_4000_8020_008a), //b4
-    Bitboard::new(0x0400_2008_8010_0080), //c4
-    Bitboard::new(0x2001_0121_0009_1004), //d4
-    Bitboard::new(0x1200_0d01_0008_0010), //e4
-    Bitboard::new(0x6004_0004_0120_1008), //f4
-    Bitboard::new(0x7500_aa04_0008_4110), //g4
-    Bitboard::new(0x0100_0052_0004_0981), //h4
-    Bitboard::new(0x0040_8040_0280_0020), //a5
-    Bitboard::new(0x0470_0020_0640_0240), //b5
-    Bitboard::new(0x0001_2000_8080_1000), //c5
-    Bitboard::new(0x0812_0200_2040),      //d5
-    Bitboard::new(0x00c0_8044_0080_0800), //e5
-    Bitboard::new(0x9000_800a_0080_0400), //f5
-    Bitboard::new(0x0001_0004_0100_0600), //g5
-    Bitboard::new(0x0042_1088_ca00_2401), //h5
-    Bitboard::new(0xc000_228d_8000),      //a6
-    Bitboard::new(0x6410_0420_1440_4001), //b6
-    Bitboard::new(0x1002_0040_8226_0014), //c6
-    Bitboard::new(0x206a_0088_11c2_0021), //d6
-    Bitboard::new(0x0002_0018_1022_0024), //e6
-    Bitboard::new(0x2001_0200_0400_8080), //f6
-    Bitboard::new(0x1000_0801_100c_001a), //g6
-    Bitboard::new(0x0048_0082_5402_0011), //h6
-    Bitboard::new(0x48FF_FE99_FECF_AA00), //a7
-    Bitboard::new(0x48FF_FE99_FECF_AA00), //b7
-    Bitboard::new(0x497F_FFAD_FF9C_2E00), //c7
-    Bitboard::new(0x613F_FFDD_FFCE_9200), //d7
-    Bitboard::new(0xffff_ffe9_ffe7_ce00), //e7
-    Bitboard::new(0xffff_fff5_fff3_e600), //f7
-    Bitboard::new(0x0003_ff95_e5e6_a4c0), //g7
-    Bitboard::new(0x510F_FFF5_F63C_96A0), //h7
-    Bitboard::new(0xEBFF_FFB9_FF9F_C526), //a8
-    Bitboard::new(0x61FF_FEDD_FEED_AEAE), //b8
-    Bitboard::new(0x53BF_FFED_FFDE_B1A2), //c8
-    Bitboard::new(0x127F_FFB9_FFDF_B5F6), //d8
-    Bitboard::new(0x411F_FFDD_FFDB_F4D6), //e8
-    Bitboard::new(0x0822_0024_0810_4502), //f8
-    Bitboard::new(0x0003_ffef_27ee_be74), //g8
-    Bitboard::new(0x7645_FFFE_CBFE_A79E), //h8
+    Bitboard::new(0x4080_0020_4000_1480), // a1
+    Bitboard::new(0x0040_0010_0140_2000), // b1
+    Bitboard::new(0x0300_2000_1810_4100), // c1
+    Bitboard::new(0x2100_0409_0110_0120), // d1
+    Bitboard::new(0x8a00_0600_0408_2070), // e1
+    Bitboard::new(0x0080_0144_0002_0080), // f1
+    Bitboard::new(0x1100_2500_208a_0004), // g1
+    Bitboard::new(0x0900_0042_2201_8100), // h1
+    Bitboard::new(0x0208_8002_28c0_0081), // a2
+    Bitboard::new(0x2280_4010_0340_2000), // b2
+    Bitboard::new(0x0008_8010_0020_0184), // c2
+    Bitboard::new(0x0001_0020_1000_0900), // d2
+    Bitboard::new(0x0182_0006_0010_6008), // e2
+    Bitboard::new(0x2058_8004_0080_0200), // f2
+    Bitboard::new(0x0004_8002_0080_0900), // g2
+    Bitboard::new(0x052d_0012_0040_a100), // h2
+    Bitboard::new(0x0540_0880_0080_24c1), // a3
+    Bitboard::new(0x2000_8480_4002_2000), // b3
+    Bitboard::new(0x0400_4100_1100_6000), // c3
+    Bitboard::new(0x0040_a100_3001_0108), // d3
+    Bitboard::new(0x1204_8080_0800_0402), // e3
+    Bitboard::new(0x0802_8080_0400_2201), // f3
+    Bitboard::new(0x1002_8080_5200_0500), // g3
+    Bitboard::new(0x0004_0a00_2112_4184), // h3
+    Bitboard::new(0x0640_0128_8008_8040), // a4
+    Bitboard::new(0x8410_4000_8020_008a), // b4
+    Bitboard::new(0x0400_2008_8010_0080), // c4
+    Bitboard::new(0x2001_0121_0009_1004), // d4
+    Bitboard::new(0x1200_0d01_0008_0010), // e4
+    Bitboard::new(0x6004_0004_0120_1008), // f4
+    Bitboard::new(0x7500_aa04_0008_4110), // g4
+    Bitboard::new(0x0100_0052_0004_0981), // h4
+    Bitboard::new(0x0040_8040_0280_0020), // a5
+    Bitboard::new(0x0470_0020_0640_0240), // b5
+    Bitboard::new(0x0001_2000_8080_1000), // c5
+    Bitboard::new(0x0000_0812_0200_2040), // d5
+    Bitboard::new(0x00c0_8044_0080_0800), // e5
+    Bitboard::new(0x9000_800a_0080_0400), // f5
+    Bitboard::new(0x0001_0004_0100_0600), // g5
+    Bitboard::new(0x0042_1088_ca00_2401), // h5
+    Bitboard::new(0x0000_c000_228d_8000), // a6
+    Bitboard::new(0x6410_0420_1440_4001), // b6
+    Bitboard::new(0x1002_0040_8226_0014), // c6
+    Bitboard::new(0x206a_0088_11c2_0021), // d6
+    Bitboard::new(0x0002_0018_1022_0024), // e6
+    Bitboard::new(0x2001_0200_0400_8080), // f6
+    Bitboard::new(0x1000_0801_100c_001a), // g6
+    Bitboard::new(0x0048_0082_5402_0011), // h6
+    Bitboard::new(0x48FF_FE99_FECF_AA00), // a7
+    Bitboard::new(0x48FF_FE99_FECF_AA00), // b7
+    Bitboard::new(0x497F_FFAD_FF9C_2E00), // c7
+    Bitboard::new(0x613F_FFDD_FFCE_9200), // d7
+    Bitboard::new(0xffff_ffe9_ffe7_ce00), // e7
+    Bitboard::new(0xffff_fff5_fff3_e600), // f7
+    Bitboard::new(0x0003_ff95_e5e6_a4c0), // g7
+    Bitboard::new(0x510F_FFF5_F63C_96A0), // h7
+    Bitboard::new(0xEBFF_FFB9_FF9F_C526), // a8
+    Bitboard::new(0x61FF_FEDD_FEED_AEAE), // b8
+    Bitboard::new(0x53BF_FFED_FFDE_B1A2), // c8
+    Bitboard::new(0x127F_FFB9_FFDF_B5F6), // d8
+    Bitboard::new(0x411F_FFDD_FFDB_F4D6), // e8
+    Bitboard::new(0x0822_0024_0810_4502), // f8
+    Bitboard::new(0x0003_ffef_27ee_be74), // g8
+    Bitboard::new(0x7645_FFFE_CBFE_A79E), // h8
 ];
 
 /// A saved list of magics for bishops created using the generator. Some magics
 /// for sizes below the required bitshift amount were taken from the
 /// Chessprogramming Wiki.
 const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
-    Bitboard::new(0xffed_f9fd_7cfc_ffff), //a1
-    Bitboard::new(0xfc09_6285_4a77_f576), //b1
-    Bitboard::new(0x0012_2808_c102_a004), //c1
-    Bitboard::new(0x2851_2400_8240_0440), //d1
-    Bitboard::new(0x0011_1040_1100_0202), //e1
-    Bitboard::new(0x0008_2208_2000_0010), //f1
-    Bitboard::new(0xfc0a_66c6_4a7e_f576), //g1
-    Bitboard::new(0x7ffd_fdfc_bd79_ffff), //h1
-    Bitboard::new(0xfc08_46a6_4a34_fff6), //a2
-    Bitboard::new(0xfc08_7a87_4a3c_f7f6), //b2
-    Bitboard::new(0x0009_8802_0420_a000), //c2
-    Bitboard::new(0x8000_4404_0080_8200), //d2
-    Bitboard::new(0x208c_8450_c001_3407), //e2
-    Bitboard::new(0x1980_1105_2010_8030), //f2
-    Bitboard::new(0xfc08_64ae_59b4_ff76), //g2
-    Bitboard::new(0x3c08_60af_4b35_ff76), //h2
-    Bitboard::new(0x73C0_1AF5_6CF4_CFFB), //a3
-    Bitboard::new(0x41A0_1CFA_D64A_AFFC), //b3
-    Bitboard::new(0x0604_0002_04a2_0202), //c3
-    Bitboard::new(0x0002_8208_0602_4000), //d3
-    Bitboard::new(0x008a_0024_2201_0201), //e3
-    Bitboard::new(0x2082_0040_8801_0802), //f3
-    Bitboard::new(0x7c0c_028f_5b34_ff76), //g3
-    Bitboard::new(0xfc0a_028e_5ab4_df76), //h3
-    Bitboard::new(0x0810_0420_d104_1080), //a4
-    Bitboard::new(0x0904_5100_0210_0100), //b4
-    Bitboard::new(0x0202_2808_0406_4403), //c4
-    Bitboard::new(0x004c_0040_0c03_0082), //d4
-    Bitboard::new(0x0602_0010_0200_5011), //e4
-    Bitboard::new(0x7209_0200_c108_9000), //f4
-    Bitboard::new(0x4211_4104_2400_8805), //g4
-    Bitboard::new(0x0002_8484_2126_0804), //h4
-    Bitboard::new(0xc001_0412_1121_2004), //a5
-    Bitboard::new(0x0208_0188_0004_4800), //b5
-    Bitboard::new(0x0080_2064_1058_0800), //c5
-    Bitboard::new(0x2011_0008_0084),      //d5
-    Bitboard::new(0x0208_0034_0009_4100), //e5
-    Bitboard::new(0x2190_4102_0000_4058), //f5
-    Bitboard::new(0x0188_8214_0180_8080), //g5
-    Bitboard::new(0x2006_0a02_0000_c4c0), //h5
-    Bitboard::new(0xDCEF_D9B5_4BFC_C09F), //a6
-    Bitboard::new(0xF95F_FA76_5AFD_602B), //b6
-    Bitboard::new(0x200a_1041_1000_2040), //c6
-    Bitboard::new(0x0800_000c_0831_0c00), //d6
-    Bitboard::new(0x0218_0401_0a01_0400), //e6
-    Bitboard::new(0x1092_2004_0022_4100), //f6
-    Bitboard::new(0x43ff_9a5c_f4ca_0c01), //g6
-    Bitboard::new(0x4BFF_CD8E_7C58_7601), //h6
-    Bitboard::new(0xfc0f_f286_5334_f576), //a7
-    Bitboard::new(0xfc0b_f6ce_5924_f576), //b7
-    Bitboard::new(0x8052_2060_8c30_0001), //c7
-    Bitboard::new(0x2084_1050_4202_0400), //d7
-    Bitboard::new(0xe018_8010_2206_0220), //e7
-    Bitboard::new(0x0001_1220_4901_0200), //f7
-    Bitboard::new(0xc3ff_b7dc_36ca_8c89), //g7
-    Bitboard::new(0xc3ff_8a54_f4ca_2c89), //h7
-    Bitboard::new(0xffff_fcfc_fd79_edff), //a8
-    Bitboard::new(0xfc08_63fc_cb14_7576), //b8
-    Bitboard::new(0x40a0_0400_6213_3000), //c8
-    Bitboard::new(0x0142_0280_0084_0400), //d8
-    Bitboard::new(0x0009_0900_1006_1200), //e8
-    Bitboard::new(0x0800_8445_2810_0308), //f8
-    Bitboard::new(0xfc08_7e8e_4bb2_f736), //g8
-    Bitboard::new(0x43ff_9e4e_f4ca_2c89), //h8
+    Bitboard::new(0xffed_f9fd_7cfc_ffff), // a1
+    Bitboard::new(0xfc09_6285_4a77_f576), // b1
+    Bitboard::new(0x0012_2808_c102_a004), // c1
+    Bitboard::new(0x2851_2400_8240_0440), // d1
+    Bitboard::new(0x0011_1040_1100_0202), // e1
+    Bitboard::new(0x0008_2208_2000_0010), // f1
+    Bitboard::new(0xfc0a_66c6_4a7e_f576), // g1
+    Bitboard::new(0x7ffd_fdfc_bd79_ffff), // h1
+    Bitboard::new(0xfc08_46a6_4a34_fff6), // a2
+    Bitboard::new(0xfc08_7a87_4a3c_f7f6), // b2
+    Bitboard::new(0x0009_8802_0420_a000), // c2
+    Bitboard::new(0x8000_4404_0080_8200), // d2
+    Bitboard::new(0x208c_8450_c001_3407), // e2
+    Bitboard::new(0x1980_1105_2010_8030), // f2
+    Bitboard::new(0xfc08_64ae_59b4_ff76), // g2
+    Bitboard::new(0x3c08_60af_4b35_ff76), // h2
+    Bitboard::new(0x73C0_1AF5_6CF4_CFFB), // a3
+    Bitboard::new(0x41A0_1CFA_D64A_AFFC), // b3
+    Bitboard::new(0x0604_0002_04a2_0202), // c3
+    Bitboard::new(0x0002_8208_0602_4000), // d3
+    Bitboard::new(0x008a_0024_2201_0201), // e3
+    Bitboard::new(0x2082_0040_8801_0802), // f3
+    Bitboard::new(0x7c0c_028f_5b34_ff76), // g3
+    Bitboard::new(0xfc0a_028e_5ab4_df76), // h3
+    Bitboard::new(0x0810_0420_d104_1080), // a4
+    Bitboard::new(0x0904_5100_0210_0100), // b4
+    Bitboard::new(0x0202_2808_0406_4403), // c4
+    Bitboard::new(0x004c_0040_0c03_0082), // d4
+    Bitboard::new(0x0602_0010_0200_5011), // e4
+    Bitboard::new(0x7209_0200_c108_9000), // f4
+    Bitboard::new(0x4211_4104_2400_8805), // g4
+    Bitboard::new(0x0002_8484_2126_0804), // h4
+    Bitboard::new(0xc001_0412_1121_2004), // a5
+    Bitboard::new(0x0208_0188_0004_4800), // b5
+    Bitboard::new(0x0080_2064_1058_0800), // c5
+    Bitboard::new(0x0000_2011_0008_0084), // d5
+    Bitboard::new(0x0208_0034_0009_4100), // e5
+    Bitboard::new(0x2190_4102_0000_4058), // f5
+    Bitboard::new(0x0188_8214_0180_8080), // g5
+    Bitboard::new(0x2006_0a02_0000_c4c0), // h5
+    Bitboard::new(0xDCEF_D9B5_4BFC_C09F), // a6
+    Bitboard::new(0xF95F_FA76_5AFD_602B), // b6
+    Bitboard::new(0x200a_1041_1000_2040), // c6
+    Bitboard::new(0x0800_000c_0831_0c00), // d6
+    Bitboard::new(0x0218_0401_0a01_0400), // e6
+    Bitboard::new(0x1092_2004_0022_4100), // f6
+    Bitboard::new(0x43ff_9a5c_f4ca_0c01), // g6
+    Bitboard::new(0x4BFF_CD8E_7C58_7601), // h6
+    Bitboard::new(0xfc0f_f286_5334_f576), // a7
+    Bitboard::new(0xfc0b_f6ce_5924_f576), // b7
+    Bitboard::new(0x8052_2060_8c30_0001), // c7
+    Bitboard::new(0x2084_1050_4202_0400), // d7
+    Bitboard::new(0xe018_8010_2206_0220), // e7
+    Bitboard::new(0x0001_1220_4901_0200), // f7
+    Bitboard::new(0xc3ff_b7dc_36ca_8c89), // g7
+    Bitboard::new(0xc3ff_8a54_f4ca_2c89), // h7
+    Bitboard::new(0xffff_fcfc_fd79_edff), // a8
+    Bitboard::new(0xfc08_63fc_cb14_7576), // b8
+    Bitboard::new(0x40a0_0400_6213_3000), // c8
+    Bitboard::new(0x0142_0280_0084_0400), // d8
+    Bitboard::new(0x0009_0900_1006_1200), // e8
+    Bitboard::new(0x0800_8445_2810_0308), // f8
+    Bitboard::new(0xfc08_7e8e_4bb2_f736), // g8
+    Bitboard::new(0x43ff_9e4e_f4ca_2c89), // h8
 ];
 
 /// The number of bits used to express the magic lookups for rooks at each
@@ -267,18 +267,18 @@ impl AttacksTable {
 }
 
 /// A structure containing all the information needed to generate moves for a
-/// rook or bishop.
+/// rook or bishop from one square.
 #[derive(Clone, Debug)]
 struct SquareAttacks {
     /// A mask which, when &ed with the occupancy bitboard, will give only the
     /// bits that matter when computing moves.
-    pub mask: Bitboard,
+    mask: Bitboard,
     /// The magic number to multiply to hash the current board effectively.
-    pub magic: Bitboard,
+    magic: Bitboard,
     /// A lookup vector of squares attacked.
-    pub attacks: Vec<Bitboard>,
+    attacks: Vec<Bitboard>,
     /// The shift related to this square.
-    pub shift: u8,
+    shift: u8,
 }
 
 impl SquareAttacks {
@@ -387,7 +387,7 @@ fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
         // compute every possible occupancy arrangement for attacking
         for j in 0..(1 << num_points) {
             occupancies[j] = index_to_occupancy(j, table[i].mask);
-            //compute attacks
+            // compute attacks
             attacks[j] = if is_rook {
                 directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancies[j])
             } else {
@@ -451,7 +451,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
     // ends
     let col_mask = Bitboard::new(0x0001_0101_0101_0100 << (index % 8));
     // note: pieces at the end of the travel don't matter, which is why the
-    // masks arent' uniform
+    // masks aren't uniform
 
     // in the col mask or row mask, but not the piece to move
     // xor operation will remove the square the piece is on
@@ -577,7 +577,6 @@ fn random_sparse_bitboard() -> Bitboard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Square;
 
     #[test]
     fn rook_mask() {
@@ -643,7 +642,7 @@ mod tests {
     #[test]
     fn magic_rook_attacks() {
         let table = AttacksTable::load();
-        //cases in order:
+        // cases in order:
         //rook on A1 blocked by other pieces, so it only attacks its neighbors
         //likewise, but there are other pieces on the board to be masked out
         let occupancies = [Bitboard::new(0x103), Bitboard::new(0x1FC3)];
@@ -690,11 +689,11 @@ mod tests {
     #[test]
     fn bishop_attacks() {
         let table = AttacksTable::load();
-        //cases in order:
-        //bishop on A1 is blocked by piece on B2, so it only has 1 attack
-        //bishop on A8 is blocked by piece on B7, so it only has 1 attack
-        //bishop is in board start position on C1
-        //bishop in board start position on F1
+        // cases in order:
+        // bishop on A1 is blocked by piece on B2, so it only has 1 attack
+        // bishop on A8 is blocked by piece on B7, so it only has 1 attack
+        // bishop is in board start position on C1
+        // bishop in board start position on F1
         let occupancies = [
             Bitboard::new(0x0000_0000_0000_0201), //
             Bitboard::new(0x0102_0000_0000_0000), //
