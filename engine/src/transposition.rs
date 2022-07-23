@@ -79,8 +79,10 @@ const BUCKET_SIZE: usize = 3;
 /// The core idea is that we can load all the entries sent to a specific index 
 /// in the transposition table all fit in one cache line.
 struct Bucket {
+    /// A block of entries.
     pub entries: [TTEntry; BUCKET_SIZE],
-    /// Padding bits to make a bucket exactly 32 bytes, the size of a cache line.
+    /// Padding bits to make a bucket exactly 32 bytes, the size of a cache 
+    /// line.
     _pad: [u8; 2],
 }
 
@@ -229,7 +231,7 @@ impl TTable {
             // estimate.
             for idx_unbounded in 0..1000 {
                 // prevent overflow
-                let bucket = unsafe {self.buckets.add(self.index_for(idx_unbounded)).as_ref().unwrap()};
+                let bucket = unsafe {self.buckets.add((idx_unbounded & self.mask) as usize).as_ref().unwrap()};
                 num_full += bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
             }
             (num_full / BUCKET_SIZE) as u16

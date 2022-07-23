@@ -18,11 +18,12 @@
 
 //! Thread management and synchronization.
 //!
-//! This is the meat of parallelism in
-//! the engine: a `MainSearch` is responsible for corralling all the threads and
-//! getting them to work together and on time. The main search also collects all
-//! of the output from each individual search and composes it into a single
-//! easily-used structure for consumption in the main process.
+//! This is the meat of parallelism in the engine: a `MainSearch` is responsible 
+//! for corralling all the threads and getting them to work together and on 
+//! time. 
+//! The main search also collects all of the output from each individual search 
+//! and composes it into a single easily-used structure for consumption in the 
+//! main process.
 
 use std::{thread::scope, time::Instant};
 
@@ -233,7 +234,7 @@ mod tests {
     fn search_fried_liver() {
         search_helper(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
-            7,
+            10,
         );
     }
 }
