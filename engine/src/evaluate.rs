@@ -165,9 +165,9 @@ fn leaf_rules(b: &Board) -> Score {
 pub fn net_open_rooks(b: &Board) -> i8 {
     // Mask for pawns which are above rank 3 (i.e. on the white half of the
     // board).
-    const BELOW_RANK3: Bitboard = Bitboard::new(0xFFFFFFFF);
+    const BELOW_RANK3: Bitboard = Bitboard::new(0xFFFF_FFFF);
     // Mask for pawns which are on the black half of the board
-    const ABOVE_RANK3: Bitboard = Bitboard::new(0x00000000FFFFFFFF);
+    const ABOVE_RANK3: Bitboard = Bitboard::new(0x0000_0000_FFFF_FFFF);
     let mut net_open_rooks = 0i8;
     let rooks = b[Piece::Rook];
     let pawns = b[Piece::Pawn];
@@ -215,7 +215,7 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
     let pawns = b[Piece::Pawn];
     let mut net_doubled: i8 = 0;
     // all ones on the A column, shifted left by the col
-    let mut col_mask = Bitboard::new(0x0101010101010101);
+    let mut col_mask = Bitboard::new(0x0101_0101_0101_0101);
     #[allow(clippy::cast_possible_wrap)]
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;

@@ -16,12 +16,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#![warn(clippy::pedantic)]
+#![allow(clippy::inline_always)]
+
 use std::{
     env,
     error::Error,
     fs::File,
     io::{BufRead, BufReader},
-    sync::Arc,
+    thread::scope,
     time::Instant,
 };
 
@@ -38,6 +41,7 @@ use rand::Rng;
 /// the key is the index of the value in the full feature vector.
 type BoardFeatures = Vec<(usize, f32)>;
 
+#[allow(clippy::similar_names)]
 /// Run the main training function.
 ///
 /// # Panics
@@ -60,19 +64,12 @@ pub fn main() {
     // Inner vector: each element for one feature-quantity pair
     let input_sets = extract_epd(path_str).unwrap();
 
-    let input_arc = Arc::new(input_sets);
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
     for i in 0..500 {
-        weights = train_step(
-            input_arc.clone(),
-            Arc::new(weights),
-            learn_rate,
-            beta,
-            nthreads,
-        );
+        weights = train_step(&input_sets, &weights, learn_rate, beta, nthreads);
         learn_rate *= 0.999;
-        println!("iteration {i}...")
+        println!("iteration {i}...");
     }
 
     print_weights(&weights);
@@ -105,6 +102,7 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn Erro
     Ok(data)
 }
 
+#[allow(clippy::similar_names, clippy::cast_precision_loss)]
 /// Perform one step of PST training, and update the weights to reflect this.
 /// `inputs` is a vector containing the input vector and the expected
 /// evaluation. `weights` is the weight vector to train on. `sigmoid_scale` is
@@ -113,34 +111,33 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn Erro
 /// `inputs` must be the same length as `weights`. Returns the MSE of the
 /// current epoch.
 fn train_step(
-    inputs: Arc<Vec<(BoardFeatures, f32)>>,
-    weights: Arc<Vec<f32>>,
+    inputs: &[(BoardFeatures, f32)],
+    weights: &[f32],
     learn_rate: f32,
     sigmoid_scale: f32,
     nthreads: usize,
 ) -> Vec<f32> {
     let tic = Instant::now();
-    let mut grads = Vec::new();
-
     let chunk_size = inputs.len() / nthreads;
-    for thread_id in 0..nthreads {
-        // start the parallel work
-        let start = chunk_size * thread_id;
-        let inclone = inputs.clone();
-        let wclone = weights.clone();
-        grads.push(std::thread::spawn(move || {
-            train_thread(&inclone[start..start + chunk_size], &wclone, sigmoid_scale)
-        }));
-    }
     let mut new_weights: Vec<f32> = weights.to_vec();
     let mut sum_se = 0.;
-    for grad_handle in grads {
-        let (sub_grad, se) = grad_handle.join().unwrap();
-        sum_se += se;
-        for i in 0..new_weights.len() {
-            new_weights[i] -= learn_rate * sub_grad[i] / inputs.len() as f32;
+    scope(|s| {
+        let mut grads = Vec::new();
+        for thread_id in 0..nthreads {
+            // start the parallel work
+            let start = chunk_size * thread_id;
+            grads.push(s.spawn(move || {
+                train_thread(&inputs[start..start + chunk_size], weights, sigmoid_scale)
+            }));
         }
-    }
+        for grad_handle in grads {
+            let (sub_grad, se) = grad_handle.join().unwrap();
+            sum_se += se;
+            for i in 0..new_weights.len() {
+                new_weights[i] -= learn_rate * sub_grad[i] / inputs.len() as f32;
+            }
+        }
+    });
     let toc = Instant::now();
     println!(
         "{} nodes in {} sec: {:.0} nodes/sec; mse {}",
@@ -223,6 +220,7 @@ fn fuzz(v: &mut [f32], amplitude: f32) {
     }
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::similar_names)]
 /// Print out a weights vector so it can be used as code.
 fn print_weights(weights: &[f32]) {
     let paired_val = |name: &str, start: usize| {
@@ -263,6 +261,11 @@ fn print_weights(weights: &[f32]) {
     println!("])");
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::similar_names
+)]
 /// Extract a feature vector from a board. The resulting vector will have
 /// dimension 773. The PST values can be up to 1 for a
 /// white piece on the given PST square, -1 for a black piece, or 0 for both or
@@ -298,8 +301,8 @@ fn extract(b: &Board) -> BoardFeatures {
         let net = n_white - n_black;
         if net != 0 {
             let idx = 2 * (pt as usize);
-            features.push((idx, phase * (net as f32)));
-            features.push((idx, (1. - phase) * (net as f32)));
+            features.push((idx, phase * f32::from(net)));
+            features.push((idx, (1. - phase) * f32::from(net)));
         }
     }
 
@@ -331,14 +334,14 @@ fn extract(b: &Board) -> BoardFeatures {
     // Doubled pawns
     let doubled_count = net_doubled_pawns(b);
     if doubled_count != 0 {
-        features.push((offset, (doubled_count as f32) * phase));
-        features.push((offset + 1, (doubled_count as f32) * (1. - phase)));
+        features.push((offset, f32::from(doubled_count) * phase));
+        features.push((offset + 1, f32::from(doubled_count) * (1. - phase)));
     }
 
     let open_rook_count = net_open_rooks(b);
     if open_rook_count != 0 {
-        features.push((offset + 2, (open_rook_count as f32) * phase));
-        features.push((offset + 3, (open_rook_count as f32) * (1. - phase)));
+        features.push((offset + 2, f32::from(open_rook_count) * phase));
+        features.push((offset + 3, f32::from(open_rook_count) * (1. - phase)));
     }
 
     features
