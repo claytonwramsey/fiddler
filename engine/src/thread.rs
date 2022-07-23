@@ -218,7 +218,7 @@ mod tests {
         let info = main.evaluate(&g).unwrap();
         for m in info.pv {
             assert!(is_legal(m, g.board()));
-            g.make_move(m, (Score::DRAW, Eval::DRAW));
+            g.make_move(m, &(Score::DRAW, Eval::DRAW));
         }
     }
 

@@ -217,7 +217,7 @@ mod tests {
                 Color::White => orig_eval + pst_delta(g.board(), m),
                 Color::Black => orig_eval - pst_delta(g.board(), m),
             };
-            g.make_move(m, ());
+            g.make_move(m, &());
             // println!("{g}");
             assert_eq!(new_eval, pst_evaluate(g.board()));
             g.undo().unwrap();

@@ -290,7 +290,7 @@ impl Shl<i8> for Bitboard {
 
     #[inline(always)]
     fn shl(self, rhs: i8) -> Self::Output {
-        if rhs < 0 {
+        if rhs > 0 {
             Bitboard(self.0 << rhs)
         } else {
             Bitboard(self.0 >> -rhs)

@@ -570,7 +570,7 @@ mod tests {
     fn delta_helper(fen: &str) {
         let mut g = ScoredGame::from_fen(fen).unwrap();
         for (m, tag) in g.get_moves::<ALL>() {
-            g.make_move(m, tag);
+            g.make_move(m, &tag);
             // println!("{g}");
             assert_eq!(ScoreTag::init_cookie(g.board()), *g.cookie());
             g.undo().unwrap();

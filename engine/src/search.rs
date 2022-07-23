@@ -328,7 +328,7 @@ impl<'a> PVSearch<'a> {
             // The principal variation line, following the best move.
             let mut line = Vec::new();
             move_count += 1;
-            g.make_move(m, tag);
+            g.make_move(m, &tag);
             let mut score = Eval::MIN;
             let mut search_full_depth = false;
 
@@ -499,8 +499,8 @@ impl<'a> PVSearch<'a> {
                 // make sure that we didn't accidentally assume we could leaf
                 // evaluate an "ended" position
                 match g.is_over() {
-                    (true, None) => return Ok(Eval::DRAW),
-                    (true, Some(_)) => return Ok(Eval::BLACK_MATE),
+                    (true, false) => return Ok(Eval::DRAW),
+                    (true, true) => return Ok(Eval::BLACK_MATE),
                     _ => (),
                 };
                 self.ttable_store(
@@ -525,8 +525,8 @@ impl<'a> PVSearch<'a> {
             // Therefore we hedge our bets by only checking if the game has
             // ended now.
             match g.is_over() {
-                (true, None) => best_score = Eval::DRAW,
-                (true, Some(_)) => best_score = Eval::BLACK_MATE,
+                (true, false) => best_score = Eval::DRAW,
+                (true, true) => best_score = Eval::BLACK_MATE,
                 _ => (),
             };
         }
@@ -534,7 +534,7 @@ impl<'a> PVSearch<'a> {
         let mut line = Vec::new();
 
         for (m, tag) in moves {
-            g.make_move(m, tag);
+            g.make_move(m, &tag);
             // zero-window search
             score = -self
                 .quiesce::<false>(
@@ -678,7 +678,7 @@ pub mod tests {
         for &m in info.pv.iter() {
             println!("{m}");
             assert!(is_legal(m, g.board()));
-            g.make_move(m, ScoreTag::tag_move(m, g.board()));
+            g.make_move(m, &ScoreTag::tag_move(m, g.board()));
         }
 
         info

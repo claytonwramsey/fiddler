@@ -98,7 +98,7 @@ mod tests {
                 Color::White => orig_eval + delta,
                 Color::Black => orig_eval - delta,
             };
-            g.make_move(m, ());
+            g.make_move(m, &());
             assert_eq!(evaluate(g.board()), new_eval);
             g.undo().unwrap();
         }
