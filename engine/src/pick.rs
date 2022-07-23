@@ -211,13 +211,14 @@ impl Iterator for MovePicker {
                 self.phase = PickPhase::PreQuiet;
                 match self.killer_move {
                     None => self.next(),
-                    Some(m) => match is_legal(m, &self.board) {
-                        true => {
+                    Some(m) => {
+                        if is_legal(m, &self.board) {
                             self.ignore(m);
                             Some((m, ScoreTag::tag_move(m, &self.board)))
+                        } else {
+                            self.next()
                         }
-                        false => self.next(),
-                    },
+                    }
                 }
             }
             PickPhase::PreQuiet => {
@@ -298,20 +299,20 @@ mod tests {
             .unwrap();
         let mp = MovePicker::new(b, None, None);
 
-        let mp_moves = mp.map(|(m, _)| m);
-        let mg_moves = get_moves::<ALL, NoTag>(&b);
-        for m in mp_moves.clone() {
-            assert!(mg_moves.contains(&(m, ())));
+        let picker_moves = mp.map(|(m, _)| m);
+        let gen_moves = get_moves::<ALL, NoTag>(&b);
+        for m in picker_moves.clone() {
+            assert!(gen_moves.contains(&(m, ())));
             println!("{}", m.to_algebraic(&b).unwrap());
         }
 
-        for (m, _) in mg_moves {
+        for (m, _) in gen_moves {
             println!("looking for {m} in movepicker moves");
-            assert!(mp_moves.clone().any(|m2| m2 == m));
+            assert!(picker_moves.clone().any(|m2| m2 == m));
         }
 
-        for m in mp_moves.clone() {
-            assert_eq!(mp_moves.clone().filter(|&m2| m2 == m).count(), 1);
+        for m in picker_moves.clone() {
+            assert_eq!(picker_moves.clone().filter(|&m2| m2 == m).count(), 1);
         }
     }
 }

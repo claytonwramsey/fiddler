@@ -133,6 +133,7 @@ impl Bitboard {
     }
 
     #[inline(always)]
+    #[allow(clippy::cast_possible_truncation)]
     #[must_use]
     /// Compute the number of squares contained in this `Bitboard`.
     ///
@@ -146,8 +147,8 @@ impl Bitboard {
     /// bb.insert(Square::A1);
     /// assert!(bb.len() == 1);
     /// ```
-    pub const fn len(self) -> u32 {
-        self.0.count_ones()
+    pub const fn len(self) -> u8 {
+        self.0.count_ones() as u8
     }
 
     #[inline(always)]

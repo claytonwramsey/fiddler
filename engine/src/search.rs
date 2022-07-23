@@ -39,13 +39,14 @@ use crate::{
 };
 
 use super::{
-    config::SearchConfig, evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker,
+    evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker, thread::SearchConfig,
     transposition::TTable,
 };
 
 use std::{cmp::max, sync::PoisonError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(clippy::module_name_repetitions)]
 /// The types of errors which can occur during a search.
 pub enum SearchError {
     /// This search failed due to timeout.
@@ -63,11 +64,12 @@ impl<T> From<PoisonError<T>> for SearchError {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 /// The result of performing a search. The `Ok` version contains data on the
 /// search, while the `Err` version contains a reason why the search failed.
 pub type SearchResult = Result<SearchInfo, SearchError>;
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::cast_possible_wrap)]
 /// Evaluate the given game. Return a pair containing the best move and its
 /// evaluation, as well as the depth to which the evaluation was searched. The
 /// evaluation will be from the player's perspective, i.e. inverted if the
@@ -115,6 +117,7 @@ pub fn search(
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::module_name_repetitions)]
 /// Information about the search which will be returned at the end of a search.
 pub struct SearchInfo {
     /// The principal variation.
@@ -175,7 +178,7 @@ struct PVSearch<'a> {
 }
 
 impl<'a> PVSearch<'a> {
-    /// Construct a new PVSearch using a given transposition table,
+    /// Construct a new `PVSearch` using a given transposition table,
     /// configuration, and limit. `is_main` is whether the thread is a main
     /// search, responsible for certain synchronization activities.
     pub fn new(
@@ -435,7 +438,7 @@ impl<'a> PVSearch<'a> {
 
         debug_assert!(Eval::MIN < best_score && best_score < Eval::MAX);
 
-        self.ttable_store(
+        ttable_store(
             &mut tt_guard,
             depth_to_go,
             alpha,
@@ -503,7 +506,7 @@ impl<'a> PVSearch<'a> {
                     (true, true) => return Ok(Eval::BLACK_MATE),
                     _ => (),
                 };
-                self.ttable_store(
+                ttable_store(
                     &mut tt_guard,
                     TTEntry::DEPTH_CAPTURES,
                     alpha,
@@ -578,7 +581,7 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        self.ttable_store(
+        ttable_store(
             &mut tt_guard,
             TTEntry::DEPTH_CAPTURES,
             alpha,
@@ -589,37 +592,13 @@ impl<'a> PVSearch<'a> {
         Ok(best_score)
     }
 
-    /// Store data in the transposition table.
-    /// `score` is the best score of the position as evaluated, while `alpha`
-    /// and `beta` are the upper and lower bounds on the overall position due
-    /// to alpha-beta pruning.
-    fn ttable_store(
-        &self,
-        guard: &mut TTEntryGuard,
-        depth: i8,
-        alpha: Eval,
-        beta: Eval,
-        score: Eval,
-        best_move: Move,
-    ) {
-        let upper_bound = match score < beta {
-            true => score,
-            false => Eval::MAX,
-        };
-        let lower_bound = match alpha < score {
-            true => score,
-            false => Eval::MIN,
-        };
-        guard.save(depth, best_move, lower_bound, upper_bound);
-    }
-
     #[inline(always)]
     /// Increment the number of nodes searched, copying over the value into the
     /// search limit if it is too high.
     fn increment_nodes(&mut self) -> Result<(), SearchError> {
         self.num_nodes_evaluated += 1;
         self.nodes_since_limit_update += 1;
-        if self.nodes_since_limit_update as u64 > self.config.limit_update_increment {
+        if u64::from(self.nodes_since_limit_update) > self.config.limit_update_increment {
             self.update_node_limits()?;
         }
         Ok(())
@@ -629,7 +608,8 @@ impl<'a> PVSearch<'a> {
     /// Copy over the number of nodes evaluated by this search into the limit
     /// structure, and zero out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {
-        self.limit.add_nodes(self.nodes_since_limit_update as u64)?;
+        self.limit
+            .add_nodes(u64::from(self.nodes_since_limit_update))?;
         self.nodes_since_limit_update = 0;
         Ok(())
     }
@@ -642,6 +622,22 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
     parent_line.extend(line);
 }
 
+/// Store data in the transposition table.
+/// `score` is the best score of the position as evaluated, while `alpha`
+/// and `beta` are the upper and lower bounds on the overall position due
+/// to alpha-beta pruning.
+fn ttable_store(
+    guard: &mut TTEntryGuard,
+    depth: i8,
+    alpha: Eval,
+    beta: Eval,
+    score: Eval,
+    best_move: Move,
+) {
+    let upper_bound = if score < beta { score } else { Eval::MAX };
+    let lower_bound = if alpha < score { score } else { Eval::MIN };
+    guard.save(depth, best_move, lower_bound, upper_bound);
+}
 #[cfg(test)]
 pub mod tests {
     use crate::evaluate::ScoreTag;
@@ -675,7 +671,7 @@ pub mod tests {
         )
         .unwrap();
 
-        for &m in info.pv.iter() {
+        for &m in &info.pv {
             println!("{m}");
             assert!(is_legal(m, g.board()));
             g.make_move(m, &ScoreTag::tag_move(m, g.board()));
@@ -685,7 +681,7 @@ pub mod tests {
     }
 
     #[test]
-    /// Test PVSearch's evaluation of the start position of the game.
+    /// Test `PVSearch`'s evaluation of the start position of the game.
     fn eval_start() {
         let info = search_helper(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",

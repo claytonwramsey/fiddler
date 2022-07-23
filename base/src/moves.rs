@@ -175,14 +175,14 @@ impl Move {
 
     /// Convert a move from its UCI representation. Requires the board the move
     /// was played on to determine extra flags about the move.
-    /// 
+    ///
     /// # Errors
-    /// 
-    /// This function will return an `Err` if `s` describes an illegal algebraic 
+    ///
+    /// This function will return an `Err` if `s` describes an illegal algebraic
     /// move.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This function will panic in case of an internal error.
     pub fn from_uci(s: &str, board: &Board) -> Result<Move, &'static str> {
         if !(s.len() == 4 || s.len() == 5) {
@@ -238,9 +238,9 @@ impl Move {
     ///
     /// This function will return an `Err` if the move is illegal on the given
     /// board.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This function will panic in the case of an internal error.
     ///
     /// # Examples
@@ -354,9 +354,9 @@ impl Move {
     ///
     /// This function will return an `Err` if `s` is not a valid
     /// algebraically-represented move in `b`.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This function will panic in the case of an internal error.
     pub fn from_algebraic(s: &str, b: &Board) -> Result<Move, &'static str> {
         get_moves::<ALL, NoTag>(b)

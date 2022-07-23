@@ -37,6 +37,7 @@ use std::{
 use super::SearchError;
 
 #[derive(Debug)]
+#[allow(clippy::module_name_repetitions)]
 /// A limit to how long an engine should search for.
 pub struct SearchLimit {
     /// Whether the search is truly over.
@@ -58,6 +59,7 @@ pub struct SearchLimit {
 }
 
 impl SearchLimit {
+    #[must_use]
     /// Create a new `SearchLimit` which will never stop.
     pub fn new() -> SearchLimit {
         SearchLimit {
@@ -71,6 +73,10 @@ impl SearchLimit {
     }
 
     /// Start the search limit, by setting its start time to now.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if a lock was poisoned.
     pub fn start(&self) -> Result<(), SearchError> {
         self.num_nodes.store(0, Ordering::Relaxed);
         self.over.store(false, Ordering::Relaxed);
@@ -99,6 +105,10 @@ impl SearchLimit {
     #[inline(always)]
     /// Check the elapsed time to see if this search is over, and if so, update
     /// accordingly.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if a lock was poisoned.
     pub fn update_time(&self) -> Result<bool, SearchError> {
         if let Some(end) = *self.end_time.lock().map_err(|_| SearchError::Poison)? {
             if Instant::now() > end {
@@ -113,6 +123,10 @@ impl SearchLimit {
     #[inline(always)]
     /// Increment the total number of nodes searched. If a lock acquisition
     /// failure occurs, will return an error.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if a lock was poisoned.
     pub fn add_nodes(&self, nodes: u64) -> Result<(), SearchError> {
         self.num_nodes.fetch_add(nodes, Ordering::Relaxed);
         if let Some(max_nodes) = *self.nodes_cap.lock()? {

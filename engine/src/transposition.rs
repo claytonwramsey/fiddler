@@ -109,7 +109,8 @@ pub struct TTEntry {
 }
 
 impl TTable {
-    /// Construct a new TTable with no entries.
+    #[must_use]
+    /// Construct a new `TTable` with no entries.
     pub const fn new() -> TTable {
         TTable {
             buckets: null::<Bucket>() as *mut Bucket,
@@ -117,7 +118,8 @@ impl TTable {
         }
     }
 
-    /// Construct a TTable with a given size, in megabytes.
+    #[must_use]
+    /// Construct a `TTable` with a given size, in megabytes.
     pub fn with_size(size_mb: usize) -> TTable {
         let max_num_buckets = size_mb / size_of::<Bucket>();
         let new_size = if max_num_buckets.is_power_of_two() {
@@ -130,8 +132,11 @@ impl TTable {
         TTable::with_capacity(new_size.trailing_zeros() as usize)
     }
 
-    /// Create a transposition table with a fixed capacity. The capacity is
-    /// *not* the number of entries, but rather log_2 of the number of buckets.
+    #[must_use]
+    #[allow(clippy::cast_ptr_alignment)]
+    /// Create a transposition table with a fixed capacity.
+    /// The capacity is *not* the number of entries, but rather log base 2 of
+    /// the number of buckets.
     ///
     /// # Panics
     ///
@@ -142,7 +147,7 @@ impl TTable {
         TTable {
             buckets: unsafe {
                 let layout = Layout::array::<Bucket>(n_buckets).unwrap();
-                alloc_zeroed(layout) as *mut Bucket
+                alloc_zeroed(layout).cast::<Bucket>()
             },
             mask: (n_buckets - 1) as u64,
         }
@@ -154,8 +159,15 @@ impl TTable {
         ((hash_key >> 16) & self.mask) as usize
     }
 
+    #[must_use]
+    #[allow(clippy::cast_ptr_alignment, clippy::cast_possible_truncation)]
     /// Get the evaluation data stored by this table for a given key, if it
-    /// exists. Returns `None` if no data corresponding to the key exists.
+    /// exists.
+    /// Returns `None` if no data corresponding to the key exists.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic due to an internal error.
     pub fn get<'a>(&self, hash_key: u64) -> TTEntryGuard<'a> {
         if self.buckets.is_null() {
             // cannot index into empty table.
@@ -168,11 +180,12 @@ impl TTable {
         }
         let idx = self.index_for(hash_key);
         let bucket = unsafe { self.buckets.add(idx) };
-        let mut entry_ptr = bucket as *mut TTEntry;
+        let mut entry_ptr = bucket.cast::<TTEntry>();
 
         // first, see if we can find a match in the bucket
         for _ in 0..BUCKET_SIZE {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
+            // we intentionally truncate here
             if entry_ref.key_low16 == hash_key as u16 && (entry_ref.tag & 0x80 != 0) {
                 // it's a match!
                 return TTEntryGuard {
@@ -186,7 +199,7 @@ impl TTable {
         }
 
         // no match found. pick the oldest entry to replace
-        entry_ptr = bucket as *mut TTEntry;
+        entry_ptr = bucket.cast::<TTEntry>();
         let mut eldest_entry = entry_ptr;
         let mut eldest_age = 0;
         for _ in 0..BUCKET_SIZE {
@@ -215,8 +228,14 @@ impl TTable {
         }
     }
 
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     /// Get an estimate of the fill rate proportion of this transposition table
     /// out of 1000. Typically used for UCI.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic due to an internal error.
     pub fn fill_rate_permill(&self) -> u16 {
         if self.buckets.is_null() {
             // I suppose a transposition table with no entries is 100% full.
@@ -244,12 +263,16 @@ impl TTable {
 
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic due to an internal error.
     pub fn age_up(&mut self, max_age: u8) {
         debug_assert!(max_age <= 0x7F);
         if !self.buckets.is_null() {
             for idx in 0..=self.mask {
                 let bucket = unsafe { self.buckets.add(self.index_for(idx)).as_mut().unwrap() };
-                for entry in bucket.entries.iter_mut() {
+                for entry in &mut bucket.entries {
                     if entry.tag & 0x7F > max_age {
                         *entry = TTEntry::new();
                     }
@@ -258,7 +281,12 @@ impl TTable {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation, clippy::cast_ptr_alignment)]
     /// Resize the hash table to use no more than `size_mb` megabytes.
+    ///
+    /// # Panics
+    ///
+    /// Will panic in the case of an OOM or allocation failure.
     pub fn resize(&mut self, size_mb: usize) {
         let max_num_entries = size_mb * 1_000_000 / size_of::<Bucket>();
         let new_size = if max_num_entries.is_power_of_two() {
@@ -277,9 +305,9 @@ impl TTable {
             if !old_buckets.is_null() {
                 unsafe {
                     dealloc(
-                        old_buckets as *mut u8,
+                        old_buckets.cast::<u8>(),
                         Layout::array::<Bucket>(old_size).unwrap(),
-                    )
+                    );
                 };
             }
             self.buckets = null::<Bucket>() as *mut Bucket;
@@ -301,21 +329,25 @@ impl TTable {
             // realloc to shrink this
             self.buckets = unsafe {
                 realloc(
-                    self.buckets as *mut u8,
+                    self.buckets.cast::<u8>(),
                     Layout::array::<Bucket>(old_size).unwrap(),
                     new_size * size_of::<Bucket>(),
-                ) as *mut Bucket
+                )
+                .cast::<Bucket>()
             };
             self.mask = new_mask as u64;
         } else {
             // the table is growing
-            self.buckets =
-                unsafe { alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()) as *mut Bucket };
+            self.buckets = unsafe {
+                alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()).cast::<Bucket>()
+            };
 
             self.mask = (new_size - 1) as u64;
         }
     }
 
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     /// Get the size of this table, in megabytes. Does not include the size of
     /// the struct itself, but rather just the heap-allocated table size.
     pub fn size_mb(&self) -> usize {
@@ -326,6 +358,7 @@ impl TTable {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     /// Clear all entries in the table.
     pub fn clear(&mut self) {
         if !self.buckets.is_null() {
@@ -353,13 +386,14 @@ unsafe impl Send for TTable {}
 unsafe impl Sync for TTable {}
 
 impl Drop for TTable {
+    #[allow(clippy::cast_possible_truncation)]
     fn drop(&mut self) {
         if !self.buckets.is_null() {
             let size = self.mask as usize + 1;
             // memory was allocated, need to deallocate
             unsafe {
                 dealloc(
-                    self.buckets as *mut u8,
+                    self.buckets.cast::<u8>(),
                     Layout::array::<Bucket>(size).unwrap(),
                 );
             }
@@ -369,6 +403,7 @@ impl Drop for TTable {
 }
 
 impl<'a> TTEntryGuard<'a> {
+    #[must_use]
     /// Get the entry pointed to by this guard. Will return `None` if the guard
     /// was created by a probe miss on the transposition table.
     ///
@@ -384,6 +419,7 @@ impl<'a> TTEntryGuard<'a> {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     /// Save the value pointed to by this entry guard.
     pub fn save(&mut self, depth: i8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
         if !self.entry.is_null() {

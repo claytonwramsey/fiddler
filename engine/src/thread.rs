@@ -29,16 +29,49 @@ use std::{thread::scope, time::Instant};
 
 use crate::{
     evaluate::{Eval, ScoredGame},
-    uci::{EngineInfo, UciMessage},
+    uci::{EngineInfo, Message},
 };
 
 use super::{
-    config::SearchConfig,
     limit::SearchLimit,
     search::{search, SearchResult},
     transposition::TTable,
     SearchError,
 };
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Configuration options for a search.
+pub struct SearchConfig {
+    /// The depth at which this algorithm will evaluate a position.
+    pub depth: u8,
+    /// The number of helper threads. If this value is 0, then the search is
+    /// single-threaded.
+    pub n_helpers: u8,
+    /// The number of moves at each layer which will be searched to a full
+    /// depth, as opposed to a lower-than-target depth.
+    pub num_early_moves: usize,
+    /// The number of nodes which have to be searched before it is worthwhile
+    /// to update the search limit with this information.
+    pub limit_update_increment: u64,
+}
+
+impl SearchConfig {
+    #[must_use]
+    pub fn new() -> SearchConfig {
+        SearchConfig {
+            depth: 10,
+            n_helpers: 0,
+            num_early_moves: 4,
+            limit_update_increment: 100,
+        }
+    }
+}
+
+impl Default for SearchConfig {
+    fn default() -> SearchConfig {
+        SearchConfig::new()
+    }
+}
 
 #[derive(Debug)]
 /// The primary search thread for an engine.
@@ -52,6 +85,7 @@ pub struct MainSearch {
 }
 
 impl MainSearch {
+    #[must_use]
     /// Construct a new main search with only a single search thread.
     pub fn new() -> MainSearch {
         MainSearch {
@@ -64,7 +98,7 @@ impl MainSearch {
     /// Evaluate a position. The searcher will continue searching until its
     /// field `limit` marks itself as over.
     ///
-    /// # Error
+    /// # Errors
     ///
     /// An error will be returned according to the cases outlined in
     /// `SearchError`. Such errors are rare, and are generally either the result
@@ -111,26 +145,29 @@ impl MainSearch {
                     let elapsed = Instant::now() - tic;
                     if let Ok(ref best_info) = best_result {
                         prev_eval = Some(best_info.eval);
-                        println!(
-                            "{}",
-                            UciMessage::Info(&[
-                                EngineInfo::Depth(best_info.depth),
-                                EngineInfo::Score {
-                                    eval: best_info.eval,
-                                    is_lower_bound: false,
-                                    is_upper_bound: false
-                                },
-                                EngineInfo::Nodes(best_info.num_nodes_evaluated),
-                                EngineInfo::NodeSpeed(
-                                    1000 * best_info.num_nodes_evaluated
-                                        / (elapsed.as_millis() + 1) as u64
-                                ),
-                                EngineInfo::Time(elapsed),
-                                EngineInfo::Pv(&best_info.pv),
-                                EngineInfo::HashFull(self.ttable.fill_rate_permill()),
-                                EngineInfo::SelDepth(best_info.selective_depth),
-                            ])
-                        );
+                        #[allow(clippy::cast_possible_truncation)]
+                        {
+                            println!(
+                                "{}",
+                                Message::Info(&[
+                                    EngineInfo::Depth(best_info.depth),
+                                    EngineInfo::Score {
+                                        eval: best_info.eval,
+                                        is_lower_bound: false,
+                                        is_upper_bound: false
+                                    },
+                                    EngineInfo::Nodes(best_info.num_nodes_evaluated),
+                                    EngineInfo::NodeSpeed(
+                                        1000 * best_info.num_nodes_evaluated
+                                            / (elapsed.as_millis() + 1) as u64
+                                    ),
+                                    EngineInfo::Time(elapsed),
+                                    EngineInfo::Pv(&best_info.pv),
+                                    EngineInfo::HashFull(self.ttable.fill_rate_permill()),
+                                    EngineInfo::SelDepth(best_info.selective_depth),
+                                ])
+                            );
+                        }
                         if best_info.eval.is_mate() {
                             // don't bother searching deeper if we already found
                             // mate

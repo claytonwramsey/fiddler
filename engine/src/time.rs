@@ -29,6 +29,13 @@ use std::cmp::min;
 
 use fiddler_base::Color;
 
+#[must_use]
+#[allow(
+    clippy::module_name_repetitions,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss
+)]
 /// Decide how much time to search a position, given UCI information about the
 /// time remaining.
 ///
@@ -55,16 +62,14 @@ pub fn get_search_time(
         Color::Black => (increment.1, remaining.1),
     };
 
+    let rem_float = our_remaining as f32;
     if let Some(moves) = movestogo {
         min(
-            800 * our_remaining / (1000 * (moves as u32)) + our_inc,
-            (0.85 * our_remaining as f32) as u32,
+            800 * our_remaining / (1000 * u32::from(moves)) + our_inc,
+            (0.85 * rem_float) as u32,
         )
     } else {
         // use a fraction of our remaining time.
-        min(
-            our_remaining / 80 + our_inc,
-            (0.9 * our_remaining as f32) as u32,
-        )
+        min(our_remaining / 80 + our_inc, (0.9 * rem_float) as u32)
     }
 }

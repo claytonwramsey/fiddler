@@ -50,13 +50,7 @@ use fiddler_base::{
     Bitboard, Board, Color, Move, Piece,
 };
 
-use crate::{
-    material::material_delta,
-    pick::candidacy,
-    pst::{pst_delta, pst_evaluate},
-};
-
-use super::material;
+use crate::{material, pick::candidacy, pst};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 /// A wrapper for the evaluation of a position.
@@ -107,7 +101,7 @@ impl Tagger for ScoreTag {
 
     /// Compute the change in scoring that a move made on a board will cause.
     fn tag_move(m: Move, b: &Board) -> Self::Tag {
-        let delta = pst_delta(b, m) + material_delta(b, m);
+        let delta = pst::delta(b, m) + material::delta(b, m);
         (delta, candidacy(b, m, delta))
     }
 
@@ -130,13 +124,13 @@ impl Tagger for ScoreTag {
     /// doubled pawns), as this will be handled by `leaf_evaluate` at the end of
     /// the search tree.
     fn init_cookie(b: &Board) -> Self::Cookie {
-        material::evaluate(b) + pst_evaluate(b)
+        material::evaluate(b) + pst::evaluate(b)
     }
 }
 
 /// Mask containing ones along the A file. Bitshifting left by a number from 0
 /// through 7 will cause it to become a mask for each file.
-const A_FILE_MASK: Bitboard = Bitboard::new(0x0101010101010101);
+const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
 pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-25, -26);
@@ -144,6 +138,8 @@ pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-25, -26);
 /// are not advanced past the 3rd rank.
 pub const OPEN_ROOK_VALUE: Score = Score::centipawns(5, 78);
 
+#[must_use]
+#[allow(clippy::module_name_repetitions)]
 /// Evaluate a leaf position on a game whose cumulative values have been
 /// computed correctly.
 pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
@@ -162,6 +158,7 @@ fn leaf_rules(b: &Board) -> Score {
     score
 }
 
+#[must_use]
 /// Count the number of "open" rooks (i.e., those which are not blocked by
 /// unadvanced pawns) in a position. The number is a net value, so it will be
 /// negative if Black has more open rooks than White.
@@ -211,35 +208,34 @@ pub fn net_open_rooks(b: &Board) -> i8 {
     net_open_rooks
 }
 
+#[must_use]
 /// Count the number of doubled pawns, in net. For instance, if White had 1
 /// doubled pawn, and Black had 2, this function would return -1.
 pub fn net_doubled_pawns(b: &Board) -> i8 {
-    let white_occupancy = b[Color::White];
     let pawns = b[Piece::Pawn];
-    let mut npawns: i8 = 0;
+    let mut net_doubled: i8 = 0;
+    // all ones on the A column, shifted left by the col
     let mut col_mask = Bitboard::new(0x0101010101010101);
+    #[allow(clippy::cast_possible_wrap)]
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
 
-        // all ones on the A column, shifted left by the col
-        let num_black_doubled_pawns = match ((!white_occupancy) & col_pawns).len() {
+        net_doubled -= match (b[Color::Black] & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
-        let num_white_doubled_pawns = match (white_occupancy & col_pawns).len() {
+        net_doubled += match (b[Color::White] & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
-
-        npawns -= num_black_doubled_pawns;
-        npawns += num_white_doubled_pawns;
 
         col_mask <<= 1;
     }
 
-    npawns
+    net_doubled
 }
 
+#[must_use]
 /// Get a blending float describing the current phase of the game. Will range
 /// from 0 (full endgame) to 1 (full midgame).
 pub fn phase_of(b: &Board) -> f32 {
@@ -284,26 +280,32 @@ impl Eval {
     /// The value of one pawn.
     const PAWN_VALUE: i16 = 100;
 
+    #[must_use]
     #[inline(always)]
+    #[allow(clippy::cast_possible_truncation)]
     /// Get an evaluation equivalent to the given pawn value.
+    /// Will round down by the centipawn.
     pub fn pawns(x: f64) -> Eval {
-        Eval((x * Eval::PAWN_VALUE as f64) as i16)
+        Eval((x * f64::from(Eval::PAWN_VALUE)) as i16)
     }
 
+    #[must_use]
     #[inline(always)]
     /// Construct an `Eval` with the given value in centipawns.
     pub const fn centipawns(x: i16) -> Eval {
         Eval(x)
     }
 
+    #[must_use]
     #[inline(always)]
     /// Create an `Eval` based on the number of half-moves required for White to
     /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
     /// plies.
-    pub const fn mate_in(nplies: u16) -> Eval {
+    pub const fn mate_in(nplies: u8) -> Eval {
         Eval(Eval::MATE_0_VAL - (nplies as i16))
     }
 
+    #[must_use]
     #[inline(always)]
     /// Step this evaluation back in time one move. "normal" evaluations will
     /// not be changed, but mates will be moved one closer to 0. When the
@@ -318,25 +320,29 @@ impl Eval {
     /// let previous_ply_eval = current_eval.step_back();
     /// assert_eq!(previous_ply_eval, Eval::mate_in(1));
     /// ```
-    pub const fn step_back(&self) -> Eval {
+    pub const fn step_back(self) -> Eval {
         Eval(self.0 - self.0 / (Eval::MATE_CUTOFF + 1))
     }
 
+    #[must_use]
     #[inline(always)]
     /// Step this evaluation forward in time one move. "normal" evaluations will
     /// not be changed, but mates will be moved one further from 0. When the
     /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined
     /// behavior.
-    pub const fn step_forward(&self) -> Eval {
+    pub const fn step_forward(self) -> Eval {
         Eval(self.0 + self.0 / (Eval::MATE_CUTOFF + 1))
     }
 
+    #[must_use]
     #[inline(always)]
     /// Is this evaluation a mate (i.e. a non-normal evaluation)?
-    pub const fn is_mate(&self) -> bool {
+    pub const fn is_mate(self) -> bool {
         self.0 > Eval::MATE_CUTOFF || self.0 < -Eval::MATE_CUTOFF
     }
 
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     /// Get the number of moves until a mated position, assuming perfect play.
     ///
     /// # Examples
@@ -348,43 +354,41 @@ impl Eval {
     /// assert_eq!(ev1.moves_to_mate(), None);
     /// assert_eq!(ev2.moves_to_mate(), Some(2));
     /// ```
-    pub const fn moves_to_mate(&self) -> Option<u8> {
-        match self.is_mate() {
-            true => {
-                if self.0 > 0 {
-                    // white to mate
-                    Some(((Eval::MATE_0_VAL - self.0 + 1) / 2) as u8)
-                } else {
-                    // black to mate
-                    Some(((Eval::MATE_0_VAL + self.0 + 1) / 2) as u8)
-                }
-            }
-            false => None,
-        }
+    pub fn moves_to_mate(self) -> Option<u8> {
+        self.is_mate().then_some(if self.0 > 0 {
+            // white to mate
+            ((Eval::MATE_0_VAL - self.0 + 1) / 2) as u8
+        } else {
+            // black to mate
+            ((Eval::MATE_0_VAL + self.0 + 1) / 2) as u8
+        })
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the value in centipawns of this evaluation. Will return a number
     /// with magnitude greater than 29000 for mates.
-    pub const fn centipawn_val(&self) -> i16 {
+    pub const fn centipawn_val(self) -> i16 {
         self.0
     }
 
     #[inline(always)]
+    #[must_use]
     /// Get the value in floating-point pawns of this evaluation.
-    pub fn float_val(&self) -> f32 {
-        (self.0 as f32) / 100.
+    pub fn float_val(self) -> f32 {
+        f32::from(self.0) / 100.
     }
 
     #[inline(always)]
+    #[must_use]
     /// Put this evaluation into the perspective of the given player.
     /// In essence, if the player is Black, the evaluation will be inverted, but
     /// if the player is White, the evaluation will remain the same. This
     /// function is an involution, meaning that calling it twice with the same
     /// player will yield the original evaluation.
-    pub const fn in_perspective(&self, player: Color) -> Eval {
+    pub const fn in_perspective(self, player: Color) -> Eval {
         match player {
-            Color::White => *self,
+            Color::White => self,
             Color::Black => Eval(-self.0),
         }
     }
@@ -394,18 +398,21 @@ impl Score {
     /// The score for a position which is completely drawn.
     pub const DRAW: Score = Score::centipawns(0, 0);
 
+    #[must_use]
     /// Create a new `Score` by composing two evaluations together.
     pub const fn new(mg: Eval, eg: Eval) -> Score {
         Score { mg, eg }
     }
 
+    #[must_use]
     /// Create a `Score` directly as a pair of centipawn values.
     pub const fn centipawns(mg: i16, eg: i16) -> Score {
         Score::new(Eval::centipawns(mg), Eval::centipawns(eg))
     }
 
+    #[must_use]
     /// Blend the midgame and endgame
-    pub fn blend(&self, phase: f32) -> Eval {
+    pub fn blend(self, phase: f32) -> Eval {
         // in test mode, require that the phase is between 0 and 1
         debug_assert!(0. <= phase);
         debug_assert!(phase <= 1.);
@@ -427,7 +434,11 @@ impl Display for Eval {
             write!(f, "00.00")?;
         } else {
             // normal eval
-            write!(f, "{:+2.2}", self.0 as f32 / Eval::PAWN_VALUE as f32)?;
+            write!(
+                f,
+                "{:+2.2}",
+                f32::from(self.0) / f32::from(Eval::PAWN_VALUE)
+            )?;
         }
         Ok(())
     }
@@ -439,11 +450,11 @@ impl Display for Score {
     }
 }
 
-impl Mul<u32> for Eval {
+impl Mul<u8> for Eval {
     type Output = Self;
     #[inline(always)]
-    fn mul(self, rhs: u32) -> Self::Output {
-        Eval(self.0 * rhs as i16)
+    fn mul(self, rhs: u8) -> Self::Output {
+        Eval(self.0 * i16::from(rhs))
     }
 }
 
@@ -459,15 +470,16 @@ impl Mul<i8> for Eval {
     type Output = Self;
     #[inline(always)]
     fn mul(self, rhs: i8) -> Self::Output {
-        Eval(self.0 * (rhs as i16))
+        Eval(self.0 * i16::from(rhs))
     }
 }
 
 impl Mul<f32> for Eval {
     type Output = Self;
     #[inline(always)]
+    #[allow(clippy::cast_possible_truncation)]
     fn mul(self, rhs: f32) -> Self::Output {
-        Eval((self.0 as f32 * rhs) as i16)
+        Eval((f32::from(self.0) * rhs) as i16)
     }
 }
 
@@ -554,10 +566,10 @@ impl Mul<i8> for Score {
     }
 }
 
-impl Mul<u32> for Score {
+impl Mul<u8> for Score {
     type Output = Self;
 
-    fn mul(self, rhs: u32) -> Self::Output {
+    fn mul(self, rhs: u8) -> Self::Output {
         Score::new(self.mg * rhs, self.eg * rhs)
     }
 }
@@ -589,6 +601,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn certainly_endgame() {
         assert_eq!(
             phase_of(&Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()),
@@ -597,6 +610,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn certainly_midgame() {
         assert_eq!(phase_of(&Board::default()), 1.0);
     }

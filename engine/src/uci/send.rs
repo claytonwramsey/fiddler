@@ -27,12 +27,12 @@ use crate::evaluate::Eval;
 #[derive(Clone, Eq, PartialEq, Hash)]
 /// The set of messages that the engine can send to the GUI.
 ///
-/// Unlike `UciCommand`, `UciMessage` uses borrowed (instead of owned) values,
+/// Unlike `Command`, `Message` uses borrowed (instead of owned) values,
 /// because it's expected that the user will generate the message and then print
 /// them out, so there is no reason to include extra heap allocations.
-pub enum UciMessage<'a> {
+pub enum Message<'a> {
     /// The engine identifies itself. Must be sent after receiving a
-    /// `UciCommand::Uci` message.
+    /// `Command::Uci` message.
     Id {
         /// The name of the engine.
         name: Option<&'a str>,
@@ -42,7 +42,7 @@ pub enum UciMessage<'a> {
     /// Sent after `id` and additional options are given to inform the GUI that
     /// the engine is ready in UCI mode.
     UciOk,
-    /// Must be sent after a `UciCommand::IsReady` command and the engine has
+    /// Must be sent after a `Command::IsReady` command and the engine has
     /// processed all input. Typically only for commands that take some time,
     /// but can actually be sent at any time.
     ReadyOk,
@@ -122,10 +122,10 @@ pub enum OptionType<'a> {
     Button,
 }
 
-impl<'a> fmt::Display for UciMessage<'a> {
+impl<'a> fmt::Display for Message<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UciMessage::Id { name, author } => {
+            Message::Id { name, author } => {
                 write!(f, "id")?;
                 if let Some(n) = name {
                     write!(f, " name {n}")?;
@@ -138,16 +138,16 @@ impl<'a> fmt::Display for UciMessage<'a> {
                     write!(f, " author {a}")?;
                 }
             }
-            UciMessage::UciOk => write!(f, "uciok")?,
-            UciMessage::ReadyOk => write!(f, "readyok")?,
-            UciMessage::Option { name, ref opt } => write_option(f, name, opt)?,
-            UciMessage::BestMove { m, ponder } => {
+            Message::UciOk => write!(f, "uciok")?,
+            Message::ReadyOk => write!(f, "readyok")?,
+            Message::Option { name, ref opt } => write_option(f, name, opt)?,
+            Message::BestMove { m, ponder } => {
                 write!(f, "bestmove {}", m.to_uci())?;
                 if let Some(pondermove) = ponder {
                     write!(f, " ponder {}", pondermove.to_uci())?;
                 }
             }
-            UciMessage::Info(info) => write_info(f, info)?,
+            Message::Info(info) => write_info(f, info)?,
         };
 
         Ok(())
@@ -218,13 +218,16 @@ fn write_info(f: &mut fmt::Formatter, infos: &[EngineInfo]) -> fmt::Result {
             } => {
                 write!(f, " score ")?;
                 match eval.moves_to_mate() {
-                    Some(pl) => match eval > &Eval::DRAW {
-                        true => write!(f, "mate {pl}")?,
-                        false => write!(f, "mate -{pl}")?,
-                    },
+                    Some(pl) => {
+                        if eval > &Eval::DRAW {
+                            write!(f, "mate {pl}")?;
+                        } else {
+                            write!(f, "mate -{pl}")?;
+                        }
+                    }
                     None => write!(f, "cp {}", eval.centipawn_val())?,
                 };
-                if is_lower_bound & !is_upper_bound {
+                if *is_lower_bound && !is_upper_bound {
                     write!(f, " lowerbound")?;
                 } else if *is_upper_bound {
                     write!(f, " upperbound")?;
@@ -259,7 +262,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Info(&[
+                Message::Info(&[
                     EngineInfo::CurrMove(Move::normal(Square::E2, Square::E4)),
                     EngineInfo::CurrMoveNumber(1),
                 ])
@@ -275,7 +278,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Info(&[
+                Message::Info(&[
                     EngineInfo::CurrMove(Move::promoting(Square::E7, Square::E8, Piece::Queen)),
                     EngineInfo::CurrMoveNumber(7),
                 ])
@@ -291,7 +294,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Info(&[
+                Message::Info(&[
                     EngineInfo::Depth(2),
                     EngineInfo::Score {
                         eval: Eval::pawns(2.14),
@@ -309,7 +312,7 @@ mod tests {
                 ])
             ),
             "info depth 2 score cp 214 time 1242 nodes 2124 nps 34928 pv e2e4 e7e5 g1f3"
-        )
+        );
     }
 
     #[test]
@@ -318,13 +321,13 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Id {
+                Message::Id {
                     name: Some("Fiddler"),
                     author: Some("Clayton Ramsey"),
                 }
             ),
             "id name Fiddler\nid author Clayton Ramsey"
-        )
+        );
     }
 
     #[test]
@@ -333,7 +336,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Option {
+                Message::Option {
                     name: "Nullmove",
                     opt: OptionType::Check(Some(true)),
                 }
@@ -348,7 +351,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Option {
+                Message::Option {
                     name: "Selectivity",
                     opt: OptionType::Spin {
                         default: 2,
@@ -358,7 +361,7 @@ mod tests {
                 }
             ),
             "option name Selectivity type spin default 2 min 0 max 4"
-        )
+        );
     }
 
     #[test]
@@ -367,7 +370,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Option {
+                Message::Option {
                     name: "Style",
                     opt: OptionType::Combo {
                         default: Some("Normal"),
@@ -376,7 +379,7 @@ mod tests {
                 }
             ),
             "option name Style type combo default Normal var Solid var Normal var Risky"
-        )
+        );
     }
 
     #[test]
@@ -385,13 +388,13 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Option {
+                Message::Option {
                     name: "NalimovPath",
                     opt: OptionType::String(Some("c:\\")),
                 }
             ),
             "option name NalimovPath type string default c:\\"
-        )
+        );
     }
 
     #[test]
@@ -400,13 +403,13 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::Option {
+                Message::Option {
                     name: "Clear Hash",
                     opt: OptionType::Button,
                 }
             ),
             "option name Clear Hash type button"
-        )
+        );
     }
 
     #[test]
@@ -415,7 +418,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                UciMessage::BestMove {
+                Message::BestMove {
                     m: Move::normal(Square::E2, Square::E4),
                     ponder: None
                 }

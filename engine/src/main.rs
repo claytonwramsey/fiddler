@@ -37,7 +37,7 @@ use fiddler_engine::{
     evaluate::{ScoreTag, ScoredGame},
     thread::MainSearch,
     time::get_search_time,
-    uci::{parse_line, EngineInfo, GoOption, OptionType, UciCommand, UciMessage},
+    uci::{Command, EngineInfo, GoOption, Message, OptionType},
 };
 
 /// Run a UCI engine.
@@ -53,7 +53,7 @@ fn main() {
         if stdin().read_line(&mut buf).is_err() {
             debug_info("failed to read line", debug);
         };
-        let command = match parse_line(&buf, game.board()) {
+        let command = match Command::parse_line(&buf, game.board()) {
             Ok(cmd) => cmd,
             Err(e) => {
                 // print out the error to the frontend and continue on to the
@@ -63,11 +63,11 @@ fn main() {
             }
         };
         match command {
-            UciCommand::Uci => {
+            Command::Uci => {
                 // identify the engine
                 println!(
                     "{}",
-                    UciMessage::Id {
+                    Message::Id {
                         name: Some("Fiddler 0.1.0"),
                         author: Some("Clayton Ramsey"),
                     }
@@ -94,17 +94,17 @@ fn main() {
                     },
                 );
 
-                println!("{}", UciMessage::UciOk)
+                println!("{}", Message::UciOk)
             }
-            UciCommand::Debug(new_debug) => {
+            Command::Debug(new_debug) => {
                 // activate or deactivate debug mode
                 debug = new_debug;
             }
-            UciCommand::IsReady => {
+            Command::IsReady => {
                 // we were born ready
-                println!("{}", UciMessage::ReadyOk);
+                println!("{}", Message::ReadyOk);
             }
-            UciCommand::SetOption { name, value } => match name.as_str() {
+            Command::SetOption { name, value } => match name.as_str() {
                 "Thread Count" => match value {
                     None => debug_info("error: no value given for number of threads", debug),
                     Some(num_str) => match num_str.parse::<u8>() {
@@ -123,7 +123,7 @@ fn main() {
                 },
                 _ => debug_info(&format!("error: unknown option key `{}`", name), debug),
             },
-            UciCommand::NewGame => {
+            Command::NewGame => {
                 game = ScoredGame::new();
                 // stop previous search
                 stop(&searcher, search_handle, debug);
@@ -134,7 +134,7 @@ fn main() {
                 let mut searcher_guard = searcher.write().unwrap();
                 searcher_guard.ttable.clear();
             }
-            UciCommand::Position { fen, moves } => {
+            Command::Position { fen, moves } => {
                 game = match fen {
                     None => ScoredGame::new(),
                     Some(fen) => ScoredGame::from_fen(&fen).unwrap(),
@@ -144,17 +144,17 @@ fn main() {
                         .unwrap();
                 }
             }
-            UciCommand::Go(opts) => {
+            Command::Go(opts) => {
                 // spawn a new thread to go search
                 debug_info("go command received", debug);
                 search_handle = go(&opts, &searcher, &game, debug);
             }
-            UciCommand::Stop => {
+            Command::Stop => {
                 stop(&searcher, search_handle, debug);
                 search_handle = None;
             }
-            UciCommand::PonderHit => todo!(),
-            UciCommand::Quit => {
+            Command::PonderHit => todo!(),
+            Command::Quit => {
                 // stop the ongoing search
                 stop(&searcher, search_handle, debug);
                 break;
@@ -273,7 +273,7 @@ fn go(
             Ok(info) => {
                 println!(
                     "{}",
-                    UciMessage::BestMove {
+                    Message::BestMove {
                         m: info.pv[0],
                         ponder: info.pv.get(1).copied(),
                     }
@@ -307,11 +307,11 @@ fn stop(searcher: &Arc<RwLock<MainSearch>>, search_handle: Option<JoinHandle<()>
 /// `debug` is `false`.
 fn debug_info(s: &str, debug: bool) {
     if debug {
-        println!("{}", UciMessage::Info(&[EngineInfo::String(s)]));
+        println!("{}", Message::Info(&[EngineInfo::String(s)]));
     }
 }
 
 /// Send out a message to add an option for the frontend.
 fn add_option(name: &str, opt: OptionType) {
-    println!("{}", UciMessage::Option { name, opt })
+    println!("{}", Message::Option { name, opt })
 }

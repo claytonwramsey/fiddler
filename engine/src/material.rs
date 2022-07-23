@@ -31,6 +31,7 @@ use fiddler_base::{Board, Color, Move, Piece};
 
 use crate::evaluate::Score;
 
+#[must_use]
 /// Get the value of one piece by its type.
 pub const fn value(pt: Piece) -> Score {
     match pt {
@@ -43,8 +44,9 @@ pub const fn value(pt: Piece) -> Score {
     }
 }
 
+#[must_use]
 /// Compute the effect that a move will have on the total quantity of material.
-pub fn material_delta(b: &Board, m: Move) -> Score {
+pub fn delta(b: &Board, m: Move) -> Score {
     // material only ever changes value based on captures and promotions, so
     // this is easy
     let capturee_type = if m.is_en_passant() {
@@ -65,6 +67,8 @@ pub fn material_delta(b: &Board, m: Move) -> Score {
     gain
 }
 
+#[must_use]
+#[allow(clippy::cast_possible_wrap)]
 /// Evaluate a position solely by the amount of material available.
 pub fn evaluate(b: &Board) -> Score {
     let mut score = Score::centipawns(0, 0);
@@ -93,7 +97,7 @@ mod tests {
         let mut g = Game::from_fen(fen).unwrap();
         let orig_eval = evaluate(g.board());
         for (m, _) in g.get_moves::<ALL>() {
-            let delta = material_delta(g.board(), m);
+            let delta = delta(g.board(), m);
             let new_eval = match g.board().player {
                 Color::White => orig_eval + delta,
                 Color::Black => orig_eval - delta,

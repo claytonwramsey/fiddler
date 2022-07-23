@@ -165,14 +165,14 @@ impl Square {
     /// Convert an algebraic string (such as 'e7') to a square.
     /// To get an `Ok` result, the string must be two characters.
     /// The file must be in lowercase.
-    /// 
+    ///
     /// # Errors
-    /// 
-    /// This function will return an `Err` if `s` is not a legal algebraic 
+    ///
+    /// This function will return an `Err` if `s` is not a legal algebraic
     /// square.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This function will panic in the case of an internal error.
     pub fn from_algebraic(s: &str) -> Result<Square, &'static str> {
         if s.len() != 2 {

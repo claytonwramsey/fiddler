@@ -15,6 +15,8 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#![warn(clippy::pedantic)]
+#![allow(clippy::inline_always, clippy::too_many_lines)]
 
 //! Code which defines the engine's behavior. Included below are methods for
 //! evaluating positions, searching trees, storing data, configuring engines,
@@ -22,7 +24,6 @@
 
 use search::SearchError;
 
-mod config;
 pub mod evaluate;
 pub mod limit;
 pub mod material;
