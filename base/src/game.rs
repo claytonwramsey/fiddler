@@ -86,7 +86,7 @@ pub trait Tagger {
     /// Add a tag to a given move, made on board `b`.
     fn tag_move(m: Move, b: &Board, cookie: &Self::Cookie) -> Self::Tag;
 
-    /// Compute what the new cookie would be after making the move `m` on `b`. 
+    /// Compute what the new cookie would be after making the move `m` on `b`.
     /// `b_after` is the resulting board after `m` is made on `b`.
     fn update_cookie(
         m: Move,

@@ -100,6 +100,9 @@ pub type ScoredGame = TaggedGame<ScoreTag>;
 pub struct EvalCookie {
     /// The score of the position.
     score: Score,
+    /// The quantity of non-pawn material on the board, measured in midgame
+    /// centipawns.
+    mg_non_pawn_material: Eval,
     /// The phase of the position.
     phase: f32,
 }
@@ -115,19 +118,31 @@ impl Tagger for ScoreTag {
     }
 
     fn update_cookie(
-        _: Move,
+        m: Move,
         tag: &Self::Tag,
         b: &Board,
-        b_after: &Board,
+        _b_after: &Board,
         prev_cookie: &Self::Cookie,
     ) -> Self::Cookie {
         let score = match b.player {
             Color::White => prev_cookie.score + tag.0,
             Color::Black => prev_cookie.score - tag.0,
         };
+        let mut mg_npm_delta = match m.promote_type() {
+            None => Eval::DRAW,
+            Some(pt) => material::value(pt).mg,
+        };
+        if b.is_move_capture(m) {
+            mg_npm_delta -= match b.type_at_square(m.to_square()) {
+                None | Some(Piece::Pawn) => Eval::DRAW,
+                Some(pt) => material::value(pt).mg,
+            }
+        };
+        let new_mg_npm = prev_cookie.mg_non_pawn_material + mg_npm_delta;
         EvalCookie {
             score,
-            phase: phase_of(b_after),
+            mg_non_pawn_material: new_mg_npm,
+            phase: calculate_phase(new_mg_npm),
         }
     }
 
@@ -138,9 +153,17 @@ impl Tagger for ScoreTag {
     /// doubled pawns), as this will be handled by `leaf_evaluate` at the end of
     /// the search tree.
     fn init_cookie(b: &Board) -> Self::Cookie {
+        let mg_npm = {
+            let mut total = Eval::DRAW;
+            for pt in Piece::NON_PAWN_TYPES {
+                total += material::value(pt).mg * b[pt].len();
+            }
+            total
+        };
         EvalCookie {
             score: material::evaluate(b) + pst::evaluate(b),
-            phase: phase_of(b)
+            mg_non_pawn_material: mg_npm,
+            phase: calculate_phase(mg_npm),
         }
     }
 }
@@ -256,8 +279,6 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 /// Get a blending float describing the current phase of the game. Will range
 /// from 0 (full endgame) to 1 (full midgame).
 pub fn phase_of(b: &Board) -> f32 {
-    const MG_LIMIT: Eval = Eval::centipawns(2500);
-    const EG_LIMIT: Eval = Eval::centipawns(1400);
     // amount of non-pawn material in the board, under midgame values
     let mg_npm = {
         let mut total = Eval::DRAW;
@@ -266,6 +287,17 @@ pub fn phase_of(b: &Board) -> f32 {
         }
         total
     };
+
+    calculate_phase(mg_npm)
+}
+
+#[must_use]
+/// Get a blending float describing the current phase of the game.
+/// Will range from 0 (full endgame) to 1 (full midgame).
+/// `mg_npm` is the amount of midgame non-pawn material on the board.
+pub fn calculate_phase(mg_npm: Eval) -> f32 {
+    const MG_LIMIT: Eval = Eval::centipawns(2500);
+    const EG_LIMIT: Eval = Eval::centipawns(1400);
     let bounded_npm = max(EG_LIMIT, min(MG_LIMIT, mg_npm));
 
     (EG_LIMIT - bounded_npm).float_val() / (EG_LIMIT - MG_LIMIT).float_val()

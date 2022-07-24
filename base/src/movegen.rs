@@ -316,7 +316,10 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 ///     assert!(!b.is_move_capture(m));
 /// }
 /// ```
-pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie) -> Vec<(Move, T::Tag)> {
+pub fn get_moves<const M: GenMode, T: Tagger>(
+    b: &Board,
+    cookie: &T::Cookie,
+) -> Vec<(Move, T::Tag)> {
     // prevent wonky generation modes
     debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
 
@@ -528,7 +531,11 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 /// Enumerate the legal moves a player of the given color would be
 /// able to make if it were their turn to move, and if the player is not in
 /// check.
-fn non_evasions<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
+fn non_evasions<const M: GenMode, T: Tagger>(
+    b: &Board,
+    cookie: &T::Cookie,
+    moves: &mut Vec<(Move, T::Tag)>,
+) {
     let target_sqs = match M {
         ALL => Bitboard::ALL,
         CAPTURES => b[!b.player],
@@ -555,7 +562,11 @@ fn non_evasions<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie, move
 
 /// Compute the evasions in a position where the king is checked, and then push
 /// those evading moves into the moves buffer.
-fn evasions<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
+fn evasions<const M: GenMode, T: Tagger>(
+    b: &Board,
+    cookie: &T::Cookie,
+    moves: &mut Vec<(Move, T::Tag)>,
+) {
     let player = b.player;
     let king_sq = b.king_sqs[player as usize];
 
@@ -776,7 +787,12 @@ fn pawn_promotion_helper<T: Tagger>(
 
 /// Generate all the moves for a knight, bishop, rook, or queen which end
 /// up on the target.
-fn normal_piece_assistant<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>, target: Bitboard) {
+fn normal_piece_assistant<T: Tagger>(
+    b: &Board,
+    cookie: &T::Cookie,
+    moves: &mut Vec<(Move, T::Tag)>,
+    target: Bitboard,
+) {
     let board = &b;
     let player = b.player;
     let allies = board[player];
@@ -787,7 +803,13 @@ fn normal_piece_assistant<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut 
     let bishop_movers = (board[Piece::Bishop] | queens) & allies;
 
     for sq in board[Piece::Knight] & allies {
-        append_valid_normal::<T>(sq, KNIGHT_MOVES[sq as usize] & legal_targets, b, cookie, moves);
+        append_valid_normal::<T>(
+            sq,
+            KNIGHT_MOVES[sq as usize] & legal_targets,
+            b,
+            cookie,
+            moves,
+        );
     }
     for sq in bishop_movers {
         append_valid_normal::<T>(
@@ -849,7 +871,12 @@ fn pawn_captures(board: &Board, sq: Square, color: Color) -> Bitboard {
 #[inline(always)]
 /// Get the moves that a king could make in a position that are not castles,
 /// and append them into the moves buffer.
-fn king_move_non_castle<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>, target: Bitboard) {
+fn king_move_non_castle<T: Tagger>(
+    b: &Board,
+    cookie: &T::Cookie,
+    moves: &mut Vec<(Move, T::Tag)>,
+    target: Bitboard,
+) {
     let king_sq = b.king_sqs[b.player as usize];
     let allies = b[b.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;

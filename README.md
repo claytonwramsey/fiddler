@@ -56,7 +56,7 @@ interest:
 
 ## File structure
 
-Fiddler currently consists of four crates:
+Fiddler currently consists of three crates:
 
 * `base` contains common definitions across all of Fiddler, such as board state
 and move generation.
