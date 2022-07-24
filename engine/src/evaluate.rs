@@ -78,11 +78,8 @@ pub struct Eval(i16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A `Score` is a pair of two `Evals` - one for the midgame and one for the
-/// endgame. The values inside of a `Score` should never be mate values.
-///
-/// Internally, `Score`s are represented as a single integer to improve
-/// arithmetic speed. The higher 16 bits are for the midgame evaluation, and the
-/// lower 16 are for endgame.
+/// endgame.
+/// The values inside of a `Score` should never be mate values.
 pub struct Score {
     /// The midgame-only evaluation of a position.
     pub mg: Eval,
@@ -173,10 +170,10 @@ impl Tagger for ScoreTag {
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-25, -26);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-30, -28);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(5, 78);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(43, 88);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
@@ -200,14 +197,14 @@ fn leaf_rules(b: &Board) -> Score {
 
 #[must_use]
 /// Count the number of "open" rooks (i.e., those which are not blocked by
-/// unadvanced pawns) in a position. The number is a net value, so it will be
-/// negative if Black has more open rooks than White.
+/// unadvanced pawns) in a position.
+/// The number is a net value, so it will be negative if Black has more open rooks than White.
 pub fn net_open_rooks(b: &Board) -> i8 {
     // Mask for pawns which are above rank 3 (i.e. on the white half of the
     // board).
-    const BELOW_RANK3: Bitboard = Bitboard::new(0xFFFF_FFFF);
+    const WHITE_HALF: Bitboard = Bitboard::new(0x0000_0000_FFFF_FFFF);
     // Mask for pawns which are on the black half of the board
-    const ABOVE_RANK3: Bitboard = Bitboard::new(0x0000_0000_FFFF_FFFF);
+    const BLACK_HALF: Bitboard = Bitboard::new(0xFFFF_FFFF_0000_0000);
     let mut net_open_rooks = 0i8;
     let rooks = b[Piece::Rook];
     let pawns = b[Piece::Pawn];
@@ -221,7 +218,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
             continue;
         }
         let pawns_in_col = (pawns & white) & (A_FILE_MASK << wrook_sq.file());
-        let important_pawns = BELOW_RANK3 & pawns_in_col;
+        let important_pawns = WHITE_HALF & pawns_in_col;
         // check that the forward-most pawn of the important pawns is in front
         // of or behind the rook
         if important_pawns.leading_zeros() > (63 - (wrook_sq as u32)) {
@@ -237,7 +234,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
             continue;
         }
         let pawns_in_col = (pawns & black) & (A_FILE_MASK << brook_sq.file());
-        let important_pawns = ABOVE_RANK3 & pawns_in_col;
+        let important_pawns = BLACK_HALF & pawns_in_col;
         // check that the lowest-rank pawn that could block the rook is behind
         // the rook
         if important_pawns.trailing_zeros() > brook_sq as u32 {
