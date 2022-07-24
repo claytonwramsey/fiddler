@@ -319,7 +319,7 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        let moves_iter = MovePicker::new(*g.board(), tt_move, None);
+        let moves_iter = MovePicker::new(*g.board(), g.cookie(), tt_move, None);
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;
 
@@ -674,7 +674,7 @@ pub mod tests {
         for &m in &info.pv {
             println!("{m}");
             assert!(is_legal(m, g.board()));
-            g.make_move(m, &ScoreTag::tag_move(m, g.board()));
+            g.make_move(m, &ScoreTag::tag_move(m, g.board(), g.cookie()));
         }
 
         info

@@ -95,25 +95,39 @@ pub struct ScoreTag;
 
 pub type ScoredGame = TaggedGame<ScoreTag>;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// A piece of metadata which tags along with each board.
+pub struct EvalCookie {
+    /// The score of the position.
+    score: Score,
+    /// The phase of the position.
+    phase: f32,
+}
+
 impl Tagger for ScoreTag {
     type Tag = (Score, Eval);
-    type Cookie = Score;
+    type Cookie = EvalCookie;
 
     /// Compute the change in scoring that a move made on a board will cause.
-    fn tag_move(m: Move, b: &Board) -> Self::Tag {
+    fn tag_move(m: Move, b: &Board, cookie: &Self::Cookie) -> Self::Tag {
         let delta = pst::delta(b, m) + material::delta(b, m);
-        (delta, candidacy(b, m, delta))
+        (delta, candidacy(b, m, delta, cookie.phase))
     }
 
     fn update_cookie(
         _: Move,
         tag: &Self::Tag,
         b: &Board,
+        b_after: &Board,
         prev_cookie: &Self::Cookie,
     ) -> Self::Cookie {
-        match b.player {
-            Color::White => *prev_cookie + tag.0,
-            Color::Black => *prev_cookie - tag.0,
+        let score = match b.player {
+            Color::White => prev_cookie.score + tag.0,
+            Color::Black => prev_cookie.score - tag.0,
+        };
+        EvalCookie {
+            score,
+            phase: phase_of(b_after),
         }
     }
 
@@ -124,7 +138,10 @@ impl Tagger for ScoreTag {
     /// doubled pawns), as this will be handled by `leaf_evaluate` at the end of
     /// the search tree.
     fn init_cookie(b: &Board) -> Self::Cookie {
-        material::evaluate(b) + pst::evaluate(b)
+        EvalCookie {
+            score: material::evaluate(b) + pst::evaluate(b),
+            phase: phase_of(b)
+        }
     }
 }
 
@@ -144,7 +161,7 @@ pub const OPEN_ROOK_VALUE: Score = Score::centipawns(5, 78);
 /// computed correctly.
 pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
     let b = g.board();
-    (leaf_rules(b) + *g.cookie()).blend(phase_of(b))
+    (leaf_rules(b) + g.cookie().score).blend(g.cookie().phase)
 }
 
 /// Get the score gained from evaluations that are only performed at the leaf.

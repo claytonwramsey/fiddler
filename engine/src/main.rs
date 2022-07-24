@@ -140,7 +140,7 @@ fn main() {
                     Some(fen) => ScoredGame::from_fen(&fen).unwrap(),
                 };
                 for m in moves {
-                    game.try_move(m, &ScoreTag::tag_move(m, game.board()))
+                    game.try_move(m, &ScoreTag::tag_move(m, game.board(), game.cookie()))
                         .unwrap();
                 }
             }

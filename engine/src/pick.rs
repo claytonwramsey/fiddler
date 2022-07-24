@@ -44,7 +44,7 @@ use fiddler_base::{
 };
 
 use crate::{
-    evaluate::{phase_of, Eval, Score, ScoreTag},
+    evaluate::{Eval, Score, ScoreTag},
     material,
 };
 
@@ -54,9 +54,8 @@ use crate::{
 /// # Panics
 ///
 /// This function may panic if the given move is illegal.
-pub fn candidacy(b: &Board, m: Move, delta: Score) -> Eval {
+pub fn candidacy(b: &Board, m: Move, delta: Score, phase: f32) -> Eval {
     let mover_type = b.type_at_square(m.from_square()).unwrap();
-    let phase = phase_of(b);
 
     // Worst case, we don't keep the piece we captured
     let mut worst_case_delta = delta;
@@ -65,7 +64,7 @@ pub fn candidacy(b: &Board, m: Move, delta: Score) -> Eval {
     worst_case_delta.blend(phase)
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MovePicker {
     /// The buffer of captures to select from, paired with their PST deltas and
     /// then their final candidacies.
@@ -82,6 +81,8 @@ pub struct MovePicker {
     ignored: Vec<Move>,
     /// The board for which moves are being generated.
     board: Board,
+    /// The tagging cookie for `board`.
+    cookie: <ScoreTag as Tagger>::Cookie,
     /// The upcoming phase of move generation.
     phase: PickPhase,
     /// The move retreived from the transposition table.
@@ -118,6 +119,7 @@ impl MovePicker {
     /// checked as such prior to instantiation.
     pub fn new(
         b: Board,
+        cookie: &<ScoreTag as Tagger>::Cookie,
         transposition_move: Option<Move>,
         killer_move: Option<Move>,
     ) -> MovePicker {
@@ -128,6 +130,7 @@ impl MovePicker {
             quiet_index: 0,
             ignored: Vec::new(),
             board: b,
+            cookie: *cookie,
             phase: PickPhase::Transposition,
             transposition_move,
             killer_move,
@@ -175,14 +178,14 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         // we assume that m was checked for legality before
                         self.ignore(m);
-                        Some((m, ScoreTag::tag_move(m, &self.board)))
+                        Some((m, ScoreTag::tag_move(m, &self.board, &self.cookie)))
                     }
                 }
             }
             PickPhase::PreGoodCapture => {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
-                self.capture_buffer = get_moves::<CAPTURES, ScoreTag>(&self.board);
+                self.capture_buffer = get_moves::<CAPTURES, ScoreTag>(&self.board, &self.cookie);
                 self.next()
             }
             PickPhase::GoodCapture => {
@@ -214,7 +217,7 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         if is_legal(m, &self.board) {
                             self.ignore(m);
-                            Some((m, ScoreTag::tag_move(m, &self.board)))
+                            Some((m, ScoreTag::tag_move(m, &self.board, &self.cookie)))
                         } else {
                             self.next()
                         }
@@ -224,7 +227,7 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                self.quiet_buffer = get_moves::<QUIETS, ScoreTag>(&self.board);
+                self.quiet_buffer = get_moves::<QUIETS, ScoreTag>(&self.board, &self.cookie);
                 self.next()
             }
             PickPhase::Quiet => {
@@ -297,10 +300,10 @@ mod tests {
     fn generation_correctness() {
         let b = Board::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
             .unwrap();
-        let mp = MovePicker::new(b, None, None);
+        let mp = MovePicker::new(b, &ScoreTag::init_cookie(&b), None, None);
 
         let picker_moves = mp.map(|(m, _)| m);
-        let gen_moves = get_moves::<ALL, NoTag>(&b);
+        let gen_moves = get_moves::<ALL, NoTag>(&b, &());
         for m in picker_moves.clone() {
             assert!(gen_moves.contains(&(m, ())));
             println!("{}", m.to_algebraic(&b).unwrap());

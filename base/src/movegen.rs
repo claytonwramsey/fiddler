@@ -165,7 +165,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
             if m.is_castle() && b.checkers.is_empty() {
                 // just generate moves, since castle is quite rare
                 let mut move_buf = Vec::with_capacity(2);
-                castles::<NoTag>(b, &mut move_buf);
+                castles::<NoTag>(b, &(), &mut move_buf);
                 is_pseudolegal |= move_buf.contains(&(m, ()));
             }
 
@@ -284,7 +284,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// use fiddler_base::{Board, game::NoTag, movegen::{ALL, is_legal, get_moves}};
 ///
 /// let b = Board::new();
-/// for (m, _) in get_moves::<ALL, NoTag>(&b) {
+/// for (m, _) in get_moves::<ALL, NoTag>(&b, &()) {
 ///     assert!(is_legal(m, &b));
 /// }
 /// ```
@@ -298,7 +298,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
 ///
 /// assert_eq!(
-///     get_moves::<CAPTURES, NoTag>(&b),
+///     get_moves::<CAPTURES, NoTag>(&b, &()),
 ///     vec![(Move::normal(Square::E4, Square::D5), ())],
 /// );
 /// # Ok(())
@@ -311,12 +311,12 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// use fiddler_base::{Board, game::NoTag, movegen::{QUIETS, is_legal, get_moves}};
 ///
 /// let b = Board::new();
-/// for (m, _) in get_moves::<QUIETS, NoTag>(&b) {
+/// for (m, _) in get_moves::<QUIETS, NoTag>(&b, &()) {
 ///     assert!(is_legal(m, &b));
 ///     assert!(!b.is_move_capture(m));
 /// }
 /// ```
-pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> {
+pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie) -> Vec<(Move, T::Tag)> {
     // prevent wonky generation modes
     debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
 
@@ -331,7 +331,7 @@ pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> 
         // in the overwhelming majority of cases, there are 8 or fewer
         // legal evasions if the king is in check
         moves = Vec::with_capacity(8);
-        evasions::<M, T>(b, &mut moves);
+        evasions::<M, T>(b, cookie, &mut moves);
     } else {
         // in the overwhelming majority of cases, there are fewer than 50
         // legal moves total
@@ -342,7 +342,7 @@ pub fn get_moves<const M: GenMode, T: Tagger>(b: &Board) -> Vec<(Move, T::Tag)> 
             _ => unreachable!(),
         };
         moves = Vec::with_capacity(capacity);
-        non_evasions::<M, T>(b, &mut moves);
+        non_evasions::<M, T>(b, cookie, &mut moves);
     };
 
     moves
@@ -528,7 +528,7 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 /// Enumerate the legal moves a player of the given color would be
 /// able to make if it were their turn to move, and if the player is not in
 /// check.
-fn non_evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
+fn non_evasions<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
     let target_sqs = match M {
         ALL => Bitboard::ALL,
         CAPTURES => b[!b.player],
@@ -536,7 +536,7 @@ fn non_evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T
         _ => unreachable!(),
     };
 
-    normal_piece_assistant::<T>(b, moves, target_sqs);
+    normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
 
     let mut pawn_targets = target_sqs;
     if M != QUIETS {
@@ -544,18 +544,18 @@ fn non_evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T
             pawn_targets.insert(ep_sq);
         }
     }
-    pawn_assistant::<M, T>(b, moves, pawn_targets);
+    pawn_assistant::<M, T>(b, cookie, moves, pawn_targets);
 
     // generate king moves
     if M != CAPTURES {
-        castles::<T>(b, moves);
+        castles::<T>(b, cookie, moves);
     }
-    king_move_non_castle::<T>(b, moves, target_sqs);
+    king_move_non_castle::<T>(b, cookie, moves, target_sqs);
 }
 
 /// Compute the evasions in a position where the king is checked, and then push
 /// those evading moves into the moves buffer.
-fn evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
+fn evasions<const M: GenMode, T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
     let player = b.player;
     let king_sq = b.king_sqs[player as usize];
 
@@ -583,8 +583,8 @@ fn evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Ta
             }
         }
 
-        pawn_assistant::<M, T>(b, moves, pawn_targets);
-        normal_piece_assistant::<T>(b, moves, target_sqs);
+        pawn_assistant::<M, T>(b, cookie, moves, pawn_targets);
+        normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
     }
 
     let king_targets = match M {
@@ -593,7 +593,7 @@ fn evasions<const M: GenMode, T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Ta
         QUIETS => !b[!player],
         _ => unreachable!(),
     };
-    king_move_non_castle::<T>(b, moves, king_targets);
+    king_move_non_castle::<T>(b, cookie, moves, king_targets);
 }
 
 #[inline(always)]
@@ -658,6 +658,7 @@ fn square_attackers_occupancy(
 /// pawn.
 fn pawn_assistant<const M: GenMode, T: Tagger>(
     b: &Board,
+    cookie: &T::Cookie,
     moves: &mut Vec<(Move, T::Tag)>,
     target: Bitboard,
 ) {
@@ -687,18 +688,18 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         for to_sq in singles & not_rank8 {
             let m = Move::normal(to_sq - direction, to_sq);
             if validate(m, b) {
-                moves.push((m, T::tag_move(m, b)));
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
         for to_sq in doubles {
             let m = Move::normal(to_sq - doubledir, to_sq);
             if validate(m, b) {
-                moves.push((m, T::tag_move(m, b)));
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
-        pawn_promotion_helper::<T>(singles & rank8, direction, b, moves);
+        pawn_promotion_helper::<T>(singles & rank8, direction, b, cookie, moves);
     }
 
     if M != QUIETS {
@@ -717,18 +718,18 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         for to_sq in capture_e & not_rank8 {
             let m = Move::normal(to_sq - capture_dir_e, to_sq);
             if validate(m, b) {
-                moves.push((m, T::tag_move(m, b)));
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
         for to_sq in capture_w & not_rank8 {
             let m = Move::normal(to_sq - capture_dir_w, to_sq);
             if validate(m, b) {
-                moves.push((m, T::tag_move(m, b)));
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
-        pawn_promotion_helper::<T>(capture_e & rank8, capture_dir_e, b, moves);
-        pawn_promotion_helper::<T>(capture_w & rank8, capture_dir_w, b, moves);
+        pawn_promotion_helper::<T>(capture_e & rank8, capture_dir_e, b, cookie, moves);
+        pawn_promotion_helper::<T>(capture_w & rank8, capture_dir_w, b, cookie, moves);
 
         // en passant
         if let Some(ep_square) = board.en_passant_square {
@@ -737,7 +738,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                 for from_sq in from_sqs {
                     let m = Move::en_passant(from_sq, ep_square);
                     if validate(m, b) {
-                        moves.push((m, T::tag_move(m, b)));
+                        moves.push((m, T::tag_move(m, b, cookie)));
                     }
                 }
             }
@@ -754,6 +755,7 @@ fn pawn_promotion_helper<T: Tagger>(
     to_bb: Bitboard,
     move_direction: Direction,
     b: &Board,
+    cookie: &T::Cookie,
     moves: &mut Vec<(Move, T::Tag)>,
 ) {
     for to_sq in to_bb {
@@ -763,10 +765,10 @@ fn pawn_promotion_helper<T: Tagger>(
         // (queen promotions) will be nearer to the front.
         let m1 = Move::promoting(from_sq, to_sq, Piece::Queen);
         if validate(m1, b) {
-            moves.push((m1, T::tag_move(m1, b)));
+            moves.push((m1, T::tag_move(m1, b, cookie)));
             for promote_type in [Piece::Knight, Piece::Rook, Piece::Bishop] {
                 let m = Move::promoting(from_sq, to_sq, promote_type);
-                moves.push((m, T::tag_move(m, b)));
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
     }
@@ -774,7 +776,7 @@ fn pawn_promotion_helper<T: Tagger>(
 
 /// Generate all the moves for a knight, bishop, rook, or queen which end
 /// up on the target.
-fn normal_piece_assistant<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>, target: Bitboard) {
+fn normal_piece_assistant<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>, target: Bitboard) {
     let board = &b;
     let player = b.player;
     let allies = board[player];
@@ -785,13 +787,14 @@ fn normal_piece_assistant<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>,
     let bishop_movers = (board[Piece::Bishop] | queens) & allies;
 
     for sq in board[Piece::Knight] & allies {
-        append_valid_normal::<T>(sq, KNIGHT_MOVES[sq as usize] & legal_targets, b, moves);
+        append_valid_normal::<T>(sq, KNIGHT_MOVES[sq as usize] & legal_targets, b, cookie, moves);
     }
     for sq in bishop_movers {
         append_valid_normal::<T>(
             sq,
             MAGIC.bishop_attacks(occupancy, sq) & legal_targets,
             b,
+            cookie,
             moves,
         );
     }
@@ -800,6 +803,7 @@ fn normal_piece_assistant<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>,
             sq,
             MAGIC.rook_attacks(occupancy, sq) & legal_targets,
             b,
+            cookie,
             moves,
         );
     }
@@ -845,17 +849,17 @@ fn pawn_captures(board: &Board, sq: Square, color: Color) -> Bitboard {
 #[inline(always)]
 /// Get the moves that a king could make in a position that are not castles,
 /// and append them into the moves buffer.
-fn king_move_non_castle<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>, target: Bitboard) {
+fn king_move_non_castle<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>, target: Bitboard) {
     let king_sq = b.king_sqs[b.player as usize];
     let allies = b[b.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
-    append_valid_normal::<T>(king_sq, to_bb, b, moves);
+    append_valid_normal::<T>(king_sq, to_bb, b, cookie, moves);
 }
 
 #[inline(always)]
 /// Get the castling moves that the king could make in this position, and
 /// append them onto the target vector.
-fn castles<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
+fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
     let player = b.player;
     let occ = b.occupancy();
     let king_sq = b.king_sqs[player as usize];
@@ -872,7 +876,7 @@ fn castles<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
     if can_kingside_castle {
         let m = Move::castling(king_sq, Square::new(king_sq.rank(), 6).unwrap());
         if validate(m, b) {
-            moves.push((m, T::tag_move(m, b)));
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
 
@@ -889,7 +893,7 @@ fn castles<T: Tagger>(b: &Board, moves: &mut Vec<(Move, T::Tag)>) {
     if can_queenside_castle {
         let m = Move::castling(king_sq, Square::new(king_sq.rank(), 2).unwrap());
         if validate(m, b) {
-            moves.push((m, T::tag_move(m, b)));
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
 }
@@ -936,11 +940,13 @@ fn append_valid_normal<T: Tagger>(
     from_sq: Square,
     to_bb: Bitboard,
     b: &Board,
+    cookie: &T::Cookie,
     moves: &mut Vec<(Move, T::Tag)>,
 ) {
-    append_valid_moves::<T>(from_sq, to_bb, None, false, false, b, moves);
+    append_valid_moves::<T>(from_sq, to_bb, None, false, false, b, cookie, moves);
 }
 
+#[allow(clippy::too_many_arguments)]
 /// Append all the validated pseudolegal moves from `from_sq` to each square in
 /// `to_bb` to the `moves` vector, computing the nomination values along the
 /// way. `promote_type`, `castle`, and `en_passant` are the tags on the move
@@ -952,12 +958,13 @@ fn append_valid_moves<T: Tagger>(
     castle: bool,
     en_passant: bool,
     b: &Board,
+    cookie: &T::Cookie,
     moves: &mut Vec<(Move, T::Tag)>,
 ) {
     for to_sq in to_bb {
         let m = Move::new(from_sq, to_sq, promote_type, castle, en_passant);
         if validate(m, b) {
-            moves.push((m, T::tag_move(m, b)));
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
 }
@@ -991,7 +998,7 @@ fn perft_search<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = get_moves::<ALL, NoTag>(b);
+    let moves = get_moves::<ALL, NoTag>(b, &());
     if depth == 1 {
         return moves.len() as u64;
     }
@@ -1022,7 +1029,7 @@ mod tests {
         // the fried liver position, before Qf3+
         let b =
             Board::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap();
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
         assert!(moves.contains(&(m, ())));
         for m in moves {
             assert!(is_legal(m.0, &b));
@@ -1036,11 +1043,11 @@ mod tests {
         let b = Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2")
             .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
-        for m in get_moves::<ALL, NoTag>(&b) {
+        for m in get_moves::<ALL, NoTag>(&b, &()) {
             assert!(is_legal(m.0, &b));
         }
-        assert!(get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
-        assert!(get_moves::<CAPTURES, NoTag>(&b).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
+        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).contains(&(m, ())));
     }
 
     #[test]
@@ -1049,7 +1056,7 @@ mod tests {
         let b =
             Board::from_fen("r1bq1b1r/ppp2kpp/2n5/3n4/2B5/8/PPP1pPPP/RN1Q1K1R w - - 0 10").unwrap();
 
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
 
         for m2 in &moves {
             assert!(is_legal(m2.0, &b));
@@ -1062,11 +1069,11 @@ mod tests {
         let b =
             Board::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11").unwrap();
         assert!(!has_moves(&b));
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
         for m in moves {
             assert!(is_legal(m.0, &b));
         }
-        assert!(get_moves::<ALL, NoTag>(&b).is_empty());
+        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
     }
 
     #[test]
@@ -1074,7 +1081,7 @@ mod tests {
     fn king_has_only_one_move() {
         let b = Board::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2").unwrap();
         assert!(has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b).len() == 1);
+        assert!(get_moves::<ALL, NoTag>(&b, &()).len() == 1);
         assert!(is_legal(Move::normal(Square::C8, Square::B8), &b));
     }
 
@@ -1085,7 +1092,7 @@ mod tests {
             Board::from_fen("r3kb1r/ppp1p1pp/2nq1n2/1B1p4/3P4/2N2Q2/PPP2PPP/R1B1K2R b KQkq - 0 8")
                 .unwrap();
         let m = Move::castling(Square::E8, Square::C8);
-        assert!(get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
         assert!(is_legal(m, &b));
     }
 
@@ -1095,7 +1102,7 @@ mod tests {
         let b = Board::from_fen("rn2kbnr/ppp1pppp/3q4/3p4/6b1/8/PPPPPPPP/RNBQKBNR b KQkq - 5 4")
             .unwrap();
         let m = Move::castling(Square::E8, Square::C8);
-        assert!(!get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
+        assert!(!get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
 
         assert!(!is_legal(m, &b));
     }
@@ -1134,7 +1141,7 @@ mod tests {
     fn king_escape_without_capture() {
         let b = Board::from_fen("r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10")
             .unwrap();
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
         let expected_moves = vec![
             Move::normal(Square::E6, Square::D6),
             Move::normal(Square::E6, Square::F7),
@@ -1155,7 +1162,7 @@ mod tests {
     /// Test that Black can promote a piece (on e1).
     fn black_can_promote() {
         let b = Board::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1").unwrap();
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
         for m in &moves {
             assert!(is_legal(m.0, &b));
         }
@@ -1168,7 +1175,7 @@ mod tests {
         let b = Board::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBPPP3/q4N2/Pp4PP/R2Q1RK1 b kq - 0 1")
             .unwrap();
 
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
         let m = Move::normal(Square::H7, Square::A7);
         assert!(!(moves.contains(&(m, ()))));
         assert!(!is_legal(m, &b));
@@ -1183,8 +1190,8 @@ mod tests {
         let m = Move::en_passant(Square::C4, Square::B3);
 
         assert!(!is_legal(m, &b));
-        assert!(!get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
-        assert!(!get_moves::<CAPTURES, NoTag>(&b).contains(&(m, ())));
+        assert!(!get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
+        assert!(!get_moves::<CAPTURES, NoTag>(&b, &()).contains(&(m, ())));
     }
 
     #[test]
@@ -1192,7 +1199,7 @@ mod tests {
     /// check.
     fn en_passant_pinned() {
         let b = Board::from_fen("8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2").unwrap();
-        let moves = get_moves::<ALL, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
         let m = Move::en_passant(Square::F4, Square::E3);
         assert!(!moves.contains(&(m, ())));
         assert!(!is_legal(m, &b));
@@ -1206,7 +1213,7 @@ mod tests {
 
         let m = Move::normal(Square::B5, Square::C6);
         assert!(!is_legal(m, &b));
-        assert!(!get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
+        assert!(!get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
     }
     #[test]
     /// Test that a pinned piece cannot make a capture if it does not defend
@@ -1216,8 +1223,8 @@ mod tests {
             .unwrap();
         let illegal_move = Move::normal(Square::D5, Square::C3);
 
-        assert!(!get_moves::<ALL, NoTag>(&b).contains(&(illegal_move, ())));
-        assert!(!get_moves::<CAPTURES, NoTag>(&b).contains(&(illegal_move, ())));
+        assert!(!get_moves::<ALL, NoTag>(&b, &()).contains(&(illegal_move, ())));
+        assert!(!get_moves::<CAPTURES, NoTag>(&b, &()).contains(&(illegal_move, ())));
         assert!(!is_legal(illegal_move, &b));
     }
 
@@ -1230,8 +1237,8 @@ mod tests {
 
         let m = Move::en_passant(Square::E5, Square::F6);
 
-        assert!(get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
-        assert!(get_moves::<CAPTURES, NoTag>(&b).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
+        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).contains(&(m, ())));
         assert!(is_legal(m, &b));
     }
 
@@ -1244,7 +1251,7 @@ mod tests {
 
         let m = Move::en_passant(Square::B5, Square::C6);
 
-        assert!(get_moves::<ALL, NoTag>(&b).contains(&(m, ())));
+        assert!(get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
         assert!(is_legal(m, &b));
         assert!(has_moves(&b));
     }
@@ -1254,9 +1261,9 @@ mod tests {
     fn horizontal_rook_mate() {
         let b = Board::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32").unwrap();
 
-        assert!(get_moves::<ALL, NoTag>(&b).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
+        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
         assert!(!has_moves(&b));
     }
 
@@ -1266,9 +1273,9 @@ mod tests {
     fn king_can_move() {
         let b = Board::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1").unwrap();
 
-        assert!(!get_moves::<ALL, NoTag>(&b).is_empty());
-        assert!(!get_moves::<CAPTURES, NoTag>(&b).is_empty());
-        assert!(!get_moves::<QUIETS, NoTag>(&b).is_empty());
+        assert!(!get_moves::<ALL, NoTag>(&b, &()).is_empty());
+        assert!(!get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+        assert!(!get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
         assert!(has_moves(&b));
     }
 
@@ -1278,9 +1285,9 @@ mod tests {
         let b = Board::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1").unwrap();
 
         assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
+        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
     }
 
     #[test]
@@ -1298,9 +1305,9 @@ mod tests {
             let b = Board::from_fen("K1k5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
 
             assert!(!has_moves(&b));
-            assert!(get_moves::<ALL, NoTag>(&b).is_empty());
-            assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
-            assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
         }
 
         #[test]
@@ -1309,9 +1316,9 @@ mod tests {
             let b = Board::from_fen("KBk5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
 
             assert!(!has_moves(&b));
-            assert!(get_moves::<ALL, NoTag>(&b).is_empty());
-            assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
-            assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
         }
 
         #[test]
@@ -1320,9 +1327,9 @@ mod tests {
             let b = Board::from_fen("KNk5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
 
             assert!(!has_moves(&b));
-            assert!(get_moves::<ALL, NoTag>(&b).is_empty());
-            assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
-            assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
         }
 
         #[test]
@@ -1331,9 +1338,9 @@ mod tests {
             let b = Board::from_fen("K1k5/8/8/8/3B4/8/3b4/8 w - - 0 1").unwrap();
 
             assert!(!has_moves(&b));
-            assert!(get_moves::<ALL, NoTag>(&b).is_empty());
-            assert!(get_moves::<CAPTURES, NoTag>(&b).is_empty());
-            assert!(get_moves::<QUIETS, NoTag>(&b).is_empty());
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
         }
     }
 
@@ -1410,8 +1417,8 @@ mod tests {
     fn loud_moves_helper(fen: &str) {
         let b = Board::from_fen(fen).unwrap();
 
-        let moves = get_moves::<ALL, NoTag>(&b);
-        let loud_moves = get_moves::<CAPTURES, NoTag>(&b);
+        let moves = get_moves::<ALL, NoTag>(&b, &());
+        let loud_moves = get_moves::<CAPTURES, NoTag>(&b, &());
 
         for loud_move in &loud_moves {
             assert!(moves.contains(loud_move));

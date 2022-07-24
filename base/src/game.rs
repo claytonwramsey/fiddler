@@ -69,9 +69,9 @@ impl Tagger for NoTag {
     type Tag = ();
     type Cookie = ();
 
-    fn tag_move(_: Move, _: &Board) -> Self::Tag {}
+    fn tag_move(_: Move, _: &Board, _: &Self::Cookie) -> Self::Tag {}
 
-    fn update_cookie(_: Move, _: &Self::Tag, _: &Board, _: &Self::Cookie) {}
+    fn update_cookie(_: Move, _: &Self::Tag, _: &Board, _: &Board, _: &Self::Cookie) {}
 
     fn init_cookie(_: &Board) {}
 }
@@ -84,13 +84,15 @@ pub trait Tagger {
     type Cookie;
 
     /// Add a tag to a given move, made on board `b`.
-    fn tag_move(m: Move, b: &Board) -> Self::Tag;
+    fn tag_move(m: Move, b: &Board, cookie: &Self::Cookie) -> Self::Tag;
 
-    /// Compute what the new cookie would be after making the move `m` on `b`.
+    /// Compute what the new cookie would be after making the move `m` on `b`. 
+    /// `b_after` is the resulting board after `m` is made on `b`.
     fn update_cookie(
         m: Move,
         tag: &Self::Tag,
         b: &Board,
+        b_after: &Board,
         prev_cookie: &Self::Cookie,
     ) -> Self::Cookie;
 
@@ -109,7 +111,7 @@ impl<T: Tagger> TaggedGame<T> {
             moves: Vec::new(),
             repetitions: {
                 let mut map = IntMap::default();
-                map.insert(Board::default().hash, 1);
+                map.insert(b.hash, 1);
                 map
             },
         }
@@ -159,11 +161,13 @@ impl<T: Tagger> TaggedGame<T> {
     /// It is recommended to only call `make_move` with moves that were already
     /// validated.
     pub fn make_move(&mut self, m: Move, tag: &T::Tag) {
+        /*
         #[cfg(debug_assertions)]
         if !is_legal(m, self.board()) {
             println!("an illegal move {m} is being attempted. History: {self}");
             panic!();
         }
+        */
         let previous_state = self.history.last().unwrap();
         let mut new_board = previous_state.0;
 
@@ -172,7 +176,7 @@ impl<T: Tagger> TaggedGame<T> {
         *num_reps += 1;
         self.history.push((
             new_board,
-            T::update_cookie(m, tag, &previous_state.0, &previous_state.1),
+            T::update_cookie(m, tag, &previous_state.0, &new_board, &previous_state.1),
         ));
         self.moves.push(m);
     }
@@ -278,7 +282,7 @@ impl<T: Tagger> TaggedGame<T> {
             return Vec::new();
         }
 
-        get_moves::<M, T>(self.board())
+        get_moves::<M, T>(self.board(), self.cookie())
     }
 
     // no need for `is_empty` since history should always be nonempty
