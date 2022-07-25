@@ -1,9 +1,9 @@
 # Fiddler: a chess engine
 
-Fiddler is a chess engine developed by Clayton Ramsey as a hobby project. It's
-written in Rust, with an emphasis on ergonomic usage and good performance. Right
-now, I would guess that its playing quality is roughly 2400 Elo, on par with an
-international master.
+Fiddler is a chess engine developed by Clayton Ramsey as a hobby project.
+It's written in Rust, with an emphasis on ergonomic usage and good performance.
+Right now, I would guess that its playing quality is roughly 2100 Elo, on par
+with a master-level player.
 
 ## Features
 

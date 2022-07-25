@@ -63,7 +63,7 @@ pub fn delta(b: &Board, m: Move) -> Score {
         gain -= value(Piece::Pawn);
     }
 
-    // we need not put this delta in perspective, that is `Position`'s job
+    // we need not put this delta in perspective, that is somebody else's job
     gain
 }
 

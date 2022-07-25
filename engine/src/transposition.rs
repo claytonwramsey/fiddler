@@ -71,6 +71,7 @@ pub struct TTEntryGuard<'a> {
     _phantom: PhantomData<&'a TTable>,
 }
 
+/// The number of entries in a single bucket.
 const BUCKET_SIZE: usize = 3;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -205,6 +206,7 @@ impl TTable {
         for _ in 0..BUCKET_SIZE {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
             if entry_ref.tag & 0x80 == 0 {
+                // we found an unoccupied entry. return it immediately
                 return TTEntryGuard {
                     valid: false,
                     hash: hash_key,
@@ -217,7 +219,7 @@ impl TTable {
                 eldest_entry = entry_ptr;
                 eldest_age = age;
             }
-            entry_ptr = unsafe { entry_ptr.add(1) }
+            entry_ptr = unsafe { entry_ptr.add(1) };
         }
 
         TTEntryGuard {
