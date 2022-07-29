@@ -543,8 +543,6 @@ fn non_evasions<const M: GenMode, T: Tagger>(
         _ => unreachable!(),
     };
 
-    normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
-
     let mut pawn_targets = target_sqs;
     if M != QUIETS {
         if let Some(ep_sq) = b.en_passant_square {
@@ -552,6 +550,8 @@ fn non_evasions<const M: GenMode, T: Tagger>(
         }
     }
     pawn_assistant::<M, T>(b, cookie, moves, pawn_targets);
+
+    normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
 
     // generate king moves
     if M != CAPTURES {
@@ -693,34 +693,6 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     let unpinned = !board.pinned;
     let king_sq = board.king_sqs[player as usize];
 
-    if M != CAPTURES {
-        // pawn forward moves
-
-        // pawns which are not pinned or on the same file as the king can move
-        let pushers = (pawns & unpinned) | (COL_A << king_sq.file() & pawns);
-        let mut singles = (pushers << direction.0) & unoccupied;
-        let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
-        singles &= target;
-
-        for to_sq in singles & rank8 {
-            let from_sq = to_sq - direction;
-            for pt in Piece::PROMOTING {
-                let m = Move::promoting(from_sq, to_sq, pt);
-                moves.push((m, T::tag_move(m, b, cookie)));
-            }
-        }
-
-        for to_sq in doubles {
-            let m = Move::normal(to_sq - doubledir, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
-        }
-
-        for to_sq in singles & not_rank8 {
-            let m = Move::normal(to_sq - direction, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
-        }
-    }
-
     if M != QUIETS {
         const NOT_WEST: Bitboard = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
         const NOT_EAST: Bitboard = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
@@ -734,21 +706,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let capture_e = ((pawns & NOT_EAST) << capture_dir_e.0) & capture_mask;
         let capture_w = ((pawns & NOT_WEST) << capture_dir_w.0) & capture_mask;
 
-        for to_sq in capture_e & not_rank8 {
-            let from_sq = to_sq - capture_dir_e;
-            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
-                let m = Move::normal(from_sq, to_sq);
-                moves.push((m, T::tag_move(m, b, cookie)));
-            }
-        }
-        for to_sq in capture_w & not_rank8 {
-            let from_sq = to_sq - capture_dir_w;
-            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
-                let m = Move::normal(from_sq, to_sq);
-                moves.push((m, T::tag_move(m, b, cookie)));
-            }
-        }
-
+        // promotion captures
         for to_sq in capture_e & rank8 {
             let from_sq = to_sq - capture_dir_e;
             if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
@@ -769,9 +727,24 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
             }
         }
 
+        // normal captures
+        for to_sq in capture_e & not_rank8 {
+            let from_sq = to_sq - capture_dir_e;
+            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+                let m = Move::normal(from_sq, to_sq);
+                moves.push((m, T::tag_move(m, b, cookie)));
+            }
+        }
+        for to_sq in capture_w & not_rank8 {
+            let from_sq = to_sq - capture_dir_w;
+            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+                let m = Move::normal(from_sq, to_sq);
+                moves.push((m, T::tag_move(m, b, cookie)));
+            }
+        }
+
         // en passant
         if let Some(ep_square) = board.en_passant_square {
-    
             if target.contains(ep_square) {
                 let king_sq = b.king_sqs[b.player as usize];
                 let enemy = b[!b.player];
@@ -779,7 +752,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                 let capture_bb = to_bb << -b.player.pawn_direction().0;
                 let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
                 for from_sq in from_sqs {
-                    let new_occupancy = b.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
+                    let new_occupancy =
+                        b.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
                     let m = Move::en_passant(from_sq, ep_square);
                     if (MAGIC.rook_attacks(new_occupancy, king_sq)
                         & (b[Piece::Rook] | b[Piece::Queen])
@@ -794,6 +768,37 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                     }
                 }
             }
+        }        
+    }
+
+    if M != CAPTURES {
+        // pawn forward moves
+
+        // pawns which are not pinned or on the same file as the king can move
+        let pushers = (pawns & unpinned) | (COL_A << king_sq.file() & pawns);
+        let mut singles = (pushers << direction.0) & unoccupied;
+        let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
+        singles &= target;
+
+        // promotion single-moves
+        for to_sq in singles & rank8 {
+            let from_sq = to_sq - direction;
+            for pt in Piece::PROMOTING {
+                let m = Move::promoting(from_sq, to_sq, pt);
+                moves.push((m, T::tag_move(m, b, cookie)));
+            }
+        }
+
+        // doublemoves
+        for to_sq in doubles {
+            let m = Move::normal(to_sq - doubledir, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
+
+        // normal single-moves
+        for to_sq in singles & not_rank8 {
+            let m = Move::normal(to_sq - direction, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
 }
