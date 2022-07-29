@@ -152,7 +152,7 @@ impl Tagger for ScoreTag {
     fn init_cookie(b: &Board) -> Self::Cookie {
         let mg_npm = {
             let mut total = Eval::DRAW;
-            for pt in Piece::NON_PAWN_TYPES {
+            for pt in Piece::NON_PAWNS {
                 total += material::value(pt).mg * b[pt].len();
             }
             total
@@ -279,7 +279,7 @@ pub fn phase_of(b: &Board) -> f32 {
     // amount of non-pawn material in the board, under midgame values
     let mg_npm = {
         let mut total = Eval::DRAW;
-        for pt in Piece::NON_PAWN_TYPES {
+        for pt in Piece::NON_PAWNS {
             total += material::value(pt).mg * b[pt].len();
         }
         total

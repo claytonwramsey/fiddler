@@ -76,7 +76,7 @@ pub fn evaluate(b: &Board) -> Score {
     let white_occupancy = b[Color::White];
     let black_occupancy = b[Color::Black];
 
-    for pt in Piece::ALL_TYPES {
+    for pt in Piece::ALL {
         // Total the quantity of white and black pieces of this type, and
         // multiply their individual value to get the net effect on the eval.
         let pt_squares = b[pt];

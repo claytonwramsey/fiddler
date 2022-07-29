@@ -38,7 +38,7 @@ pub struct Board {
     sides: [Bitboard; 2],
     /// The squares occupied by (in order) knights, bishops, rooks,
     /// queens, pawns, and kings.
-    pieces: [Bitboard; Piece::NUM_TYPES],
+    pieces: [Bitboard; Piece::NUM],
     /// The color of the player to move.
     pub player: Color,
     /// The square which can be moved to by a pawn in en passant.
@@ -298,7 +298,7 @@ impl Board {
     /// assert_eq!(board.type_at_square(Square::E4), None)
     /// ```
     pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
-        for pt in Piece::ALL_TYPES {
+        for pt in Piece::ALL {
             if self[pt].contains(sq) {
                 return Some(pt);
             }

@@ -35,10 +35,10 @@ use crate::evaluate::Score;
 /// and the inner index is the square of the piece (from White's point of view)
 /// , starting with A1 as the first index, then continuing on to B1, C1, and so
 /// on until H8 as index 63.
-type Pst = [[Score; 64]; Piece::NUM_TYPES];
+type Pst = [[Score; 64]; Piece::NUM];
 
 /// A PST which is given in millipawns.
-type CentiPst = [[(i16, i16); 64]; Piece::NUM_TYPES];
+type CentiPst = [[(i16, i16); 64]; Piece::NUM];
 
 #[must_use]
 /// Evaluate a board based on its PST value. This is slow, so under most
@@ -48,7 +48,7 @@ type CentiPst = [[(i16, i16); 64]; Piece::NUM_TYPES];
 pub fn evaluate(board: &Board) -> Score {
     let mut score = Score::DRAW;
 
-    for pt in Piece::ALL_TYPES {
+    for pt in Piece::ALL {
         for sq in board[pt] & board[Color::White] {
             score += PST[pt as usize][sq as usize];
         }
@@ -122,10 +122,10 @@ pub fn delta(board: &Board, m: Move) -> Score {
 /// to a table of `Eval`s.
 const fn expand_table(centi_table: &CentiPst) -> Pst {
     // we will overwrite the whole table later
-    let mut table = [[unsafe { MaybeUninit::uninit().assume_init() }; 64]; Piece::NUM_TYPES];
+    let mut table = [[unsafe { MaybeUninit::uninit().assume_init() }; 64]; Piece::NUM];
     let mut piece_idx = 0;
     // I would use for-loops here, but those are unsupported in const fns.
-    while piece_idx < Piece::NUM_TYPES {
+    while piece_idx < Piece::NUM {
         let mut sq_idx = 0;
         while sq_idx < 64 {
             let int_score = centi_table[piece_idx][sq_idx];

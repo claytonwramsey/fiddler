@@ -186,13 +186,13 @@ fn sigmoid(x: f32, beta: f32) -> f32 {
 /// Load the weight value constants from the ones defined in the PST evaluation.
 fn load_weights() -> Vec<f32> {
     let mut weights = Vec::new();
-    for pt in Piece::NON_KING_TYPES {
+    for pt in Piece::NON_KING {
         let val = material::value(pt);
         weights.push(val.mg.float_val());
         weights.push(val.eg.float_val());
     }
 
-    for pt in Piece::ALL_TYPES {
+    for pt in Piece::ALL {
         for rank in 0..8 {
             for file in 0..8 {
                 let sq_idx = 8 * rank + file;
@@ -241,7 +241,7 @@ fn print_weights(weights: &[f32]) {
     paired_val("OPEN_ROOK_VAL", 780);
 
     println!("const PST: Pst = expand_table([");
-    for pt in Piece::ALL_TYPES {
+    for pt in Piece::ALL {
         println!("    [ // {pt}");
         let pt_idx = 10 + (128 * pt as usize);
         for rank in 0..8 {
@@ -295,7 +295,7 @@ fn extract(b: &Board) -> BoardFeatures {
     let mut features = Vec::with_capacity(28);
     let phase = phase_of(b);
     // Indices 0..4: non-king piece values
-    for pt in Piece::NON_KING_TYPES {
+    for pt in Piece::NON_KING {
         let n_white = (b[pt] & b[Color::White]).len() as i8;
         let n_black = (b[pt] & b[Color::Black]).len() as i8;
         let net = n_white - n_black;
@@ -312,7 +312,7 @@ fn extract(b: &Board) -> BoardFeatures {
     let wocc = b[Color::White];
 
     // Get piece-square quantities
-    for pt in Piece::ALL_TYPES {
+    for pt in Piece::ALL {
         let pt_idx = pt as usize;
         for sq in b[pt] {
             let alt_sq = sq.opposite();

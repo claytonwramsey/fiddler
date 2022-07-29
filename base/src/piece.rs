@@ -42,10 +42,10 @@ pub enum Piece {
 
 impl Piece {
     /// Total number of piece types.
-    pub const NUM_TYPES: usize = 6;
+    pub const NUM: usize = 6;
 
     /// Array containing all piece types.
-    pub const ALL_TYPES: [Piece; Piece::NUM_TYPES] = [
+    pub const ALL: [Piece; Piece::NUM] = [
         Piece::Knight,
         Piece::Bishop,
         Piece::Rook,
@@ -55,7 +55,7 @@ impl Piece {
     ];
 
     /// Array containing piece types which are not pawns.
-    pub const NON_PAWN_TYPES: [Piece; Piece::NUM_TYPES - 1] = [
+    pub const NON_PAWNS: [Piece; Piece::NUM - 1] = [
         Piece::Knight,
         Piece::Bishop,
         Piece::Rook,
@@ -64,13 +64,15 @@ impl Piece {
     ];
 
     /// Array containing piece types which are not kings.
-    pub const NON_KING_TYPES: [Piece; Piece::NUM_TYPES - 1] = [
+    pub const NON_KING: [Piece; Piece::NUM - 1] = [
         Piece::Knight,
         Piece::Bishop,
         Piece::Rook,
         Piece::Queen,
         Piece::Pawn,
     ];
+
+    pub const PROMOTING: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
     #[must_use]
     /// Get the FEN code of this piece as an uppercase string.

@@ -67,7 +67,7 @@ pub const fn player_key(player_to_move: Color) -> u64 {
 /// A set of random keys which will reliably be the same.
 /// If one wanted, they could generate a new set of keys on every program run,
 /// but that seems inefficient.
-const SQUARE_KEYS: [[[u64; 2]; Piece::NUM_TYPES]; 64] = [
+const SQUARE_KEYS: [[[u64; 2]; Piece::NUM]; 64] = [
     [
         [13_515_657_874_892_102_023, 15_129_553_140_981_592_645],
         [14_809_938_836_708_178_893, 15_774_518_201_988_393_282],

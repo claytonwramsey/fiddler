@@ -413,7 +413,7 @@ pub fn has_moves(b: &Board) -> bool {
 
         // only blocks or captures can save us
     }
-    for pt in Piece::NON_KING_TYPES {
+    for pt in Piece::NON_KING {
         for from_sq in b[pt] & player_occupancy {
             let to_bb = match pt {
                 Piece::Pawn => {
@@ -450,7 +450,7 @@ pub fn has_moves(b: &Board) -> bool {
 }
 
 /// Determine whether a move is valid in the position on the board, given
-/// that it was generated during the pseudolegal move generation process.
+/// that it is pseudo-legal.
 fn validate(m: Move, b: &Board) -> bool {
     // the pieces which are pinned
     let from_sq = m.from_square();
@@ -673,6 +673,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     moves: &mut Vec<(Move, T::Tag)>,
     target: Bitboard,
 ) {
+    const COL_A: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
+
     let board = &b;
     let player = b.player;
     let allies = board[player];
@@ -688,29 +690,35 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     };
     let direction = player.pawn_direction();
     let doubledir = 2 * direction;
+    let unpinned = !board.pinned;
+    let king_sq = board.king_sqs[player as usize];
 
     if M != CAPTURES {
         // pawn forward moves
 
-        let mut singles = (pawns << direction.0) & unoccupied;
+        // pawns which are not pinned or on the same file as the king can move
+        let pushers = (pawns & unpinned) | (COL_A << king_sq.file() & pawns);
+        let mut singles = (pushers << direction.0) & unoccupied;
         let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
         singles &= target;
 
-        for to_sq in singles & not_rank8 {
-            let m = Move::normal(to_sq - direction, to_sq);
-            if validate(m, b) {
+        for to_sq in singles & rank8 {
+            let from_sq = to_sq - direction;
+            for pt in Piece::PROMOTING {
+                let m = Move::promoting(from_sq, to_sq, pt);
                 moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
         for to_sq in doubles {
             let m = Move::normal(to_sq - doubledir, to_sq);
-            if validate(m, b) {
-                moves.push((m, T::tag_move(m, b, cookie)));
-            }
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
 
-        pawn_promotion_helper::<T>(singles & rank8, direction, b, cookie, moves);
+        for to_sq in singles & not_rank8 {
+            let m = Move::normal(to_sq - direction, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
     }
 
     if M != QUIETS {
@@ -727,59 +735,64 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let capture_w = ((pawns & NOT_WEST) << capture_dir_w.0) & capture_mask;
 
         for to_sq in capture_e & not_rank8 {
-            let m = Move::normal(to_sq - capture_dir_e, to_sq);
-            if validate(m, b) {
+            let from_sq = to_sq - capture_dir_e;
+            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+                let m = Move::normal(from_sq, to_sq);
                 moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
         for to_sq in capture_w & not_rank8 {
-            let m = Move::normal(to_sq - capture_dir_w, to_sq);
-            if validate(m, b) {
+            let from_sq = to_sq - capture_dir_w;
+            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+                let m = Move::normal(from_sq, to_sq);
                 moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
-        pawn_promotion_helper::<T>(capture_e & rank8, capture_dir_e, b, cookie, moves);
-        pawn_promotion_helper::<T>(capture_w & rank8, capture_dir_w, b, cookie, moves);
-
-        // en passant
-        if let Some(ep_square) = board.en_passant_square {
-            if target.contains(ep_square) {
-                let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
-                for from_sq in from_sqs {
-                    let m = Move::en_passant(from_sq, ep_square);
-                    if validate(m, b) {
-                        moves.push((m, T::tag_move(m, b, cookie)));
-                    }
+        for to_sq in capture_e & rank8 {
+            let from_sq = to_sq - capture_dir_e;
+            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+                for pt in Piece::PROMOTING {
+                    let m = Move::promoting(from_sq, to_sq, pt);
+                    moves.push((m, T::tag_move(m, b, cookie)));
                 }
             }
         }
-    }
-}
 
-#[inline(always)]
-/// Helper function to create pawn promotion moves. `to_bb` is the set of
-/// target bitboards, and `move_direction` is the direction pawns would move to
-/// reach the targets in `to_bb`. The moves will be appended onto the `moves`
-/// vector.
-fn pawn_promotion_helper<T: Tagger>(
-    to_bb: Bitboard,
-    move_direction: Direction,
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
-    for to_sq in to_bb {
-        let from_sq = to_sq - move_direction;
-        // we only need to validate one promotion move.
-        // order our promotions so that moves which will probably be better
-        // (queen promotions) will be nearer to the front.
-        let m1 = Move::promoting(from_sq, to_sq, Piece::Queen);
-        if validate(m1, b) {
-            moves.push((m1, T::tag_move(m1, b, cookie)));
-            for promote_type in [Piece::Knight, Piece::Rook, Piece::Bishop] {
-                let m = Move::promoting(from_sq, to_sq, promote_type);
-                moves.push((m, T::tag_move(m, b, cookie)));
+        for to_sq in capture_w & rank8 {
+            let from_sq = to_sq - capture_dir_w;
+            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+                for pt in Piece::PROMOTING {
+                    let m = Move::promoting(from_sq, to_sq, pt);
+                    moves.push((m, T::tag_move(m, b, cookie)));
+                }
+            }
+        }
+
+        // en passant
+        if let Some(ep_square) = board.en_passant_square {
+    
+            if target.contains(ep_square) {
+                let king_sq = b.king_sqs[b.player as usize];
+                let enemy = b[!b.player];
+                let to_bb = Bitboard::from(ep_square);
+                let capture_bb = to_bb << -b.player.pawn_direction().0;
+                let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
+                for from_sq in from_sqs {
+                    let new_occupancy = b.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
+                    let m = Move::en_passant(from_sq, ep_square);
+                    if (MAGIC.rook_attacks(new_occupancy, king_sq)
+                        & (b[Piece::Rook] | b[Piece::Queen])
+                        & enemy)
+                        .is_empty()
+                        && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+                            & (b[Piece::Bishop] | b[Piece::Queen])
+                            & enemy)
+                            .is_empty()
+                    {
+                        moves.push((m, T::tag_move(m, b, cookie)));
+                    }
+                }
             }
         }
     }
@@ -801,9 +814,11 @@ fn normal_piece_assistant<T: Tagger>(
     let queens = board[Piece::Queen];
     let rook_movers = (board[Piece::Rook] | queens) & allies;
     let bishop_movers = (board[Piece::Bishop] | queens) & allies;
+    let king_sq = board.king_sqs[player as usize];
+    let unpinned = !board.pinned;
 
-    for sq in board[Piece::Knight] & allies {
-        append_valid_normal::<T>(
+    for sq in board[Piece::Knight] & allies & !board.pinned {
+        append_normal::<T>(
             sq,
             KNIGHT_MOVES[sq as usize] & legal_targets,
             b,
@@ -811,8 +826,19 @@ fn normal_piece_assistant<T: Tagger>(
             moves,
         );
     }
-    for sq in bishop_movers {
-        append_valid_normal::<T>(
+    for sq in bishop_movers & board.pinned {
+        append_normal::<T>(
+            sq,
+            MAGIC.bishop_attacks(occupancy, sq)
+                & legal_targets
+                & LINES[king_sq as usize][sq as usize],
+            b,
+            cookie,
+            moves,
+        );
+    }
+    for sq in bishop_movers & unpinned {
+        append_normal::<T>(
             sq,
             MAGIC.bishop_attacks(occupancy, sq) & legal_targets,
             b,
@@ -820,14 +846,41 @@ fn normal_piece_assistant<T: Tagger>(
             moves,
         );
     }
-    for sq in rook_movers {
-        append_valid_normal::<T>(
+    for sq in rook_movers & board.pinned {
+        append_normal::<T>(
+            sq,
+            MAGIC.rook_attacks(occupancy, sq)
+                & legal_targets
+                & LINES[king_sq as usize][sq as usize],
+            b,
+            cookie,
+            moves,
+        );
+    }
+    for sq in rook_movers & unpinned {
+        append_normal::<T>(
             sq,
             MAGIC.rook_attacks(occupancy, sq) & legal_targets,
             b,
             cookie,
             moves,
         );
+    }
+}
+
+#[inline(always)]
+/// Perform `append_valid_moves()`, assuming the move is a "normal" one, i.e.
+/// not castling, en passant, or a promotion.
+fn append_normal<T: Tagger>(
+    from_sq: Square,
+    to_bb: Bitboard,
+    b: &Board,
+    cookie: &T::Cookie,
+    moves: &mut Vec<(Move, T::Tag)>,
+) {
+    for to_sq in to_bb {
+        let m = Move::normal(from_sq, to_sq);
+        moves.push((m, T::tag_move(m, b, cookie)));
     }
 }
 
@@ -880,12 +933,20 @@ fn king_move_non_castle<T: Tagger>(
     let king_sq = b.king_sqs[b.player as usize];
     let allies = b[b.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
-    append_valid_normal::<T>(king_sq, to_bb, b, cookie, moves);
+    for to_sq in to_bb {
+        let new_occupancy = (b.occupancy() ^ Bitboard::from(king_sq)) | Bitboard::from(to_sq);
+        if square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty() {
+            let m = Move::normal(king_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
+    }
 }
 
 #[inline(always)]
 /// Get the castling moves that the king could make in this position, and
 /// append them onto the target vector.
+///
+/// Will not generate valid moves if the king is in check.
 fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
     let player = b.player;
     let occ = b.occupancy();
@@ -901,8 +962,16 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
         && (occ & kingside_castle_passthrough_sqs).is_empty();
 
     if can_kingside_castle {
-        let m = Move::castling(king_sq, Square::new(king_sq.rank(), 6).unwrap());
-        if validate(m, b) {
+        // ignore start sq since we assume the king is not in check
+        let passthrough_squares = match player {
+            Color::White => [Square::F1, Square::G1],
+            Color::Black => [Square::F8, Square::G8],
+        };
+        if !passthrough_squares
+            .iter()
+            .any(|&sq| is_square_attacked_by(b, sq, !player))
+        {
+            let m = Move::castling(king_sq, passthrough_squares[1]);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
@@ -918,8 +987,16 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
         && (occ & queenside_castle_passthrough_sqs).is_empty();
 
     if can_queenside_castle {
-        let m = Move::castling(king_sq, Square::new(king_sq.rank(), 2).unwrap());
-        if validate(m, b) {
+        // ignore start sq since we assume the king is not in check
+        let passthrough_squares = match player {
+            Color::White => [Square::D1, Square::C1],
+            Color::Black => [Square::D8, Square::C8],
+        };
+        if !passthrough_squares
+            .iter()
+            .any(|&sq| is_square_attacked_by(b, sq, !player))
+        {
+            let m = Move::castling(king_sq, passthrough_squares[1]);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
@@ -958,42 +1035,6 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     }
 
     attacks
-}
-
-#[inline(always)]
-/// Perform `append_valid_moves()`, assuming the move is a "normal" one, i.e.
-/// not castling, en passant, or a promotion.
-fn append_valid_normal<T: Tagger>(
-    from_sq: Square,
-    to_bb: Bitboard,
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
-    append_valid_moves::<T>(from_sq, to_bb, None, false, false, b, cookie, moves);
-}
-
-#[allow(clippy::too_many_arguments)]
-/// Append all the validated pseudolegal moves from `from_sq` to each square in
-/// `to_bb` to the `moves` vector, computing the nomination values along the
-/// way. `promote_type`, `castle`, and `en_passant` are the tags on the move
-/// which describe its metadata.
-fn append_valid_moves<T: Tagger>(
-    from_sq: Square,
-    to_bb: Bitboard,
-    promote_type: Option<Piece>,
-    castle: bool,
-    en_passant: bool,
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
-    for to_sq in to_bb {
-        let m = Move::new(from_sq, to_sq, promote_type, castle, en_passant);
-        if validate(m, b) {
-            moves.push((m, T::tag_move(m, b, cookie)));
-        }
-    }
 }
 
 #[must_use]
