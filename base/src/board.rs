@@ -434,9 +434,6 @@ impl Board {
 
         let player = self.player;
         let opponent = !player;
-        // this length is used to determine whether it's not a move that a king
-        // or pawn could normally make
-        let is_long_move = from_sq.file_distance(to_sq) > 1;
         // TODO figure out a way to remove the (slow) call to `type_at_square`?
         let mover_type = self.type_at_square(from_sq).unwrap();
         let is_pawn_move = mover_type == Piece::Pawn;
@@ -465,7 +462,7 @@ impl Board {
         // remove previous EP square from hash
         self.hash ^= zobrist::ep_key(self.en_passant_square);
         // update EP square
-        if is_pawn_move && is_long_move {
+        if is_pawn_move && from_sq.rank_distance(to_sq) > 1 {
             let ep_candidate =
                 Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
             if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
@@ -493,7 +490,7 @@ impl Board {
                 Color::White => CastleRights::WHITE,
                 Color::Black => CastleRights::BLACK,
             };
-            if is_long_move {
+            if from_sq.file_distance(to_sq) > 1 {
                 // a long move from a king means this must be a castle
                 // G file is file 6 (TODO move this to be a constant?)
                 let is_kingside_castle = to_sq.file() == 6;

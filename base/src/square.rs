@@ -132,10 +132,7 @@ impl Square {
     #[must_use]
     /// Get the Chebyshev distance to another square.
     pub fn chebyshev_to(&self, rhs: Square) -> u8 {
-        #[allow(
-            clippy::cast_possible_truncation,
-            clippy::cast_possible_wrap,
-        )]
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
             let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
             let filediff = self.file_distance(rhs);
@@ -148,19 +145,38 @@ impl Square {
     #[must_use]
     #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
     /// Get the distance between two `Square`s by traveling along files.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler_base::Square;
-    /// 
+    ///
     /// let sq1 = Square::A8;
     /// let sq2 = Square::C1;
-    /// 
+    ///
     /// assert_eq!(sq1.file_distance(sq2), 2);
     /// ```
     pub const fn file_distance(&self, rhs: Square) -> u8 {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
+    }
+
+    #[inline(always)]
+    #[must_use]
+    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+    /// Get the distance between two `Square`s by traveling along ranks.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_base::Square;
+    ///
+    /// let sq1 = Square::A8;
+    /// let sq2 = Square::C1;
+    ///
+    /// assert_eq!(sq1.rank_distance(sq2), 7);
+    /// ```
+    pub const fn rank_distance(&self, rhs: Square) -> u8 {
+        ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs()
     }
 
     #[inline(always)]

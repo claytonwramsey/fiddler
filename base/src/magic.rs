@@ -560,7 +560,7 @@ fn directional_attacks(sq: Square, dirs: &[Direction], occupancy: Bitboard) -> B
 
 /// Return whether the following move is a single-step.
 fn is_valid_step(sq: Square, dir: Direction) -> bool {
-    sq.file_distance(sq + dir) <= 1
+    sq.chebyshev_to(sq + dir) <= 1
 }
 
 #[inline(always)]
