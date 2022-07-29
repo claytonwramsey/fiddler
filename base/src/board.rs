@@ -32,7 +32,7 @@ use std::{
 };
 
 #[derive(Copy, Clone, Debug, Eq)]
-/// A representation of a position. Does not handle the repetition.
+/// A representation of a position. Does not handle repetition of moves.
 pub struct Board {
     /// The squares ocupied by White and Black, respectively.
     sides: [Bitboard; 2],
@@ -89,7 +89,7 @@ impl Board {
             ],
             en_passant_square: None,
             player: Color::White,
-            castle_rights: CastleRights::ALL_RIGHTS,
+            castle_rights: CastleRights::ALL,
             rule50: 0,
             hash: 0,
             king_sqs: [Square::E1, Square::E8],
@@ -125,7 +125,7 @@ impl Board {
             pieces: [Bitboard::EMPTY; 6],
             en_passant_square: None,
             player: Color::White,
-            castle_rights: CastleRights::NO_RIGHTS,
+            castle_rights: CastleRights::NONE,
             rule50: 0,
             hash: 0,
             checkers: Bitboard::EMPTY,
@@ -133,11 +133,11 @@ impl Board {
             pinned: Bitboard::EMPTY,
         };
         let mut fen_chrs = fen.chars();
-        let mut r = 7; //current row parsed
-        let mut c = 0; //current col parsed
+        let mut r = 7; // current row parsed
+        let mut c = 0; // current col parsed
 
         loop {
-            if (r, c) == (0, 8) {
+            if r == 0 && c >= 8 {
                 break;
             }
             let chr = fen_chrs
@@ -162,19 +162,19 @@ impl Board {
                 r -= 1;
                 c = 0;
             } else {
-                //number stating number of blank spaces in this row
+                // number stating number of blank spaces in this row
                 let num_blanks = chr.to_digit(10).ok_or("expected number of blanks")?;
-                //advance the square under review by the number of blanks
+                // advance the square under review by the number of blanks
                 c += num_blanks as usize;
             }
         }
 
-        //now a space
+        // now a space
         if fen_chrs.next() != Some(' ') {
             return Err("expected space after board array section of FEN");
         };
 
-        //now compute player to move
+        // now compute player to move
         let player_chr = fen_chrs
             .next()
             .ok_or("reached end of string while parsing for player to move")?;
@@ -184,25 +184,23 @@ impl Board {
             _ => return Err("unrecognized player to move"),
         };
 
-        //now a space
+        // now a space
         if fen_chrs.next() != Some(' ') {
             return Err("expected space after player to move section of FEN");
         }
 
-        //determine castle rights
+        // determine castle rights
         let mut castle_chr = fen_chrs
             .next()
             .ok_or("reached end of string while parsing castle rights")?;
         while castle_chr != ' ' {
-            //this may accept some technically illegal FENS, but that's ok
-            //note: hash was not updated, so will need to be rewritten by the
-            //end of the function.
+            // this may accept some technically illegal FENS, but that's ok
             board.castle_rights |= match castle_chr {
-                'K' => CastleRights::king_castle(Color::White),
-                'Q' => CastleRights::queen_castle(Color::White),
-                'k' => CastleRights::king_castle(Color::Black),
-                'q' => CastleRights::queen_castle(Color::Black),
-                '-' => CastleRights::NO_RIGHTS,
+                'K' => CastleRights::WHITE_KINGSIDE,
+                'Q' => CastleRights::WHITE_QUEENSIDE,
+                'k' => CastleRights::BLACK_KINGSIDE,
+                'q' => CastleRights::BLACK_QUEENSIDE,
+                '-' => CastleRights::NONE,
                 _ => return Err("unrecognized castle rights character"),
             };
             castle_chr = fen_chrs
@@ -264,7 +262,7 @@ impl Board {
         if !(board.is_valid()) {
             return Err("board state after loading was illegal");
         }
-        //Ignore move clocks
+
         Ok(board)
     }
 
@@ -436,9 +434,9 @@ impl Board {
 
         let player = self.player;
         let opponent = !player;
-        //this length is used to determine whether it's not a move that a king
-        //or pawn could normally make
-        let is_long_move = from_sq.chebyshev_to(to_sq) > 1;
+        // this length is used to determine whether it's not a move that a king
+        // or pawn could normally make
+        let is_long_move = from_sq.file_distance(to_sq) > 1;
         // TODO figure out a way to remove the (slow) call to `type_at_square`?
         let mover_type = self.type_at_square(from_sq).unwrap();
         let is_pawn_move = mover_type == Piece::Pawn;
@@ -458,15 +456,15 @@ impl Board {
         self.remove_known_piece(from_sq, mover_type, player);
 
         /* En passant handling */
-        //perform an en passant capture
+        // perform an en passant capture
         if m.is_en_passant() {
             let capturee_sq =
                 Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
             self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
         }
-        //remove previous EP square from hash
+        // remove previous EP square from hash
         self.hash ^= zobrist::ep_key(self.en_passant_square);
-        //update EP square
+        // update EP square
         if is_pawn_move && is_long_move {
             let ep_candidate =
                 Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
@@ -482,16 +480,19 @@ impl Board {
         } else {
             self.en_passant_square = None;
         };
-        //insert new EP key into hash
+        // insert new EP key into hash
         self.hash ^= zobrist::ep_key(self.en_passant_square);
 
         /* Handling castling and castle rights */
-        //in normal castling, we describe it with a `Move` as a king move which
-        //jumps two or three squares.
+        // in normal castling, we describe it with a `Move` as a king move which
+        // jumps two or three squares.
 
         let mut rights_to_remove;
         if is_king_move {
-            rights_to_remove = CastleRights::color_rights(self.player);
+            rights_to_remove = match player {
+                Color::White => CastleRights::WHITE,
+                Color::Black => CastleRights::BLACK,
+            };
             if is_long_move {
                 // a long move from a king means this must be a castle
                 // G file is file 6 (TODO move this to be a constant?)
@@ -507,23 +508,23 @@ impl Board {
                 self.add_piece(rook_to_sq, Piece::Rook, self.player);
             }
         } else {
-            //don't need to check if it's a rook because moving from this square
-            //would mean you didn't have the right anyway
+            // don't need to check if it's a rook because moving from this square
+            // would mean you didn't have the right anyway
             rights_to_remove = match from_sq {
-                Square::A1 => CastleRights::queen_castle(Color::White),
-                Square::H1 => CastleRights::king_castle(Color::White),
-                Square::A8 => CastleRights::queen_castle(Color::Black),
-                Square::H8 => CastleRights::king_castle(Color::Black),
-                _ => CastleRights::NO_RIGHTS,
+                Square::A1 => CastleRights::WHITE_QUEENSIDE,
+                Square::H1 => CastleRights::WHITE_KINGSIDE,
+                Square::A8 => CastleRights::BLACK_QUEENSIDE,
+                Square::H8 => CastleRights::BLACK_KINGSIDE,
+                _ => CastleRights::NONE,
             };
 
             // capturing a rook also removes rights
             rights_to_remove |= match to_sq {
-                Square::A1 => CastleRights::queen_castle(Color::White),
-                Square::H1 => CastleRights::king_castle(Color::White),
-                Square::A8 => CastleRights::queen_castle(Color::Black),
-                Square::H8 => CastleRights::king_castle(Color::Black),
-                _ => CastleRights::NO_RIGHTS,
+                Square::A1 => CastleRights::WHITE_QUEENSIDE,
+                Square::H1 => CastleRights::WHITE_KINGSIDE,
+                Square::A8 => CastleRights::BLACK_QUEENSIDE,
+                Square::H8 => CastleRights::BLACK_KINGSIDE,
+                _ => CastleRights::NONE,
             }
         }
         self.remove_castle_rights(rights_to_remove);
@@ -573,12 +574,12 @@ impl Board {
     /// at the square below. Otherwise it will break the internal board
     /// representation.
     fn add_piece(&mut self, sq: Square, pt: Piece, color: Color) {
-        //Remove the hash from the piece that was there before (no-op if it was
-        //empty)
+        //R emove the hash from the piece that was there before (no-op if it was
+        // empty)
         let mask = Bitboard::from(sq);
         self.pieces[pt as usize] |= mask;
         self.sides[color as usize] |= mask;
-        //Update the hash with the result of our addition
+        // Update the hash with the result of our addition
         self.hash ^= zobrist::square_key(sq, Some(pt), color);
     }
 
@@ -784,7 +785,7 @@ mod tests {
         ],
         en_passant_square: None,
         player: Color::White,
-        castle_rights: CastleRights::NO_RIGHTS,
+        castle_rights: CastleRights::NONE,
         rule50: 0,
         hash: 3_483_926_298_739_092_744,
         checkers: Bitboard::EMPTY,

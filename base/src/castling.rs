@@ -36,47 +36,45 @@ pub struct CastleRights(pub u8);
 
 impl CastleRights {
     /// A `CastleRights` where all rights are available.
-    pub const ALL_RIGHTS: CastleRights = CastleRights(15);
+    pub const ALL: CastleRights = CastleRights(15);
 
     /// A `CastleRights` where no rights are available.
-    pub const NO_RIGHTS: CastleRights = CastleRights(0);
+    pub const NONE: CastleRights = CastleRights(0);
 
-    /// Create a `CastleRights` for kingside castling on one side.
-    #[inline(always)]
-    pub const fn king_castle(color: Color) -> CastleRights {
-        match color {
-            Color::White => CastleRights(1),
-            Color::Black => CastleRights(4),
-        }
-    }
+    /// A `CastleRights` where White has both castling rights.
+    pub const WHITE: CastleRights = CastleRights(3);
 
-    /// Create a `CastleRights` for queenside castling on one side.
-    #[inline(always)]
-    pub const fn queen_castle(color: Color) -> CastleRights {
-        match color {
-            Color::White => CastleRights(2),
-            Color::Black => CastleRights(8),
-        }
-    }
+    /// A `CastleRights` where White has both castling rights.
+    pub const BLACK: CastleRights = CastleRights(12);
 
-    /// Get the full rights for one color.
-    pub const fn color_rights(color: Color) -> CastleRights {
-        match color {
-            Color::White => CastleRights(3),
-            Color::Black => CastleRights(12),
-        }
-    }
+    /// A `CastleRights` where the only right is White's kingside castle.
+    pub const WHITE_KINGSIDE: CastleRights = CastleRights(1 << 0);
+
+    /// A `CastleRights` where the only right is White's queenside castle.
+    pub const WHITE_QUEENSIDE: CastleRights = CastleRights(1 << 1);
+
+    /// A `CastleRights` where the only right is Black's kingside castle.
+    pub const BLACK_KINGSIDE: CastleRights = CastleRights(1 << 2);
+
+    /// A `CastleRights` where the only right is Black's queenside castle.
+    pub const BLACK_QUEENSIDE: CastleRights = CastleRights(1 << 3);
 
     #[inline(always)]
     /// Can the given color legally castle kingside?
     pub fn is_kingside_castle_legal(self, color: Color) -> bool {
-        self & CastleRights::king_castle(color) != CastleRights::NO_RIGHTS
+        self & match color {
+            Color::White => CastleRights::WHITE_KINGSIDE,
+            Color::Black => CastleRights::BLACK_KINGSIDE,
+        } != CastleRights::NONE
     }
 
     #[inline(always)]
     /// Can the given color legally castle kingside?
     pub fn is_queenside_castle_legal(self, color: Color) -> bool {
-        self & CastleRights::queen_castle(color) != CastleRights::NO_RIGHTS
+        self & match color {
+            Color::White => CastleRights::WHITE_QUEENSIDE,
+            Color::Black => CastleRights::BLACK_QUEENSIDE,
+        } != CastleRights::NONE
     }
 }
 

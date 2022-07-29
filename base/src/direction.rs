@@ -145,20 +145,6 @@ impl Direction {
     pub const fn new(rank_step: i8, file_step: i8) -> Direction {
         Direction(rank_step + (file_step * 8))
     }
-
-    #[inline(always)]
-    #[allow(dead_code)]
-    /// Get the difference moved by a Direction in a file.
-    const fn file_step(self) -> i8 {
-        self.0 & 7
-    }
-
-    #[inline(always)]
-    #[allow(dead_code)]
-    /// Get the difference moved by a Direction in a rank.
-    const fn rank_step(self) -> i8 {
-        self.0 >> 3
-    }
 }
 
 impl Neg for Direction {

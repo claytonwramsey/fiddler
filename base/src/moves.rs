@@ -202,7 +202,7 @@ impl Move {
             None
         };
 
-        let is_castle = board[Piece::King].contains(from_sq) && from_sq.chebyshev_to(to_sq) > 1;
+        let is_castle = board[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1;
 
         let is_en_passant =
             board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq);

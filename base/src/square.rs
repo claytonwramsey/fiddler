@@ -135,14 +135,32 @@ impl Square {
         #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_possible_wrap,
-            clippy::cast_sign_loss
         )]
         {
-            let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).abs();
-            let filediff = ((rhs.file() as i8) - (self.file() as i8)).abs();
+            let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
+            let filediff = self.file_distance(rhs);
 
-            max(rankdiff, filediff) as u8
+            max(rankdiff, filediff)
         }
+    }
+
+    #[inline(always)]
+    #[must_use]
+    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
+    /// Get the distance between two `Square`s by traveling along files.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::Square;
+    /// 
+    /// let sq1 = Square::A8;
+    /// let sq2 = Square::C1;
+    /// 
+    /// assert_eq!(sq1.file_distance(sq2), 2);
+    /// ```
+    pub const fn file_distance(&self, rhs: Square) -> u8 {
+        ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
     }
 
     #[inline(always)]

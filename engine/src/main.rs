@@ -47,6 +47,7 @@ fn main() {
     let searcher = Arc::new(RwLock::new(MainSearch::new()));
     let mut game = ScoredGame::new();
     let mut search_handle = None;
+    searcher.write().unwrap().config.n_helpers = 15;
 
     loop {
         let mut buf = String::new();
@@ -83,7 +84,6 @@ fn main() {
                         max: 255,
                     },
                 );
-                searcher.write().unwrap().config.n_helpers = 15;
 
                 add_option(
                     "Hash",
