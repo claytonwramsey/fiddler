@@ -165,7 +165,9 @@ impl Board {
                 // number stating number of blank spaces in this row
                 let num_blanks = chr.to_digit(10).ok_or("expected number of blanks")?;
                 // advance the square under review by the number of blanks
-                c += num_blanks as usize;
+                #[allow(clippy::cast_possible_truncation)]{
+                    c += num_blanks as u8;
+                }
             }
         }
 
@@ -609,10 +611,11 @@ impl Board {
         let rook_mask = MAGIC.rook_attacks(Bitboard::EMPTY, king_sq);
         let bishop_mask = MAGIC.bishop_attacks(Bitboard::EMPTY, king_sq);
         let occupancy = self.occupancy();
+        let queens = self[Piece::Queen];
 
         let snipers = self[!self.player]
-            & ((rook_mask & (self[Piece::Queen] | self[Piece::Rook]))
-                | (bishop_mask & (self[Piece::Queen] | self[Piece::Bishop])));
+            & ((rook_mask & (queens | self[Piece::Rook]))
+                | (bishop_mask & (queens | self[Piece::Bishop])));
 
         for sniper_sq in snipers {
             let between_bb = between(king_sq, sniper_sq);

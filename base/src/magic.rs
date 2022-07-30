@@ -458,6 +458,7 @@ fn get_rook_mask(sq: Square) -> Bitboard {
     (row_mask ^ col_mask) & !Bitboard::from(sq)
 }
 
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
 /// Create the mask for the relevant bits in magic of a bishop. `sq` is the
 /// square that a bishop would be on to receiver this mask.
 fn get_bishop_mask(sq: Square) -> Bitboard {
@@ -471,13 +472,13 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
     // thank u chessprogramming wiki for this code
     let i = sq as i32;
     let main_diag = 8 * (i & 7) - (i as i32 & 56);
-    let main_left_shift = -main_diag & (main_diag >> 31);
-    let main_right_shift = main_diag & (-main_diag >> 31);
+    let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
+    let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
     let main_diag_mask = (MAIN_DIAG >> main_right_shift) << main_left_shift;
 
     let anti_diag = 56 - 8 * (i & 7) - (i & 56);
-    let anti_left_shift = -anti_diag & (anti_diag >> 31);
-    let anti_right_shift = anti_diag & (-anti_diag >> 31);
+    let anti_left_shift = (-anti_diag & (anti_diag >> 31)) as u8;
+    let anti_right_shift = (anti_diag & (-anti_diag >> 31)) as u8;
     let anti_diag_mask = (ANTI_DIAG >> anti_right_shift) << anti_left_shift;
 
     (main_diag_mask ^ anti_diag_mask) & !RING_MASK

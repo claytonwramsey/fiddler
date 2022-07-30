@@ -110,22 +110,22 @@ impl Square {
     #[allow(clippy::cast_possible_truncation)]
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
-    pub fn new(rank: usize, file: usize) -> Option<Square> {
+    pub fn new(rank: u8, file: u8) -> Option<Square> {
         Square::try_from(((rank << 3) | file) as u8).ok()
     }
 
     #[inline(always)]
     #[must_use]
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
-    pub const fn rank(self) -> usize {
-        (self as u8 >> 3u8) as usize
+    pub const fn rank(self) -> u8 {
+        self as u8 >> 3u8
     }
 
     #[inline(always)]
     #[must_use]
     /// Get the integer representing the file (0 -> A, ...) of this square.
-    pub const fn file(self) -> usize {
-        (self as u8 & 7u8) as usize
+    pub const fn file(self) -> u8 {
+        self as u8 & 7u8
     }
 
     #[inline(always)]
@@ -213,12 +213,12 @@ impl Square {
             return Err("square name must be 2 characters");
         }
         let mut chars = s.chars();
-        let (file, _) = match "abcdefgh".match_indices(chars.next().unwrap()).next() {
-            Some(d) => d,
+        let file = match "abcdefgh".match_indices(chars.next().unwrap()).next() {
+            Some(d) => d.0.try_into().map_err(|_| "bad file name")?,
             None => return Err("illegal file for square"),
         };
-        let rank = match chars.next().unwrap().to_digit(10) {
-            Some(n) => n as usize,
+        let rank: u8 = match chars.next().unwrap().to_digit(10) {
+            Some(n) => n.try_into().map_err(|_| "bad rank name")?,
             None => return Err("expected number for square rank"),
         };
         // will not fail because we have already validated the rank and file

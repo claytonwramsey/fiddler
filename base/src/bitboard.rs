@@ -286,25 +286,12 @@ impl BitXor for Bitboard {
     }
 }
 
-impl Shl<i8> for Bitboard {
+impl Shl<u8> for Bitboard {
     type Output = Self;
 
     #[inline(always)]
-    fn shl(self, rhs: i8) -> Self::Output {
-        if rhs > 0 {
-            Bitboard(self.0 << rhs)
-        } else {
-            Bitboard(self.0 >> -rhs)
-        }
-    }
-}
-
-impl Shr<i8> for Bitboard {
-    type Output = Self;
-
-    #[inline(always)]
-    fn shr(self, rhs: i8) -> Self::Output {
-        Bitboard(self.0 >> rhs)
+    fn shl(self, rhs: u8) -> Self::Output {
+        Bitboard(self.0 << rhs)
     }
 }
 
@@ -317,37 +304,10 @@ impl Shr<u8> for Bitboard {
     }
 }
 
-impl Shl<i32> for Bitboard {
-    type Output = Self;
-
+impl ShlAssign<u8> for Bitboard {
     #[inline(always)]
-    fn shl(self, rhs: i32) -> Self::Output {
-        Bitboard(self.0 << rhs)
-    }
-}
-
-impl Shl<usize> for Bitboard {
-    type Output = Self;
-
-    #[inline(always)]
-    fn shl(self, rhs: usize) -> Self::Output {
-        Bitboard(self.0 << rhs)
-    }
-}
-
-impl ShlAssign<i32> for Bitboard {
-    #[inline(always)]
-    fn shl_assign(&mut self, rhs: i32) {
+    fn shl_assign(&mut self, rhs: u8) {
         self.0 <<= rhs;
-    }
-}
-
-impl Shr<i32> for Bitboard {
-    type Output = Self;
-
-    #[inline(always)]
-    fn shr(self, rhs: i32) -> Self::Output {
-        Bitboard(self.0 >> rhs)
     }
 }
 

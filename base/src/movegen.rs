@@ -206,7 +206,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                     let pawn_dir = player.pawn_direction();
                     let singlemove_sq = from_sq + pawn_dir;
                     let pattacks = PAWN_ATTACKS[player as usize][from_sq as usize];
-
+                    println!("{pattacks}");
                     (!occupancy.contains(singlemove_sq)
                         && (to_sq == singlemove_sq //singlemove
                         || (to_sq == singlemove_sq + pawn_dir //doublemove
@@ -462,7 +462,10 @@ fn validate(m: Move, b: &Board) -> bool {
     if m.is_en_passant() {
         let king_sq = b.king_sqs[b.player as usize];
         let enemy = b[!b.player];
-        let capture_bb = to_bb << -b.player.pawn_direction().0;
+        let capture_bb = match b.player {
+            Color::White => to_bb >> 8,
+            Color::Black => to_bb << 8u8,
+        };
 
         let new_occupancy = b.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
 
@@ -692,23 +695,44 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     let doubledir = 2 * direction;
     let unpinned = !board.pinned;
     let king_sq = board.king_sqs[player as usize];
+    let king_file_mask = COL_A << king_sq.file();
 
     if M != QUIETS {
-        const NOT_WEST: Bitboard = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
-        const NOT_EAST: Bitboard = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
         // pawn captures
-        let capture_dir_e = direction + Direction::EAST;
-        let capture_dir_w = direction + Direction::WEST;
+
+        const NOT_WESTMOST: Bitboard = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
+        const NOT_EASTMOST: Bitboard = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
+        const RANK_1: Bitboard = Bitboard::new(0x0000_0000_0000_00FF);
+
+        // only pawns which are unpinned or which move along the same diagonal 
+        // as the king can capture
+        let king_rank_mask = RANK_1 << (king_sq.rank() << 3);
+        let capturers = pawns & (unpinned | b.pinned & !(king_file_mask | king_rank_mask));
 
         let capture_mask = opponents & target;
 
         // prevent pawns from capturing by wraparound
-        let capture_e = ((pawns & NOT_EAST) << capture_dir_e.0) & capture_mask;
-        let capture_w = ((pawns & NOT_WEST) << capture_dir_w.0) & capture_mask;
+        let west_capturers = capturers & NOT_WESTMOST;
+        let east_capturers = capturers & NOT_EASTMOST;
+        // hack because negative bitshift is UB
+        let (west_targets, west_direction, east_targets, east_direction) = match player {
+            Color::White => (
+                west_capturers << 7 & capture_mask,
+                Direction::NORTHWEST,
+                east_capturers << 9 & capture_mask,
+                Direction::NORTHEAST,
+            ),
+            Color::Black => (
+                west_capturers >> 9 & capture_mask,
+                Direction::SOUTHWEST,
+                east_capturers >> 7 & capture_mask,
+                Direction::SOUTHEAST,
+            )
+        };
 
         // promotion captures
-        for to_sq in capture_e & rank8 {
-            let from_sq = to_sq - capture_dir_e;
+        for to_sq in east_targets & rank8 {
+            let from_sq = to_sq - east_direction;
             if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
                 for pt in Piece::PROMOTING {
                     let m = Move::promoting(from_sq, to_sq, pt);
@@ -717,8 +741,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
             }
         }
 
-        for to_sq in capture_w & rank8 {
-            let from_sq = to_sq - capture_dir_w;
+        for to_sq in west_targets & rank8 {
+            let from_sq = to_sq - west_direction;
             if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
                 for pt in Piece::PROMOTING {
                     let m = Move::promoting(from_sq, to_sq, pt);
@@ -728,15 +752,15 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         }
 
         // normal captures
-        for to_sq in capture_e & not_rank8 {
-            let from_sq = to_sq - capture_dir_e;
+        for to_sq in east_targets & not_rank8 {
+            let from_sq = to_sq - east_direction;
             if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
                 let m = Move::normal(from_sq, to_sq);
                 moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
-        for to_sq in capture_w & not_rank8 {
-            let from_sq = to_sq - capture_dir_w;
+        for to_sq in west_targets & not_rank8 {
+            let from_sq = to_sq - west_direction;
             if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
                 let m = Move::normal(from_sq, to_sq);
                 moves.push((m, T::tag_move(m, b, cookie)));
@@ -749,12 +773,14 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                 let king_sq = b.king_sqs[b.player as usize];
                 let enemy = b[!b.player];
                 let to_bb = Bitboard::from(ep_square);
-                let capture_bb = to_bb << -b.player.pawn_direction().0;
+                let capture_bb = match player {
+                    Color::White => to_bb >> 8,
+                    Color::Black => to_bb << 8,
+                };
                 let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
                 for from_sq in from_sqs {
                     let new_occupancy =
                         b.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
-                    let m = Move::en_passant(from_sq, ep_square);
                     if (MAGIC.rook_attacks(new_occupancy, king_sq)
                         & (b[Piece::Rook] | b[Piece::Queen])
                         & enemy)
@@ -764,6 +790,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                             & enemy)
                             .is_empty()
                     {
+                        let m = Move::en_passant(from_sq, ep_square);
                         moves.push((m, T::tag_move(m, b, cookie)));
                     }
                 }
@@ -775,9 +802,16 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         // pawn forward moves
 
         // pawns which are not pinned or on the same file as the king can move
-        let pushers = (pawns & unpinned) | (COL_A << king_sq.file() & pawns);
-        let mut singles = (pushers << direction.0) & unoccupied;
-        let doubles = ((singles & rank3) << direction.0) & target & unoccupied;
+        let pushers = pawns & (unpinned | king_file_mask);
+        let mut singles = match b.player {
+            Color::White => pushers << 8,
+            Color::Black => pushers >> 8,
+        } & unoccupied;
+        let double_candidates = singles & rank3;
+        let doubles = match b.player {
+            Color::White => double_candidates << 8,
+            Color::Black => double_candidates >> 8,
+        } & target & unoccupied;
         singles &= target;
 
         // promotion single-moves
@@ -822,7 +856,7 @@ fn normal_piece_assistant<T: Tagger>(
     let king_sq = board.king_sqs[player as usize];
     let unpinned = !board.pinned;
 
-    for sq in board[Piece::Knight] & allies & !board.pinned {
+    for sq in board[Piece::Knight] & allies & unpinned {
         append_normal::<T>(
             sq,
             KNIGHT_MOVES[sq as usize] & legal_targets,
@@ -874,8 +908,8 @@ fn normal_piece_assistant<T: Tagger>(
 }
 
 #[inline(always)]
-/// Perform `append_valid_moves()`, assuming the move is a "normal" one, i.e.
-/// not castling, en passant, or a promotion.
+/// Append a number of normal moves, starting from `from_sq` and ending at each 
+/// square in `to_bb`, onto `moves`.
 fn append_normal<T: Tagger>(
     from_sq: Square,
     to_bb: Bitboard,
@@ -938,8 +972,10 @@ fn king_move_non_castle<T: Tagger>(
     let king_sq = b.king_sqs[b.player as usize];
     let allies = b[b.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
+    let king_bb = b[Piece::King] & b[b.player];
+    let old_occupancy = b.occupancy();
     for to_sq in to_bb {
-        let new_occupancy = (b.occupancy() ^ Bitboard::from(king_sq)) | Bitboard::from(to_sq);
+        let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(to_sq);
         if square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty() {
             let m = Move::normal(king_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
@@ -1116,8 +1152,9 @@ mod tests {
         let b = Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2")
             .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
-        for m in get_moves::<ALL, NoTag>(&b, &()) {
-            assert!(is_legal(m.0, &b));
+        for (m, _) in get_moves::<ALL, NoTag>(&b, &()) {
+            println!("{m}");
+            assert!(is_legal(m, &b));
         }
         assert!(get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
         assert!(get_moves::<CAPTURES, NoTag>(&b, &()).contains(&(m, ())));
