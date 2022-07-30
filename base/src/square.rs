@@ -131,7 +131,7 @@ impl Square {
     #[inline(always)]
     #[must_use]
     /// Get the Chebyshev distance to another square.
-    pub fn chebyshev_to(&self, rhs: Square) -> u8 {
+    pub fn chebyshev_to(self, rhs: Square) -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
             let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
@@ -156,7 +156,7 @@ impl Square {
     ///
     /// assert_eq!(sq1.file_distance(sq2), 2);
     /// ```
-    pub const fn file_distance(&self, rhs: Square) -> u8 {
+    pub const fn file_distance(self, rhs: Square) -> u8 {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
     }
 
@@ -175,7 +175,7 @@ impl Square {
     ///
     /// assert_eq!(sq1.rank_distance(sq2), 7);
     /// ```
-    pub const fn rank_distance(&self, rhs: Square) -> u8 {
+    pub const fn rank_distance(self, rhs: Square) -> u8 {
         ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs()
     }
 
@@ -192,8 +192,8 @@ impl Square {
     /// let sq2 = sq1.opposite();
     /// assert_eq!(sq2, Square::A8);
     /// ```
-    pub fn opposite(&self) -> Square {
-        unsafe { transmute(*self as u8 ^ 56) }
+    pub fn opposite(self) -> Square {
+        unsafe { transmute(self as u8 ^ 56) }
     }
 
     /// Convert an algebraic string (such as 'e7') to a square.
@@ -243,7 +243,7 @@ impl Square {
     #[must_use]
     /// Get the name of the file of this square. For instance, the square
     /// representing A1 will have the name "a".
-    pub fn file_name(&self) -> &str {
+    pub fn file_name(self) -> &'static str {
         match self.file() {
             0 => "a",
             1 => "b",

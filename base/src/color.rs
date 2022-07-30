@@ -43,9 +43,9 @@ impl Color {
     ///
     /// assert_eq!(Color::White.pawn_direction(), Direction::NORTH);
     /// ```
-    pub const fn pawn_direction(&self) -> Direction {
+    pub const fn pawn_direction(self) -> Direction {
         const DIRS: [Direction; 2] = [Direction::NORTH, Direction::SOUTH];
-        DIRS[*self as usize]
+        DIRS[self as usize]
     }
 
     #[inline(always)]
@@ -57,12 +57,12 @@ impl Color {
     ///
     /// assert_eq!(Color::Black.pawn_promote_rank(), Bitboard::new(0xFF));
     /// ```
-    pub const fn pawn_promote_rank(&self) -> Bitboard {
+    pub const fn pawn_promote_rank(self) -> Bitboard {
         const PROMOTE_RANKS: [Bitboard; 2] = [
             Bitboard::new(0xFF00_0000_0000_0000),
             Bitboard::new(0x0000_0000_0000_00FF),
         ];
-        PROMOTE_RANKS[*self as usize]
+        PROMOTE_RANKS[self as usize]
     }
 
     #[inline(always)]
@@ -77,12 +77,12 @@ impl Color {
     ///
     /// assert_eq!(Color::White.pawn_start_rank(), Bitboard::new(0xFF00));
     /// ```
-    pub const fn pawn_start_rank(&self) -> Bitboard {
+    pub const fn pawn_start_rank(self) -> Bitboard {
         const START_RANKS: [Bitboard; 2] = [
             Bitboard::new(0x0000_0000_0000_FF00),
             Bitboard::new(0x00FF_0000_0000_0000),
         ];
-        START_RANKS[*self as usize]
+        START_RANKS[self as usize]
     }
 }
 
