@@ -29,10 +29,12 @@ use std::{
 };
 
 use fiddler_base::{Board, Color, Piece, Square};
-use fiddler_engine::{
-    evaluate::{net_doubled_pawns, net_open_rooks, phase_of, DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE},
+use fiddler_engine::evaluate::{
     material,
+    mobility::{count_attacks, ATTACKS_VALUE, MAX_MOBILITY},
+    net_doubled_pawns, net_open_rooks, phase_of,
     pst::PST,
+    DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE,
 };
 use libm::expf;
 use rand::Rng;
@@ -52,7 +54,7 @@ pub fn main() {
     // first argument is the name of the binary
     let path_str = &args[1..].join(" ");
     let mut weights = load_weights();
-    fuzz(&mut weights, 0.05);
+    // fuzz(&mut weights, 0.05);
     let mut learn_rate = 5.;
     let beta = 0.6;
 
@@ -203,6 +205,14 @@ fn load_weights() -> Vec<f32> {
         }
     }
 
+    for pt in Piece::ALL {
+        for count in 0..MAX_MOBILITY {
+            let score = ATTACKS_VALUE[pt as usize][count as usize];
+            weights.push(score.mg.float_val());
+            weights.push(score.eg.float_val());
+        }
+    }
+
     weights.push(DOUBLED_PAWN_VALUE.mg.float_val());
     weights.push(DOUBLED_PAWN_VALUE.eg.float_val());
 
@@ -212,6 +222,7 @@ fn load_weights() -> Vec<f32> {
     weights
 }
 
+#[allow(dead_code)]
 /// Add random values, ranging from +/- `amplitude`, to each element of `v`.
 fn fuzz(v: &mut [f32], amplitude: f32) {
     let mut rng = rand::thread_rng();
@@ -225,25 +236,27 @@ fn fuzz(v: &mut [f32], amplitude: f32) {
 fn print_weights(weights: &[f32]) {
     let paired_val = |name: &str, start: usize| {
         println!(
-            "const {name}: Score = (Eval::centipawns({}), Eval::centipawns({}));",
+            "pub const {name}: Score = (Eval::centipawns({}), Eval::centipawns({}));",
             (weights[start] * 100.) as i16,
             (weights[start + 1] * 100.) as i16,
         );
     };
 
+    // print material values
     paired_val("KNIGHT_VAL", 0);
     paired_val("BISHOP_VAL", 2);
     paired_val("ROOK_VAL", 4);
     paired_val("QUEEN_VAL", 6);
     paired_val("PAWN_VAL", 8);
+    println!("-----");
 
-    paired_val("DOUBLED_PAWN_VAL", 778);
-    paired_val("OPEN_ROOK_VAL", 780);
+    let mut offset = 10;
 
-    println!("const PST: Pst = expand_table([");
+    // print PST
+    println!("pub const PST: Pst = expand_table(&[");
     for pt in Piece::ALL {
         println!("    [ // {pt}");
-        let pt_idx = 10 + (128 * pt as usize);
+        let pt_idx = offset + (128 * pt as usize);
         for rank in 0..8 {
             print!("        ");
             for file in 0..8 {
@@ -258,7 +271,31 @@ fn print_weights(weights: &[f32]) {
         }
         println!("    ],");
     }
-    println!("])");
+    println!("]);");
+    println!("-----");
+
+    // print mobility
+    offset = 778;
+    println!("pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[");
+    for pt in Piece::ALL {
+        let pt_idx = offset + 2 * MAX_MOBILITY * pt as usize;
+        println!("    [ // {pt}");
+        for count in 0..MAX_MOBILITY {
+            let count_idx = pt_idx + 2 * count;
+            println!(
+                "        ({}, {}), ",
+                (weights[count_idx] * 100.) as i16,
+                (weights[count_idx + 1] * 100.) as i16
+            );
+        }
+        println!("    ],");
+    }
+    println!("]);");
+    println!("-----");
+
+    // print potpourri
+    paired_val("DOUBLED_PAWN_VAL", 1102);
+    paired_val("OPEN_ROOK_VAL", 1104);
 }
 
 #[allow(
@@ -273,20 +310,26 @@ fn print_weights(weights: &[f32]) {
 ///
 /// The elements of the vector are listed by their indices as follows:
 ///
-/// * 0-2: Knight quantity
-/// * 2-4: Bishop quantity
-/// * 4-6: Rook quantity
-/// * 6-8: Queen quantity
-/// * 8-10: Pawn quantity
+/// * 0..2: Knight quantity
+/// * 2..4: Bishop quantity
+/// * 4..6: Rook quantity
+/// * 6..8: Queen quantity
+/// * 8..10: Pawn quantity
 /// * 10..138: Knight PST, paired (midgame, endgame) element-wise
 /// * 138..266: Bishop PST
 /// * 266..394: Rook PST
 /// * 394..522: Queen PST
-/// * 522..650: Pawn PST
+/// * 522..650: Pawn PST.
+///     Note that the indices for the first and eight ranks do not matter.
 /// * 650..778: King PST
-/// * 778..780: Number of doubled pawns (mg, eg) weighted
+/// * 778..1102: Mobility lookup.
+///     This is not the most efficient representation, but it's easy to
+///     implement.
+///     The most major index is the piece type, then the number of attacked
+///     squares, and lastly whether the evaluation is midgame or endgame.
+/// * 1102..1104: Number of doubled pawns (mg, eg) weighted
 ///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
-/// * 780..782: Net number of open rooks
+/// * 1104..1106: Net number of open rooks
 ///
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
@@ -331,6 +374,24 @@ fn extract(b: &Board) -> BoardFeatures {
     // New offset after everything in the PST.
     offset = 778;
 
+    // Now count mobility.
+    let attack_counts = count_attacks(b);
+    for pt in Piece::ALL {
+        let count = attack_counts[pt as usize];
+        let pt_shift = MAX_MOBILITY * pt as usize;
+        let idx = offset + 2 * (pt_shift + usize::from(count.unsigned_abs()));
+        if count < 0 {
+            features.push((idx, -phase));
+            features.push((idx + 1, phase - -1.));
+        } else {
+            features.push((idx, phase));
+            features.push((idx + 1, 1. - phase));
+        }
+    }
+
+    // Offset after mobility.
+    offset = 1102;
+
     // Doubled pawns
     let doubled_count = net_doubled_pawns(b);
     if doubled_count != 0 {
@@ -338,6 +399,7 @@ fn extract(b: &Board) -> BoardFeatures {
         features.push((offset + 1, f32::from(doubled_count) * (1. - phase)));
     }
 
+    // Open rooks
     let open_rook_count = net_open_rooks(b);
     if open_rook_count != 0 {
         features.push((offset + 2, f32::from(open_rook_count) * phase));

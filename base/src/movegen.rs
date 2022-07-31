@@ -31,18 +31,18 @@ use std::{convert::TryFrom, time::Instant};
 
 /// A bitboard of all the squares a knight can move to if its position is
 /// the index of the list.
-static KNIGHT_MOVES: Lazy<[Bitboard; 64]> =
+pub static KNIGHT_MOVES: Lazy<[Bitboard; 64]> =
     Lazy::new(|| create_step_attacks(&Direction::KNIGHT_STEPS, 2));
 
 /// A bitboard of all the squares a king can move to if his position is the
 /// index in the list.
-static KING_MOVES: Lazy<[Bitboard; 64]> =
+pub static KING_MOVES: Lazy<[Bitboard; 64]> =
     Lazy::new(|| create_step_attacks(&Direction::KING_STEPS, 1));
 
 /// A bitboard of all the squares which a pawn on the given square can
 /// attack. The first index is for White's pawn attacks, the second is for
 /// Black's.
-pub(crate) static PAWN_ATTACKS: Lazy<[[Bitboard; 64]; 2]> = Lazy::new(|| {
+pub static PAWN_ATTACKS: Lazy<[[Bitboard; 64]; 2]> = Lazy::new(|| {
     [
         create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
         create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),

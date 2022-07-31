@@ -43,10 +43,7 @@ use fiddler_base::{
     Board, Move,
 };
 
-use crate::{
-    evaluate::{Eval, Score, ScoreTag},
-    material,
-};
+use crate::evaluate::{material, Eval, Score, ScoreTag};
 
 /// Create an estimate for how good a move is. `delta` is the PST difference
 /// created by this move. Requires that `m` must be a legal move in `pos`.

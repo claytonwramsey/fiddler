@@ -50,7 +50,11 @@ use fiddler_base::{
     Bitboard, Board, Color, Move, Piece,
 };
 
-use crate::{material, pick::candidacy, pst};
+use crate::pick::candidacy;
+
+pub mod material;
+pub mod mobility;
+pub mod pst;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 /// A wrapper for the evaluation of a position.
@@ -170,10 +174,10 @@ impl Tagger for ScoreTag {
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-30, -28);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-32, -30);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(43, 88);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(41, 94);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
