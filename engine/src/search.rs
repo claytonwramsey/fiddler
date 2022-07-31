@@ -320,10 +320,10 @@ impl<'a> PVSearch<'a> {
         }
 
         let moves_iter = MovePicker::new(
-            *g.board(), 
-            g.cookie(), 
-            tt_move, 
-            self.killer_moves.get(depth_so_far as usize).copied()
+            *g.board(),
+            g.cookie(),
+            tt_move,
+            self.killer_moves.get(depth_so_far as usize).copied(),
         );
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;

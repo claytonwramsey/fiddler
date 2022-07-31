@@ -367,81 +367,136 @@ pub fn get_moves<const M: GenMode, T: Tagger>(
 /// ```
 pub fn has_moves(b: &Board) -> bool {
     let player = b.player;
-    let player_occupancy = b[player];
+    let allies = b[player];
+    let enemies = b[!player];
     let opponent = !player;
-    let occupancy = player_occupancy | b[opponent];
-    let mut legal_targets = !player_occupancy;
-    let king_square = b.king_sqs[player as usize];
-    let king_attackers = b.checkers;
-    let king_to_sqs = KING_MOVES[king_square as usize] & !player_occupancy;
+    let occupancy = allies | enemies;
+    let mut legal_targets = !allies;
+    let king_sq = b.king_sqs[player as usize];
+    // king does not have to block its checks
+    let king_to_sqs = KING_MOVES[king_sq as usize] & legal_targets;
+    let unpinned = !b.pinned;
+    let queens = b[Piece::Queen];
 
     if b.is_drawn() {
         return false;
     }
 
-    if king_attackers.is_empty() {
-        // examine king moves normally
-        // we need not consider the castling squares because otherwise the king
-        // would be able to escape naturally without castling
+    if b.checkers.more_than_one() {
+        // in double check, only consider king moves
+        let new_occupancy = occupancy ^ Bitboard::from(king_sq);
         for to_sq in king_to_sqs {
-            if validate(Move::normal(king_square, to_sq), b) {
-                return true;
-            }
-        }
-    } else {
-        // king is in check
-
-        // King can probably get out on his own
-        for to_sq in king_to_sqs {
-            let m = Move::normal(king_square, to_sq);
-            if validate(m, b) {
+            if square_attackers_occupancy(b, to_sq, opponent, new_occupancy).is_empty() {
                 return true;
             }
         }
 
-        // king moves could not prevent checks
-        // if this is a double check, we must be mated
-        if king_attackers.more_than_one() {
-            return false;
-        }
+        return false;
+    }
 
+    // king is either single-checked or not at all
+    if !b.checkers.is_empty() {
         // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(b.checkers) };
         // Look for blocks or captures
-        legal_targets &= between(king_square, checker_sq) | b.checkers;
-
-        // only blocks or captures can save us
+        legal_targets &= between(king_sq, checker_sq) | b.checkers;
     }
-    for pt in Piece::NON_KING {
-        for from_sq in b[pt] & player_occupancy {
-            let to_bb = match pt {
-                Piece::Pawn => {
-                    let result = pawn_moves(b, from_sq, player);
-                    legal_targets
-                        & if let Some(ep_sq) = b.en_passant_square {
-                            result | Bitboard::from(ep_sq)
-                        } else {
-                            result
-                        }
-                }
-                Piece::Bishop => MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets,
-                Piece::Rook => MAGIC.rook_attacks(occupancy, from_sq) & legal_targets,
-                Piece::Queen => {
-                    (MAGIC.bishop_attacks(occupancy, from_sq)
-                        | MAGIC.rook_attacks(occupancy, from_sq) & legal_targets)
-                        & legal_targets
-                }
-                Piece::Knight => KNIGHT_MOVES[from_sq as usize] & legal_targets,
-                Piece::King => Bitboard::EMPTY,
-            };
+    // save the (expensive) king move generation/validation for later
 
-            // we need not handle promotion because pawn promotion also can
-            // block
-            for to_sq in to_bb {
-                if validate(Move::normal(from_sq, to_sq), b) {
+    // pinned knights can never move, but an unpinned knight does whatever it
+    // wants
+    for sq in b[Piece::Knight] & allies & unpinned {
+        if !(KNIGHT_MOVES[sq as usize] & legal_targets).is_empty() {
+            return true;
+        }
+    }
+
+    // unpinned bishops/diagonal queens
+    let bishop_movers = (b[Piece::Bishop] | queens) & allies;
+    for sq in bishop_movers & unpinned {
+        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets).is_empty() {
+            return true;
+        }
+    }
+
+    // pinned bishops/diagonal queens
+    for sq in bishop_movers & b.pinned {
+        if !(MAGIC.bishop_attacks(occupancy, sq)
+            & legal_targets
+            & LINES[king_sq as usize][sq as usize])
+            .is_empty()
+        {
+            return true;
+        }
+    }
+
+    let rook_movers = (b[Piece::Rook] | queens) & allies;
+    // unpinned rooks/horizontal queens
+    for sq in rook_movers & unpinned {
+        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets).is_empty() {
+            return true;
+        }
+    }
+
+    // pinned rooks/horizontal queens
+    for sq in rook_movers & b.pinned {
+        if !(MAGIC.rook_attacks(occupancy, sq)
+            & legal_targets
+            & LINES[king_sq as usize][sq as usize])
+            .is_empty()
+        {
+            return true;
+        }
+    }
+
+    // "normal" pawn moves
+    let our_pawns = b[Piece::Pawn] & allies;
+    for sq in our_pawns {
+        let singlemove_sq = sq + player.pawn_direction();
+        let mut to_bb = Bitboard::from(singlemove_sq);
+        if !occupancy.contains(singlemove_sq) && player.pawn_start_rank().contains(sq) {
+            to_bb.insert(singlemove_sq + player.pawn_direction());
+        }
+
+        to_bb &= !occupancy;
+        to_bb |= PAWN_ATTACKS[player as usize][sq as usize] & enemies;
+        to_bb &= legal_targets;
+
+        if b.pinned.contains(sq) {
+            to_bb &= LINES[king_sq as usize][sq as usize];
+        }
+
+        if !to_bb.is_empty() {
+            return true;
+        }
+    }
+
+    // en passant might save us
+    if let Some(ep_sq) = b.en_passant_square {
+        let ep_less_occupancy = occupancy ^ Bitboard::from(ep_sq);
+        for sq in our_pawns {
+            if PAWN_ATTACKS[player as usize][sq as usize].contains(ep_sq) {
+                let new_occupancy = ep_less_occupancy ^ Bitboard::from(sq);
+                if (MAGIC.rook_attacks(new_occupancy, king_sq)
+                    & (b[Piece::Rook] | b[Piece::Queen])
+                    & enemies)
+                    .is_empty()
+                    && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+                        & (b[Piece::Bishop] | b[Piece::Queen])
+                        & enemies)
+                        .is_empty()
+                {
                     return true;
                 }
             }
+        }
+    }
+
+    // king moves are expensive to validate
+    let new_occupancy = occupancy ^ Bitboard::from(king_sq);
+    for to_sq in king_to_sqs {
+        if square_attackers_occupancy(b, to_sq, opponent, new_occupancy).is_empty() {
+            return true;
         }
     }
 
@@ -642,7 +697,7 @@ fn square_attackers_occupancy(
     let mut attackers = Bitboard::EMPTY;
     let color_bb = board[color];
     // Check for pawn attacks
-    let pawn_vision = pawn_captures(board, sq, !color);
+    let pawn_vision = PAWN_ATTACKS[!color as usize][sq as usize];
     attackers |= pawn_vision & board[Piece::Pawn];
 
     // Check for knight attacks
@@ -703,7 +758,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         const NOT_EASTMOST: Bitboard = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
         const RANK_1: Bitboard = Bitboard::new(0x0000_0000_0000_00FF);
 
-        // only pawns which are unpinned or which move along the same diagonal 
+        // only pawns which are unpinned or which move along the same diagonal
         // as the king can capture
         let king_rank_mask = RANK_1 << (king_sq.rank() << 3);
         let capturers = pawns & (unpinned | b.pinned & !(king_file_mask | king_rank_mask));
@@ -726,7 +781,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                 Direction::SOUTHWEST,
                 east_capturers >> 7 & capture_mask,
                 Direction::SOUTHEAST,
-            )
+            ),
         };
 
         // promotion captures
@@ -794,7 +849,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                     }
                 }
             }
-        }        
+        }
     }
 
     if M != CAPTURES {
@@ -810,7 +865,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let doubles = match b.player {
             Color::White => double_candidates << 8,
             Color::Black => double_candidates >> 8,
-        } & target & unoccupied;
+        } & target
+            & unoccupied;
         singles &= target;
 
         // promotion single-moves
@@ -907,7 +963,7 @@ fn normal_piece_assistant<T: Tagger>(
 }
 
 #[inline(always)]
-/// Append a number of normal moves, starting from `from_sq` and ending at each 
+/// Append a number of normal moves, starting from `from_sq` and ending at each
 /// square in `to_bb`, onto `moves`.
 fn append_normal<T: Tagger>(
     from_sq: Square,
@@ -920,43 +976,6 @@ fn append_normal<T: Tagger>(
         let m = Move::normal(from_sq, to_sq);
         moves.push((m, T::tag_move(m, b, cookie)));
     }
-}
-
-/// Get the pseudolegal moves that a pawn on square `sq` with color `color`
-/// could make in this position, expressed as a `Bitboard` with a 1 at every
-/// valid target square.
-fn pawn_moves(board: &Board, sq: Square, color: Color) -> Bitboard {
-    let dir = color.pawn_direction();
-    let start_rank = color.pawn_start_rank();
-    let from_bb = Bitboard::from(sq);
-    let occupancy = board.occupancy();
-    let mut target_squares = Bitboard::EMPTY;
-    //this will never be out of bounds because pawns don't live on promotion rank
-    if !occupancy.contains(sq + dir) {
-        target_squares.insert(sq + dir);
-        //pawn is on start rank and double-move square is not occupied
-        if !(start_rank & from_bb).is_empty() && !occupancy.contains(sq + 2 * dir) {
-            target_squares.insert(sq + 2 * dir);
-        }
-    }
-    target_squares |= pawn_captures(board, sq, color);
-    target_squares &= !board[color];
-
-    target_squares
-}
-
-#[inline(always)]
-/// Get the captures a pawn can make in the current position. The given
-/// color is the color that a pawn would be to generate the captures from
-/// this square. `color` is the color of the piece at `sq`. The result is a
-/// `Bitboard` with a 1 at every valid target square.
-fn pawn_captures(board: &Board, sq: Square, color: Color) -> Bitboard {
-    let mut capture_mask = board[!color];
-    if let Some(ep_square) = board.en_passant_square {
-        capture_mask.insert(ep_square);
-    }
-
-    PAWN_ATTACKS[color as usize][sq as usize] & capture_mask
 }
 
 #[inline(always)]
@@ -1173,19 +1192,6 @@ mod tests {
     }
 
     #[test]
-    /// In a mated position, make sure that the king has no moves.
-    fn white_mated_has_no_moves() {
-        let b =
-            Board::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11").unwrap();
-        assert!(!has_moves(&b));
-        let moves = get_moves::<ALL, NoTag>(&b, &());
-        for m in moves {
-            assert!(is_legal(m.0, &b));
-        }
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-    }
-
-    #[test]
     /// Check that the king has exactly one move in this position.
     fn king_has_only_one_move() {
         let b = Board::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2").unwrap();
@@ -1214,35 +1220,6 @@ mod tests {
         assert!(!get_moves::<ALL, NoTag>(&b, &()).contains(&(m, ())));
 
         assert!(!is_legal(m, &b));
-    }
-
-    #[test]
-    /// Test that loud moves are generated correctly on the Fried Liver
-    /// position.
-    fn get_loud_moves_fried_liver() {
-        loud_moves_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7");
-    }
-
-    #[test]
-    /// Test that loud moves are generated correctly in a position where en
-    /// passant is possible.
-    fn get_loud_moves_en_passant() {
-        loud_moves_helper("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3");
-    }
-
-    #[test]
-    fn get_loud_moves_pawn_capture() {
-        loud_moves_helper("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2");
-    }
-
-    #[test]
-    fn get_loud_moves_rook_hanging() {
-        loud_moves_helper("rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5");
-    }
-
-    #[test]
-    fn recapture_knight_loud_move() {
-        loud_moves_helper("r2q1bkr/ppp3pp/2n5/3Np3/6Q1/8/PPPP1PPP/R1B1K2R b KQ - 0 10");
     }
 
     #[test]
@@ -1366,17 +1343,6 @@ mod tests {
     }
 
     #[test]
-    /// Test that a position where a rook is horizontal to the king is mate.
-    fn horizontal_rook_mate() {
-        let b = Board::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32").unwrap();
-
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-        assert!(!has_moves(&b));
-    }
-
-    #[test]
     /// Test that the king can actually move (and `has_moves` reflects that
     /// fact).
     fn king_can_move() {
@@ -1389,20 +1355,58 @@ mod tests {
     }
 
     #[test]
-    /// Test (again) that in a mated position there are no legal moves.
-    fn no_moves_mated_ladder() {
-        let b = Board::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1").unwrap();
-
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-    }
-
-    #[test]
     /// Test that the start position of the game has moves.
     fn startpos_has_moves() {
         assert!(has_moves(&Board::default()));
+    }
+
+    /// Tests that mates are correct.
+    mod mates {
+        use super::*;
+
+        #[test]
+        /// Test that a ladder-mated position has no legal moves.
+        fn ladder() {
+            let b = Board::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1").unwrap();
+
+            assert!(!has_moves(&b));
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
+        }
+
+        #[test]
+        /// A position where if pawn pushes could be captures, there would not
+        /// be a mate.
+        fn cant_pawn_push() {
+            let b = Board::from_fen("2r2r2/5R2/p2p2pk/3P2Q1/P4n2/7P/1P6/1K4R1 b - - 2 34").unwrap();
+
+            assert!(!has_moves(&b));
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
+        }
+
+        #[test]
+        /// Test that a position where a rook is horizontal to the king is mate.
+        fn horizontal_rook() {
+            let b = Board::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32").unwrap();
+
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
+            assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
+            assert!(!has_moves(&b));
+        }
+
+        #[test]
+        /// A mate where the queen is adjacent to the king, and cuts off all
+        /// escape.
+        fn queen_defended() {
+            let b = Board::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11")
+                .unwrap();
+            assert!(!has_moves(&b));
+            assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+        }
     }
 
     mod draws {
@@ -1518,27 +1522,6 @@ mod tests {
                 "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
                 &[1, 46, 2_079, 89_890, 3_894_594, 164_075_551],
             );
-        }
-    }
-
-    /// A helper function that will force that the given FEN will have loud
-    /// moves generated correctly.
-    fn loud_moves_helper(fen: &str) {
-        let b = Board::from_fen(fen).unwrap();
-
-        let moves = get_moves::<ALL, NoTag>(&b, &());
-        let loud_moves = get_moves::<CAPTURES, NoTag>(&b, &());
-
-        for loud_move in &loud_moves {
-            assert!(moves.contains(loud_move));
-            assert!(b.is_move_capture(loud_move.0));
-        }
-
-        for normal_move in &moves {
-            assert!(is_legal(normal_move.0, &b));
-            if b.is_move_capture(normal_move.0) {
-                assert!(loud_moves.contains(normal_move));
-            }
         }
     }
 }

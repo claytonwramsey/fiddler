@@ -165,7 +165,8 @@ impl Board {
                 // number stating number of blank spaces in this row
                 let num_blanks = chr.to_digit(10).ok_or("expected number of blanks")?;
                 // advance the square under review by the number of blanks
-                #[allow(clippy::cast_possible_truncation)]{
+                #[allow(clippy::cast_possible_truncation)]
+                {
                     c += num_blanks as u8;
                 }
             }
