@@ -174,10 +174,10 @@ impl Tagger for ScoreTag {
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-32, -30);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-27, -38);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(41, 94);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(38, 99);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
@@ -195,6 +195,7 @@ fn leaf_rules(b: &Board) -> Score {
 
     // Add gains from open rooks
     score += OPEN_ROOK_VALUE * net_open_rooks(b);
+    score += mobility::evaluate(b);
 
     score
 }

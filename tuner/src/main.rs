@@ -28,10 +28,10 @@ use std::{
     time::Instant,
 };
 
-use fiddler_base::{Board, Color, Piece, Square};
+use fiddler_base::{Board, Color, Piece, Square, movegen::{KNIGHT_MOVES, PAWN_ATTACKS, KING_MOVES}, MAGIC};
 use fiddler_engine::evaluate::{
     material,
-    mobility::{count_attacks, ATTACKS_VALUE, MAX_MOBILITY},
+    mobility::{ATTACKS_VALUE, MAX_MOBILITY},
     net_doubled_pawns, net_open_rooks, phase_of,
     pst::PST,
     DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE,
@@ -294,8 +294,8 @@ fn print_weights(weights: &[f32]) {
     println!("-----");
 
     // print potpourri
-    paired_val("DOUBLED_PAWN_VAL", 1102);
-    paired_val("OPEN_ROOK_VAL", 1104);
+    paired_val("DOUBLED_PAWN_VAL", 1114);
+    paired_val("OPEN_ROOK_VAL", 1116);
 }
 
 #[allow(
@@ -373,24 +373,10 @@ fn extract(b: &Board) -> BoardFeatures {
 
     // New offset after everything in the PST.
     offset = 778;
-
-    // Now count mobility.
-    let attack_counts = count_attacks(b);
-    for pt in Piece::ALL {
-        let count = attack_counts[pt as usize];
-        let pt_shift = MAX_MOBILITY * pt as usize;
-        let idx = offset + 2 * (pt_shift + usize::from(count.unsigned_abs()));
-        if count < 0 {
-            features.push((idx, -phase));
-            features.push((idx + 1, phase - -1.));
-        } else {
-            features.push((idx, phase));
-            features.push((idx + 1, 1. - phase));
-        }
-    }
+    extract_mobility(b, &mut features, offset, phase);
 
     // Offset after mobility.
-    offset = 1102;
+    offset = 1114;
 
     // Doubled pawns
     let doubled_count = net_doubled_pawns(b);
@@ -407,6 +393,89 @@ fn extract(b: &Board) -> BoardFeatures {
     }
 
     features
+}
+
+/// Helper function to extract mobility information into the sparse feature vector.
+fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, phase: f32) {
+    let white = b[Color::White];
+    let black = b[Color::Black];
+    let not_white = !white;
+    let not_black = !black;
+    let occupancy = white | black;
+    let mut count = [[0i8; MAX_MOBILITY]; Piece::NUM];
+
+    // count knight moves
+    let knights = b[Piece::Knight];
+    for sq in knights & white {
+        let idx = usize::from((KNIGHT_MOVES[sq as usize] & not_white).len());
+        count[Piece::Knight as usize][idx] += 1;
+    }
+    for sq in knights & black {
+        let idx = usize::from((KNIGHT_MOVES[sq as usize] & not_black).len());
+        count[Piece::Knight as usize][idx] -= 1;
+    }
+
+    // count bishop moves
+    let bishops = b[Piece::Bishop];
+    for sq in bishops & white {
+        let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_white).len());
+        count[Piece::Bishop as usize][idx] += 1;
+    }
+    for sq in bishops & black {
+        let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_black).len());
+        count[Piece::Bishop as usize][idx] -= 1;
+    }
+
+    // count rook moves
+    let rooks = b[Piece::Rook];
+    for sq in rooks & white {
+        let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_white).len());
+        count[Piece::Rook as usize][idx] += 1;
+    }
+    for sq in rooks & black {
+        let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_black).len());
+        count[Piece::Rook as usize][idx] -= 1;
+    }
+
+    // count queen moves
+    let queens = b[Piece::Queen];
+    for sq in queens & white {
+        let idx = usize::from(((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_white).len());
+        count[Piece::Queen as usize][idx] += 1;
+    }
+    for sq in rooks & black {
+        let idx = usize::from(((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_black).len());
+        count[Piece::Queen as usize][idx] -= 1;
+    }
+
+    // count net pawn moves
+    // pawns can't capture by pushing, so we only examine their capture squares
+    let pawns = b[Piece::Pawn];
+    for sq in pawns & white {
+        let idx = usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white).len());
+        count[Piece::Pawn as usize][idx] += 1;
+    }
+    for sq in pawns & black {
+        let idx = usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_black).len());
+        count[Piece::Pawn as usize][idx] -= 1;
+    }
+
+    // king
+    let white_king_idx = usize::from((KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white).len());
+    count[Piece::King as usize][white_king_idx] += 1;
+    let black_king_idx = usize::from((KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black).len());
+    count[Piece::King as usize][black_king_idx] -= 1;
+
+    for pt in Piece::ALL {
+        for idx in 0..MAX_MOBILITY {
+            let num_mobile = count[pt as usize][idx];
+            if num_mobile != 0 {
+                let feature_idx = offset + 2 * (MAX_MOBILITY * pt as usize + idx);
+                features.push((feature_idx, phase * f32::from(num_mobile)));
+                features.push((feature_idx + 1, (1. - phase) * f32::from(num_mobile)));
+            }
+        }
+    }
 }
 
 #[inline(always)]
