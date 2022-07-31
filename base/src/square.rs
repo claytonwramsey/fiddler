@@ -243,16 +243,16 @@ impl Square {
     #[must_use]
     /// Get the name of the file of this square. For instance, the square
     /// representing A1 will have the name "a".
-    pub fn file_name(self) -> &'static str {
+    pub fn file_name(self) -> char {
         match self.file() {
-            0 => "a",
-            1 => "b",
-            2 => "c",
-            3 => "d",
-            4 => "e",
-            5 => "f",
-            6 => "g",
-            7 => "h",
+            0 => 'a',
+            1 => 'b',
+            2 => 'c',
+            3 => 'd',
+            4 => 'e',
+            5 => 'f',
+            6 => 'g',
+            7 => 'h',
             // files are only from 0..8
             _ => unreachable!(),
         }

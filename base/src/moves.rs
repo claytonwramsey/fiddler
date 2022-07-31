@@ -284,7 +284,7 @@ impl Move {
 
             // Type of the piece moving
             if mover_type != Piece::Pawn {
-                s += mover_type.code();
+                s.push(mover_type.code());
             } else if is_move_capture {
                 is_unclear = true;
                 is_unclear_file = true;
@@ -309,7 +309,7 @@ impl Move {
             if is_unclear {
                 if !is_unclear_rank {
                     //we can specify the mover by its file
-                    s += from_sq.file_name();
+                    s.push(from_sq.file_name());
                 } else if !is_unclear_file {
                     //we can specify the mover by its rank
                     s = format!("{}{}", s, from_sq.rank() + 1);
@@ -328,7 +328,7 @@ impl Move {
             // Add promote types
             if let Some(p) = self.promote_type() {
                 s += "=";
-                s += p.code();
+                s.push(p.code());
             }
         }
 

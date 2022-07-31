@@ -76,14 +76,14 @@ impl Piece {
 
     #[must_use]
     /// Get the FEN code of this piece as an uppercase string.
-    pub const fn code(self) -> &'static str {
+    pub const fn code(self) -> char {
         match self {
-            Piece::Knight => "N",
-            Piece::Bishop => "B",
-            Piece::Rook => "R",
-            Piece::Queen => "Q",
-            Piece::Pawn => "P",
-            Piece::King => "K",
+            Piece::Knight => 'N',
+            Piece::Bishop => 'B',
+            Piece::Rook => 'R',
+            Piece::Queen => 'Q',
+            Piece::Pawn => 'P',
+            Piece::King => 'K',
         }
     }
 

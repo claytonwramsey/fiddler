@@ -15,7 +15,7 @@ with a master-level player.
 
 * Principal variation search (with quiescence)
 
-* Piece-square table evaluation, plus some simple heuristics
+* Evaluation with piece-square tables, mobility, and some handwritten rules
 
 * Integrated gradient descent tuner
 
