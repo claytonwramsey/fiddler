@@ -206,7 +206,6 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                     let pawn_dir = player.pawn_direction();
                     let singlemove_sq = from_sq + pawn_dir;
                     let pattacks = PAWN_ATTACKS[player as usize][from_sq as usize];
-                    println!("{pattacks}");
                     (!occupancy.contains(singlemove_sq)
                         && (to_sq == singlemove_sq //singlemove
                         || (to_sq == singlemove_sq + pawn_dir //doublemove

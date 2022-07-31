@@ -158,9 +158,9 @@ impl SearchInfo {
 struct PVSearch<'a> {
     /// The transposition table.
     ttable: &'a TTable,
-    // /// The set of "killer" moves. Each index corresponds to a depth (0 is most
-    // /// shallow, etc).
-    // killer_moves: Vec<Move>,
+    /// The set of "killer" moves. Each index corresponds to a depth (0 is most
+    /// shallow, etc).
+    killer_moves: Vec<Move>,
     /// The cumulative number of nodes evaluated in this evaluation.
     num_nodes_evaluated: u64,
     /// The cumulative number of nodes visited since we last updated the limit.
@@ -189,7 +189,7 @@ impl<'a> PVSearch<'a> {
     ) -> PVSearch<'a> {
         PVSearch {
             ttable,
-            // killer_moves: vec![Move::BAD_MOVE; config.depth as usize],
+            killer_moves: vec![Move::BAD_MOVE; usize::from(u8::MAX) + 1],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
             num_transpositions: 0,
@@ -319,7 +319,12 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        let moves_iter = MovePicker::new(*g.board(), g.cookie(), tt_move, None);
+        let moves_iter = MovePicker::new(
+            *g.board(), 
+            g.cookie(), 
+            tt_move, 
+            self.killer_moves.get(depth_so_far as usize).copied()
+        );
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;
 
@@ -416,6 +421,7 @@ impl<'a> PVSearch<'a> {
                         // first place. Therefore, we need not consider the
                         // other moves, since we wouldn't be allowed to play
                         // them either.
+                        self.killer_moves[depth_so_far as usize] = m;
                         break;
                     }
                 }
@@ -575,6 +581,7 @@ impl<'a> PVSearch<'a> {
                     }
                     if alpha >= beta {
                         // Beta cutoff, we have  found a better line somewhere else
+                        self.killer_moves[depth_so_far as usize] = m;
                         break;
                     }
                 }
