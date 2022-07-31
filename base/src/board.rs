@@ -19,7 +19,10 @@
 //! State representations of boards, which contain board state (such as piece
 //! positions), but neither history nor meta-information about a game.
 
-use crate::movegen::{between, square_attackers, MAGIC, PAWN_ATTACKS};
+use crate::{
+    movegen::{square_attackers, PAWN_ATTACKS},
+    MAGIC,
+};
 
 use super::{zobrist, Bitboard, CastleRights, Color, Move, Piece, Square};
 
@@ -619,7 +622,7 @@ impl Board {
                 | (bishop_mask & (queens | self[Piece::Bishop])));
 
         for sniper_sq in snipers {
-            let between_bb = between(king_sq, sniper_sq);
+            let between_bb = Bitboard::between(king_sq, sniper_sq);
             if (between_bb & occupancy).has_single_bit() {
                 self.pinned |= between_bb;
             }

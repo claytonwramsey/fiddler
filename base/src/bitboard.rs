@@ -18,6 +18,10 @@
 
 //! Bitboards, data structures used to efficiently represent sets of squares.
 
+use once_cell::sync::Lazy;
+
+use crate::MAGIC;
+
 use super::Square;
 
 use std::{
@@ -28,6 +32,59 @@ use std::{
         AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr,
     },
 };
+
+/// A lookup table for the squares on a line between any two squares,
+/// either down a row like a rook or diagonal like a bishop.
+static LINES: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
+    let mut lines = [[Bitboard::EMPTY; 64]; 64];
+
+    for sq1 in Bitboard::ALL {
+        let bishop_1 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq1);
+        let rook_1 = MAGIC.rook_attacks(Bitboard::EMPTY, sq1);
+        for sq2 in Bitboard::ALL {
+            if bishop_1.contains(sq2) {
+                let bishop_2 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq2);
+                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
+                lines[sq1 as usize][sq2 as usize] |= bishop_1 & bishop_2;
+            }
+            if rook_1.contains(sq2) {
+                let rook_2 = MAGIC.rook_attacks(Bitboard::EMPTY, sq2);
+                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
+
+                lines[sq1 as usize][sq2 as usize] |= rook_1 & rook_2;
+            }
+        }
+    }
+
+    lines
+});
+
+/// A lookup table for the squares "between" two other squares, either down
+/// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
+/// would return a `Bitboard` with A2 as its only active square.
+static BETWEEN: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
+    // start with an unitialized value and then set it element-wise
+    let mut between = [[Bitboard::EMPTY; 64]; 64];
+
+    for sq1 in Bitboard::ALL {
+        for sq2 in Bitboard::ALL {
+            if MAGIC.bishop_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
+                let bishop1 = MAGIC.bishop_attacks(Bitboard::from(sq2), sq1);
+                let bishop2 = MAGIC.bishop_attacks(Bitboard::from(sq1), sq2);
+
+                between[sq1 as usize][sq2 as usize] |= bishop1 & bishop2;
+            }
+            if MAGIC.rook_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
+                let rook1 = MAGIC.rook_attacks(Bitboard::from(sq2), sq1);
+                let rook2 = MAGIC.rook_attacks(Bitboard::from(sq1), sq2);
+
+                between[sq1 as usize][sq2 as usize] |= rook1 & rook2;
+            }
+        }
+    }
+
+    between
+});
 
 /// A bitboard, which uses an integer to express a set of `Square`s.
 /// This expression allows the efficient computation of set intersection, union,
@@ -226,6 +283,23 @@ impl Bitboard {
     /// ```
     pub const fn more_than_one(self) -> bool {
         (self.0 & self.0.overflowing_sub(1).0) != 0
+    }
+
+    #[inline(always)]
+    #[must_use]
+    /// Get a bitboard of all the squares between the two given squares, along
+    /// the moves of a bishop or rook.
+    pub fn between(sq1: Square, sq2: Square) -> Bitboard {
+        BETWEEN[sq1 as usize][sq2 as usize]
+    }
+
+    #[inline(always)]
+    #[must_use]
+    /// Get a `Bitboard` containing all squares along the line between `sq1` and
+    /// `sq`. Squares which are not aligned (in the ways that a rook or bishop
+    /// move) will result in a return of `Bitboard::EMPTY`.
+    pub fn line(sq1: Square, sq2: Square) -> Bitboard {
+        LINES[sq1 as usize][sq2 as usize]
     }
 }
 

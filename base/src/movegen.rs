@@ -20,70 +20,14 @@
 
 use once_cell::sync::Lazy;
 
-use crate::game::{NoTag, Tagger};
+use crate::{
+    game::{NoTag, Tagger},
+    MAGIC,
+};
 
-use super::{magic::AttacksTable, moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
+use super::{moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
 
 use std::{convert::TryFrom, time::Instant};
-
-/// A master copy of the main magic table. Used for generating bishop,
-/// rook, and queen moves.
-pub(crate) static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
-
-/// A lookup table for the squares on a line between any two squares,
-/// either down a row like a rook or diagonal like a bishop.
-/// `lines[A1][B2]` would return a bitboard with active squares down the
-/// main diagonal.
-static LINES: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
-    let mut lines = [[Bitboard::EMPTY; 64]; 64];
-
-    for sq1 in Bitboard::ALL {
-        let bishop_1 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq1);
-        let rook_1 = MAGIC.rook_attacks(Bitboard::EMPTY, sq1);
-        for sq2 in Bitboard::ALL {
-            if bishop_1.contains(sq2) {
-                let bishop_2 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq2);
-                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
-                lines[sq1 as usize][sq2 as usize] |= bishop_1 & bishop_2;
-            }
-            if rook_1.contains(sq2) {
-                let rook_2 = MAGIC.rook_attacks(Bitboard::EMPTY, sq2);
-                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
-
-                lines[sq1 as usize][sq2 as usize] |= rook_1 & rook_2;
-            }
-        }
-    }
-
-    lines
-});
-
-/// A lookup table for the squares "between" two other squares, either down
-/// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
-/// would return a `Bitboard` with A2 as its only active square.
-static BETWEEN: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
-    // start with an unitialized value and then set it element-wise
-    let mut between = [[Bitboard::EMPTY; 64]; 64];
-
-    for sq1 in Bitboard::ALL {
-        for sq2 in Bitboard::ALL {
-            if MAGIC.bishop_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
-                let bishop1 = MAGIC.bishop_attacks(Bitboard::from(sq2), sq1);
-                let bishop2 = MAGIC.bishop_attacks(Bitboard::from(sq1), sq2);
-
-                between[sq1 as usize][sq2 as usize] |= bishop1 & bishop2;
-            }
-            if MAGIC.rook_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
-                let rook1 = MAGIC.rook_attacks(Bitboard::from(sq2), sq1);
-                let rook2 = MAGIC.rook_attacks(Bitboard::from(sq1), sq2);
-
-                between[sq1 as usize][sq2 as usize] |= rook1 & rook2;
-            }
-        }
-    }
-
-    between
-});
 
 /// A bitboard of all the squares a knight can move to if its position is
 /// the index of the list.
@@ -244,9 +188,8 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                 // checker
                 let checker_sq = Square::try_from(b.checkers).unwrap();
                 let player_idx = b.player as usize;
-                let king_idx = b.king_sqs[player_idx] as usize;
-                let mut targets =
-                    BETWEEN[king_idx][checker_sq as usize] | Bitboard::from(checker_sq);
+                let mut targets = Bitboard::between(b.king_sqs[player_idx], checker_sq)
+                    | Bitboard::from(checker_sq);
 
                 if let Some(ep_sq) = b.en_passant_square {
                     if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
@@ -280,7 +223,8 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                         .is_empty();
             }
 
-            !b.pinned.contains(from_sq) || aligned(from_sq, to_sq, b.king_sqs[player as usize])
+            !b.pinned.contains(from_sq)
+                || Square::aligned(from_sq, to_sq, b.king_sqs[player as usize])
         }
         None => false,
     }
@@ -425,7 +369,7 @@ pub fn has_moves(b: &Board) -> bool {
         // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(b.checkers) };
         // Look for blocks or captures
-        legal_targets &= between(king_sq, checker_sq) | b.checkers;
+        legal_targets &= Bitboard::between(king_sq, checker_sq) | b.checkers;
     }
     // save the (expensive) king move generation/validation for later
 
@@ -447,9 +391,7 @@ pub fn has_moves(b: &Board) -> bool {
 
     // pinned bishops/diagonal queens
     for sq in bishop_movers & b.pinned {
-        if !(MAGIC.bishop_attacks(occupancy, sq)
-            & legal_targets
-            & LINES[king_sq as usize][sq as usize])
+        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq))
             .is_empty()
         {
             return true;
@@ -466,9 +408,7 @@ pub fn has_moves(b: &Board) -> bool {
 
     // pinned rooks/horizontal queens
     for sq in rook_movers & b.pinned {
-        if !(MAGIC.rook_attacks(occupancy, sq)
-            & legal_targets
-            & LINES[king_sq as usize][sq as usize])
+        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq))
             .is_empty()
         {
             return true;
@@ -489,7 +429,7 @@ pub fn has_moves(b: &Board) -> bool {
         to_bb &= legal_targets;
 
         if b.pinned.contains(sq) {
-            to_bb &= LINES[king_sq as usize][sq as usize];
+            to_bb &= Bitboard::line(king_sq, sq);
         }
 
         if !to_bb.is_empty() {
@@ -595,7 +535,7 @@ fn evasions<const M: GenMode, T: Tagger>(
         // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(b.checkers) };
         // Look for blocks or captures
-        let mut target_sqs = between(king_sq, checker_sq) | b.checkers;
+        let mut target_sqs = Bitboard::between(king_sq, checker_sq) | b.checkers;
         match M {
             ALL => (),
             CAPTURES => target_sqs &= b[!player],
@@ -750,7 +690,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         // promotion captures
         for to_sq in east_targets & rank8 {
             let from_sq = to_sq - east_direction;
-            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
                 for pt in Piece::PROMOTING {
                     let m = Move::promoting(from_sq, to_sq, pt);
                     moves.push((m, T::tag_move(m, b, cookie)));
@@ -760,7 +700,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
 
         for to_sq in west_targets & rank8 {
             let from_sq = to_sq - west_direction;
-            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
                 for pt in Piece::PROMOTING {
                     let m = Move::promoting(from_sq, to_sq, pt);
                     moves.push((m, T::tag_move(m, b, cookie)));
@@ -771,14 +711,14 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         // normal captures
         for to_sq in east_targets & not_rank8 {
             let from_sq = to_sq - east_direction;
-            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
                 let m = Move::normal(from_sq, to_sq);
                 moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
         for to_sq in west_targets & not_rank8 {
             let from_sq = to_sq - west_direction;
-            if !b.pinned.contains(from_sq) || aligned(king_sq, to_sq, from_sq) {
+            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
                 let m = Move::normal(from_sq, to_sq);
                 moves.push((m, T::tag_move(m, b, cookie)));
             }
@@ -886,9 +826,7 @@ fn normal_piece_assistant<T: Tagger>(
     for sq in bishop_movers & board.pinned {
         append_normal::<T>(
             sq,
-            MAGIC.bishop_attacks(occupancy, sq)
-                & legal_targets
-                & LINES[king_sq as usize][sq as usize],
+            MAGIC.bishop_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq),
             b,
             cookie,
             moves,
@@ -906,9 +844,7 @@ fn normal_piece_assistant<T: Tagger>(
     for sq in rook_movers & board.pinned {
         append_normal::<T>(
             sq,
-            MAGIC.rook_attacks(occupancy, sq)
-                & legal_targets
-                & LINES[king_sq as usize][sq as usize],
+            MAGIC.rook_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq),
             b,
             cookie,
             moves,
@@ -1022,22 +958,6 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
             moves.push((m, T::tag_move(m, b, cookie)));
         }
     }
-}
-
-#[inline(always)]
-#[must_use]
-/// Get a bitboard of all the squares between the two given squares, along
-/// the moves of a bishop or rook.
-pub fn between(sq1: Square, sq2: Square) -> Bitboard {
-    BETWEEN[sq1 as usize][sq2 as usize]
-}
-
-#[inline(always)]
-#[must_use]
-/// Determine whether three squares are aligned according to rook or bishop
-/// directions.
-pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
-    !(LINES[sq1 as usize][sq2 as usize] & Bitboard::from(sq3)).is_empty()
 }
 
 /// Get the step attacks that could be made by moving in `dirs` from each point

@@ -20,12 +20,17 @@
 
 use super::{Bitboard, Direction, Square};
 
+use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 
 use std::{
     convert::TryFrom,
     mem::{transmute, MaybeUninit},
 };
+
+/// A master copy of the main magic table. Used for generating bishop,
+/// rook, and queen moves.
+pub static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
 
 /// The number of times to try generating magics.
 const NUM_MAGIC_TRIES: u64 = 10_000_000;
@@ -233,7 +238,7 @@ impl AttacksTable {
     }
 
     /// Create a pre-loaded `AttacksTable`.
-    pub fn load() -> AttacksTable {
+    fn load() -> AttacksTable {
         let mut table = AttacksTable::new();
         load_magic_helper(&mut table.rook_table, true);
         load_magic_helper(&mut table.bishop_table, false);

@@ -257,6 +257,14 @@ impl Square {
             _ => unreachable!(),
         }
     }
+
+    #[inline(always)]
+    #[must_use]
+    /// Determine whether three squares are aligned according to rook or bishop
+    /// directions.
+    pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
+        Bitboard::line(sq1, sq2).contains(sq3)
+    }
 }
 
 impl Add<Direction> for Square {
