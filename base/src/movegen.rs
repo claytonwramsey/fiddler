@@ -138,6 +138,8 @@ pub const QUIETS: GenMode = 2;
 pub fn is_legal(m: Move, b: &Board) -> bool {
     let from_sq = m.from_square();
     let to_sq = m.to_square();
+    let from_bb = Bitboard::from(from_sq);
+    let to_bb = Bitboard::from(to_sq);
     let player = b.player;
     let allies = b[player];
     let enemies = b[!player];
@@ -160,16 +162,20 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                 // king cannot en passant
                 return false;
             }
-
-            let mut is_pseudolegal = KING_MOVES[from_sq as usize].contains(to_sq);
-            if m.is_castle() && b.checkers.is_empty() {
+            if m.is_castle() {
                 // just generate moves, since castle is quite rare
                 let mut move_buf = Vec::with_capacity(2);
                 castles::<NoTag>(b, &(), &mut move_buf);
-                is_pseudolegal |= move_buf.contains(&(m, ()));
+                return move_buf.contains(&(m, ()));
             }
 
-            is_pseudolegal && validate(m, b)
+            if !KING_MOVES[from_sq as usize].contains(to_sq) {
+                return false;
+            }
+
+            // normal king moves can't step into check
+            let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
+            square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty()
         }
         Some(pt) => {
             if b.checkers.more_than_one() {
@@ -254,7 +260,27 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                 }
             };
 
-            validate(m, b)
+            if is_ep {
+                // en passants have their own weird effects
+                let king_sq = b.king_sqs[b.player as usize];
+                let capture_bb = match player {
+                    Color::White => to_bb >> 8,
+                    Color::Black => to_bb << 8,
+                };
+
+                let new_occupancy = b.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
+
+                return (MAGIC.rook_attacks(new_occupancy, king_sq)
+                    & (b[Piece::Rook] | b[Piece::Queen])
+                    & enemies)
+                    .is_empty()
+                    && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+                        & (b[Piece::Bishop] | b[Piece::Queen])
+                        & enemies)
+                        .is_empty();
+            }
+
+            !b.pinned.contains(from_sq) || aligned(from_sq, to_sq, b.king_sqs[player as usize])
         }
         None => false,
     }
@@ -501,69 +527,6 @@ pub fn has_moves(b: &Board) -> bool {
     }
 
     false
-}
-
-/// Determine whether a move is valid in the position on the board, given
-/// that it is pseudo-legal.
-fn validate(m: Move, b: &Board) -> bool {
-    // the pieces which are pinned
-    let from_sq = m.from_square();
-    let from_bb = Bitboard::from(from_sq);
-    let to_sq = m.to_square();
-    let to_bb = Bitboard::from(to_sq);
-
-    // verify that taking en passant does not result in self-check
-    if m.is_en_passant() {
-        let king_sq = b.king_sqs[b.player as usize];
-        let enemy = b[!b.player];
-        let capture_bb = match b.player {
-            Color::White => to_bb >> 8,
-            Color::Black => to_bb << 8u8,
-        };
-
-        let new_occupancy = b.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
-
-        return (MAGIC.rook_attacks(new_occupancy, king_sq)
-            & (b[Piece::Rook] | b[Piece::Queen])
-            & enemy)
-            .is_empty()
-            && (MAGIC.bishop_attacks(new_occupancy, king_sq)
-                & (b[Piece::Bishop] | b[Piece::Queen])
-                & enemy)
-                .is_empty();
-    }
-
-    // Validate passthrough squares for castling
-    if m.is_castle() {
-        let is_queen_castle = m.to_square().file() == 2;
-        let mut king_passthru_min = 4;
-        let mut king_passthru_max = 7;
-        if is_queen_castle {
-            king_passthru_min = 2;
-            king_passthru_max = 5;
-        }
-        for file in king_passthru_min..king_passthru_max {
-            let target_sq = Square::new(m.from_square().rank(), file).unwrap();
-            if is_square_attacked_by(b, target_sq, !b.player) {
-                return false;
-            }
-        }
-    }
-
-    let king_sq = b.king_sqs[b.player as usize];
-
-    // Other king moves must make sure they don't step into check
-    if from_sq == king_sq {
-        let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
-        return square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty();
-    }
-
-    // the move is valid if the piece is not pinned, or if the piece is pinned
-    // and stays on the same line as it was pinned on.
-    //
-    // it is reasonable to use `aligned()` here because there's no way a piece
-    // can stay aligned in a move without keeping the pin appeased.
-    (b.pinned & from_bb).is_empty() || aligned(m.from_square(), m.to_square(), king_sq)
 }
 
 #[inline(always)]
