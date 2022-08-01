@@ -24,7 +24,7 @@ authors = ["Clayton Ramsey"]
 
 [dependencies]
 # Random number generator for creating magic bitboards.
-rand = "0.8.4" 
+fastrand = "1.8.0" 
 # Used for dynamically creating movegen lookup tables at runtime.
 once_cell = "1.13.0"
 # More efficient hash map for move repetition checking

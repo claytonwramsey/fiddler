@@ -26,7 +26,7 @@ members = [
 debug = true
 # must be highly optimized for speed, since searching and perft is done in tests
 opt-level = 3 
-lto = true
+# lto = true
 
 [profile.release]
 opt-level = 3

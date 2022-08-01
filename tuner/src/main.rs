@@ -37,7 +37,6 @@ use fiddler_engine::evaluate::{
     DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE,
 };
 use libm::expf;
-use rand::Rng;
 
 /// The input feature set of a board. Each element is a (key, value) pair where
 /// the key is the index of the value in the full feature vector.
@@ -225,9 +224,8 @@ fn load_weights() -> Vec<f32> {
 #[allow(dead_code)]
 /// Add random values, ranging from +/- `amplitude`, to each element of `v`.
 fn fuzz(v: &mut [f32], amplitude: f32) {
-    let mut rng = rand::thread_rng();
     for elem in v.iter_mut() {
-        *elem += amplitude * (2. * rng.gen::<f32>() - 1.);
+        *elem += amplitude * (2. * fastrand::f32() - 1.);
     }
 }
 

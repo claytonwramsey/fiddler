@@ -21,7 +21,6 @@
 use super::{Bitboard, Direction, Square};
 
 use once_cell::sync::Lazy;
-use rand::{thread_rng, Rng};
 
 use std::{
     convert::TryFrom,
@@ -572,9 +571,9 @@ fn is_valid_step(sq: Square, dir: Direction) -> bool {
 #[inline(always)]
 /// Generate a random, mostly-empty bitboard.
 fn random_sparse_bitboard() -> Bitboard {
-    let mut result = Bitboard::new(thread_rng().gen::<u64>());
+    let mut result = Bitboard::new(fastrand::u64(..));
     for _ in 0..2 {
-        result &= Bitboard::new(thread_rng().gen::<u64>());
+        result &= Bitboard::new(fastrand::u64(..));
     }
 
     result
