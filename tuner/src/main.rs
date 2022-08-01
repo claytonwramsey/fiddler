@@ -28,7 +28,10 @@ use std::{
     time::Instant,
 };
 
-use fiddler_base::{Board, Color, Piece, Square, movegen::{KNIGHT_MOVES, PAWN_ATTACKS, KING_MOVES}, MAGIC};
+use fiddler_base::{
+    movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
+    Board, Color, Piece, Square, MAGIC,
+};
 use fiddler_engine::evaluate::{
     material,
     mobility::{ATTACKS_VALUE, MAX_MOBILITY},
@@ -438,11 +441,17 @@ fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, 
     // count queen moves
     let queens = b[Piece::Queen];
     for sq in queens & white {
-        let idx = usize::from(((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_white).len());
+        let idx = usize::from(
+            ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_white)
+                .len(),
+        );
         count[Piece::Queen as usize][idx] += 1;
     }
     for sq in rooks & black {
-        let idx = usize::from(((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_black).len());
+        let idx = usize::from(
+            ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_black)
+                .len(),
+        );
         count[Piece::Queen as usize][idx] -= 1;
     }
 
@@ -459,9 +468,11 @@ fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, 
     }
 
     // king
-    let white_king_idx = usize::from((KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white).len());
+    let white_king_idx =
+        usize::from((KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white).len());
     count[Piece::King as usize][white_king_idx] += 1;
-    let black_king_idx = usize::from((KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black).len());
+    let black_king_idx =
+        usize::from((KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black).len());
     count[Piece::King as usize][black_king_idx] -= 1;
 
     for pt in Piece::ALL {

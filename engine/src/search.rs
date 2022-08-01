@@ -93,7 +93,7 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 /// `beta` is an upper bound on the evaluation. This is primarily intended to be
 /// used for aspiration windowing, and in most cases will be set to `Eval::MAX`.
 pub fn search(
-    mut g: ScoredGame,
+    g: ScoredGame,
     depth: u8,
     ttable: &TTable,
     config: &SearchConfig,
@@ -102,9 +102,9 @@ pub fn search(
     alpha: Eval,
     beta: Eval,
 ) -> SearchResult {
-    let mut searcher = PVSearch::new(ttable, config, limit, is_main);
+    let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
-    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, &mut g, alpha, beta, &mut pv)?;
+    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
 
     Ok(SearchInfo {
         pv,
@@ -156,6 +156,8 @@ impl SearchInfo {
 /// A structure containing data which is shared across function calls to a
 /// principal variation search.
 struct PVSearch<'a> {
+    /// The game being searched.
+    game: ScoredGame,
     /// The transposition table.
     ttable: &'a TTable,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most
@@ -182,12 +184,14 @@ impl<'a> PVSearch<'a> {
     /// configuration, and limit. `is_main` is whether the thread is a main
     /// search, responsible for certain synchronization activities.
     pub fn new(
+        game: ScoredGame,
         ttable: &'a TTable,
         config: &'a SearchConfig,
         limit: &'a SearchLimit,
         is_main: bool,
     ) -> PVSearch<'a> {
         PVSearch {
+            game,
             ttable,
             killer_moves: vec![Move::BAD_MOVE; usize::from(u8::MAX) + 1],
             num_nodes_evaluated: 0,
@@ -246,12 +250,11 @@ impl<'a> PVSearch<'a> {
     /// This function will return an error under the conditions described in
     /// `SearchError`'s variants.
     /// The most likely cause of an error will be `SearchError::Timeout`, which
-    /// is returned if the limit times out while `pvs()` is running.
+    /// is returned if the limit times out while `pvs()` is runninself.game.
     pub fn pvs<const PV: bool, const ROOT: bool, const REDUCE: bool>(
         &mut self,
         depth_to_go: i8,
         depth_so_far: u8,
-        g: &mut ScoredGame,
         mut alpha: Eval,
         mut beta: Eval,
         parent_line: &mut Vec<Move>,
@@ -265,7 +268,7 @@ impl<'a> PVSearch<'a> {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce::<PV>(depth_so_far, g, alpha, beta, parent_line);
+            return self.quiesce::<PV>(depth_so_far, alpha, beta, parent_line);
         }
 
         self.increment_nodes()?;
@@ -289,7 +292,7 @@ impl<'a> PVSearch<'a> {
             beta = Eval::mate_in(1);
         }
 
-        if g.drawn_by_repetition() || g.board().is_drawn() {
+        if self.game.drawn_by_repetition() || self.game.board().is_drawn() {
             if PV && alpha < Eval::DRAW {
                 parent_line.clear();
             }
@@ -301,11 +304,11 @@ impl<'a> PVSearch<'a> {
         // Retrieve transposition data and use it to improve our estimate on
         // the position
         let mut tt_move = None;
-        let mut tt_guard = self.ttable.get(g.board().hash);
+        let mut tt_guard = self.ttable.get(self.game.board().hash);
         if let Some(entry) = tt_guard.entry() {
             self.num_transpositions += 1;
             let m = entry.best_move;
-            if is_legal(m, g.board()) {
+            if is_legal(m, self.game.board()) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
                 if !PV && entry.depth as i8 >= depth_to_go {
@@ -320,8 +323,8 @@ impl<'a> PVSearch<'a> {
         }
 
         let moves_iter = MovePicker::new(
-            *g.board(),
-            g.cookie(),
+            *self.game.board(),
+            self.game.cookie(),
             tt_move,
             self.killer_moves.get(depth_so_far as usize).copied(),
         );
@@ -336,7 +339,7 @@ impl<'a> PVSearch<'a> {
             // The principal variation line, following the best move.
             let mut line = Vec::new();
             move_count += 1;
-            g.make_move(m, &tag);
+            self.game.make_move(m, &tag);
             let mut score = Eval::MIN;
             let mut search_full_depth = false;
 
@@ -357,7 +360,6 @@ impl<'a> PVSearch<'a> {
                     .pvs::<false, false, REDUCE>(
                         depth_to_search,
                         depth_so_far + 1,
-                        g,
                         -alpha.step_forward() - Eval::centipawns(1),
                         -alpha.step_forward(),
                         &mut line,
@@ -374,7 +376,6 @@ impl<'a> PVSearch<'a> {
                     .pvs::<false, false, REDUCE>(
                         depth_to_go - 1,
                         depth_so_far + 1,
-                        g,
                         -alpha.step_forward() - Eval::centipawns(1),
                         -alpha.step_forward(),
                         &mut line,
@@ -389,7 +390,6 @@ impl<'a> PVSearch<'a> {
                     .pvs::<true, false, REDUCE>(
                         depth_to_go - 1,
                         depth_so_far + 1,
-                        g,
                         -beta.step_forward(),
                         -alpha.step_forward(),
                         &mut line,
@@ -397,7 +397,7 @@ impl<'a> PVSearch<'a> {
                     .step_back();
             }
 
-            let undo_result = g.undo();
+            let undo_result = self.game.undo();
             debug_assert!(undo_result.is_ok());
 
             if score > best_score {
@@ -428,12 +428,12 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        debug_assert!((move_count == 0) != has_moves(g.board()));
+        debug_assert!((move_count == 0) != has_moves(self.game.board()));
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a
             // stalemate or a mate.
-            best_score = if g.board().checkers.is_empty() {
+            best_score = if self.game.board().checkers.is_empty() {
                 // stalemated
                 Eval::DRAW
             } else {
@@ -464,22 +464,21 @@ impl<'a> PVSearch<'a> {
     fn quiesce<const PV: bool>(
         &mut self,
         depth_so_far: u8,
-        g: &mut ScoredGame,
         mut alpha: Eval,
         beta: Eval,
         parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
-        if !g.board().checkers.is_empty() {
+        if !self.game.board().checkers.is_empty() {
             // don't allow settling if we are in check
-            return self.pvs::<PV, false, false>(1, depth_so_far, g, alpha, beta, parent_line);
+            return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, parent_line);
         }
 
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
-        let player = g.board().player;
+        let player = self.game.board().player;
 
-        let mut tt_guard = self.ttable.get(g.board().hash);
+        let mut tt_guard = self.ttable.get(self.game.board().hash);
         if let Some(entry) = tt_guard.entry() {
             if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES {
                 // this was a deeper search, just use it
@@ -494,7 +493,7 @@ impl<'a> PVSearch<'a> {
 
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = leaf_evaluate(g);
+        let leaf_evaluation = leaf_evaluate(&self.game);
         // println!("{g}: {leaf_evaluation}");
         // Put the score in perspective of the player.
         let mut score = leaf_evaluation.in_perspective(player);
@@ -507,7 +506,7 @@ impl<'a> PVSearch<'a> {
             if alpha >= beta {
                 // make sure that we didn't accidentally assume we could leaf
                 // evaluate an "ended" position
-                match g.is_over() {
+                match self.game.is_over() {
                     (true, false) => return Ok(Eval::DRAW),
                     (true, true) => return Ok(Eval::BLACK_MATE),
                     _ => (),
@@ -527,13 +526,13 @@ impl<'a> PVSearch<'a> {
         }
 
         let mut best_score = score;
-        let mut moves = g.get_moves::<CAPTURES>();
+        let mut moves = self.game.get_moves::<CAPTURES>();
         if moves.is_empty() {
             // In the overwhelming majority of cases, we will not be calling
             // `quiesce` on a game which is over.
             // Therefore we hedge our bets by only checking if the game has
             // ended now.
-            match g.is_over() {
+            match self.game.is_over() {
                 (true, false) => best_score = Eval::DRAW,
                 (true, true) => best_score = Eval::BLACK_MATE,
                 _ => (),
@@ -543,12 +542,11 @@ impl<'a> PVSearch<'a> {
         let mut line = Vec::new();
 
         for (m, tag) in moves {
-            g.make_move(m, &tag);
+            self.game.make_move(m, &tag);
             // zero-window search
             score = -self
                 .quiesce::<false>(
                     depth_so_far + 1,
-                    g,
                     -alpha.step_forward() - Eval::centipawns(1),
                     -alpha.step_forward(),
                     &mut line,
@@ -561,7 +559,6 @@ impl<'a> PVSearch<'a> {
                 score = -self
                     .quiesce::<PV>(
                         depth_so_far + 1,
-                        g,
                         -beta.step_forward(),
                         -score.step_forward(),
                         &mut line,
@@ -570,7 +567,7 @@ impl<'a> PVSearch<'a> {
             }
             #[allow(unused_must_use)]
             {
-                g.undo();
+                self.game.undo();
             }
             if score > best_score {
                 best_score = score;
@@ -632,7 +629,7 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
 /// Store data in the transposition table.
 /// `score` is the best score of the position as evaluated, while `alpha`
 /// and `beta` are the upper and lower bounds on the overall position due
-/// to alpha-beta pruning.
+/// to alpha-beta pruninself.game.
 fn ttable_store(
     guard: &mut TTEntryGuard,
     depth: i8,

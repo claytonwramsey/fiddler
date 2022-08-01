@@ -12,7 +12,8 @@ pub const MAX_MOBILITY: usize = 28;
 
 /// The value of having a piece have a certain number of squares attacked.
 pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
-    [ // N
+    [
+        // N
         (-1, 0),
         (-12, 0),
         (-15, -2),
@@ -42,7 +43,8 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
         (0, 0),
         (0, 0),
     ],
-    [ // B
+    [
+        // B
         (-38, 0),
         (-19, -1),
         (-9, -3),
@@ -72,7 +74,8 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
         (0, 0),
         (0, 0),
     ],
-    [ // R
+    [
+        // R
         (-19, 0),
         (-12, 0),
         (-11, 0),
@@ -102,7 +105,8 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
         (0, 0),
         (0, 0),
     ],
-    [ // Q
+    [
+        // Q
         (-8, 0),
         (-7, 0),
         (-5, 0),
@@ -132,7 +136,8 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
         (0, 0),
         (0, 0),
     ],
-    [ // P
+    [
+        // P
         (-12, 6),
         (-12, 18),
         (-14, 16),
@@ -160,9 +165,10 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
         (0, 0),
         (0, 0),
         (0, 0),
-        (0, 0), 
+        (0, 0),
     ],
-    [ // K
+    [
+        // K
         (0, 0),
         (12, -1),
         (3, -7),
@@ -195,7 +201,9 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
 ]);
 
 /// Helper function to make the process of writing down attack values more easy.
-const fn expand_attacks(vals: &[[(i16, i16); MAX_MOBILITY]; Piece::NUM]) -> [[Score; MAX_MOBILITY]; Piece::NUM] {
+const fn expand_attacks(
+    vals: &[[(i16, i16); MAX_MOBILITY]; Piece::NUM],
+) -> [[Score; MAX_MOBILITY]; Piece::NUM] {
     let mut out = [[Score::DRAW; MAX_MOBILITY]; 6];
 
     let mut pt_idx = 0;
