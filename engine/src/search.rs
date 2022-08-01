@@ -204,7 +204,6 @@ impl<'a> PVSearch<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// Use Principal Variation Search to evaluate the given game to a depth.
     ///
     /// At each node, the search will examine all legal moves and try to find
@@ -452,7 +451,6 @@ impl<'a> PVSearch<'a> {
         Ok(best_score)
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// Use quiescent search (captures only) to evaluate a position as deep as
     /// it needs to go. The given `depth_to_go` does not alter the power of the
     /// search, but serves as a handy tool for the search to understand where
