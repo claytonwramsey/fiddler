@@ -225,10 +225,6 @@ impl<'a> PVSearch<'a> {
     /// * `depth_to_go`: The depth to search the position.
     /// * `depth_so_far`: The depth of the recursive stack when this function
     ///     was called. At the start of the search, `depth_so_far` is 0.
-    /// * `g`: The game being played to be searched.
-    ///     Although `g` is given as a mutable reference, we guarantee that if
-    ///     `pvs()` returns `Ok()`, the state of `g` at the end of the function
-    ///     call will be the same as when it started.
     /// * `alpha`: A lower bound on the evaluation of a parent node, in
     ///     perspective of the player to move.
     ///     One way of thinking of `alpha` is that it is the best score that the
