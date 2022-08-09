@@ -122,7 +122,7 @@ pub fn delta(board: &Board, m: Move) -> Score {
 /// to a table of `Eval`s.
 const fn expand_table(centi_table: &CentiPst) -> Pst {
     // we will overwrite the whole table later
-    let mut table = [[unsafe { MaybeUninit::uninit().assume_init() }; 64]; Piece::NUM];
+    let mut table = [[MaybeUninit::uninit(); 64]; Piece::NUM];
     let mut piece_idx = 0;
     // I would use for-loops here, but those are unsupported in const fns.
     while piece_idx < Piece::NUM {

@@ -974,6 +974,8 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
                 item.insert(target_sq);
             }
         }
+        // sanity check that we added only two attacks
+        debug_assert!(usize::from(item.len()) >= dirs.len());
     }
 
     attacks

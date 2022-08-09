@@ -323,14 +323,14 @@ fn print_weights(weights: &[f32]) {
 /// * 522..650: Pawn PST.
 ///     Note that the indices for the first and eight ranks do not matter.
 /// * 650..778: King PST
-/// * 778..1102: Mobility lookup.
+/// * 778..1114: Mobility lookup.
 ///     This is not the most efficient representation, but it's easy to
 ///     implement.
 ///     The most major index is the piece type, then the number of attacked
 ///     squares, and lastly whether the evaluation is midgame or endgame.
-/// * 1102..1104: Number of doubled pawns (mg, eg) weighted
+/// * 1114..1116: Number of doubled pawns (mg, eg) weighted
 ///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
-/// * 1104..1106: Net number of open rooks
+/// * 1116..1118: Net number of open rooks
 ///
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
@@ -463,7 +463,7 @@ fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, 
         count[Piece::Pawn as usize][idx] += 1;
     }
     for sq in pawns & black {
-        let idx = usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_black).len());
+        let idx = usize::from((PAWN_ATTACKS[Color::Black as usize][sq as usize] & not_black).len());
         count[Piece::Pawn as usize][idx] -= 1;
     }
 

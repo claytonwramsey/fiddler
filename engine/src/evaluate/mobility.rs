@@ -140,7 +140,7 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[
         // P
         (-12, 6),
         (-12, 18),
-        (-14, 16),
+        (0, 0),
         (0, 0),
         (0, 0),
         (0, 0),
@@ -207,6 +207,7 @@ const fn expand_attacks(
     let mut out = [[Score::DRAW; MAX_MOBILITY]; 6];
 
     let mut pt_idx = 0;
+    // workaround for lack of for loops in const fns
     while pt_idx < Piece::NUM {
         let mut mobility_idx = 0;
         while mobility_idx < MAX_MOBILITY {
@@ -283,7 +284,7 @@ pub fn evaluate(b: &Board) -> Score {
     }
     for sq in pawns & black {
         score -= ATTACKS_VALUE[Piece::Pawn as usize]
-            [usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_black).len())];
+            [usize::from((PAWN_ATTACKS[Color::Black as usize][sq as usize] & not_black).len())];
     }
 
     score += ATTACKS_VALUE[Piece::King as usize]
