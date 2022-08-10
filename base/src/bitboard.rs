@@ -136,48 +136,6 @@ impl Bitboard {
     /// ```
     pub const ALL: Bitboard = Bitboard::new(!0);
 
-    /// The diagonal going from A1 to H8.
-    const MAIN_DIAG: Bitboard = Bitboard(0x8040_2010_0804_0201);
-
-    /// The diagonal going from A8 to H1.
-    const ANTI_DIAG: Bitboard = Bitboard::new(0x0102_0408_1020_4080);
-
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    /// Lookup table used for `Bitboard::diagonal()`.
-    const DIAGONAL: [Bitboard; 64] = {
-        let mut boards = [Bitboard::EMPTY; 64];
-        // the classic for-loop hack
-        let mut i = 0i32;
-        while i < 64 {
-            let main_diag = 8 * (i & 7) - (i & 56);
-            let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
-            let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
-            let main_diag_mask = (Bitboard::MAIN_DIAG.0 >> main_right_shift) << main_left_shift;
-            boards[i as usize] = Bitboard(main_diag_mask);
-            i += 1;
-        }
-
-        boards
-    };
-
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    /// Lookup table used for `Bitboard::anti_diagonal()`.
-    const ANTI_DIAGONAL: [Bitboard; 64] = {
-        let mut boards = [Bitboard::EMPTY; 64];
-        // the classic for-loop hack
-        let mut i = 0i32;
-        while i < 64 {
-            let anti_diag = 56 - 8 * (i & 7) - (i & 56);
-            let anti_left_shift = (-anti_diag & (anti_diag >> 31)) as u8;
-            let anti_right_shift = (anti_diag & (-anti_diag >> 31)) as u8;
-            let anti_diag_mask = (Bitboard::ANTI_DIAG.0 >> anti_right_shift) << anti_left_shift;
-            boards[i as usize] = Bitboard(anti_diag_mask);
-            i += 1;
-        }
-
-        boards
-    };
-
     #[inline(always)]
     #[must_use]
     /// Construct a new Bitboard from a numeric literal.
@@ -363,7 +321,27 @@ impl Bitboard {
     /// assert_eq!(diag, Bitboard::diagonal(sq));
     /// ```
     pub const fn diagonal(sq: Square) -> Bitboard {
-        Bitboard::DIAGONAL[sq as usize]
+        /// The diagonal going from A1 to H8.
+        const MAIN_DIAG: Bitboard = Bitboard(0x8040_2010_0804_0201);
+        
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        const DIAGONAL: [Bitboard; 64] = {
+            let mut boards = [Bitboard::EMPTY; 64];
+            // the classic for-loop hack
+            let mut i = 0i32;
+            while i < 64 {
+                let main_diag = 8 * (i & 7) - (i & 56);
+                let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
+                let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
+                let main_diag_mask = (MAIN_DIAG.0 >> main_right_shift) << main_left_shift;
+                boards[i as usize] = Bitboard(main_diag_mask);
+                i += 1;
+            }
+    
+            boards
+        };
+
+        DIAGONAL[sq as usize]
     }
 
     #[inline(always)]
@@ -385,7 +363,46 @@ impl Bitboard {
     /// assert_eq!(diag, Bitboard::anti_diagonal(sq));
     /// ```
     pub const fn anti_diagonal(sq: Square) -> Bitboard {
-        Bitboard::ANTI_DIAGONAL[sq as usize]
+        /// The diagonal going from A8 to H1.
+        const ANTI_DIAG: Bitboard = Bitboard::new(0x0102_0408_1020_4080);
+
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        /// Lookup table used for `Bitboard::anti_diagonal()`.
+        const ANTI_DIAGONAL: [Bitboard; 64] = {
+            let mut boards = [Bitboard::EMPTY; 64];
+            // the classic for-loop hack
+            let mut i = 0i32;
+            while i < 64 {
+                let anti_diag = 56 - 8 * (i & 7) - (i & 56);
+                let anti_left_shift = (-anti_diag & (anti_diag >> 31)) as u8;
+                let anti_right_shift = (anti_diag & (-anti_diag >> 31)) as u8;
+                let anti_diag_mask = (ANTI_DIAG.0 >> anti_right_shift) << anti_left_shift;
+                boards[i as usize] = Bitboard(anti_diag_mask);
+                i += 1;
+            }
+    
+            boards
+        };
+
+        ANTI_DIAGONAL[sq as usize]
+    }
+
+    #[inline(always)]
+    #[must_use]
+    /// Get the set of all squares in the same file as a given square.
+    pub const fn vertical(sq: Square) -> Bitboard {
+        const COL_A: Bitboard = Bitboard(0x0101_0101_0101_0101);
+
+        Bitboard(COL_A.0 << sq.file())
+    }
+
+    #[inline(always)]
+    #[must_use]
+    /// Get the set of all squares in the same rank as a given square.
+    pub const fn horizontal(sq: Square) -> Bitboard {
+        const RANK_1: Bitboard = Bitboard(0x0000_0000_0000_FFFF);
+
+        Bitboard(RANK_1.0 << (sq.rank() << 3))
     }
 }
 

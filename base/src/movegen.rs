@@ -633,8 +633,6 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     moves: &mut Vec<(Move, T::Tag)>,
     target: Bitboard,
 ) {
-    const COL_A: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
-
     let board = &b;
     let player = b.player;
     let allies = board[player];
@@ -652,8 +650,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     let doubledir = 2 * direction;
     let unpinned = !board.pinned;
     let king_sq = board.king_sqs[player as usize];
-    let king_file_mask = COL_A << king_sq.file();
-
+    let king_file_mask = Bitboard::vertical(king_sq);
     if M != QUIETS {
         // pawn captures
 
@@ -669,8 +666,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let capture_mask = opponents & target;
 
         // prevent pawns from capturing by wraparound
-        let west_capturers = pawns & NOT_WESTMOST & (unpinned | b.pinned & west_pin_diag);
-        let east_capturers = pawns & NOT_EASTMOST & (unpinned | b.pinned & east_pin_diag);
+        let west_capturers = pawns & NOT_WESTMOST & (unpinned | west_pin_diag);
+        let east_capturers = pawns & NOT_EASTMOST & (unpinned | east_pin_diag);
         // hack because negative bitshift is UB
         let (west_targets, west_direction, east_targets, east_direction) = match player {
             Color::White => (
