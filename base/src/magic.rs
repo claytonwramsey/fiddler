@@ -470,7 +470,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
     const RING_MASK: Bitboard = Bitboard::new(0xFF81_8181_8181_81FF);
 
     // thank u chessprogramming wiki for this code
-    Bitboard::diagonal(sq) ^ Bitboard::anti_diagonal(sq) & !RING_MASK
+    (Bitboard::diagonal(sq) ^ Bitboard::anti_diagonal(sq)) & !RING_MASK
 }
 
 /// Given some mask, create the occupancy bitboard according to this index.

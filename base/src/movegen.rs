@@ -669,8 +669,8 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let capture_mask = opponents & target;
 
         // prevent pawns from capturing by wraparound
-        let west_capturers = pawns & NOT_WESTMOST & (unpinned | b.pinned & east_pin_diag);
-        let east_capturers = pawns & NOT_EASTMOST & (unpinned | b.pinned & west_pin_diag);
+        let west_capturers = pawns & NOT_WESTMOST & (unpinned | b.pinned & west_pin_diag);
+        let east_capturers = pawns & NOT_EASTMOST & (unpinned | b.pinned & east_pin_diag);
         // hack because negative bitshift is UB
         let (west_targets, west_direction, east_targets, east_direction) = match player {
             Color::White => (
