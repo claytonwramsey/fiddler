@@ -12,7 +12,7 @@
 
 use fiddler_base::{
     movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
-    Board, Color, Piece, MAGIC,
+    Board, Color, Piece, MAGIC, Bitboard,
 };
 
 use super::{Eval, Score};
@@ -231,9 +231,24 @@ const fn expand_attacks(
     out
 }
 
+#[inline(always)]
+#[must_use]
+/// Helper function for computing mobility scores of a piece.
+/// 
+/// Inputs:
+/// * `pt`: the type of the piece being scored.
+/// * `attacks`: the squares that the piece is attacking.
+/// 
+/// Returns the score associated with `pt` attacking all the squares in 
+/// `attacks`.
+pub const fn for_piece(pt: Piece, attacks: Bitboard) -> Score {
+    ATTACKS_VALUE[pt as usize][attacks.len() as usize]
+}
+
 #[must_use]
 /// Get the mobility evaluation of a board.
 pub fn evaluate(b: &Board) -> Score {
+
     let white = b[Color::White];
     let black = b[Color::Black];
     let not_white = !white;
@@ -243,64 +258,55 @@ pub fn evaluate(b: &Board) -> Score {
 
     // count knight moves
     let knights = b[Piece::Knight];
+    // pinned knights can't move and so we don't bother counting them
     for sq in knights & white {
-        score += ATTACKS_VALUE[Piece::Knight as usize]
-            [usize::from((KNIGHT_MOVES[sq as usize] & not_white).len())];
+        score += for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
     }
     for sq in knights & black {
-        score -= ATTACKS_VALUE[Piece::Knight as usize]
-            [usize::from((KNIGHT_MOVES[sq as usize] & not_black).len())];
+        score -= for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_black);
     }
 
     // count bishop moves
     let bishops = b[Piece::Bishop];
     for sq in bishops & white {
-        score += ATTACKS_VALUE[Piece::Bishop as usize]
-            [usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_white).len())];
+        score += for_piece(Piece::Bishop, MAGIC.bishop_attacks(occupancy, sq) & not_white);
     }
     for sq in bishops & black {
-        score -= ATTACKS_VALUE[Piece::Bishop as usize]
-            [usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_black).len())];
+        score -= for_piece(Piece::Bishop, MAGIC.bishop_attacks(occupancy, sq) & not_black);
     }
 
     // count rook moves
     let rooks = b[Piece::Rook];
     for sq in rooks & white {
-        score += ATTACKS_VALUE[Piece::Rook as usize]
-            [usize::from((MAGIC.rook_attacks(occupancy, sq) & not_white).len())];
+        score += for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_white);
     }
     for sq in rooks & black {
-        score -= ATTACKS_VALUE[Piece::Rook as usize]
-            [usize::from((MAGIC.rook_attacks(occupancy, sq) & not_black).len())];
+        score -= for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_black);
     }
 
     // count queen moves
     let queens = b[Piece::Queen];
     for sq in queens & white {
         let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
-        score += ATTACKS_VALUE[Piece::Queen as usize][usize::from((attacks & not_white).len())];
+        score += for_piece(Piece::Queen, attacks & not_white);
     }
     for sq in rooks & black {
         let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
-        score -= ATTACKS_VALUE[Piece::Queen as usize][usize::from((attacks & not_black).len())];
+        score -= for_piece(Piece::Queen, attacks & not_black);
     }
 
     // count net pawn moves
     // pawns can't capture by pushing, so we only examine their capture squares
     let pawns = b[Piece::Pawn];
     for sq in pawns & white {
-        score += ATTACKS_VALUE[Piece::Pawn as usize]
-            [usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white).len())];
+        score += for_piece(Piece::Pawn, PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white);
     }
     for sq in pawns & black {
-        score -= ATTACKS_VALUE[Piece::Pawn as usize]
-            [usize::from((PAWN_ATTACKS[Color::Black as usize][sq as usize] & not_black).len())];
+        score -= for_piece(Piece::Pawn, PAWN_ATTACKS[Color::Black as usize][sq as usize] & not_black);
     }
 
-    score += ATTACKS_VALUE[Piece::King as usize]
-        [usize::from((KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white).len())];
-    score -= ATTACKS_VALUE[Piece::King as usize]
-        [usize::from((KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black).len())];
+    score += for_piece(Piece::King, KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white);
+    score -= for_piece(Piece::King, KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black);
 
     score
 }
