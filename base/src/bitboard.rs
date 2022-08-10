@@ -136,6 +136,78 @@ impl Bitboard {
     /// ```
     pub const ALL: Bitboard = Bitboard::new(!0);
 
+    /// The diagonal going from A1 to H8.
+    const MAIN_DIAG: Bitboard = Bitboard(0x8040_2010_0804_0201);
+
+    /// The diagonal going from A8 to H1.
+    const ANTI_DIAG: Bitboard = Bitboard::new(0x0102_0408_1020_4080);
+
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    /// An array of `Bitboards` containing a diagonal across each square, 
+    /// parallel to the diagonal from A1 to H8.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let sq = Square::F1;
+    /// let mut diag = Bitboard::EMPTY;
+    /// diag.insert(Square::F1);
+    /// diag.insert(Square::G2);
+    /// diag.insert(Square::H3);
+    /// 
+    /// assert_eq!(diag, Bitboard::DIAGONAL[sq as usize]);
+    /// ```
+    pub const DIAGONAL: [Bitboard; 64] = {
+        let mut boards = [Bitboard::EMPTY; 64];
+        // the classic for-loop hack
+        let mut i = 0i32;
+        while i < 64 {
+            let main_diag = 8 * (i & 7) - (i as i32 & 56);
+            let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
+            let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
+            let main_diag_mask = (Bitboard::MAIN_DIAG.0 >> main_right_shift) << main_left_shift;
+            boards[i as usize] = Bitboard(main_diag_mask);
+            i += 1;
+        }
+
+        boards
+    };
+
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    /// An array of `Bitboards` containing a diagonal across each square, 
+    /// parallel to the diagonal from A8 to H1.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    /// 
+    /// let sq = Square::A3;
+    /// let mut diag = Bitboard::EMPTY;
+    /// diag.insert(Square::A3);
+    /// diag.insert(Square::B2);
+    /// diag.insert(Square::C1);
+    /// 
+    /// assert_eq!(diag, Bitboard::ANTI_DIAGONAL[sq as usize]);
+    /// ```
+    pub const ANTI_DIAGONAL: [Bitboard; 64] = {
+        let mut boards = [Bitboard::EMPTY; 64];
+        // the classic for-loop hack
+        let mut i = 0i32;
+        while i < 64 {
+            let anti_diag = 56 - 8 * (i & 7) - (i & 56);
+            let anti_left_shift = (-anti_diag & (anti_diag >> 31)) as u8;
+            let anti_right_shift = (anti_diag & (-anti_diag >> 31)) as u8;
+            let anti_diag_mask = (Bitboard::ANTI_DIAG.0 >> anti_right_shift) << anti_left_shift;
+            boards[i as usize] = Bitboard(anti_diag_mask);
+            i += 1;
+        }
+
+        boards
+    };
+
     #[inline(always)]
     #[must_use]
     /// Construct a new Bitboard from a numeric literal.
