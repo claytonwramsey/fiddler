@@ -304,12 +304,7 @@ impl Board {
     /// assert_eq!(board.type_at_square(Square::E4), None)
     /// ```
     pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
-        for pt in Piece::ALL {
-            if self[pt].contains(sq) {
-                return Some(pt);
-            }
-        }
-        None
+        Piece::ALL.into_iter().find(|&pt| self[pt].contains(sq))
     }
 
     #[inline(always)]

@@ -975,7 +975,7 @@ fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
             }
         }
         // sanity check that we added only two attacks
-        debug_assert!(usize::from(item.len()) >= dirs.len());
+        debug_assert!(usize::from(item.len()) <= dirs.len());
     }
 
     attacks
