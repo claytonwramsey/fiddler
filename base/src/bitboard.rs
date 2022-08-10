@@ -33,32 +33,6 @@ use std::{
     },
 };
 
-/// A lookup table for the squares on a line between any two squares,
-/// either down a row like a rook or diagonal like a bishop.
-static LINES: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
-    let mut lines = [[Bitboard::EMPTY; 64]; 64];
-
-    for sq1 in Bitboard::ALL {
-        let bishop_1 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq1);
-        let rook_1 = MAGIC.rook_attacks(Bitboard::EMPTY, sq1);
-        for sq2 in Bitboard::ALL {
-            if bishop_1.contains(sq2) {
-                let bishop_2 = MAGIC.bishop_attacks(Bitboard::EMPTY, sq2);
-                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
-                lines[sq1 as usize][sq2 as usize] |= bishop_1 & bishop_2;
-            }
-            if rook_1.contains(sq2) {
-                let rook_2 = MAGIC.rook_attacks(Bitboard::EMPTY, sq2);
-                lines[sq1 as usize][sq2 as usize] |= Bitboard::from(sq1) | Bitboard::from(sq2);
-
-                lines[sq1 as usize][sq2 as usize] |= rook_1 & rook_2;
-            }
-        }
-    }
-
-    lines
-});
-
 /// A lookup table for the squares "between" two other squares, either down
 /// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
 /// would return a `Bitboard` with A2 as its only active square.
@@ -299,6 +273,35 @@ impl Bitboard {
     /// `sq`. Squares which are not aligned (in the ways that a rook or bishop
     /// move) will result in a return of `Bitboard::EMPTY`.
     pub fn line(sq1: Square, sq2: Square) -> Bitboard {
+        const LINES: [[Bitboard; 64]; 64] = {
+            let mut lines = [[Bitboard::EMPTY; 64]; 64];
+
+            let mut i = 0u8;
+            while i < 64 {
+                let sq1: Square = unsafe {transmute(i)};
+                let i_bb = 1 << i;
+                let bishop_1 = Bitboard::diagonal(sq1).0 ^ Bitboard::anti_diagonal(sq1).0;
+                let rook_1 = Bitboard::horizontal(sq1).0 ^ Bitboard::vertical(sq1).0;
+                let mut j = 0u8;
+                while j < 64 {
+                    let sq2: Square = unsafe {transmute(j)};
+                    let j_bb = 1 << j;
+                    if bishop_1 & j_bb != 0 {
+                        let bishop_2 = Bitboard::diagonal(sq2).0 ^ Bitboard::anti_diagonal(sq2).0;
+                        lines[i as usize][j as usize] = Bitboard(lines[i as usize][j as usize].0 | i_bb | j_bb | (bishop_1 & bishop_2));
+                    }
+                    if rook_1 & j_bb != 0 {
+                        let rook_2 = Bitboard::horizontal(sq2).0 ^ Bitboard::vertical(sq2).0;
+                        lines[i as usize][j as usize] = Bitboard(lines[i as usize][j as usize].0 | i_bb | j_bb | (rook_1 & rook_2));
+                    }
+                    j += 1;
+                }
+                i += 1;
+            }
+
+            lines
+        };
+
         LINES[sq1 as usize][sq2 as usize]
     }
 
@@ -323,7 +326,7 @@ impl Bitboard {
     pub const fn diagonal(sq: Square) -> Bitboard {
         /// The diagonal going from A1 to H8.
         const MAIN_DIAG: Bitboard = Bitboard(0x8040_2010_0804_0201);
-        
+
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         const DIAGONAL: [Bitboard; 64] = {
             let mut boards = [Bitboard::EMPTY; 64];
@@ -400,7 +403,7 @@ impl Bitboard {
     #[must_use]
     /// Get the set of all squares in the same rank as a given square.
     pub const fn horizontal(sq: Square) -> Bitboard {
-        const RANK_1: Bitboard = Bitboard(0x0000_0000_0000_FFFF);
+        const RANK_1: Bitboard = Bitboard(0x0000_0000_0000_00FF);
 
         Bitboard(RANK_1.0 << (sq.rank() << 3))
     }
