@@ -466,26 +466,11 @@ fn get_rook_mask(sq: Square) -> Bitboard {
 /// Create the mask for the relevant bits in magic of a bishop. `sq` is the
 /// square that a bishop would be on to receiver this mask.
 fn get_bishop_mask(sq: Square) -> Bitboard {
-    /// The diagonal going from A1 to H8.
-    const MAIN_DIAG: Bitboard = Bitboard::new(0x8040_2010_0804_0201);
-    /// The diagonal going from A8 to H1.
-    const ANTI_DIAG: Bitboard = Bitboard::new(0x0102_0408_1020_4080);
     /// A Bitboard made of 1's around the ring of the board, and 0's in the middle
     const RING_MASK: Bitboard = Bitboard::new(0xFF81_8181_8181_81FF);
 
     // thank u chessprogramming wiki for this code
-    let i = sq as i32;
-    let main_diag = 8 * (i & 7) - (i as i32 & 56);
-    let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
-    let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
-    let main_diag_mask = (MAIN_DIAG >> main_right_shift) << main_left_shift;
-
-    let anti_diag = 56 - 8 * (i & 7) - (i & 56);
-    let anti_left_shift = (-anti_diag & (anti_diag >> 31)) as u8;
-    let anti_right_shift = (anti_diag & (-anti_diag >> 31)) as u8;
-    let anti_diag_mask = (ANTI_DIAG >> anti_right_shift) << anti_left_shift;
-
-    (main_diag_mask ^ anti_diag_mask) & !RING_MASK
+    (Bitboard::DIAGONAL[sq as usize] ^ Bitboard::ANTI_DIAGONAL[sq as usize]) & !RING_MASK
 }
 
 /// Given some mask, create the occupancy bitboard according to this index.
