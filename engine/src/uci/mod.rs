@@ -18,14 +18,16 @@
 
 //! Parsing and constructing Universal Chess Interface (UCI) messages.
 //!
-//! UCI is a MVC standard for writing chess engines. The GUI sends commands to
-//! the engine, and the engine then thinks according to the messages sent to it.
+//! UCI is a MVC standard for writing chess engines.
+//! The GUI sends commands to the engine, and the engine then thinks according
+//! to the messages sent to it.
 //! In general, the GUI dictates much of the pace of this interaction, and the
 //! engine just plays along.
 //!
 //! `UciCommand` describes all the messages that can be received for a UCI
-//! engine. Meanwhile, `UciMessage` describes all the messages that the engine
-//! can send back to the GUI.
+//! engine.
+//! Meanwhile, `UciMessage` describes all the messages that the engine can send
+//! back to the GUI.
 //!
 //! For a full specification of the UCI standard, see
 //! [here](https://backscattering.de/).
@@ -39,52 +41,52 @@ pub use send::{EngineInfo, Message, OptionType};
 /// An enum representing the set of all commands that the GUI can send to the
 /// engine via UCI.
 pub enum Command {
-    /// Command given at the start of UCI. The engine must reply with
-    /// `UciMessage::Id` message and send the `UciMessage::Option` commands to
-    /// tell the GUI which engine commands it supports. After that receipt, the
-    /// engine must then send a `UciMessage::Ok` to complete the setup. If not,
-    /// the GUI will kill the engine process.
+    /// Command given at the start of UCI.
+    /// The engine must reply with `UciMessage::Id` message and send the
+    /// `UciMessage::Option` commands to tell the GUI which engine commands it
+    /// supports.
+    /// After that receipt, the engine must then send a `UciMessage::Ok` to
+    /// complete the setup.
+    /// If not, the GUI will kill the engine process.
     Uci,
-    /// Switch whether the engine should turn on or off debug mode. If true,
-    /// the engine should activate debug mode and send info strings to the GUI.
+    /// Switch whether the engine should turn on or off debug mode.
+    /// If true, the engine should activate debug mode and send info strings to
+    /// the GUI.
     /// By default, debug mode should be off.
     Debug(bool),
     /// Request an update from the engine as to whether it is ready to proceed.
     /// If the engine is busy thinking, it can wait until it is done thinking
-    /// to reply to this. When it is ready, the engine must reply with
-    /// `UciMessage::ReadyOk`.
+    /// to reply to this.
+    /// When it is ready, the engine must reply with `UciMessage::ReadyOk`.
     IsReady,
-    /// Set a parameter of the engine, or send a custom command. `name` is the
-    /// name of the key for the option, and `value` is an optional parameter
-    /// for the given value to set.
+    /// Set a parameter of the engine, or send a custom command.
+    /// `name` is the name of the key for the option, and `value` is an optional
+    /// parameter for the given value to set.
     SetOption { name: String, value: Option<String> },
     /// Inform the engine that the next position it will be requested to
-    /// evaluate will be from a new game. An engine should not, however, expect
-    /// a `NewGame`.
+    /// evaluate will be from a new game.
+    /// An engine should not, however, expect a `NewGame`.
     NewGame,
-    /// Update the next position the engine will be asked to evaluate. The
-    /// engine should set up the position starting from the given FEN, and then
-    /// play the given list of moves to reach the position.
+    /// Update the next position the engine will be asked to evaluate.
+    /// The engine should set up the position starting from the given FEN, and
+    /// then play the given list of moves to reach the position.
     Position {
-        ///
-        /// The FEN from which to set up the position. If `fen` is `None`, then
-        /// start from the default start position for a normal game of chess.
-        ///
+        /// The FEN from which to set up the position.
+        /// If `fen` is `None`, then start from the default start position for a
+        /// normal game of chess.
         fen: Option<String>,
-        ///
         /// The set of moves to play after setting up with the given FEN.
-        ///
         moves: Vec<Move>,
     },
-    /// A `Go` will always be given after a `Position` command. The options are
-    /// given as a table of options.
+    /// A `Go` will always be given after a `Position` command.
+    /// The options are given as a table of options.
     Go(Vec<GoOption>),
     /// Stop searching immediately, and when done, reply with a best move and
     /// potentially a ponder.
     Stop,
     /// While the engine was in pondering mode, the player opposing the engine
-    /// selected to play the ponder-move. Continue searching, but know that the
-    /// player chose the ponder-move.
+    /// selected to play the ponder-move.
+    /// Continue searching, but know that the player chose the ponder-move.
     PonderHit,
     /// Quit the program as soon as possible.
     Quit,
@@ -95,11 +97,14 @@ pub enum Command {
 pub enum GoOption {
     /// Restrict the search to these moves only.
     SearchMoves(Vec<Move>),
-    /// Search in "ponder" mode. The engine must not exit the search until
-    /// ordered, no matter the conditions. The last move which was sent in the
-    /// previous `UciCommand::Position` should be considered the "ponder-move",
-    /// which is the suggested move to consider. When a `UciCommand::PonderHit`
-    /// is given, the engine will then execute the ponder command.
+    /// Search in "ponder" mode.
+    /// The engine must not exit the search until ordered, no matter the
+    /// conditions.
+    /// The last move which was sent in the previous `UciCommand::Position`
+    /// should be considered the "ponder-move", which is the suggested move to
+    /// consider.
+    /// When a `UciCommand::PonderHit` is given, the engine will then execute
+    /// the ponder command.
     Ponder,
     /// Inform the engine that White has the given number of milliseconds
     /// remaining.
@@ -114,8 +119,9 @@ pub enum GoOption {
     /// their time increment.
     BlackInc(u32),
     /// Inform the engine that there are the given number of moves remaining
-    /// until the next time control. If `WhiteTime` and `BlackTime` are not
-    /// given, this means the current game is sudden death.
+    /// until the next time control.
+    /// If `WhiteTime` and `BlackTime` are not given, this means the current
+    /// game is sudden death.
     MovesToGo(u8),
     /// Search with the given depth, looking at only the given number of plies.
     Depth(u8),
@@ -125,19 +131,20 @@ pub enum GoOption {
     Mate(u8),
     /// Search for the given number of milliseconds.
     MoveTime(u32),
-    /// Search until a `UciCommand::Stop` is given. Do not exit the search
-    /// until told to.
+    /// Search until a `UciCommand::Stop` is given.
+    /// Do not exit the search until told to.
     Infinite,
 }
 
-/// The result type for processing a line from a UCI command. According to the
-/// UCI protocol, these errors should generally be logged or ignored.
+/// The result type for processing a line from a UCI command.
+/// According to the UCI protocol, these errors should generally be logged or
+/// ignored completely.
 pub type ParseResult = Result<Command, String>;
 
 impl Command {
-    /// Perform a read of a single UCI instruction. A board state is given to allow
-    /// for the `searchmoves` parameter on UCI to know what metadata to add to the
-    /// moves.
+    /// Perform a read of a single UCI instruction.
+    /// A board state is given to allow for the `searchmoves` parameter on UCI
+    /// to know what metadata to add to the moves.
     ///
     /// # Errors
     ///
@@ -165,9 +172,9 @@ impl Command {
         }
     }
 
-    /// Parse a `setoption` line from a UCI string. Assumes that the `"setoption"`
-    /// token in the line has already been consumed (i.e. that the next token will
-    /// be `"name"`).
+    /// Parse a `setoption` line from a UCI string.
+    /// Assumes that the `"setoption"` token in the line has already been
+    /// consumed (i.e. that the next token will be `"name"`).
     fn parse_set_option(tokens: &mut dyn Iterator<Item = &str>) -> ParseResult {
         // consume `name` token
         let name_tok = tokens
@@ -221,9 +228,9 @@ impl Command {
         }
     }
 
-    /// Parse a `position` UCI command line. Assumes that the `"position"` token
-    /// has already been consumed, so the next token will either be `"fen"` or
-    /// `"startpos"`.
+    /// Parse a `position` UCI command line.
+    /// Assumes that the `"position"` token has already been consumed, so the
+    /// next token will either be `"fen"` or `"startpos"`.
     fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> ParseResult {
         let start_fen = match tokens
             .next()
@@ -284,9 +291,9 @@ impl Command {
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    /// Parse a `go` command from UCI. Assumes the token `go` has already been
-    /// consumed. The current board is needed to annotate the moves with their
-    /// effects.
+    /// Parse a `go` command from UCI.
+    /// Assumes the token `go` has already been consumed.
+    /// The current board is needed to annotate the moves with their effects.
     fn parse_go(tokens: &mut dyn Iterator<Item = &str>, board: &Board) -> ParseResult {
         /// A helper function for `parse_go` which will attempt to parse an int out of
         /// a token if it is `Some`, and fail if it cannot parse the int or if it is

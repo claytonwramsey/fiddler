@@ -41,8 +41,9 @@ use fiddler_engine::evaluate::{
 };
 use libm::expf;
 
-/// The input feature set of a board. Each element is a (key, value) pair where
-/// the key is the index of the value in the full feature vector.
+/// The input feature set of a board.
+/// Each element is a (key, value) pair where the key is the index of the value
+/// in the full feature vector.
 type BoardFeatures = Vec<(usize, f32)>;
 
 #[allow(clippy::similar_names)]
@@ -108,12 +109,16 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn Erro
 
 #[allow(clippy::similar_names, clippy::cast_precision_loss)]
 /// Perform one step of PST training, and update the weights to reflect this.
-/// `inputs` is a vector containing the input vector and the expected
-/// evaluation. `weights` is the weight vector to train on. `sigmoid_scale` is
-/// the x-scaling of the sigmoid activation function, and `learn_rate` is a
-/// coefficient on the speed at which the engine learns. Each element of
-/// `inputs` must be the same length as `weights`. Returns the MSE of the
-/// current epoch.
+/// Returns the MSE of the current epoch.
+///
+/// Inputs:
+/// * `inputs`: a vector containing the input vector and the expected
+///     evaluation.
+/// * `weights`: the weight vector to train on.
+/// * `sigmoid_scale`: the x-scaling of the sigmoid activation function.
+/// * `learn_rate`: a coefficient on the speed at which the engine learns.
+///
+/// Each element of `inputs` must be the same length as `weights`.
 fn train_step(
     inputs: &[(BoardFeatures, f32)],
     weights: &[f32],
@@ -178,8 +183,8 @@ fn train_thread(
 }
 
 #[inline(always)]
-/// Compute the  sigmoid function of a variable. `beta` is the
-/// horizontal scaling of the sigmoid.
+/// Compute the  sigmoid function of a variable.
+/// `beta` is the horizontal scaling of the sigmoid.
 ///
 /// The mathematical function is given by the LaTeX expression
 /// `f(x) = \frac{1}{1 - \exp (- \beta x)}`.
@@ -222,14 +227,6 @@ fn load_weights() -> Vec<f32> {
     weights.push(OPEN_ROOK_VALUE.eg.float_val());
 
     weights
-}
-
-#[allow(dead_code)]
-/// Add random values, ranging from +/- `amplitude`, to each element of `v`.
-fn fuzz(v: &mut [f32], amplitude: f32) {
-    for elem in v.iter_mut() {
-        *elem += amplitude * (2. * fastrand::f32() - 1.);
-    }
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::similar_names)]
@@ -304,10 +301,11 @@ fn print_weights(weights: &[f32]) {
     clippy::cast_possible_wrap,
     clippy::similar_names
 )]
-/// Extract a feature vector from a board. The resulting vector will have
-/// dimension 773. The PST values can be up to 1 for a
-/// white piece on the given PST square, -1 for a black piece, or 0 for both or
-/// neither. The PST values are then pre-blended by game phase.
+/// Extract a feature vector from a board.
+/// The resulting vector will have dimension 1118.
+/// The PST values can be up to 1 for a white piece on the given PST square, -1
+/// for a black piece, or 0 for both or neither.
+/// The PST values are then pre-blended by game phase.
 ///
 /// The elements of the vector are listed by their indices as follows:
 ///
@@ -396,7 +394,8 @@ fn extract(b: &Board) -> BoardFeatures {
     features
 }
 
-/// Helper function to extract mobility information into the sparse feature vector.
+/// Helper function to extract mobility information into the sparse feature
+/// vector.
 fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, phase: f32) {
     let white = b[Color::White];
     let black = b[Color::Black];

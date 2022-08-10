@@ -19,21 +19,22 @@
 //! Move selection and phased generation.
 //!
 //! In order to search effectively, all alpha-beta searches require an
-//! effective move ordering which puts the best moves first. This move ordering
-//! is the move picker's job.
+//! effective move ordering which puts the best moves first.
+//! This move ordering is the move picker's job.
 //!
 //! The move picker generates moves "lazily," that is, by only performing move
-//! generations when it has no other choice. Often, playing the transposition
-//! move (found by looking up the position in the transposition table) can be
-//! enough to cause a beta-cutoff, ending the search in a subtree without ever
-//! having to generate moves.
+//! generations when it has no other choice.
+//! Often, playing the transposition move (found by looking up the position in
+//! the transposition table) can be enough to cause a beta-cutoff, ending the
+//! search in a subtree without ever having to generate moves.
 //!
-//! In addition, moves are generated in phases, so that not all moves are
-//! created at once. Captures, being usually the most likely move to cause a
-//! cutoff, are generated first, before the quiet moves. However, some captures
-//! are extremely bad, and lose material on the spot. Accordingly, those
-//! captures tagged with negative candidacy are sent straight to the back of the
-//! move ordering.
+//! In addition, moves are generated in phases so that not all moves are
+//! created at once.
+//! Captures, being usually the most likely move to cause a cutoff, are
+//! generated first, before the quiet moves.
+//! However, some captures are extremely bad, and lose material on the spot.
+//! Accordingly, those captures tagged with negative candidacy are sent straight
+//! to the back of the move ordering.
 
 use std::mem::swap;
 
@@ -45,8 +46,9 @@ use fiddler_base::{
 
 use crate::evaluate::{material, Eval, Score, ScoreTag};
 
-/// Create an estimate for how good a move is. `delta` is the PST difference
-/// created by this move. Requires that `m` must be a legal move in `pos`.
+/// Create an estimate for how good a move is.
+/// `delta` is the PST difference created by this move.
+/// Requires that `m` must be a legal move in `b`.
 ///
 /// # Panics
 ///
@@ -62,6 +64,7 @@ pub fn candidacy(b: &Board, m: Move, delta: Score, phase: f32) -> Eval {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// A structure which generates legal moves for searching.
 pub struct MovePicker {
     /// The buffer of captures to select from, paired with their PST deltas and
     /// then their final candidacies.
@@ -77,8 +80,12 @@ pub struct MovePicker {
     /// The set of moves to ignore.
     ignored: Vec<Move>,
     /// The board for which moves are being generated.
+    /// In the ideal world, this would instead be an `&'a Board`, pointing to a
+    /// board in game's history, but borrow checker rules prevent us from making
+    /// this optimization.
     board: Board,
     /// The tagging cookie for `board`.
+    /// Like `board`, this would ideally be an `&'a Cookie`.
     cookie: <ScoreTag as Tagger>::Cookie,
     /// The upcoming phase of move generation.
     phase: PickPhase,
@@ -89,7 +96,7 @@ pub struct MovePicker {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-/// The current phase of move selection.
+/// The possible phases of move generation.
 enum PickPhase {
     /// Pick the move from the transposition table next.
     Transposition,
@@ -108,12 +115,12 @@ enum PickPhase {
 }
 
 impl MovePicker {
-    /// Construct a `MovePicker` for a given position. Will generate moves, so
-    /// it should only be created at a point in the search where moves must be
-    /// generated.
+    /// Construct a `MovePicker` for a given position.
+    /// Will generate moves, so it should only be created at a point in the
+    /// search where moves must be generated.
     ///
-    /// The transposition move must be legal, and should be
-    /// checked as such prior to instantiation.
+    /// The transposition move must be legal, and should be checked as such
+    /// prior to instantiation.
     pub fn new(
         b: Board,
         cookie: &<ScoreTag as Tagger>::Cookie,
@@ -134,8 +141,8 @@ impl MovePicker {
         }
     }
 
-    /// Add a move to the set of moves that should be ignored. Requires that
-    /// `m` is not `Move::BAD_MOVE`.
+    /// Add a move to the set of moves that should be ignored.
+    /// Requires that `m` is not `Move::BAD_MOVE`.
     fn ignore(&mut self, m: Move) {
         if !self.ignored.contains(&m) {
             self.ignored.push(m);
@@ -143,10 +150,10 @@ impl MovePicker {
     }
 }
 
-/// Search through `moves` until we find the best move, sorting as we go. After
-/// this function terminates, `moves[idx]` will contain the best-rated move of
-/// the input moves from idx to the end. Requires that 0 <= `idx` <
-/// `moves.len()`.
+/// Search through `moves` until we find the best move, sorting as we go.
+/// After this function terminates, `moves[idx]` will contain the best-rated
+/// move of the input moves from idx to the end.
+/// Requires that `0 <= idx < moves.len()`.
 fn select_best(moves: &mut [(Move, (Score, Eval))], idx: usize) -> (Move, (Score, Eval)) {
     let mut best_entry = moves[idx];
     for entry in moves.iter_mut().skip(idx + 1) {

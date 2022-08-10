@@ -18,9 +18,9 @@
 
 //! Primary search algorithms.
 //!
-//! All chess engines do some sort of tree searching,
-//! and as a classical engine, Fiddler uses a variation of Minimax search. In
-//! this case, Fiddler uses principal-variation search, which runs in
+//! All chess engines do some sort of tree searching, and as a classical engine,
+//! Fiddler uses a variation of Minimax search.
+//! In this case, Fiddler uses principal-variation search, which runs in
 //! Omega(b^{d/2}) time, so long as the move ordering is correct and causes the
 //! most critical moves to be searched first at each depth.
 //!
@@ -65,33 +65,30 @@ impl<T> From<PoisonError<T>> for SearchError {
 }
 
 #[allow(clippy::module_name_repetitions)]
-/// The result of performing a search. The `Ok` version contains data on the
-/// search, while the `Err` version contains a reason why the search failed.
+/// The result of performing a search.
+/// The `Ok` version contains data on the search, while the `Err` version
+/// contains a reason why the search failed.
 pub type SearchResult = Result<SearchInfo, SearchError>;
 
 #[allow(clippy::too_many_arguments, clippy::cast_possible_wrap)]
-/// Evaluate the given game. Return a pair containing the best move and its
-/// evaluation, as well as the depth to which the evaluation was searched. The
-/// evaluation will be from the player's perspective, i.e. inverted if the
+/// Evaluate the given game.
+/// The evaluation will be from the player's perspective, i.e. inverted if the
 /// player to move is Black.
 ///
-/// `g` is the game which will be evaluated.
-///
-/// `ttable` is a reference counter to the shared transposition table.
-///
-/// `config` is the configuration of this search.
-///
-/// `limit` is the search limiter, and will be interiorly mutated by this
-/// function.
-///
-/// `is_main` determines whether or not this search is the "main" search or a
-/// subjugate thread, and determines responsibilities as such.
-///
-/// `alpha` is a lower bound on the evaluation. This is primarily intended to be
-/// used for aspiration windowing, and in most cases will be set to `Eval::MIN`.
-///
-/// `beta` is an upper bound on the evaluation. This is primarily intended to be
-/// used for aspiration windowing, and in most cases will be set to `Eval::MAX`.
+/// Inputs:
+/// * `g`: the game which will be evaluated.
+/// * `ttable`: a reference to the shared transposition table.
+/// * `config`: the configuration of this search.
+/// * `limit`:the search limiter, which will be interiorly mutated by this
+///     function.
+/// * `is_main`: whether or not this search is the "main" search or a subjugate
+///     thread, and determines responsibilities as such.
+/// * `alpha`: a lower bound on the evaluation.
+///     This is primarily intended to be used for aspiration windowing, and in
+///     most cases will be set to `Eval::MIN`.
+/// * `beta`: is an upper bound on the evaluation.
+///     This is primarily intended to be used for aspiration windowing, and in
+///     most cases will be set to `Eval::MAX`.
 pub fn search(
     g: ScoredGame,
     depth: u8,
@@ -181,8 +178,9 @@ struct PVSearch<'a> {
 
 impl<'a> PVSearch<'a> {
     /// Construct a new `PVSearch` using a given transposition table,
-    /// configuration, and limit. `is_main` is whether the thread is a main
-    /// search, responsible for certain synchronization activities.
+    /// configuration, and limit.
+    /// `is_main` is whether the thread is a main search, responsible for
+    /// certain synchronization activities.
     pub fn new(
         game: ScoredGame,
         ttable: &'a TTable,
@@ -209,9 +207,10 @@ impl<'a> PVSearch<'a> {
     /// At each node, the search will examine all legal moves and try to find
     /// the best line, recursively searching to `depth_to_go` moves deep.
     /// However, some heuristics will cause certain lines to be examined more
-    /// deeply than `depth_to_go`, and some less so. When `depth_to_go` reaches
-    /// zero, a quiescence search will be performed, preventing the evaluation
-    /// of "loud" positions from giving incorrect results.
+    /// deeply than `depth_to_go`, and some less so.
+    /// When `depth_to_go` reaches zero, a quiescence search will be performed,
+    /// preventing the evaluation of "loud" positions from giving incorrect
+    /// results.
     ///
     /// When the search is complete, the `Ok()` variant will contain the
     /// evaluation of the position.
@@ -452,9 +451,9 @@ impl<'a> PVSearch<'a> {
     }
 
     /// Use quiescent search (captures only) to evaluate a position as deep as
-    /// it needs to go. The given `depth_to_go` does not alter the power of the
-    /// search, but serves as a handy tool for the search to understand where
-    /// it is.
+    /// it needs to go until all loud moves are exhausted.
+    /// The given `depth_to_go` does not alter the power of the search, but
+    /// serves as a handy tool for the search to understand where it is.
     fn quiesce<const PV: bool>(
         &mut self,
         depth_so_far: u8,
@@ -623,7 +622,7 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
 /// Store data in the transposition table.
 /// `score` is the best score of the position as evaluated, while `alpha`
 /// and `beta` are the upper and lower bounds on the overall position due
-/// to alpha-beta pruninself.game.
+/// to alpha-beta pruning in the game.
 fn ttable_store(
     guard: &mut TTEntryGuard,
     depth: i8,
@@ -689,8 +688,8 @@ pub mod tests {
     }
 
     #[test]
-    /// A test on the evaluation of the game in the fried liver position. The
-    /// only winning move for White is Qd3+.
+    /// A test on the evaluation of the game in the fried liver position.
+    /// The only winning move for White is Qd3+.
     fn fried_liver() {
         let info = search_helper(
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
@@ -701,8 +700,9 @@ pub mod tests {
     }
 
     /// A helper function which ensures that the evaluation of a position is
-    /// equal to what we expect it to be. It will check both a normal search
-    /// and a search without the transposition table.
+    /// equal to what we expect it to be.
+    /// It will check both a normal search and a search without the
+    /// transposition table.
     fn eval_helper(fen: &str, eval: Eval, depth: u8) {
         assert_eq!(search_helper(fen, depth).eval, eval);
     }

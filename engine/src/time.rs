@@ -20,10 +20,11 @@
 //!
 //! In a match, a chess engine is usually given a budget of time for the entire
 //! game, and it is the engine's duty to decide how much to use when making each
-//! move. More sophisticated engines do an analysis of the position and guess
-//! its complexity, giving themselves more time in positions which are more
-//! complex. For now, Fiddler is not so intelligent, and instead rations time to
-//! itself indiscriminately.
+//! move.
+//! More sophisticated engines do an analysis of the position and guess its
+//! complexity, giving themselves more time in positions which are more complex.
+//! For now, Fiddler is not so intelligent, and instead rations time to itself
+//! indiscriminately.
 
 use std::cmp::min;
 
@@ -39,16 +40,14 @@ use fiddler_base::Color;
 /// Decide how much time to search a position, given UCI information about the
 /// time remaining.
 ///
-/// `movestogo` is the number of moves remaining until the next increment.
-///
-/// `increment` is the time increment that each player will get after
-/// they play a move, measured in milliseconds.
-///
-/// `remaining` is the remaining time that each player has, measured in
-/// milliseconds.
-///
-/// `player` is the color of the player for whom we are making the timing
-/// decision.
+/// Inputs:
+/// * `movestogo`: the number of moves remaining until the next increment.
+/// *`increment`: the time increment that each player will get after
+///     they play a move, measured in milliseconds.
+/// * `remaining`: the remaining time that each player has, measured in
+///     milliseconds.
+/// * `player`: the color of the player for whom we are making the timing
+///     decision.
 pub fn get_search_time(
     movestogo: Option<u8>,
     increment: (u32, u32),

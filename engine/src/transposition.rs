@@ -19,15 +19,16 @@
 //! Transposition tables.
 //!
 //! A transposition table is a large hash-map from hashkeys of board positions
-//! to useful information about each position. The intent of a transposition
-//! table is twofold: first, if the same position is reached through multiple
-//! lines, the engine can reuse its old evaluation. Second, in multithreaded
-//! contexts, the transposition table is the only way in which two threads can
-//! communicate about their search.
+//! to useful information about each position.
+//! The intent of a transposition table is twofold: first, if the same position
+//! is reached through multiple lines, the engine can reuse its old evaluation.
+//! Second, in multithreaded contexts, the transposition table is the only way
+//! in which two threads can communicate about their search.
 //!
 //! Fiddler's transposition table has no locks and is unsafe; i.e. it has
-//! concurrent access to the same entries. We require that the retrieved move
-//! from a transposition table be checked for legality before it is played.
+//! concurrent access to the same entries.
+//! We require that the retrieved move from a transposition table be checked for
+//! legality before it is played.
 
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -41,25 +42,25 @@ use fiddler_base::Move;
 use crate::evaluate::Eval;
 
 #[derive(Clone, Debug)]
-/// A table which stores transposition data. It will automatically evict an
-/// "old" element if another one takes its place. It behaves much like a
-/// hash-map from positions to table-entries.
+/// A table which stores transposition data.
+/// It will automatically evict an "old" element if another one takes its place.
+/// It behaves much like a hash-map from positions to table-entries.
 pub struct TTable {
-    /// List of all entries in the transposition table. The length of `entries`
-    /// must always be a power of two. To allow concurrent access, we must use
-    /// unsafe code.
+    /// List of all entries in the transposition table.
+    /// The length of `entries` must always be a power of two.
+    /// To allow concurrent access, we must use unsafe code.
     ///
     /// If `entries` is null, then nothing has been allocated yet.
     buckets: *mut Bucket,
-    /// The mask for retrieving entries from the table. Should always be 0 if
-    /// `entries` is null.
+    /// The mask for retrieving entries from the table.
+    /// Should always be 0 if `entries` is null.
     mask: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// A safe-exposed API for accessing entries in a transposition table. The guard
-/// is annotated with a lifetime so that it cannot outlive the table it indexes
-/// into.
+/// A safe-exposed API for accessing entries in a transposition table.
+/// The guard is annotated with a lifetime so that it cannot outlive the table
+/// it indexes into.
 pub struct TTEntryGuard<'a> {
     /// Whether the entry we point to is actually valid.
     valid: bool,
@@ -73,6 +74,7 @@ pub struct TTEntryGuard<'a> {
 
 /// The number of entries in a single bucket.
 const BUCKET_SIZE: usize = 3;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A `Bucket` is a container for transposition table entries, designed to make
@@ -95,11 +97,13 @@ pub struct TTEntry {
     tag: u8, // 1 byte
     /// The lower 16 bits hash key of the entry.
     key_low16: u16, // 2 bytes
-    /// The depth to which this entry was searched. If the depth is negative,
-    /// this means that it was a special type of search.
+    /// The depth to which this entry was searched.
+    /// If the depth is negative, this means that it was a special type of
+    /// search.
     pub depth: i8, // 1 byte
-    /// The best move in the position when this entry was searched. Will be
-    /// `Move::BAD_MOVE` when there are no moves or the best move is unknown.
+    /// The best move in the position when this entry was searched.
+    /// Will be `Move::BAD_MOVE` when there are no moves or the best move is
+    /// unknown.
     pub best_move: Move, // 2 bytes
     /// The lower bound on the evaluation of the position.
     pub lower_bound: Eval, // 2 bytes
@@ -233,7 +237,8 @@ impl TTable {
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     /// Get an estimate of the fill rate proportion of this transposition table
-    /// out of 1000. Typically used for UCI.
+    /// out of 1000.
+    /// Typically used for UCI.
     ///
     /// # Panics
     ///
@@ -350,8 +355,9 @@ impl TTable {
 
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
-    /// Get the size of this table, in megabytes. Does not include the size of
-    /// the struct itself, but rather just the heap-allocated table size.
+    /// Get the size of this table, in megabytes.
+    /// Does not include the size of the struct itself, but rather just the
+    /// heap-allocated table size.
     pub fn size_mb(&self) -> usize {
         if self.buckets.is_null() {
             0
@@ -406,12 +412,13 @@ impl Drop for TTable {
 
 impl<'a> TTEntryGuard<'a> {
     #[must_use]
-    /// Get the entry pointed to by this guard. Will return `None` if the guard
-    /// was created by a probe miss on the transposition table.
+    /// Get the entry pointed to by this guard.
+    /// Will return `None` if the guard was created by a probe miss on the
+    /// transposition table.
     ///
-    /// Due to hash collision, the entry may not be correct for us. Therefore it
-    /// is prudent to check that the move in the transposition table is actually
-    /// legal before playing it.
+    /// Due to hash collision, the entry may not be correct for us.
+    /// Therefore it is prudent to check that the move in the transposition
+    /// table is actually legal before playing it.
     pub fn entry(&self) -> Option<&'a TTEntry> {
         if self.valid {
             // null case is handled by `as_ref()`

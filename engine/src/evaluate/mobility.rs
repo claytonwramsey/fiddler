@@ -1,4 +1,14 @@
 //! Evaluation of positions based on the mobility of pieces.
+//!
+//! We count mobility by examining the number of squares that a piece can move
+//! to according to pseudo-legal moves.
+//! This means that captures and empty squares visible to a piece (independent
+//! of whether it is pinned) count towards its mobility score.
+//!
+//! For each piece, for each number of squares attacked, a unique mobility bonus
+//! is given.
+//! This prevents pieces from being placed uselessly in the name of being able
+//! to see more squares.
 
 use fiddler_base::{
     movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},

@@ -18,9 +18,10 @@
 
 //! Piece-Square Tables (PSTs).
 //!
-//! A PST is a table with an item for each piece at each square. It grants a
-//! fixed value to the evaluation of a position for each piece, granting
-//! benefits for being on "good" squares and penalties for pieces on "bad" ones.
+//! A PST is a table with an item for each piece at each square.
+//! It grants a fixed value to the evaluation of a position for each piece,
+//! granting benefits for being on "good" squares and penalties for pieces on
+//! "bad" ones.
 //! For instance, a knight is much more valuable near the center, so the PST
 //! value for a knight on rank 4 and file 3 is positive.
 
@@ -30,10 +31,11 @@ use fiddler_base::{Board, Color, Move, Piece, Square};
 
 use crate::evaluate::Score;
 
-/// A lookup table for piece values. The outer index is the type of the piece
+/// A lookup table for piece values.
+/// The outer index is the type of the piece
 /// (in order of Pawn, Knight, Bishop, Rook, Queen, and King)
-/// and the inner index is the square of the piece (from White's point of view)
-/// , starting with A1 as the first index, then continuing on to B1, C1, and so
+/// and the inner index is the square of the piece (from White's point of view),
+/// starting with A1 as the first index, then continuing on to B1, C1, and so
 /// on until H8 as index 63.
 type Pst = [[Score; 64]; Piece::NUM];
 
@@ -41,10 +43,11 @@ type Pst = [[Score; 64]; Piece::NUM];
 type CentiPst = [[(i16, i16); 64]; Piece::NUM];
 
 #[must_use]
-/// Evaluate a board based on its PST value. This is slow, so under most
-/// conditions it is recommended to use `value_delta()` instead if you are making
-/// moves. The first value in the return type is the midgame difference, and
-/// the second is the endgame difference.
+/// Evaluate a board based on its PST value.
+/// This is slow, so under most conditions it is recommended to use
+/// `value_delta()` instead if you are making moves.
+/// The first value in the return type is the midgame difference, and the second
+/// is the endgame difference.
 pub fn evaluate(board: &Board) -> Score {
     let mut score = Score::DRAW;
 

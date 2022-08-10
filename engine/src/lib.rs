@@ -18,9 +18,9 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::inline_always, clippy::too_many_lines)]
 
-//! Code which defines the engine's behavior. Included below are methods for
-//! evaluating positions, searching trees, storing data, configuring engines,
-//! and more.
+//! Code which defines the engine's behavior.
+//! Included below are tools for evaluating positions, searching trees, storing
+//! data, configuring engines, and more.
 
 use search::SearchError;
 

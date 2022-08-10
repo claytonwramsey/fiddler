@@ -18,14 +18,16 @@
 
 //! Material values for each piece.
 //!
-//! Every piece is assigned a numeric value in centipawns (cp). Under normal
-//! conditions, a centipawn is 100cp, however, the consequences of tuning have
-//! yielded values for pawns slightly off of that mark.
+//! Every piece is assigned a numeric value in centipawns (cp).
+//! Under normal conditions, a centipawn defined as 100cp; however, the
+//! consequences of tuning have yielded values for pawns slightly off of that
+//! mark.
 //!
 //! In traditional chess, pawns are worth 100cp, knights and bishops are worth
-//! 300cp, rooks are worth 500cp, and queens are worth 900cp each. However, any
-//! chess player worth their salt might tell you that bishops are a little more
-//! valuable than knights. Empirically, the engine agrees.
+//! 300cp, rooks are worth 500cp, and queens are worth 900cp each.
+//! However, any chess player worth their salt might tell you that bishops are a
+//! little more valuable than knights.
+//! Empirically, the engine agrees.
 
 use fiddler_base::{Board, Color, Move, Piece};
 
@@ -45,7 +47,8 @@ pub const fn value(pt: Piece) -> Score {
 }
 
 #[must_use]
-/// Compute the effect that a move will have on the total quantity of material.
+/// Compute the effect that a move will have on the total material evaluation of
+/// the board it will be played on.
 pub fn delta(b: &Board, m: Move) -> Score {
     // material only ever changes value based on captures and promotions, so
     // this is easy

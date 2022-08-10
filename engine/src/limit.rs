@@ -19,9 +19,9 @@
 //! Search limiting.
 //!
 //! It makes little sense to wait until a search decides that it's done, as it's
-//! hard to predict when said search will be done. The code in here is used to
-//! create limits to how long we can search, so that we don't have to wait
-//! forever.
+//! hard to predict when said search will be done.
+//! The code in here is used to create limits to how long we can search, so that
+//! we don't have to wait forever.
 //!
 //! A search limit is an inherently concurrent structure - much care must be
 //! taken to avoid deadlocking.
@@ -45,16 +45,18 @@ pub struct SearchLimit {
     /// The cumulative number of nodes which have been searched since the first
     /// call to `start`.
     num_nodes: AtomicU64,
-    /// A cap on the total number of nodes to search. If the cap is `None`,
-    /// then there is no limit to the number of nodes to search.
+    /// A cap on the total number of nodes to search.
+    /// If the cap is `None`, then there is no limit to the number of nodes to
+    /// search.
     pub nodes_cap: Mutex<Option<u64>>,
     /// The time at which the search was started.
     start_time: Mutex<Instant>,
-    /// The time at which the search will end. Will be `None` if the search is
-    /// untimed.
+    /// The time at which the search will end.
+    /// Will be `None` if the search is untimed.
     end_time: Mutex<Option<Instant>>,
-    /// The duration of the search. If the duration is `None`, then there is
-    /// no limit to the duration of the search.
+    /// The duration of the search.
+    /// If the duration is `None`, then there is no limit to the duration of the
+    /// search.
     pub search_duration: Mutex<Option<Duration>>,
 }
 
@@ -72,7 +74,7 @@ impl SearchLimit {
         }
     }
 
-    /// Start the search limit, by setting its start time to now.
+    /// Start the search limit by setting its start time to now.
     ///
     /// # Errors
     ///
@@ -103,7 +105,7 @@ impl SearchLimit {
     }
 
     #[inline(always)]
-    /// Check the elapsed time to see if this search is over, and if so, update
+    /// Check the elapsed time to see if this search is over and if so update
     /// accordingly.
     ///
     /// # Errors
@@ -121,8 +123,7 @@ impl SearchLimit {
     }
 
     #[inline(always)]
-    /// Increment the total number of nodes searched. If a lock acquisition
-    /// failure occurs, will return an error.
+    /// Increment the total number of nodes searched.
     ///
     /// # Errors
     ///

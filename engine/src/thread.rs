@@ -44,8 +44,8 @@ use super::{
 pub struct SearchConfig {
     /// The depth at which this algorithm will evaluate a position.
     pub depth: u8,
-    /// The number of helper threads. If this value is 0, then the search is
-    /// single-threaded.
+    /// The number of helper threads.
+    /// If this value is 0, then the search is single-threaded.
     pub n_helpers: u8,
     /// The number of moves at each layer which will be searched to a full
     /// depth, as opposed to a lower-than-target depth.
@@ -95,15 +95,18 @@ impl MainSearch {
         }
     }
 
-    /// Evaluate a position. The searcher will continue searching until its
-    /// field `limit` marks itself as over.
+    /// Evaluate a position.
+    /// The searcher will continue searching until its field `limit` marks
+    /// itself as over.
     ///
     /// # Errors
     ///
     /// An error will be returned according to the cases outlined in
-    /// `SearchError`. Such errors are rare, and are generally either the result
-    /// of an internal bug or a critical OS interrupt. However, a timeout error
-    /// is most likely if the search times out before it can do any computation.
+    /// `SearchError`.
+    /// Such errors are rare, and are generally either the result of an internal
+    /// bug or a critical OS interrupt.
+    /// However, a timeout error is most likely if the search times out before
+    /// it can do any computation.
     pub fn evaluate(&self, g: &ScoredGame) -> SearchResult {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);

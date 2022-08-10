@@ -18,12 +18,12 @@
 
 //! The main UCI procedure.
 //!
-//! This code handles the central logic of actually running an engine. We
-//! function quickly by constantly listening for new commands from the GUI, and
-//! then spinning up threads to execute each command.
+//! This code handles the central logic of actually running an engine.
+//! To keep the engine responsive, a new thread is created to process each
+//! time-intensive command sent from the GUI.
 //!
-//! Many of the details of concurrency required to achieve this are finicky; I
-//! am hopeful that we can develop more elegant solutions in the future.
+//! Many of the details of concurrency required to achieve this are finicky;
+//! I am hopeful that we can develop more elegant solutions in the future.
 
 use std::{
     io::stdin,
@@ -40,7 +40,7 @@ use fiddler_engine::{
     uci::{Command, EngineInfo, GoOption, Message, OptionType},
 };
 
-/// Run a UCI engine.
+/// Run the Fiddler UCI engine.
 fn main() {
     // whether we are in debug mode
     let mut debug = false;
@@ -163,8 +163,9 @@ fn main() {
     }
 }
 
-/// Execute a UCI `go` command. This function has been broken out for
-/// readability. Will spawn a new thread to search and return its handle.
+/// Execute a UCI `go` command.
+/// This function has been broken out for readability.
+/// Will spawn a new thread to search and return its handle.
 fn go(
     opts: &[GoOption],
     searcher: &Arc<RwLock<MainSearch>>,
