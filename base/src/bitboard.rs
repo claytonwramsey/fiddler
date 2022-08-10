@@ -149,7 +149,7 @@ impl Bitboard {
         // the classic for-loop hack
         let mut i = 0i32;
         while i < 64 {
-            let main_diag = 8 * (i & 7) - (i as i32 & 56);
+            let main_diag = 8 * (i & 7) - (i & 56);
             let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
             let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
             let main_diag_mask = (Bitboard::MAIN_DIAG.0 >> main_right_shift) << main_left_shift;

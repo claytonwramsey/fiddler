@@ -659,18 +659,18 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
 
         const NOT_WESTMOST: Bitboard = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
         const NOT_EASTMOST: Bitboard = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
-        const RANK_1: Bitboard = Bitboard::new(0x0000_0000_0000_00FF);
 
-        // only pawns which are unpinned or which move along the same diagonal
-        // as the king can capture
-        let king_rank_mask = RANK_1 << (king_sq.rank() << 3);
-        let capturers = pawns & (unpinned | b.pinned & !(king_file_mask | king_rank_mask));
+        // Pin masks for capture movement
+        let (west_pin_diag, east_pin_diag) = match b.player {
+            Color::White => (Bitboard::anti_diagonal(king_sq), Bitboard::diagonal(king_sq)),
+            Color::Black => (Bitboard::diagonal(king_sq), Bitboard::anti_diagonal(king_sq)),
+        };
 
         let capture_mask = opponents & target;
 
         // prevent pawns from capturing by wraparound
-        let west_capturers = capturers & NOT_WESTMOST;
-        let east_capturers = capturers & NOT_EASTMOST;
+        let west_capturers = pawns & NOT_WESTMOST & (unpinned | b.pinned & east_pin_diag);
+        let east_capturers = pawns & NOT_EASTMOST & (unpinned | b.pinned & west_pin_diag);
         // hack because negative bitshift is UB
         let (west_targets, west_direction, east_targets, east_direction) = match player {
             Color::White => (
@@ -690,38 +690,30 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         // promotion captures
         for to_sq in east_targets & rank8 {
             let from_sq = to_sq - east_direction;
-            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
-                for pt in Piece::PROMOTING {
-                    let m = Move::promoting(from_sq, to_sq, pt);
-                    moves.push((m, T::tag_move(m, b, cookie)));
-                }
+            for pt in Piece::PROMOTING {
+                let m = Move::promoting(from_sq, to_sq, pt);
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
         for to_sq in west_targets & rank8 {
             let from_sq = to_sq - west_direction;
-            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
-                for pt in Piece::PROMOTING {
-                    let m = Move::promoting(from_sq, to_sq, pt);
-                    moves.push((m, T::tag_move(m, b, cookie)));
-                }
+            for pt in Piece::PROMOTING {
+                let m = Move::promoting(from_sq, to_sq, pt);
+                moves.push((m, T::tag_move(m, b, cookie)));
             }
         }
 
         // normal captures
         for to_sq in east_targets & not_rank8 {
             let from_sq = to_sq - east_direction;
-            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
-                let m = Move::normal(from_sq, to_sq);
-                moves.push((m, T::tag_move(m, b, cookie)));
-            }
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
         for to_sq in west_targets & not_rank8 {
             let from_sq = to_sq - west_direction;
-            if !b.pinned.contains(from_sq) || Square::aligned(king_sq, to_sq, from_sq) {
-                let m = Move::normal(from_sq, to_sq);
-                moves.push((m, T::tag_move(m, b, cookie)));
-            }
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
         }
 
         // en passant
