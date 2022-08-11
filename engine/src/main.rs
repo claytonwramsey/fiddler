@@ -69,7 +69,9 @@ fn main() {
                 println!(
                     "{}",
                     Message::Id {
-                        name: Some("Fiddler 0.1.0"),
+                        // we trust that the build script actually did its job
+                        // and created the git hash environment variable
+                        name: Some(concat!("Fiddler 0.1.0 (", env!("GIT_HASH"), ")")),
                         author: Some("Clayton Ramsey"),
                     }
                 );
