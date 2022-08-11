@@ -278,21 +278,25 @@ impl Bitboard {
 
             let mut i = 0u8;
             while i < 64 {
-                let sq1: Square = unsafe {transmute(i)};
+                let sq1: Square = unsafe { transmute(i) };
                 let i_bb = 1 << i;
                 let bishop_1 = Bitboard::diagonal(sq1).0 ^ Bitboard::anti_diagonal(sq1).0;
                 let rook_1 = Bitboard::horizontal(sq1).0 ^ Bitboard::vertical(sq1).0;
                 let mut j = 0u8;
                 while j < 64 {
-                    let sq2: Square = unsafe {transmute(j)};
+                    let sq2: Square = unsafe { transmute(j) };
                     let j_bb = 1 << j;
                     if bishop_1 & j_bb != 0 {
                         let bishop_2 = Bitboard::diagonal(sq2).0 ^ Bitboard::anti_diagonal(sq2).0;
-                        lines[i as usize][j as usize] = Bitboard(lines[i as usize][j as usize].0 | i_bb | j_bb | (bishop_1 & bishop_2));
+                        lines[i as usize][j as usize] = Bitboard(
+                            lines[i as usize][j as usize].0 | i_bb | j_bb | (bishop_1 & bishop_2),
+                        );
                     }
                     if rook_1 & j_bb != 0 {
                         let rook_2 = Bitboard::horizontal(sq2).0 ^ Bitboard::vertical(sq2).0;
-                        lines[i as usize][j as usize] = Bitboard(lines[i as usize][j as usize].0 | i_bb | j_bb | (rook_1 & rook_2));
+                        lines[i as usize][j as usize] = Bitboard(
+                            lines[i as usize][j as usize].0 | i_bb | j_bb | (rook_1 & rook_2),
+                        );
                     }
                     j += 1;
                 }
@@ -307,20 +311,20 @@ impl Bitboard {
 
     #[inline(always)]
     #[must_use]
-    /// Get the primary diagonal running through a square, parallel to the 
+    /// Get the primary diagonal running through a square, parallel to the
     /// diagonal from A1 through H8.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler_base::{Bitboard, Square};
-    /// 
+    ///
     /// let sq = Square::F1;
     /// let mut diag = Bitboard::EMPTY;
     /// diag.insert(Square::F1);
     /// diag.insert(Square::G2);
     /// diag.insert(Square::H3);
-    /// 
+    ///
     /// assert_eq!(diag, Bitboard::diagonal(sq));
     /// ```
     pub const fn diagonal(sq: Square) -> Bitboard {
@@ -340,7 +344,7 @@ impl Bitboard {
                 boards[i as usize] = Bitboard(main_diag_mask);
                 i += 1;
             }
-    
+
             boards
         };
 
@@ -349,20 +353,20 @@ impl Bitboard {
 
     #[inline(always)]
     #[must_use]
-    /// Get the anti-diagonal running through a square, parallel to the 
+    /// Get the anti-diagonal running through a square, parallel to the
     /// diagonal from A8 through H1.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler_base::{Bitboard, Square};
-    /// 
+    ///
     /// let sq = Square::A3;
     /// let mut diag = Bitboard::EMPTY;
     /// diag.insert(Square::A3);
     /// diag.insert(Square::B2);
     /// diag.insert(Square::C1);
-    /// 
+    ///
     /// assert_eq!(diag, Bitboard::anti_diagonal(sq));
     /// ```
     pub const fn anti_diagonal(sq: Square) -> Bitboard {
@@ -383,7 +387,7 @@ impl Bitboard {
                 boards[i as usize] = Bitboard(anti_diag_mask);
                 i += 1;
             }
-    
+
             boards
         };
 

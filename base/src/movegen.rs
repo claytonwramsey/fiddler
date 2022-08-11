@@ -659,8 +659,14 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
 
         // Pin masks for capture movement
         let (west_pin_diag, east_pin_diag) = match b.player {
-            Color::White => (Bitboard::anti_diagonal(king_sq), Bitboard::diagonal(king_sq)),
-            Color::Black => (Bitboard::diagonal(king_sq), Bitboard::anti_diagonal(king_sq)),
+            Color::White => (
+                Bitboard::anti_diagonal(king_sq),
+                Bitboard::diagonal(king_sq),
+            ),
+            Color::Black => (
+                Bitboard::diagonal(king_sq),
+                Bitboard::anti_diagonal(king_sq),
+            ),
         };
 
         let capture_mask = opponents & target;
