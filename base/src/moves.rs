@@ -63,43 +63,10 @@ impl Move {
 
     #[inline(always)]
     #[must_use]
-    /// Make a new `Move` for a piece. Assumes that all the inputs are valid.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the user requests that the move be tagged as
-    /// both a castle and en passant move.
-    pub const fn new(
-        from_square: Square,
-        to_square: Square,
-        promote_type: Option<Piece>,
-        castle: bool,
-        en_passant: bool,
-    ) -> Move {
-        let mut bits = from_square as u16;
-        bits |= (to_square as u16) << 6;
-
-        if let Some(p) = promote_type {
-            bits |= (p as u16) << 12 | Move::PROMOTE_FLAG; // promotion type
-        }
-
-        // apply flags
-        bits |= match (castle, en_passant) {
-            (false, false) => 0, // no special flag bits
-            (false, true) => Move::EN_PASSANT_FLAG,
-            (true, false) => Move::CASTLE_FLAG,
-            (true, true) => panic!("move cannot be both castle and en passant"),
-        };
-
-        Move(bits)
-    }
-
-    #[inline(always)]
-    #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having
     /// any extra special flags.
     pub const fn normal(from_square: Square, to_square: Square) -> Move {
-        Move::new(from_square, to_square, None, false, false)
+        Move(((to_square as u16) << 6) | from_square as u16)
     }
 
     #[inline(always)]
@@ -107,21 +74,25 @@ impl Move {
     /// Create a `Move` with the given promotion type. The promote type must
     /// not be a pawn or a king.
     pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
-        Move::new(from_square, to_square, Some(promote_type), false, false)
+        Move(
+            Move::normal(from_square, to_square).0
+                | ((promote_type as u16) << 12)
+                | Move::PROMOTE_FLAG,
+        )
     }
 
     #[inline(always)]
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub const fn castling(from_square: Square, to_square: Square) -> Move {
-        Move::new(from_square, to_square, None, true, false)
+        Move(Move::normal(from_square, to_square).0 | Move::CASTLE_FLAG)
     }
 
     #[inline(always)]
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub const fn en_passant(from_square: Square, to_square: Square) -> Move {
-        Move::new(from_square, to_square, None, false, true)
+        Move(Move::normal(from_square, to_square).0 | Move::EN_PASSANT_FLAG)
     }
 
     #[inline(always)]
@@ -190,30 +161,23 @@ impl Move {
         }
         let from_sq = Square::from_algebraic(&s[0..2])?;
         let to_sq = Square::from_algebraic(&s[2..4])?;
-        let promote_type = if s.len() == 5 {
+        if s.len() == 5 {
             // this is valid because we already checked the length of s
             let charcode = s.chars().nth(4).unwrap();
-            let pt = Piece::from_code(charcode.to_ascii_uppercase());
-            if pt == None {
-                return Err("invalid promote type given");
-            }
-            pt
-        } else {
-            None
-        };
+            let pt = Piece::from_code(charcode.to_ascii_uppercase())
+                .ok_or("invalid promote type given")?;
+            return Ok(Move::promoting(from_sq, to_sq, pt));
+        }
 
-        let is_castle = board[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1;
+        if board[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
+            return Ok(Move::castling(from_sq, to_sq));
+        }
 
-        let is_en_passant =
-            board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq);
+        if board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq) {
+            return Ok(Move::en_passant(from_sq, to_sq));
+        }
 
-        Ok(Move::new(
-            from_sq,
-            to_sq,
-            promote_type,
-            is_castle,
-            is_en_passant,
-        ))
+        Ok(Move::normal(from_sq, to_sq))
     }
 
     #[must_use]
