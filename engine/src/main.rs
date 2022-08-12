@@ -194,7 +194,7 @@ fn go(
     let mut movetime = None;
 
     // do not hold onto guard as option parsing will involve a write
-    *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = None;
+    *searcher.read().unwrap().limit.nodes_cap.write().unwrap() = None;
 
     // by default, set the depth to search to be 99, so that the timer is the
     // sole limiting factor
@@ -226,7 +226,7 @@ fn go(
                 searcher.write().unwrap().config.depth = d;
             }
             &GoOption::Nodes(num) => {
-                *searcher.read().unwrap().limit.nodes_cap.lock().unwrap() = Some(num);
+                *searcher.read().unwrap().limit.nodes_cap.write().unwrap() = Some(num);
             }
             GoOption::Mate(_) => unimplemented!(),
             &GoOption::MoveTime(msecs) => {

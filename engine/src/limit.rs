@@ -29,7 +29,7 @@
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Mutex,
+        Mutex, RwLock,
     },
     time::{Duration, Instant},
 };
@@ -48,12 +48,12 @@ pub struct SearchLimit {
     /// A cap on the total number of nodes to search.
     /// If the cap is `None`, then there is no limit to the number of nodes to
     /// search.
-    pub nodes_cap: Mutex<Option<u64>>,
+    pub nodes_cap: RwLock<Option<u64>>,
     /// The time at which the search was started.
     start_time: Mutex<Instant>,
     /// The time at which the search will end.
     /// Will be `None` if the search is untimed.
-    end_time: Mutex<Option<Instant>>,
+    end_time: RwLock<Option<Instant>>,
     /// The duration of the search.
     /// If the duration is `None`, then there is no limit to the duration of the
     /// search.
@@ -67,9 +67,9 @@ impl SearchLimit {
         SearchLimit {
             over: AtomicBool::new(false),
             num_nodes: AtomicU64::new(0),
-            nodes_cap: Mutex::new(None),
+            nodes_cap: RwLock::new(None),
             start_time: Mutex::new(Instant::now()),
-            end_time: Mutex::new(None),
+            end_time: RwLock::new(None),
             search_duration: Mutex::new(None),
         }
     }
@@ -88,7 +88,7 @@ impl SearchLimit {
             .lock()
             .map_err(|_| SearchError::Poison)?;
         if let Some(dur) = *opt_duration {
-            *self.end_time.lock().map_err(|_| SearchError::Poison)? = Some(Instant::now() + dur);
+            *self.end_time.write().map_err(|_| SearchError::Poison)? = Some(Instant::now() + dur);
         };
         Ok(())
     }
@@ -112,7 +112,7 @@ impl SearchLimit {
     ///
     /// This function will return an error if a lock was poisoned.
     pub fn update_time(&self) -> Result<bool, SearchError> {
-        if let Some(end) = *self.end_time.lock().map_err(|_| SearchError::Poison)? {
+        if let Some(end) = *self.end_time.read().map_err(|_| SearchError::Poison)? {
             if Instant::now() > end {
                 self.over.store(true, Ordering::Relaxed);
                 return Ok(true);
@@ -130,7 +130,7 @@ impl SearchLimit {
     /// This function will return an error if a lock was poisoned.
     pub fn add_nodes(&self, nodes: u64) -> Result<(), SearchError> {
         self.num_nodes.fetch_add(nodes, Ordering::Relaxed);
-        if let Some(max_nodes) = *self.nodes_cap.lock()? {
+        if let Some(max_nodes) = *self.nodes_cap.read()? {
             if self.num_nodes.load(Ordering::Relaxed) > max_nodes {
                 self.over.store(true, Ordering::Relaxed);
             }
