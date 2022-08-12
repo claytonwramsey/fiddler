@@ -253,7 +253,7 @@ mod tests {
     fn search_helper(fen: &str, depth: u8) {
         let mut g = ScoredGame::from_fen(fen).unwrap();
         let mut main = MainSearch::new();
-        main.config.n_helpers = 15;
+        main.config.n_helpers = 0;
         main.config.depth = depth;
         let info = main.evaluate(&g).unwrap();
         for m in info.pv {

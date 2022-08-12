@@ -202,7 +202,7 @@ impl Move {
     /// # Examples
     ///
     /// ```
-    /// # fn main() -> Result<(), ()> {
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use fiddler_base::{Move, Board, Square};
     ///
     /// let b = Board::default();
