@@ -18,8 +18,6 @@
 
 //! Generation and verification of legal moves in a position.
 
-use once_cell::sync::Lazy;
-
 use crate::{
     game::{NoTag, Tagger},
     MAGIC,
@@ -27,27 +25,23 @@ use crate::{
 
 use super::{moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
 
-use std::{convert::TryFrom, time::Instant};
+use std::{convert::TryFrom, mem::transmute, time::Instant};
 
 /// A bitboard of all the squares a knight can move to if its position is
 /// the index of the list.
-pub static KNIGHT_MOVES: Lazy<[Bitboard; 64]> =
-    Lazy::new(|| create_step_attacks(&Direction::KNIGHT_STEPS, 2));
+pub static KNIGHT_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KNIGHT_STEPS, 2);
 
 /// A bitboard of all the squares a king can move to if his position is the
 /// index in the list.
-pub static KING_MOVES: Lazy<[Bitboard; 64]> =
-    Lazy::new(|| create_step_attacks(&Direction::KING_STEPS, 1));
+pub static KING_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KING_STEPS, 1);
 
 /// A bitboard of all the squares which a pawn on the given square can
 /// attack. The first index is for White's pawn attacks, the second is for
 /// Black's.
-pub static PAWN_ATTACKS: Lazy<[[Bitboard; 64]; 2]> = Lazy::new(|| {
-    [
-        create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
-        create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
-    ]
-});
+pub static PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
+    create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
+    create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
+];
 
 /// The types of move generation. These are used in const generics, as enums are
 /// not supported in const generics.
@@ -958,19 +952,33 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
 /// Get the step attacks that could be made by moving in `dirs` from each point
 /// in the square. Exclude the steps that travel more than `max_dist` (this
 /// prevents overflow around the edges of the board).
-fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
+const fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard::EMPTY; 64];
-    for (i, item) in attacks.iter_mut().enumerate() {
-        #[allow(clippy::cast_possible_truncation)]
-        for dir in dirs {
-            let start_sq = Square::try_from(i as u8).unwrap();
-            let target_sq = start_sq + *dir;
-            if target_sq.chebyshev_to(start_sq) <= max_dist {
-                item.insert(target_sq);
+    let mut i = 0;
+    #[allow(clippy::cast_possible_truncation)]
+    while i < attacks.len() {
+        // SAFETY: we know that `attacks` is 64 elements long, which is the number of
+        // `Square`s, so we will not create an illegal variant.
+        let sq: Square = unsafe { transmute(i as u8) };
+        let mut j = 0;
+        #[allow(clippy::cast_sign_loss)]
+        while j < dirs.len() {
+            let dir = dirs[j];
+            let target_sq_disc = sq as i8 + dir.0;
+            if target_sq_disc < 0 || 64 <= target_sq_disc {
+                // square is out of bounds
+                j += 1;
+                continue;
             }
+            let target_sq: Square = unsafe { transmute((sq as i8 + dir.0) as u8) };
+            if target_sq.chebyshev_to(sq) <= max_dist {
+                attacks[i] = attacks[i].with_square(target_sq);
+            }
+            j += 1;
         }
         // sanity check that we added only two attacks
-        debug_assert!(usize::from(item.len()) <= dirs.len());
+        debug_assert!(attacks[i].len() as usize <= dirs.len());
+        i += 1;
     }
 
     attacks

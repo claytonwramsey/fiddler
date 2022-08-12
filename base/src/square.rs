@@ -21,7 +21,6 @@
 use super::{Bitboard, Direction};
 
 use std::{
-    cmp::max,
     convert::TryFrom,
     fmt::{Display, Formatter},
     mem::transmute,
@@ -131,13 +130,17 @@ impl Square {
     #[inline(always)]
     #[must_use]
     /// Get the Chebyshev distance to another square.
-    pub fn chebyshev_to(self, rhs: Square) -> u8 {
+    pub const fn chebyshev_to(self, rhs: Square) -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
             let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
             let filediff = self.file_distance(rhs);
-
-            max(rankdiff, filediff)
+            // we would use `max()` here if it were a const function
+            if rankdiff > filediff {
+                rankdiff
+            } else {
+                filediff
+            }
         }
     }
 
@@ -265,6 +268,16 @@ impl Square {
     pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
         Bitboard::line(sq1, sq2).contains(sq3)
     }
+
+    /// A constant implementation of `try_from`.
+    pub(crate) fn const_try_from(x: u8) -> Result<Square, &'static str> {
+        match x {
+            // This transmutation is safe because i will always be less than
+            // the total number of squares.
+            x if x <= Square::H8 as u8 => Ok(unsafe { transmute(x) }),
+            _ => Err("input for square conversion is out of bounds"),
+        }
+    }
 }
 
 impl Add<Direction> for Square {
@@ -324,12 +337,7 @@ impl TryFrom<u8> for Square {
     type Error = &'static str;
     #[inline(always)]
     fn try_from(x: u8) -> Result<Square, Self::Error> {
-        match x {
-            // This transmutation is safe because i will always be less than
-            // the total number of squares.
-            x if x <= Square::H8 as u8 => Ok(unsafe { transmute(x) }),
-            _ => Err("input for square conversion is out of bounds"),
-        }
+        Square::const_try_from(x)
     }
 }
 

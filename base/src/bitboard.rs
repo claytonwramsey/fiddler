@@ -164,6 +164,13 @@ impl Bitboard {
     }
 
     #[inline(always)]
+    #[must_use]
+    /// Create a new `Bitboard` with `sq` inserted.
+    pub const fn with_square(self, sq: Square) -> Bitboard {
+        Bitboard(self.0 | (1 << sq as u8))
+    }
+
+    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     #[must_use]
     /// Compute the number of squares contained in this `Bitboard`.
