@@ -187,7 +187,6 @@ impl Move {
         }
     }
 
-    #[allow(clippy::result_unit_err)]
     /// Given a `Move` and the `Board` it was played on, construct the
     /// algebraic-notation version of the move. Assumes the move was legal.
     ///
@@ -212,13 +211,13 @@ impl Move {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_algebraic(self, b: &Board) -> Result<String, ()> {
+    pub fn to_algebraic(self, b: &Board) -> Result<String, &'static str> {
         // longest possible algebraic string would be something along the lines
         // of Qe4xd4#, exd8=Q#, and O-O-O+
         let mut s = String::with_capacity(7);
         if !is_legal(self, b) {
             // can't make an algebraic form of an illegal move
-            return Err(());
+            return Err("illegal move converted to algebraic");
         }
 
         if self.is_castle() {
