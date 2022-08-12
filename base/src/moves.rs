@@ -149,21 +149,14 @@ impl Move {
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` if `s` describes an illegal algebraic
-    /// move.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic in case of an internal error.
+    /// This function will return an `Err` if `s` describes an illegal UCI move.
     pub fn from_uci(s: &str, board: &Board) -> Result<Move, &'static str> {
         if !(s.len() == 4 || s.len() == 5) {
             return Err("string was neither a normal move or a promotion");
         }
         let from_sq = Square::from_algebraic(&s[0..2])?;
         let to_sq = Square::from_algebraic(&s[2..4])?;
-        if s.len() == 5 {
-            // this is valid because we already checked the length of s
-            let charcode = s.chars().nth(4).unwrap();
+        if let Some(charcode) = s.chars().nth(4) {
             let pt = Piece::from_code(charcode.to_ascii_uppercase())
                 .ok_or("invalid promote type given")?;
             return Ok(Move::promoting(from_sq, to_sq, pt));
