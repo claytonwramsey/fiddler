@@ -47,7 +47,7 @@ fn main() {
     let searcher = Arc::new(RwLock::new(MainSearch::new()));
     let mut game = ScoredGame::new();
     let mut search_handle = None;
-    searcher.write().unwrap().config.n_helpers = 15;
+    searcher.write().unwrap().config.n_helpers = 0;
 
     loop {
         let mut buf = String::new();
@@ -81,7 +81,7 @@ fn main() {
                 add_option(
                     "Thread Count",
                     OptionType::Spin {
-                        default: 16,
+                        default: 1,
                         min: 1,
                         max: 255,
                     },
