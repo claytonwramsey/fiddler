@@ -171,11 +171,6 @@ impl MainSearch {
                                 ])
                             );
                         }
-                        if best_info.eval.is_mate() {
-                            // don't bother searching deeper if we already found
-                            // mate
-                            break;
-                        }
                     }
                 }
             }
@@ -197,12 +192,23 @@ impl MainSearch {
     ) -> SearchResult {
         if let Some(ev) = prev_eval {
             // we have a previous score we can use to window this search
-            let (alpha, beta) = match depth & 0x1u8 {
-                // even depth means that we expect the evaluation to decrease
-                0 => (ev - Eval::centipawns(100), ev + Eval::centipawns(10)),
-                // odd depth means that we expect the evaluation to increase
-                1 => (ev - Eval::centipawns(10), ev + Eval::centipawns(100)),
-                _ => unreachable!(),
+            let (alpha, beta) = if ev.is_mate() {
+                if ev < Eval::DRAW {
+                    // we are getting mated. search for ways we can get mated
+                    // faster
+                    (Eval::MIN, ev + Eval::centipawns(1))
+                } else {
+                    // we are matting, search for faster wins
+                    (ev - Eval::centipawns(1), Eval::MAX)
+                }
+            } else {
+                match depth & 0x1u8 {
+                    // even depth means that we expect the evaluation to decrease
+                    0 => (ev - Eval::centipawns(100), ev + Eval::centipawns(10)),
+                    // odd depth means that we expect the evaluation to increase
+                    1 => (ev - Eval::centipawns(10), ev + Eval::centipawns(100)),
+                    _ => unreachable!(),
+                }
             };
             let window_result = search(
                 g.clone(),
