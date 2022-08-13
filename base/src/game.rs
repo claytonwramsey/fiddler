@@ -56,6 +56,10 @@ pub struct TaggedGame<T: Tagger> {
     /// this game. It is used for three-move-rule draws. The keys are the
     /// Zobrist hashes of the boards previously visited.
     repetitions: IntMap<u64, u8>,
+    /// Whether this game is currently inside of a search.
+    /// This will cause  3-move repetitions to be replaced by 1-move repetition
+    /// draws.
+    searching: bool,
 }
 
 pub type Game = TaggedGame<NoTag>;
@@ -114,6 +118,7 @@ impl<T: Tagger> TaggedGame<T> {
                 map.insert(b.hash, 1);
                 map
             },
+            searching: false,
         }
     }
 
@@ -134,6 +139,7 @@ impl<T: Tagger> TaggedGame<T> {
                 map.insert(b.hash, 1);
                 map
             },
+            searching: false,
         })
     }
 
@@ -266,7 +272,8 @@ impl<T: Tagger> TaggedGame<T> {
     /// rule)?
     pub fn drawn_by_repetition(&self) -> bool {
         let num_reps = *self.repetitions.get(&self.board().hash).unwrap_or(&0);
-        if num_reps >= 3 {
+        let max_num_reps = if self.searching { 2 } else { 3 };
+        if num_reps >= max_num_reps {
             // draw by repetition
             return true;
         }
@@ -291,6 +298,24 @@ impl<T: Tagger> TaggedGame<T> {
     /// Get the number of total positions in this history of this game.
     pub fn len(&self) -> usize {
         self.history.len()
+    }
+
+    /// Mark that this game is performing a new search.
+    /// Outside of a search, the 3-move-repetition rule holds.
+    /// However, searchers would like to be able to detect repetitions faster,
+    /// since the evaluation of a position does not change when it is repeated.
+    /// Therefore, `Game`s also keep track of the number of repetitions since
+    /// the most recent search started, and any single repetition results in a
+    /// draw.
+    pub fn new_search(&mut self) {
+        self.searching = true;
+    }
+
+    /// Mark that this game is not performing a search.
+    /// This will disable the single-move repetition detector if it was enabled
+    /// by `new_search()`.
+    pub fn stop_search(&mut self) {
+        self.searching = false;
     }
 }
 

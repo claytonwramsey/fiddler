@@ -90,7 +90,7 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 ///     This is primarily intended to be used for aspiration windowing, and in
 ///     most cases will be set to `Eval::MAX`.
 pub fn search(
-    g: ScoredGame,
+    mut g: ScoredGame,
     depth: u8,
     ttable: &TTable,
     config: &SearchConfig,
@@ -99,6 +99,7 @@ pub fn search(
     alpha: Eval,
     beta: Eval,
 ) -> SearchResult {
+    g.new_search();
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
     let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
