@@ -65,6 +65,9 @@ In my case, the path to the binary is
 ## UCI options supported
 
 * `Thread Count`: Set the number of worker threads for searching.
+    *Warning*: since there are currently no heuristics for differentiating
+    search threads, increasing `Thread Count` to more than 1 will likely reduce
+    perfomance.
 
 * `Hash`: Set the transposition table size, in megabytes.
 
@@ -72,6 +75,8 @@ In my case, the path to the binary is
 
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
+
+* Add methods to differentiate search threads
 
 * Support ponderhit and other UCI commands
 
@@ -82,8 +87,6 @@ interest:
 * Tablebase support
 
 * Opening book support
-
-* Add a mate-searching thread
 
 * Add loads of doctests to make usage more clear
 
