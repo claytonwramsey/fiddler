@@ -99,7 +99,7 @@ pub fn search(
     alpha: Eval,
     beta: Eval,
 ) -> SearchResult {
-    g.new_search();
+    g.start_search();
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
     let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
@@ -287,6 +287,7 @@ impl<'a> PVSearch<'a> {
             beta = Eval::mate_in(1);
         }
 
+        // detect draws.
         if self.game.drawn_by_repetition() || self.game.board().is_drawn() {
             if PV && alpha < Eval::DRAW {
                 parent_line.clear();

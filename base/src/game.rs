@@ -55,10 +55,14 @@ pub struct TaggedGame<T: Tagger> {
     /// Stores the number of times a position has been reached in the course of
     /// this game. It is used for three-move-rule draws. The keys are the
     /// Zobrist hashes of the boards previously visited.
-    repetitions: IntMap<u64, u8>,
-    /// Whether this game is currently inside of a search.
-    /// This will cause  3-move repetitions to be replaced by 1-move repetition
-    /// draws.
+    ///
+    /// The values are a tuple of two integers: the first is the total number of
+    /// repetitions, and the second is the number of repetitions since the last
+    /// search start.
+    repetitions: IntMap<u64, (u8, u8)>,
+    /// Whether this game is currently part of a search.
+    /// If it is, then the search-level repetitions will be incremented and
+    /// result in draws.
     searching: bool,
 }
 
@@ -115,7 +119,7 @@ impl<T: Tagger> TaggedGame<T> {
             moves: Vec::new(),
             repetitions: {
                 let mut map = IntMap::default();
-                map.insert(b.hash, 1);
+                map.insert(b.hash, (1, 0));
                 map
             },
             searching: false,
@@ -136,7 +140,7 @@ impl<T: Tagger> TaggedGame<T> {
             moves: Vec::new(),
             repetitions: {
                 let mut map = IntMap::default();
-                map.insert(b.hash, 1);
+                map.insert(b.hash, (1, 0));
                 map
             },
             searching: false,
@@ -145,13 +149,15 @@ impl<T: Tagger> TaggedGame<T> {
 
     /// Empty out the history of this game completely, but leave the original
     /// start state of the board.
+    /// Will also end the searching period for the game.
     pub fn clear(&mut self) {
         self.history.truncate(1);
         let start_board = self.history[0].0;
         self.moves.clear();
         self.repetitions.clear();
         // since we cleared this, or_insert will always be called
-        self.repetitions.entry(start_board.hash).or_insert(1);
+        self.repetitions.insert(start_board.hash, (1, 0));
+        self.searching = false;
     }
 
     /// Make a move, assuming said move is legal. If the history is empty
@@ -178,8 +184,11 @@ impl<T: Tagger> TaggedGame<T> {
         let mut new_board = previous_state.0;
 
         new_board.make_move(m);
-        let num_reps = self.repetitions.entry(new_board.hash).or_insert(0);
-        *num_reps += 1;
+        let num_reps = self.repetitions.entry(new_board.hash).or_insert((0, 0));
+        num_reps.0 += 1;
+        if self.searching {
+            num_reps.1 += 1;
+        }
         self.history.push((
             new_board,
             T::update_cookie(m, tag, &previous_state.0, &new_board, &previous_state.1),
@@ -214,9 +223,15 @@ impl<T: Tagger> TaggedGame<T> {
     pub fn undo(&mut self) -> Result<Move, &'static str> {
         let m_removed = self.moves.pop().ok_or("no moves to remove")?;
         let b_removed = self.history.pop().ok_or("no boards in history")?.0;
-        let num_reps = self.repetitions.entry(b_removed.hash).or_insert(1);
-        *num_reps -= 1;
-        if *num_reps == 0 {
+        let num_reps = self
+            .repetitions
+            .entry(b_removed.hash)
+            .or_insert((1, if self.searching { 1 } else { 0 }));
+        num_reps.0 -= 1;
+        if self.searching && num_reps.1 > 0 {
+            num_reps.1 -= 1;
+        }
+        if num_reps.0 == 0 {
             self.repetitions.remove(&b_removed.hash);
         }
 
@@ -271,9 +286,8 @@ impl<T: Tagger> TaggedGame<T> {
     /// Has this game been drawn due to history (i.e. repetition or the 50 move
     /// rule)?
     pub fn drawn_by_repetition(&self) -> bool {
-        let num_reps = *self.repetitions.get(&self.board().hash).unwrap_or(&0);
-        let max_num_reps = if self.searching { 2 } else { 3 };
-        if num_reps >= max_num_reps {
+        let num_reps = self.repetitions.get(&self.board().hash).unwrap_or(&(0, 0));
+        if num_reps.0 >= 3 || num_reps.1 >= 2 {
             // draw by repetition
             return true;
         }
@@ -300,20 +314,52 @@ impl<T: Tagger> TaggedGame<T> {
         self.history.len()
     }
 
-    /// Mark that this game is performing a new search.
-    /// Outside of a search, the 3-move-repetition rule holds.
-    /// However, searchers would like to be able to detect repetitions faster,
-    /// since the evaluation of a position does not change when it is repeated.
-    /// Therefore, `Game`s also keep track of the number of repetitions since
-    /// the most recent search started, and any single repetition results in a
+    /// Begin searching.
+    /// During a search, repetitions of positions that were seen as the search
+    /// went on will be immediately marked as draws.
+    /// The current position of the board will also be marked as a possible
+    /// repetition.
+    ///
+    /// # Examples
+    ///
+    /// `g1` is not over because a position must be reached 3 times to reach a
     /// draw.
-    pub fn new_search(&mut self) {
+    /// However, `g2` is over because it repeated the same position twice in a
+    /// search.
+    ///
+    /// ```
+    /// use fiddler_base::{game::Game, Move, Square};
+    ///
+    /// let mut g1 = Game::new();
+    /// let mut g2 = Game::new();
+    /// g2.start_search();
+    ///
+    /// let moves = [
+    ///     Move::normal(Square::B1, Square::C3),
+    ///     Move::normal(Square::B8, Square::C6),
+    ///     Move::normal(Square::C3, Square::B1),
+    ///     Move::normal(Square::C6, Square::B8),
+    /// ];
+    ///
+    /// for m in moves {
+    ///     g1.make_move(m, &());
+    ///     g2.make_move(m, &());
+    /// }
+    ///
+    /// assert!(!g1.is_over().0);
+    /// assert!(g2.is_over().0);
+    /// ```
+    pub fn start_search(&mut self) {
         self.searching = true;
+        for val in self.repetitions.values_mut() {
+            val.1 = 0;
+        }
+        // mark the current position as visited during search
+        self.repetitions
+            .entry(self.board().hash)
+            .and_modify(|v| v.1 = 1);
     }
 
-    /// Mark that this game is not performing a search.
-    /// This will disable the single-move repetition detector if it was enabled
-    /// by `new_search()`.
     pub fn stop_search(&mut self) {
         self.searching = false;
     }
