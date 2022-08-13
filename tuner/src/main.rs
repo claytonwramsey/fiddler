@@ -21,7 +21,6 @@
 
 use std::{
     env,
-    error::Error,
     fs::File,
     io::{BufRead, BufReader},
     thread::scope,
@@ -51,7 +50,8 @@ type BoardFeatures = Vec<(usize, f32)>;
 ///
 /// # Panics
 ///
-/// Panics if we are unable to locate the database file.
+/// This function will panic if the EPD training data is not specified or does
+/// not exist.
 pub fn main() {
     let args: Vec<String> = env::args().collect();
     // first argument is the name of the binary
@@ -81,7 +81,7 @@ pub fn main() {
 }
 
 /// Expand an EPD file into a set of features that can be used for training.
-fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn Error>> {
+fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std::error::Error>> {
     let file = File::open(location)?;
     let reader = BufReader::new(file);
     let mut data = Vec::new();
@@ -160,7 +160,7 @@ fn train_step(
 }
 
 /// Construct the gradient vector for a subset of the input data.
-/// Also provides the sum of the squared error.
+/// Returns the sum of the squared error across this epoch.
 fn train_thread(
     input: &[(BoardFeatures, f32)],
     weights: &[f32],
@@ -186,7 +186,7 @@ fn train_thread(
 /// Compute the  sigmoid function of a variable.
 /// `beta` is the horizontal scaling of the sigmoid.
 ///
-/// The mathematical function is given by the LaTeX expression
+/// The sigmoid function here is given by the LaTeX expression
 /// `f(x) = \frac{1}{1 - \exp (- \beta x)}`.
 fn sigmoid(x: f32, beta: f32) -> f32 {
     1. / (1. + expf(-x * beta))
@@ -336,7 +336,7 @@ fn print_weights(weights: &[f32]) {
 fn extract(b: &Board) -> BoardFeatures {
     let mut features = Vec::with_capacity(28);
     let phase = phase_of(b);
-    // Indices 0..4: non-king piece values
+    // Indices 0..8: non-king piece values
     for pt in Piece::NON_KING {
         let n_white = (b[pt] & b[Color::White]).len() as i8;
         let n_black = (b[pt] & b[Color::Black]).len() as i8;
@@ -347,6 +347,7 @@ fn extract(b: &Board) -> BoardFeatures {
             features.push((idx, (1. - phase) * f32::from(net)));
         }
     }
+    // just leave indices 9 and 10 unoccupied, I guess
 
     let mut offset = 10; // offset added to PST positions
 
@@ -489,10 +490,6 @@ fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, 
 #[inline(always)]
 /// Given the extracted feature vector of a position, and a weight vector, get
 /// the final evaluation.
-///
-/// # Panics
-///
-/// if `features` and `weights` are not the same length.
 fn evaluate(features: &[(usize, f32)], weights: &[f32]) -> f32 {
     features.iter().map(|&(idx, val)| val * weights[idx]).sum()
 }
