@@ -97,6 +97,8 @@ pub const QUIETS: GenMode = 2;
 /// could be played.
 /// Requires that the move must have been legal on *some* board, but not
 /// necessarily the given one.
+/// `is_legal` will make no regard to whether a position is drawn by repetition,
+/// 50-move-rule, or insufficient material.
 ///
 /// # Panics
 ///
@@ -278,6 +280,9 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// If no tag is needed, you can use `fiddler_base::game::NoTag` to avoid
 /// wasting effort tagging each move.
 ///
+/// `get_moves()` will make no regard to whether the position is drawn by
+/// repetition, 50-move-rule, or by insufficient material.
+///
 /// # Examples
 ///
 /// Generate all legal moves:
@@ -323,10 +328,6 @@ pub fn get_moves<const M: GenMode, T: Tagger>(
 ) -> Vec<(Move, T::Tag)> {
     // prevent wonky generation modes
     debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
-
-    if b.is_drawn() {
-        return Vec::new();
-    }
 
     let mut moves;
     let in_check = !b.checkers.is_empty();

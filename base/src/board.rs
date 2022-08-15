@@ -768,101 +768,6 @@ mod tests {
     use super::*;
     use crate::square::Square;
 
-    /// A board with the white king on A1 and the black king on H8.
-    const TWO_KINGS_BOARD: Board = Board {
-        sides: [
-            Bitboard::new(1),                     //white
-            Bitboard::new(0x8000_0000_0000_0000), //black
-        ],
-        pieces: [
-            Bitboard::new(0),                     //pawn
-            Bitboard::new(0),                     //knight
-            Bitboard::new(0),                     //bishop
-            Bitboard::new(0),                     //rook
-            Bitboard::new(0),                     //queen
-            Bitboard::new(0x8000_0000_0000_0001), //king
-        ],
-        en_passant_square: None,
-        player: Color::White,
-        castle_rights: CastleRights::NONE,
-        rule50: 0,
-        hash: 3_483_926_298_739_092_744,
-        checkers: Bitboard::EMPTY,
-        king_sqs: [Square::A1, Square::H8],
-        pinned: Bitboard::EMPTY,
-    };
-
-    #[test]
-    /// Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
-    fn load_two_kings_fen() {
-        let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
-        assert_eq!(result, Ok(TWO_KINGS_BOARD));
-    }
-
-    #[test]
-    /// Test that the start position of a normal chess game can be loaded from
-    /// its FEN.
-    fn start_fen() {
-        let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        assert_eq!(result, Ok(Board::default()));
-    }
-
-    #[test]
-    /// Test that we can play e4 on the first move of the game.
-    fn play_e4() {
-        move_helper(Board::default(), Move::normal(Square::E2, Square::E4));
-    }
-
-    #[test]
-    /// Test that a board with an en passant square can be loaded from a FEN
-    /// correctly.
-    fn load_en_passant() {
-        // exf6 is en passant here
-        let b = Board::from_fen("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
-            .unwrap();
-        assert_eq!(b.en_passant_square, Some(Square::F6));
-    }
-
-    #[test]
-    /// Test that we can capture en passant.
-    fn en_passant() {
-        // exf6 is en passant here
-        fen_helper(
-            "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
-            Move::normal(Square::E5, Square::F6),
-        );
-    }
-
-    #[test]
-    /// Test that White can castle kingside.
-    fn white_kingide_castle() {
-        fen_helper(
-            "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
-            Move::normal(Square::E1, Square::G1),
-        );
-    }
-
-    #[test]
-    /// Test that White can promote their pawn to a queen
-    fn white_promote_queen() {
-        // f7 pawn can promote
-        fen_helper(
-            "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1",
-            Move::promoting(Square::F7, Square::F8, Piece::Queen),
-        );
-    }
-
-    #[test]
-    /// Test that capturing a rook removes the right to castle with that rook.
-    fn no_castle_after_capture() {
-        let m = Move::normal(Square::B2, Square::H8);
-        // capturing the rook on h8 prevents castle rights
-        fen_helper(
-            "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5",
-            m,
-        );
-    }
-
     /// A helper function which will load a board from a FEN and then try
     /// running the given move on that board.
     pub fn fen_helper(fen: &str, m: Move) {
@@ -870,7 +775,6 @@ mod tests {
     }
 
     /// A helper function which will attempt to make a legal move on a board,
-
     /// and will fail assertions if the board's state was not changed correctly.
     pub fn move_helper(board: Board, m: Move) {
         //new_board will be mutated to reflect the move
@@ -975,5 +879,141 @@ mod tests {
                 .is_kingside_castle_legal(Color::Black)),
             _ => {}
         };
+    }
+
+    #[test]
+    /// Test that a chessboard with kings on A1 and H8 can be loaded from a FEN.
+    fn load_two_kings_fen() {
+        /// A board with the white king on A1 and the black king on H8.
+        const TWO_KINGS_BOARD: Board = Board {
+            sides: [
+                Bitboard::new(1),                     //white
+                Bitboard::new(0x8000_0000_0000_0000), //black
+            ],
+            pieces: [
+                Bitboard::new(0),                     //pawn
+                Bitboard::new(0),                     //knight
+                Bitboard::new(0),                     //bishop
+                Bitboard::new(0),                     //rook
+                Bitboard::new(0),                     //queen
+                Bitboard::new(0x8000_0000_0000_0001), //king
+            ],
+            en_passant_square: None,
+            player: Color::White,
+            castle_rights: CastleRights::NONE,
+            rule50: 0,
+            hash: 3_483_926_298_739_092_744,
+            checkers: Bitboard::EMPTY,
+            king_sqs: [Square::A1, Square::H8],
+            pinned: Bitboard::EMPTY,
+        };
+        let result = Board::from_fen("7k/8/8/8/8/8/8/K7 w - - 0 1");
+        assert_eq!(result, Ok(TWO_KINGS_BOARD));
+    }
+
+    #[test]
+    /// Test that the start position of a normal chess game can be loaded from
+    /// its FEN.
+    fn start_fen() {
+        let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        assert_eq!(result, Ok(Board::default()));
+    }
+
+    #[test]
+    /// Test that we can play e4 on the first move of the game.
+    fn play_e4() {
+        move_helper(Board::default(), Move::normal(Square::E2, Square::E4));
+    }
+
+    #[test]
+    /// Test that a board with an en passant square can be loaded from a FEN
+    /// correctly.
+    fn load_en_passant() {
+        // exf6 is en passant here
+        let b = Board::from_fen("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
+            .unwrap();
+        assert_eq!(b.en_passant_square, Some(Square::F6));
+    }
+
+    #[test]
+    /// Test that we can capture en passant.
+    fn en_passant() {
+        // exf6 is en passant here
+        fen_helper(
+            "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+            Move::normal(Square::E5, Square::F6),
+        );
+    }
+
+    #[test]
+    /// Test that White can castle kingside.
+    fn white_kingide_castle() {
+        fen_helper(
+            "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+            Move::normal(Square::E1, Square::G1),
+        );
+    }
+
+    #[test]
+    /// Test that White can promote their pawn to a queen
+    fn white_promote_queen() {
+        // f7 pawn can promote
+        fen_helper(
+            "8/5P2/2k5/4K3/8/8/8/8 w - - 0 1",
+            Move::promoting(Square::F7, Square::F8, Piece::Queen),
+        );
+    }
+
+    #[test]
+    /// Test that capturing a rook removes the right to castle with that rook.
+    fn no_castle_after_capture() {
+        let m = Move::normal(Square::B2, Square::H8);
+        // capturing the rook on h8 prevents castle rights
+        fen_helper(
+            "rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 1 5",
+            m,
+        );
+    }
+
+    /// Tests regarding drawn positions.
+    mod draws {
+        use super::*;
+
+        /// Helper function for checking draws.
+        /// Creates a board from `fen`, and then asserts that it's a draw.
+        fn draw_helper(fen: &str) {
+            let b = Board::from_fen(fen).unwrap();
+            assert!(b.is_drawn());
+        }
+
+        #[test]
+        /// Test that a king-versus-king endgame is a draw.
+        fn kk() {
+            draw_helper("K1k5/8/8/8/8/8/8/8 w - - 0 1");
+        }
+
+        #[test]
+        /// Test that a king-bishop versus king endgame is a draw.
+        fn kbk() {
+            draw_helper("KBk5/8/8/8/8/8/8/8 w - - 0 1");
+        }
+
+        #[test]
+        /// Test that a king-knight versus king endgame is a draw.
+        fn knk() {
+            draw_helper("KNk5/8/8/8/8/8/8/8 w - - 0 1");
+        }
+
+        #[test]
+        /// Test that a same-colored king-bishop versus king-bishop endgame is a draw.
+        fn kbkb() {
+            draw_helper("K1k5/8/8/8/3B4/8/3b4/8 w - - 0 1");
+        }
+
+        #[test]
+        /// Test that the 50-move rule is a draw.
+        fn rule50() {
+            draw_helper("rnbqk2r/ppppnp1p/4p1pb/8/4P3/1P1P4/PBP2PPP/RN1QKBNR w KQkq - 100 100");
+        }
     }
 }

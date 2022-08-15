@@ -471,6 +471,16 @@ impl<'a> PVSearch<'a> {
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
+        // detect draws.
+        if self.game.drawn_by_repetition() || self.game.board().is_drawn() {
+            if PV && alpha < Eval::DRAW {
+                parent_line.clear();
+            }
+            // required so that movepicker only needs to know about current
+            // position, and not about history
+            return Ok(Eval::DRAW);
+        }
+
         let player = self.game.board().player;
 
         let mut tt_guard = self.ttable.get(self.game.board().hash);

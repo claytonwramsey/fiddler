@@ -258,54 +258,6 @@ mod mates {
     }
 }
 
-mod draws {
-    use super::*;
-
-    #[test]
-    /// Test that a king-versus-king endgame is a draw.
-    fn draw_kk() {
-        let b = Board::from_fen("K1k5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-    }
-
-    #[test]
-    /// Test that a king-bishop versus king endgame is a draw.
-    fn draw_kbk() {
-        let b = Board::from_fen("KBk5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-    }
-
-    #[test]
-    /// Test that a king-knight versus king endgame is a draw.
-    fn draw_knk() {
-        let b = Board::from_fen("KNk5/8/8/8/8/8/8/8 w - - 0 1").unwrap();
-
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-    }
-
-    #[test]
-    /// Test that a same-colored king-bishop versus king-bishop endgame is a draw.
-    fn draw_kbkb() {
-        let b = Board::from_fen("K1k5/8/8/8/3B4/8/3b4/8 w - - 0 1").unwrap();
-
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-    }
-}
-
 mod perft {
     use super::*;
 
