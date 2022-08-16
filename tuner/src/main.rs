@@ -61,7 +61,7 @@ pub fn main() {
     let mut learn_rate = 5.;
     let beta = 0.6;
 
-    let nthreads = 16;
+    let nthreads = 8;
     let tic = Instant::now();
 
     // construct the datasets.
@@ -136,7 +136,7 @@ fn train_step(
             // start the parallel work
             let start = chunk_size * thread_id;
             grads.push(s.spawn(move || {
-                train_thread(&inputs[start..start + chunk_size], weights, sigmoid_scale)
+                train_thread(&inputs[start..][..chunk_size], weights, sigmoid_scale)
             }));
         }
         for grad_handle in grads {
