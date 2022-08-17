@@ -429,4 +429,19 @@ mod tests {
             "bestmove e2e4"
         );
     }
+
+    #[test]
+    /// Test that bestmove messages are correctly formatted with pondermoves.
+    fn bestmove_ponder() {
+        assert_eq!(
+            format!(
+                "{}",
+                Message::BestMove {
+                    m: Move::normal(Square::E2, Square::E4),
+                    ponder: Some(Move::normal(Square::E7, Square::E5)),
+                }
+            ),
+            "bestmove e2e4 ponder e7e5"
+        );
+    }
 }
