@@ -251,13 +251,15 @@ fn go<'a>(
         *search_duration_guard = None;
     } else if let Some(mt) = movetime {
         *search_duration_guard = Some(mt)
-    } else {
+    } else if let (Some(wt), Some(bt)) = (wtime, btime) {
         *search_duration_guard = Some(Duration::from_millis(get_search_time(
             movestogo,
             (winc, binc),
-            (wtime.unwrap(), btime.unwrap()),
+            (wt, bt),
             game.board().player,
         ) as u64));
+    } else {
+        *search_duration_guard = None;
     }
     debug_info(&format!("search time: {:?}", *search_duration_guard), debug);
     drop(search_duration_guard); // prevent deadlock when starting the limit
