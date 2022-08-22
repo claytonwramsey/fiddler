@@ -146,6 +146,8 @@ fn main() {
                         game.try_move(m, &ScoreTag::tag_move(m, game.board(), game.cookie()))
                             .unwrap();
                     }
+
+                    debug_info(&format!("current game: {}", game.board()), debug);
                 }
                 Command::Go(opts) => {
                     // spawn a new thread to go search

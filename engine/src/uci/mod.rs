@@ -232,36 +232,36 @@ impl Command {
     /// Assumes that the `"position"` token has already been consumed, so the
     /// next token will either be `"fen"` or `"startpos"`.
     fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> ParseResult {
-        let start_fen = match tokens
+        let (start_fen, next_move_tok) = match tokens
             .next()
             .ok_or_else(|| "reached EOL while parsing position".to_string())?
         {
             "fen" => {
-                // Extract
+                // Extract full FEN
                 let mut fen = String::new();
-                let mut next_tok = tokens.next().ok_or("reached EOL while parsing FEN")?;
+                let mut next_tok = tokens.next();
                 loop {
-                    if next_tok == "moves" {
+                    if next_tok == Some("moves") || next_tok.is_none() {
                         break;
                     }
+
+                    let fen_tok = next_tok.unwrap();
                     if !fen.is_empty() {
                         fen += " ";
                     }
-                    fen += next_tok;
+                    fen += fen_tok;
 
-                    next_tok = tokens.next().ok_or("reached EOL while parsing FEN")?;
+                    next_tok = tokens.next();
                 }
-                Some(fen)
+                (Some(fen), None)
             }
             "startpos" => {
-                let moves_tok = tokens.next().ok_or("reached EOL while parsing position")?;
-                if moves_tok != "moves" {
-                    return Err(format!(
-                        "expected token `moves` after `startpos`, got {moves_tok}"
-                    ));
+                let move_tok = tokens.next();
+                if move_tok == Some("moves") {
+                    (None, None)
+                } else {
+                    (None, move_tok)
                 }
-
-                None
             }
             _ => return Err("illegal starting position token".to_string()),
         };
@@ -273,15 +273,15 @@ impl Command {
         )?;
 
         let mut moves = Vec::new();
+        if let Some(m_tok) = next_move_tok {
+            let m = Move::from_uci(m_tok, &board)?;
+            board.make_move(m);
+            moves.push(m);
+        }
         for tok in tokens {
-            let m_result = Move::from_uci(tok, &board);
-            match m_result {
-                Ok(m) => {
-                    board.make_move(m);
-                    moves.push(m);
-                }
-                Err(e) => return Err(format!("could not parse UCI move: {e}")),
-            };
+            let m = Move::from_uci(tok, &board)?;
+            board.make_move(m);
+            moves.push(m);
         }
 
         Ok(Command::Position {
@@ -371,6 +371,19 @@ mod tests {
     }
 
     #[test]
+    /// Test that a position string can still pe parsed from startpos without a
+    /// moves token.
+    fn position_starting_no_moves_tok() {
+        assert_eq!(
+            Command::parse_line("position startpos\n", &Board::default()),
+            Ok(Command::Position {
+                fen: None,
+                moves: Vec::new(),
+            })
+        );
+    }
+
+    #[test]
     /// Test that a FEN is properly loaded from a UCI position command.
     fn position_fen() {
         assert_eq!(
@@ -410,6 +423,21 @@ mod tests {
                     Move::normal(Square::C7, Square::C5),
                     Move::normal(Square::G1, Square::F3)
                 ]
+            })
+        );
+    }
+
+    #[test]
+    /// Test that a position command with no `moves` token is parsed correctly.
+    fn position_fen_no_moves() {
+        assert_eq!(
+            Command::parse_line(
+                "position fen rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2\n",
+                &Board::default()
+            ),
+            Ok(Command::Position {
+                fen: Some("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2".into()),
+                moves: Vec::new()
             })
         );
     }
