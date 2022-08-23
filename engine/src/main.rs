@@ -32,7 +32,7 @@ use std::{
     time::Duration,
 };
 
-use fiddler_base::game::Tagger;
+use fiddler_base::{game::Tagger, Color};
 use fiddler_engine::{
     evaluate::{ScoreTag, ScoredGame},
     thread::MainSearch,
@@ -247,18 +247,19 @@ fn go<'a>(
     }
 
     let searcher_guard = searcher.read().unwrap();
+    let (increment, remaining) = match game.board().player {
+        Color::White => (winc, wtime),
+        Color::Black => (binc, btime),
+    };
     // configure timeout condition
     let mut search_duration_guard = searcher_guard.limit.search_duration.lock().unwrap();
     if infinite {
         *search_duration_guard = None;
     } else if let Some(mt) = movetime {
         *search_duration_guard = Some(mt)
-    } else if let (Some(wt), Some(bt)) = (wtime, btime) {
+    } else if let Some(rem) = remaining {
         *search_duration_guard = Some(Duration::from_millis(get_search_time(
-            movestogo,
-            (winc, binc),
-            (wt, bt),
-            game.board().player,
+            movestogo, increment, rem,
         ) as u64));
     } else {
         *search_duration_guard = None;

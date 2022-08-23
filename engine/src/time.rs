@@ -28,8 +28,6 @@
 
 use std::cmp::min;
 
-use fiddler_base::Color;
-
 #[must_use]
 #[allow(
     clippy::module_name_repetitions,
@@ -44,31 +42,21 @@ use fiddler_base::Color;
 /// * `movestogo`: the number of moves remaining until the next increment.
 /// *`increment`: the time increment that each player will get after
 ///     they play a move, measured in milliseconds.
-/// * `remaining`: the remaining time that each player has, measured in
-///     milliseconds.
+/// * `remaining`: the remaining time that we have, measured in milliseconds.
 /// * `player`: the color of the player for whom we are making the timing
 ///     decision.
-pub fn get_search_time(
-    movestogo: Option<u8>,
-    increment: (u32, u32),
-    remaining: (u32, u32),
-    player: Color,
-) -> u32 {
+pub fn get_search_time(movestogo: Option<u8>, increment: u32, remaining: u32) -> u32 {
     // for now, simply try to exhaust our remaining time to the increment, with
     // a little buffer time.
-    let (our_inc, our_remaining) = match player {
-        Color::White => (increment.0, remaining.0),
-        Color::Black => (increment.1, remaining.1),
-    };
 
-    let rem_float = our_remaining as f32;
+    let rem_float = remaining as f32;
     if let Some(moves) = movestogo {
         min(
-            800 * our_remaining / (1000 * u32::from(moves)) + our_inc,
+            800 * remaining / (1000 * u32::from(moves)) + increment,
             (0.85 * rem_float) as u32,
         )
     } else {
         // use a fraction of our remaining time.
-        min(our_remaining / 80 + our_inc, (0.9 * rem_float) as u32)
+        min(remaining / 80 + increment, (0.9 * rem_float) as u32)
     }
 }
