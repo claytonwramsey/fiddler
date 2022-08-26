@@ -477,7 +477,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 /// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
 ///
 /// For instance: if `mask` repreresented a board like the following:
-/// ```ignore
+/// ```text
 /// 8 | . . . . . . . .
 /// 7 | . . . . . . . .
 /// 6 | . . . . . . . .
@@ -492,7 +492,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 ///
 /// and the given index were `0b10`, then the output mask would be
 ///
-/// ```ignore
+/// ```text
 /// 8 | . . . . . . . .
 /// 7 | . . . . . . . .
 /// 6 | . . . . . . . .
