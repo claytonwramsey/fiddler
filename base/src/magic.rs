@@ -301,9 +301,8 @@ impl SquareAttacks {
 /// you are loading data for a rook, and `false` for a bishop.
 fn load_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
     #[allow(clippy::cast_possible_truncation)]
-    for i in 0..64 {
-        // square of the piece making attacks
-        let sq = Square::try_from(i as u8).unwrap();
+    for sq in Bitboard::ALL {
+        let i = sq as usize;
         if is_rook {
             table[i].mask = get_rook_mask(sq);
             table[i].magic = SAVED_ROOK_MAGICS[i];
@@ -475,6 +474,8 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
 
 /// Given some mask, create the occupancy bitboard according to this index.
 /// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
+/// This is equivalent to the parallel-bits-extract (PEXT) instruction on x86
+/// architectures.
 ///
 /// For instance: if `mask` repreresented a board like the following:
 /// ```text
