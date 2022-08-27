@@ -368,7 +368,7 @@ impl<'a> PVSearch<'a> {
 
                 // if the LMR search causes an alpha cutoff, ZW search again at
                 // full depth.
-                search_full_depth = score > alpha && depth_to_search < depth_to_go - 1;
+                search_full_depth = score > alpha && do_lmr;
             }
 
             if search_full_depth {
@@ -563,7 +563,7 @@ impl<'a> PVSearch<'a> {
                     .quiesce::<PV>(
                         depth_so_far + 1,
                         -beta.step_forward(),
-                        -score.step_forward(),
+                        -alpha.step_forward(),
                         &mut line,
                     )?
                     .step_back();
