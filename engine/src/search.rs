@@ -29,13 +29,12 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    game::NoTag,
-    movegen::{get_moves, has_moves, is_legal, ALL, CAPTURES},
+    movegen::{has_moves, is_legal, CAPTURES},
     Move,
 };
 
 use crate::{
-    evaluate::{Eval, Score, ScoredGame},
+    evaluate::{Eval, ScoredGame},
     transposition::{TTEntry, TTEntryGuard},
 };
 
@@ -100,24 +99,11 @@ pub fn search(
     alpha: Eval,
     beta: Eval,
 ) -> SearchResult {
-    let mut gprime = g.clone();
     g.start_search();
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
 
     let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
-
-    // #[cfg(debug_assertions)]
-    let orig_board = *gprime.board();
-    for &m in &pv {
-        if !get_moves::<ALL, NoTag>(gprime.board(), &()).contains(&(m, ())) {
-            eprintln!("is legal? {}", is_legal(m, gprime.board()));
-            eprintln!("principal variation {pv:?}; illegal move {m}");
-            eprintln!("g: {gprime}");
-            eprintln!("original board: \n{},", orig_board);
-        }
-        gprime.make_move(m, &(Score::DRAW, Eval::DRAW));
-    }
 
     Ok(SearchInfo {
         pv,
@@ -559,9 +545,6 @@ impl<'a> PVSearch<'a> {
         let mut line = Vec::new();
 
         for (m, tag) in moves {
-            if !is_legal(m, self.game.board()) {
-                panic!();
-            }
             self.game.make_move(m, &tag);
             // zero-window search
             score = -self
