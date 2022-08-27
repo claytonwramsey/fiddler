@@ -29,12 +29,13 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use fiddler_base::{
-    movegen::{has_moves, is_legal, CAPTURES},
+    game::NoTag,
+    movegen::{get_moves, has_moves, is_legal, ALL, CAPTURES},
     Move,
 };
 
 use crate::{
-    evaluate::{Eval, ScoredGame},
+    evaluate::{Eval, Score, ScoredGame},
     transposition::{TTEntry, TTEntryGuard},
 };
 
@@ -99,10 +100,24 @@ pub fn search(
     alpha: Eval,
     beta: Eval,
 ) -> SearchResult {
+    let mut gprime = g.clone();
     g.start_search();
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
+
     let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
+
+    // #[cfg(debug_assertions)]
+    let orig_board = *gprime.board();
+    for &m in &pv {
+        if !get_moves::<ALL, NoTag>(gprime.board(), &()).contains(&(m, ())) {
+            eprintln!("is legal? {}", is_legal(m, gprime.board()));
+            eprintln!("principal variation {pv:?}; illegal move {m}");
+            eprintln!("g: {gprime}");
+            eprintln!("original board: \n{},", orig_board);
+        }
+        gprime.make_move(m, &(Score::DRAW, Eval::DRAW));
+    }
 
     Ok(SearchInfo {
         pv,
@@ -271,10 +286,10 @@ impl<'a> PVSearch<'a> {
 
         // mate distance pruning
         if Eval::BLACK_MATE > alpha {
-            if PV {
-                parent_line.clear();
-            }
             if beta <= Eval::BLACK_MATE {
+                if PV {
+                    parent_line.clear();
+                }
                 return Ok(Eval::BLACK_MATE);
             }
             alpha = Eval::BLACK_MATE;
@@ -282,6 +297,9 @@ impl<'a> PVSearch<'a> {
 
         if Eval::mate_in(1) < beta {
             if Eval::mate_in(1) <= alpha {
+                if PV {
+                    parent_line.clear();
+                }
                 return Ok(Eval::mate_in(1));
             }
             beta = Eval::mate_in(1);
@@ -407,19 +425,18 @@ impl<'a> PVSearch<'a> {
                         write_line(parent_line, m, &line);
                     }
 
-                    if score < beta {
-                        // to keep alpha < beta, only write to alpha in this
-                        // case
-                        alpha = score;
-                    } else {
+                    if beta <= score {
                         // Beta cutoff: we found a move that was so good that
                         // our opponent would never have let us play it in the
                         // first place. Therefore, we need not consider the
                         // other moves, since we wouldn't be allowed to play
                         // them either.
-                        self.killer_moves[depth_so_far as usize] = m;
                         break;
                     }
+
+                    // to keep alpha < beta, only write to alpha if there was
+                    // not a beta cutoff
+                    alpha = score;
                 }
             }
         }
@@ -496,26 +513,30 @@ impl<'a> PVSearch<'a> {
             }
         }
 
+        let (over, mated) = self.game.is_over();
+        if over {
+            // game is over, quit out immediately
+            let score = if mated { Eval::BLACK_MATE } else { Eval::DRAW };
+
+            if PV && alpha < score {
+                parent_line.clear();
+            }
+
+            return Ok(score);
+        }
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
-        let leaf_evaluation = leaf_evaluate(&self.game);
-        // println!("{g}: {leaf_evaluation}");
-        // Put the score in perspective of the player.
-        let mut score = leaf_evaluation.in_perspective(player);
+        let mut score = leaf_evaluate(&self.game).in_perspective(player);
+        // println!("{g}: {score}");
 
-        if score > alpha {
-            alpha = score;
+        if alpha < score {
             if PV {
                 parent_line.clear();
             }
-            if alpha >= beta {
-                // make sure that we didn't accidentally assume we could leaf
-                // evaluate an "ended" position
-                match self.game.is_over() {
-                    (true, false) => return Ok(Eval::DRAW),
-                    (true, true) => return Ok(Eval::BLACK_MATE),
-                    _ => (),
-                };
+
+            if beta <= score {
+                // store in the transposition table since we won't be able to
+                // use the call at the end
                 ttable_store(
                     &mut tt_guard,
                     TTEntry::DEPTH_CAPTURES,
@@ -528,25 +549,19 @@ impl<'a> PVSearch<'a> {
                 // better option somewhere else
                 return Ok(score);
             }
+
+            alpha = score;
         }
 
         let mut best_score = score;
         let mut moves = self.game.get_moves::<CAPTURES>();
-        if moves.is_empty() {
-            // In the overwhelming majority of cases, we will not be calling
-            // `quiesce` on a game which is over.
-            // Therefore we hedge our bets by only checking if the game has
-            // ended now.
-            match self.game.is_over() {
-                (true, false) => best_score = Eval::DRAW,
-                (true, true) => best_score = Eval::BLACK_MATE,
-                _ => (),
-            };
-        }
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut line = Vec::new();
 
         for (m, tag) in moves {
+            if !is_legal(m, self.game.board()) {
+                panic!();
+            }
             self.game.make_move(m, &tag);
             // zero-window search
             score = -self
@@ -576,16 +591,17 @@ impl<'a> PVSearch<'a> {
             }
             if score > best_score {
                 best_score = score;
-                if score > alpha {
-                    alpha = score;
+                if alpha < score {
                     if PV {
                         write_line(parent_line, m, &line);
                     }
-                    if alpha >= beta {
-                        // Beta cutoff, we have  found a better line somewhere else
+                    if beta <= score {
+                        // Beta cutoff, we have ound a better line somewhere else
                         self.killer_moves[depth_so_far as usize] = m;
                         break;
                     }
+
+                    alpha = score;
                 }
             }
         }
@@ -680,6 +696,7 @@ pub mod tests {
         )
         .unwrap();
 
+        // validate principal variation
         for &m in &info.pv {
             println!("{m}");
             assert!(is_legal(m, g.board()));
@@ -687,6 +704,14 @@ pub mod tests {
         }
 
         info
+    }
+
+    /// A helper function which ensures that the evaluation of a position is
+    /// equal to what we expect it to be.
+    /// It will check both a normal search and a search without the
+    /// transposition table.
+    fn eval_helper(fen: &str, eval: Eval, depth: u8) {
+        assert_eq!(search_helper(fen, depth).eval, eval);
     }
 
     #[test]
@@ -711,12 +736,14 @@ pub mod tests {
         assert_eq!(info.pv[0], m);
     }
 
-    /// A helper function which ensures that the evaluation of a position is
-    /// equal to what we expect it to be.
-    /// It will check both a normal search and a search without the
-    /// transposition table.
-    fn eval_helper(fen: &str, eval: Eval, depth: u8) {
-        assert_eq!(search_helper(fen, depth).eval, eval);
+    #[test]
+    /// Try searching an end-ish game position.
+    /// This was used as part of debugging for an illegal PV being created.
+    fn endgame() {
+        search_helper(
+            "2k5/pp3pp1/2p1pr2/Pn2b3/1P1P1P1r/2p1P1N1/6R1/3R2K1 w - - 0 1",
+            6,
+        );
     }
 
     #[test]

@@ -6,3 +6,4 @@ perf.*
 stacks.folded
 *.epd
 *.pgn
+err.txt

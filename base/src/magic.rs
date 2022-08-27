@@ -384,8 +384,8 @@ fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
 
         // we know that there are at most 12 pieces that will matter when it
         // comes to attack lookups
-        let mut occupancies = [Bitboard::EMPTY; 1 << 12];
-        let mut attacks = [Bitboard::EMPTY; 1 << 12];
+        let mut occupancies = vec![Bitboard::EMPTY; 1 << num_points];
+        let mut attacks = vec![Bitboard::EMPTY; 1 << num_points];
 
         // compute every possible occupancy arrangement for attacking
         for j in 0..(1 << num_points) {

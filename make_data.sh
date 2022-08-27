@@ -5,6 +5,7 @@
 # Requires the following environment variables:
 # * `$RANDOM`: random seed for cute chess
 # * `$BOOK`: path to PGN openings file
+# Sample usage: `RANDOM=1234 BOOK=../2moves_v1.pgn bash make_data.sh`.
 
 cutechess-cli \
     -srand $RANDOM \
@@ -19,4 +20,4 @@ cutechess-cli \
     -openings file=$BOOK format=pgn order=random \
     -engine cmd=./target/release/fiddler_engine name=fiddler1 tc=40/2+0.05 \
     -engine cmd=./target/release/fiddler_engine name=fiddler2 tc=40/2+0.05 \
-    -each timemargin=60000 option.Hash=512 proto=uci
+    -each timemargin=60000 option.Hash=512 proto=uci stderr=err.txt
