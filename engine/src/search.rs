@@ -559,10 +559,11 @@ impl<'a> PVSearch<'a> {
                     )?
                     .step_back();
             }
-            #[allow(unused_must_use)]
-            {
-                self.game.undo();
-            }
+
+            let undo_result = self.game.undo();
+            // in test mode, verify that we did correctly undo a move
+            debug_assert!(undo_result.is_ok());
+
             if score > best_score {
                 best_score = score;
                 if alpha < score {
