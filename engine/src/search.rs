@@ -474,14 +474,17 @@ impl<'a> PVSearch<'a> {
         self.increment_nodes()?;
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
-        // detect draws.
-        if self.game.drawn_by_repetition() || self.game.board().is_drawn() {
-            if PV && alpha < Eval::DRAW {
+        // check if the game is over before doing anything
+        let (over, mated) = self.game.is_over();
+        if over {
+            // game is over, quit out immediately
+            let score = if mated { Eval::BLACK_MATE } else { Eval::DRAW };
+
+            if PV && alpha < score {
                 parent_line.clear();
             }
-            // required so that movepicker only needs to know about current
-            // position, and not about history
-            return Ok(Eval::DRAW);
+
+            return Ok(score);
         }
 
         let player = self.game.board().player;
@@ -497,18 +500,6 @@ impl<'a> PVSearch<'a> {
                     return Ok(entry.lower_bound);
                 }
             }
-        }
-
-        let (over, mated) = self.game.is_over();
-        if over {
-            // game is over, quit out immediately
-            let score = if mated { Eval::BLACK_MATE } else { Eval::DRAW };
-
-            if PV && alpha < score {
-                parent_line.clear();
-            }
-
-            return Ok(score);
         }
         // capturing is unforced, so we can stop here if the player to move
         // doesn't want to capture.
