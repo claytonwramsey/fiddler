@@ -301,20 +301,20 @@ impl Bitboard {
             while i < 64 {
                 let sq1: Square = unsafe { transmute(i) };
                 let i_bb = 1 << i;
-                let bishop_1 = Bitboard::diagonal(sq1).0 ^ Bitboard::anti_diagonal(sq1).0;
-                let rook_1 = Bitboard::horizontal(sq1).0 ^ Bitboard::vertical(sq1).0;
+                let bishop_1 = Bitboard::diags(sq1).0;
+                let rook_1 = Bitboard::hv(sq1).0;
                 let mut j = 0u8;
                 while j < 64 {
                     let sq2: Square = unsafe { transmute(j) };
                     let j_bb = 1 << j;
                     if bishop_1 & j_bb != 0 {
-                        let bishop_2 = Bitboard::diagonal(sq2).0 ^ Bitboard::anti_diagonal(sq2).0;
+                        let bishop_2 = Bitboard::diags(sq2).0;
                         lines[i as usize][j as usize] = Bitboard(
                             lines[i as usize][j as usize].0 | i_bb | j_bb | (bishop_1 & bishop_2),
                         );
                     }
                     if rook_1 & j_bb != 0 {
-                        let rook_2 = Bitboard::horizontal(sq2).0 ^ Bitboard::vertical(sq2).0;
+                        let rook_2 = Bitboard::hv(sq1).0;
                         lines[i as usize][j as usize] = Bitboard(
                             lines[i as usize][j as usize].0 | i_bb | j_bb | (rook_1 & rook_2),
                         );
@@ -431,6 +431,48 @@ impl Bitboard {
         const RANK_1: Bitboard = Bitboard(0x0000_0000_0000_00FF);
 
         Bitboard(RANK_1.0 << (sq.rank() << 3))
+    }
+
+    #[must_use]
+    #[inline(always)]
+    /// Get a `Bitboard` containing all squares in the same rank or file as
+    /// `sq`, but not including `sq`.
+    pub const fn hv(sq: Square) -> Bitboard {
+        const MASKS: [Bitboard; 64] = {
+            let mut masks = [Bitboard::EMPTY; 64];
+            let mut i = 0u8;
+            while i < 64 {
+                let sq = unsafe { transmute(i) };
+                masks[i as usize] =
+                    Bitboard::new(Bitboard::vertical(sq).0 ^ Bitboard::horizontal(sq).0);
+                i += 1;
+            }
+
+            masks
+        };
+
+        MASKS[sq as usize]
+    }
+
+    #[must_use]
+    #[inline(always)]
+    /// Get a `Bitboard` containing all squares in the same diagonal or
+    /// anti-diagonal as `sq`, but not including `sq`.
+    pub const fn diags(sq: Square) -> Bitboard {
+        const MASKS: [Bitboard; 64] = {
+            let mut masks = [Bitboard::EMPTY; 64];
+            let mut i = 0u8;
+            while i < 64 {
+                let sq = unsafe { transmute(i) };
+                masks[i as usize] =
+                    Bitboard::new(Bitboard::diagonal(sq).0 ^ Bitboard::anti_diagonal(sq).0);
+                i += 1;
+            }
+
+            masks
+        };
+
+        MASKS[sq as usize]
     }
 }
 

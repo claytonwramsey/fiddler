@@ -299,7 +299,7 @@ mod perft {
 
     #[test]
     /// Test the perft values for an unbalanced position. Uses results from
-    /// [the CPW wiki](https://www.chessprogramming.org/Perft_Results#Position_4).
+    /// [the Chess Programming wiki](https://www.chessprogramming.org/Perft_Results#Position_4).
     fn unbalanced() {
         perft_assistant(
             "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",

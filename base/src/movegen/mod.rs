@@ -424,7 +424,7 @@ pub fn has_moves(b: &Board) -> bool {
 
     // pinned bishops/diagonal queens
     for sq in bishop_movers & b.pinned {
-        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq))
+        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & Bitboard::diags(king_sq))
             .is_empty()
         {
             return true;
@@ -441,9 +441,7 @@ pub fn has_moves(b: &Board) -> bool {
 
     // pinned rooks/horizontal queens
     for sq in rook_movers & b.pinned {
-        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq))
-            .is_empty()
-        {
+        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & Bitboard::hv(king_sq)).is_empty() {
             return true;
         }
     }
@@ -841,6 +839,8 @@ fn normal_piece_assistant<T: Tagger>(
     let bishop_movers = (board[Piece::Bishop] | queens) & allies;
     let king_sq = board.king_sqs[player as usize];
     let unpinned = !board.pinned;
+    let king_hv = Bitboard::hv(king_sq);
+    let king_diags = Bitboard::diags(king_sq);
 
     // only unpinned knights can move
     for from_sq in board[Piece::Knight] & allies & unpinned {
@@ -851,11 +851,8 @@ fn normal_piece_assistant<T: Tagger>(
     }
 
     // pinned bishops and queens
-    for from_sq in bishop_movers & board.pinned {
-        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq)
-            & legal_targets
-            & Bitboard::line(king_sq, from_sq)
-        {
+    for from_sq in bishop_movers & board.pinned & king_diags {
+        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets & king_diags {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -870,11 +867,8 @@ fn normal_piece_assistant<T: Tagger>(
     }
 
     // pinned rooks and queens
-    for from_sq in rook_movers & board.pinned {
-        for to_sq in MAGIC.rook_attacks(occupancy, from_sq)
-            & legal_targets
-            & Bitboard::line(king_sq, from_sq)
-        {
+    for from_sq in rook_movers & board.pinned & king_hv {
+        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & legal_targets & king_hv {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
