@@ -100,6 +100,8 @@ pub type ScoredGame = TaggedGame<ScoreTag>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// A piece of metadata which tags along with each board.
+/// In the Fiddler engine, every board gets tagged with an `EvalCookie` which is
+/// used to quickly evaluate positions.
 pub struct EvalCookie {
     /// The score of the position.
     score: Score,
@@ -205,9 +207,23 @@ fn leaf_rules(b: &Board) -> Score {
 #[must_use]
 /// Count the number of "open" rooks (i.e., those which are not blocked by
 /// unadvanced pawns) in a position.
-/// The number is a net value, so it will be negative if Black has more open rooks than White.
+/// The number is a net value, so it will be negative if Black has more open
+/// rooks than White.
+///
+/// # Examples
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use fiddler_base::Board;
+/// use fiddler_engine::evaluate::net_open_rooks;
+///
+/// assert_eq!(net_open_rooks(&Board::new()), 0);
+/// assert_eq!(net_open_rooks(&Board::from_fen("5r2/4r3/2k5/8/3K4/8/4p3/4R3 w - - 0 1")?), -1);
+/// # Ok(())
+/// # }
+/// ```
 pub fn net_open_rooks(b: &Board) -> i8 {
-    // Mask for pawns which are above rank 3 (i.e. on the white half of the
+    // Mask for pawns which are below rank 3 (i.e. on the white half of the
     // board).
     const WHITE_HALF: Bitboard = Bitboard::new(0x0000_0000_FFFF_FFFF);
     // Mask for pawns which are on the black half of the board
@@ -253,8 +269,21 @@ pub fn net_open_rooks(b: &Board) -> i8 {
 }
 
 #[must_use]
-/// Count the number of doubled pawns, in net. For instance, if White had 1
-/// doubled pawn, and Black had 2, this function would return -1.
+/// Count the number of doubled pawns, in net.
+/// For instance, if White had 1 doubled pawn, and Black had 2, this function
+/// would return -1.
+///
+/// # Examples
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use fiddler_base::Board;
+/// use fiddler_engine::evaluate::net_doubled_pawns;
+///
+/// assert_eq!(net_doubled_pawns(&Board::new()), 0);
+/// # Ok(())
+/// # }
+/// ```
 pub fn net_doubled_pawns(b: &Board) -> i8 {
     let pawns = b[Piece::Pawn];
     let mut net_doubled: i8 = 0;
@@ -282,6 +311,15 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 #[must_use]
 /// Get a blending float describing the current phase of the game. Will range
 /// from 0 (full endgame) to 1 (full midgame).
+///
+/// # Examples
+///
+/// ```
+/// use fiddler_base::Board;
+/// use fiddler_engine::evaluate::phase_of;
+///
+/// assert!(phase_of(&Board::new()).eq(&1.0));
+/// ```
 pub fn phase_of(b: &Board) -> f32 {
     // amount of non-pawn material in the board, under midgame values
     let mg_npm = {
@@ -309,15 +347,59 @@ pub fn calculate_phase(mg_npm: Eval) -> f32 {
 
 impl Eval {
     /// An evaluation which is smaller than every other "normal" evaluation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_engine::evaluate::Eval;
+    ///
+    /// assert!(Eval::MIN < Eval::BLACK_MATE);
+    /// assert!(Eval::MIN < Eval::DRAW);
+    /// assert!(Eval::MIN < Eval::WHITE_MATE);
+    /// assert!(Eval::MIN < Eval::MAX);
+    /// ```
     pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1000);
 
     /// An evaluation which is larger than every other "normal" evaluation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_engine::evaluate::Eval;
+    ///
+    /// assert!(Eval::MIN < Eval::MAX);
+    /// assert!(Eval::BLACK_MATE < Eval::MAX);
+    /// assert!(Eval::DRAW < Eval::MAX);
+    /// assert!(Eval::WHITE_MATE < Eval::MAX);
+    /// ```
     pub const MAX: Eval = Eval(Eval::MATE_0_VAL + 1000);
 
     /// An evaluation where Black has won the game by mate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_engine::evaluate::Eval;
+    ///
+    /// assert!(Eval::MIN < Eval::BLACK_MATE);
+    /// assert!(Eval::BLACK_MATE < Eval::DRAW);
+    /// assert!(Eval::BLACK_MATE < Eval::WHITE_MATE);
+    /// assert!(Eval::BLACK_MATE < Eval::MAX);
+    /// ```
     pub const BLACK_MATE: Eval = Eval(-Eval::MATE_0_VAL);
 
     /// An evaluation where White has won the game by mate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_engine::evaluate::Eval;
+    ///
+    /// assert!(Eval::MIN < Eval::WHITE_MATE);
+    /// assert!(Eval::BLACK_MATE < Eval::WHITE_MATE);
+    /// assert!(Eval::DRAW < Eval::WHITE_MATE);
+    /// assert!(Eval::WHITE_MATE < Eval::MAX);
+    /// ```
     pub const WHITE_MATE: Eval = Eval(Eval::MATE_0_VAL);
 
     /// The evaluation of a drawn position.

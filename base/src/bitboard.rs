@@ -165,7 +165,21 @@ impl Bitboard {
 
     #[inline(always)]
     #[must_use]
-    /// Create a new `Bitboard` with `sq` inserted.
+    /// Create a new `Bitboard` which is the same as this one, but with the
+    /// square `sq` inserted.
+    /// Returns a copy if `sq` was alreay contained by this bitboard.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler_base::{Bitboard, Square};
+    ///
+    /// let bb1 = Bitboard::EMPTY;
+    /// let bb2 = bb1.with_square(Square::A1);
+    ///
+    /// assert!(!bb1.contains(Square::A1));
+    /// assert!(bb2.contains(Square::A1));
+    /// ```
     pub const fn with_square(self, sq: Square) -> Bitboard {
         Bitboard(self.0 | (1 << sq as u8))
     }
@@ -181,9 +195,9 @@ impl Bitboard {
     /// use fiddler_base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
-    /// assert!(bb.len() == 0);
+    /// assert_eq!(bb.len(), 0);
     /// bb.insert(Square::A1);
-    /// assert!(bb.len() == 1);
+    /// assert_eq!(bb.len(), 1);
     /// ```
     pub const fn len(self) -> u8 {
         self.0.count_ones() as u8
