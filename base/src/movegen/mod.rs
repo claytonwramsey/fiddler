@@ -842,66 +842,50 @@ fn normal_piece_assistant<T: Tagger>(
     let king_sq = board.king_sqs[player as usize];
     let unpinned = !board.pinned;
 
-    for sq in board[Piece::Knight] & allies & unpinned {
-        append_normal::<T>(
-            sq,
-            KNIGHT_MOVES[sq as usize] & legal_targets,
-            b,
-            cookie,
-            moves,
-        );
+    // only unpinned knights can move
+    for from_sq in board[Piece::Knight] & allies & unpinned {
+        for to_sq in KNIGHT_MOVES[from_sq as usize] & legal_targets {
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
     }
-    for sq in bishop_movers & board.pinned {
-        append_normal::<T>(
-            sq,
-            MAGIC.bishop_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq),
-            b,
-            cookie,
-            moves,
-        );
-    }
-    for sq in bishop_movers & unpinned {
-        append_normal::<T>(
-            sq,
-            MAGIC.bishop_attacks(occupancy, sq) & legal_targets,
-            b,
-            cookie,
-            moves,
-        );
-    }
-    for sq in rook_movers & board.pinned {
-        append_normal::<T>(
-            sq,
-            MAGIC.rook_attacks(occupancy, sq) & legal_targets & Bitboard::line(king_sq, sq),
-            b,
-            cookie,
-            moves,
-        );
-    }
-    for sq in rook_movers & unpinned {
-        append_normal::<T>(
-            sq,
-            MAGIC.rook_attacks(occupancy, sq) & legal_targets,
-            b,
-            cookie,
-            moves,
-        );
-    }
-}
 
-#[inline(always)]
-/// Append a number of normal moves, starting from `from_sq` and ending at each
-/// square in `to_bb`, onto `moves`.
-fn append_normal<T: Tagger>(
-    from_sq: Square,
-    to_bb: Bitboard,
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
-    for to_sq in to_bb {
-        let m = Move::normal(from_sq, to_sq);
-        moves.push((m, T::tag_move(m, b, cookie)));
+    // pinned bishops and queens
+    for from_sq in bishop_movers & board.pinned {
+        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq)
+            & legal_targets
+            & Bitboard::line(king_sq, from_sq)
+        {
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
+    }
+
+    // unpinned bishops and queens
+    for from_sq in bishop_movers & unpinned {
+        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets {
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
+    }
+
+    // pinned rooks and queens
+    for from_sq in rook_movers & board.pinned {
+        for to_sq in MAGIC.rook_attacks(occupancy, from_sq)
+            & legal_targets
+            & Bitboard::line(king_sq, from_sq)
+        {
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
+    }
+
+    // unpinned rooks and queens
+    for from_sq in rook_movers & unpinned {
+        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & legal_targets {
+            let m = Move::normal(from_sq, to_sq);
+            moves.push((m, T::tag_move(m, b, cookie)));
+        }
     }
 }
 
