@@ -622,21 +622,16 @@ impl Iterator for Bitboard {
     type Item = Square;
 
     #[inline(always)]
+    #[allow(clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_empty() {
             return None;
         }
+        let trailing = self.trailing_zeros() as u8;
         // SAFETY: The empty bitboard case has been handled already, so the
         // number of trailing zeros is between 0 and 63.
-        let result = Some(unsafe {
-            transmute(
-                #[allow(clippy::cast_possible_truncation)]
-                {
-                    self.trailing_zeros() as u8
-                },
-            )
-        });
-        self.0 &= self.0 - 1;
+        let result = Some(unsafe { transmute(trailing) });
+        self.0 ^= 1 << trailing;
         result
     }
 
