@@ -25,6 +25,8 @@
 //! For instance, a knight is much more valuable near the center, so the PST
 //! value for a knight on rank 4 and file 3 is positive.
 
+use std::intrinsics::transmute;
+
 use fiddler_base::{Board, Color, Move, Piece, Square};
 
 use crate::evaluate::Score;
@@ -36,9 +38,6 @@ use crate::evaluate::Score;
 /// starting with A1 as the first index, then continuing on to B1, C1, and so
 /// on until H8 as index 63.
 type Pst = [[Score; 64]; Piece::NUM];
-
-/// A PST which is given in millipawns.
-type CentiPst = [[(i16, i16); 64]; Piece::NUM];
 
 #[must_use]
 /// Evaluate a board based on its PST value.
@@ -119,34 +118,14 @@ pub fn delta(board: &Board, m: Move) -> Score {
     delta
 }
 
-/// A function used for ergonomics to convert from a table of millipawn values
-/// to a table of `Eval`s.
-const fn expand_table(centi_table: &CentiPst) -> Pst {
-    // we will overwrite the whole table later
-    let mut table = [[Score::DRAW; 64]; Piece::NUM];
-    let mut piece_idx = 0;
-    // I would use for-loops here, but those are unsupported in const fns.
-    while piece_idx < Piece::NUM {
-        let mut sq_idx = 0;
-        while sq_idx < 64 {
-            let int_score = centi_table[piece_idx][sq_idx];
-            table[piece_idx][sq_idx] = Score::centipawns(int_score.0, int_score.1);
-            sq_idx += 1;
-        }
-        piece_idx += 1;
-    }
-
-    table
-}
-
 #[rustfmt::skip] // rustfmt likes to throw a million newlines in this
 /// The main piece-square table. Evaluations are paired together as (midgame, 
 /// endgame) to improve cache-friendliness. The indexing order of this table 
 /// has its primary index as pieces, the secondary index as squares, and the 
 /// innermost index as 0 for midgame and 1 for endgame.
-pub const PST: Pst = expand_table(&[
+pub const PST: Pst = unsafe {transmute([
     [ // N
-        (-174, -52), (-11, -21), (-64, -21), (-42, -17), (-37, -27), (-40, -22), (-14, -21), (-90, -38), 
+        (-174i16, -52i16), (-11, -21), (-64, -21), (-42, -17), (-37, -27), (-40, -22), (-14, -21), (-90, -38), 
         (-97, -14), (-67, -7), (-17, 0), (4, 0), (3, 0), (-22, 0), (-39, -5), (-44, -43), 
         (-21, -34), (-10, 11), (13, 5), (12, 10), (18, 0), (24, 21), (11, -1), (-26, -26), 
         (-13, -30), (-17, 3), (10, 14), (17, 20), (26, 0), (9, 1), (7, 0), (-5, -20), 
@@ -205,7 +184,7 @@ pub const PST: Pst = expand_table(&[
         (-6, -11), (26, -5), (29, 6), (15, 10), (22, 0), (28, 6), (47, -7), (9, -20), 
         (-34, -31), (-7, -42), (-21, -20), (-34, -9), (-18, -8), (-11, 5), (26, -34), (0, -33), 
     ],
-]);
+])};
 
 #[cfg(test)]
 mod tests {

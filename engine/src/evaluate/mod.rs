@@ -59,6 +59,7 @@ pub mod mobility;
 pub mod pst;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[repr(C)]
 /// A wrapper for the evaluation of a position.
 /// The higher an evaluation is, the better the position is for White. An
 /// evaluation of 0 is a draw.
@@ -83,6 +84,7 @@ pub mod pst;
 pub struct Eval(i16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(C)]
 /// A `Score` is a pair of two `Evals` - one for the midgame and one for the
 /// endgame.
 /// The values inside of a `Score` should never be mate values.
