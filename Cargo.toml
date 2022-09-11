@@ -30,6 +30,7 @@ opt-level = 3
 
 [profile.release]
 opt-level = 3
+strip = true
 lto = true
 overflow-checks = false
 panic = "abort"

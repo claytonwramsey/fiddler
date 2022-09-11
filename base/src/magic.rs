@@ -214,7 +214,7 @@ impl AttacksTable {
             // SAFETY: We will immediately overwrite this.
             let mut data: [MaybeUninit<SquareAttacks>; 64] =
                 unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut data[..] {
+            for elem in &mut data {
                 *elem = MaybeUninit::new(SquareAttacks::new());
             }
             // SAFETY: The entire block was overwritten with correct data.
@@ -224,7 +224,7 @@ impl AttacksTable {
             // SAFETY: We will immediately overwrite this.
             let mut data: [MaybeUninit<SquareAttacks>; 64] =
                 unsafe { MaybeUninit::uninit().assume_init() };
-            for elem in &mut data[..] {
+            for elem in &mut data {
                 *elem = MaybeUninit::new(SquareAttacks::new());
             }
             // SAFETY: The entire block was overwritten with correct data.

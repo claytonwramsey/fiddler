@@ -25,8 +25,6 @@
 //! For instance, a knight is much more valuable near the center, so the PST
 //! value for a knight on rank 4 and file 3 is positive.
 
-use std::{intrinsics::transmute, mem::MaybeUninit};
-
 use fiddler_base::{Board, Color, Move, Piece, Square};
 
 use crate::evaluate::Score;
@@ -125,20 +123,20 @@ pub fn delta(board: &Board, m: Move) -> Score {
 /// to a table of `Eval`s.
 const fn expand_table(centi_table: &CentiPst) -> Pst {
     // we will overwrite the whole table later
-    let mut table = [[MaybeUninit::uninit(); 64]; Piece::NUM];
+    let mut table = [[Score::DRAW; 64]; Piece::NUM];
     let mut piece_idx = 0;
     // I would use for-loops here, but those are unsupported in const fns.
     while piece_idx < Piece::NUM {
         let mut sq_idx = 0;
         while sq_idx < 64 {
             let int_score = centi_table[piece_idx][sq_idx];
-            table[piece_idx][sq_idx] =
-                MaybeUninit::new(Score::centipawns(int_score.0, int_score.1));
+            table[piece_idx][sq_idx] = Score::centipawns(int_score.0, int_score.1);
             sq_idx += 1;
         }
         piece_idx += 1;
     }
-    unsafe { transmute(table) }
+
+    table
 }
 
 #[rustfmt::skip] // rustfmt likes to throw a million newlines in this
