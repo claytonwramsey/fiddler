@@ -221,6 +221,9 @@ impl<'a> PVSearch<'a> {
     ///
     /// * `PV`: Whether this node is a principal variation node.
     ///     At the root, this should be `true`.
+    /// * `ROOT`: Whether this is the root node of the search.
+    ///     External callers of this function should always set `ROOT` to
+    ///     `true`.
     /// * `REDUCE`: Whether heuristic depth reduction should be performed.
     /// * `depth_to_go`: The depth to search the position.
     /// * `depth_so_far`: The depth of the recursive stack when this function
@@ -255,6 +258,9 @@ impl<'a> PVSearch<'a> {
         mut beta: Eval,
         parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
+        // verify that ROOT implies PV
+        debug_assert!(if ROOT { PV } else { true });
+
         if self.is_main {
             self.limit.update_time()?;
         }
