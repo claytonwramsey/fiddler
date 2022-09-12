@@ -314,7 +314,7 @@ impl Bitboard {
                         );
                     }
                     if rook_1 & j_bb != 0 {
-                        let rook_2 = Bitboard::hv(sq1).0;
+                        let rook_2 = Bitboard::hv(sq2).0;
                         lines[i as usize][j as usize] = Bitboard(
                             lines[i as usize][j as usize].0 | i_bb | j_bb | (rook_1 & rook_2),
                         );

@@ -213,48 +213,48 @@ fn startpos_has_moves() {
 mod mates {
     use super::*;
 
-    #[test]
-    /// Test that a ladder-mated position has no legal moves.
-    fn ladder() {
-        let b = Board::from_fen("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1").unwrap();
+    /// A helper function for mate move generation testing.
+    /// Asserts that `fen` is a position with no legal moves where the player
+    /// to move is in check.
+    fn mate_helper(fen: &str) {
+        let b = Board::from_fen(fen).unwrap();
 
         assert!(!has_moves(&b));
         assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
         assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
         assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
+        assert!(!b.checkers.is_empty());
+    }
+
+    #[test]
+    /// Test that a ladder-mated position has no legal moves.
+    fn ladder() {
+        mate_helper("1R1k4/R7/8/5K2/8/8/8/8 b - - 1 1");
     }
 
     #[test]
     /// A position where if pawn pushes could be captures, there would not
     /// be a mate.
     fn cant_pawn_push() {
-        let b = Board::from_fen("2r2r2/5R2/p2p2pk/3P2Q1/P4n2/7P/1P6/1K4R1 b - - 2 34").unwrap();
-
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
+        mate_helper("2r2r2/5R2/p2p2pk/3P2Q1/P4n2/7P/1P6/1K4R1 b - - 2 34");
     }
 
     #[test]
     /// Test that a position where a rook is horizontal to the king is mate.
     fn horizontal_rook() {
-        let b = Board::from_fen("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32").unwrap();
-
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<CAPTURES, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<QUIETS, NoTag>(&b, &()).is_empty());
-        assert!(!has_moves(&b));
+        mate_helper("r1b2k1R/3n1p2/p7/3P4/6Qp/2P3b1/6P1/4R2K b - - 0 32");
     }
 
     #[test]
     /// A mate where the queen is adjacent to the king, and cuts off all
     /// escape.
     fn queen_defended() {
-        let b =
-            Board::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11").unwrap();
-        assert!(!has_moves(&b));
-        assert!(get_moves::<ALL, NoTag>(&b, &()).is_empty());
+        mate_helper("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11");
+    }
+
+    #[test]
+    fn pinned_horiz_pawn() {
+        mate_helper("5r2/3R1pk1/p5R1/7Q/r3p3/7P/8/2K5 b - - 0 37");
     }
 }
 

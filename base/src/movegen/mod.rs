@@ -423,10 +423,9 @@ pub fn has_moves(b: &Board) -> bool {
     }
 
     // pinned bishops/diagonal queens
-    for sq in bishop_movers & b.pinned {
-        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & Bitboard::diags(king_sq))
-            .is_empty()
-        {
+    let king_diags = Bitboard::diagonal(king_sq);
+    for sq in bishop_movers & b.pinned & king_diags {
+        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & king_diags).is_empty() {
             return true;
         }
     }
@@ -440,8 +439,9 @@ pub fn has_moves(b: &Board) -> bool {
     }
 
     // pinned rooks/horizontal queens
-    for sq in rook_movers & b.pinned {
-        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & Bitboard::hv(king_sq)).is_empty() {
+    let king_hv = Bitboard::hv(king_sq);
+    for sq in rook_movers & b.pinned & king_hv {
+        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & king_hv).is_empty() {
             return true;
         }
     }
