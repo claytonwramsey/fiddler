@@ -528,9 +528,9 @@ fn non_evasions<const M: GenMode, T: Tagger>(
     moves: &mut Vec<(Move, T::Tag)>,
 ) {
     let target_sqs = match M {
-        ALL => Bitboard::ALL,
-        CAPTURES => b[!b.player],
-        QUIETS => !b[!b.player],
+        ALL => !b[b.player],
+        CAPTURES => !b[b.player] & b[!b.player],
+        QUIETS => !b[b.player] & !b[!b.player],
         _ => unreachable!(),
     };
 
@@ -566,7 +566,7 @@ fn evasions<const M: GenMode, T: Tagger>(
         // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(b.checkers) };
         // Look for blocks or captures
-        let mut target_sqs = Bitboard::between(king_sq, checker_sq) | b.checkers;
+        let mut target_sqs = !b[b.player] & Bitboard::between(king_sq, checker_sq) | b.checkers;
         match M {
             ALL => (),
             CAPTURES => target_sqs &= b[!player],
@@ -590,9 +590,9 @@ fn evasions<const M: GenMode, T: Tagger>(
     }
 
     let king_targets = match M {
-        ALL => Bitboard::ALL,
-        CAPTURES => b[!player],
-        QUIETS => !b[!player],
+        ALL => !b[b.player],
+        CAPTURES => !b[b.player] & b[!player],
+        QUIETS => !b.occupancy(),
         _ => unreachable!(),
     };
     king_move_non_castle::<T>(b, cookie, moves, king_targets);
@@ -823,6 +823,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
 
 /// Generate all the moves for a knight, bishop, rook, or queen which end
 /// up on the target.
+/// Will not filter out moves which capture allies.
 fn normal_piece_assistant<T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
@@ -832,7 +833,6 @@ fn normal_piece_assistant<T: Tagger>(
     let board = &b;
     let player = b.player;
     let allies = board[player];
-    let legal_targets = !allies & target;
     let occupancy = allies | board[!player];
     let queens = board[Piece::Queen];
     let rook_movers = (board[Piece::Rook] | queens) & allies;
@@ -844,7 +844,7 @@ fn normal_piece_assistant<T: Tagger>(
 
     // only unpinned knights can move
     for from_sq in board[Piece::Knight] & allies & unpinned {
-        for to_sq in KNIGHT_MOVES[from_sq as usize] & legal_targets {
+        for to_sq in KNIGHT_MOVES[from_sq as usize] & target {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -852,7 +852,7 @@ fn normal_piece_assistant<T: Tagger>(
 
     // pinned bishops and queens
     for from_sq in bishop_movers & board.pinned & king_diags {
-        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets & king_diags {
+        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target & king_diags {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -860,7 +860,7 @@ fn normal_piece_assistant<T: Tagger>(
 
     // unpinned bishops and queens
     for from_sq in bishop_movers & unpinned {
-        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & legal_targets {
+        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -868,7 +868,7 @@ fn normal_piece_assistant<T: Tagger>(
 
     // pinned rooks and queens
     for from_sq in rook_movers & board.pinned & king_hv {
-        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & legal_targets & king_hv {
+        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & target & king_hv {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -876,7 +876,7 @@ fn normal_piece_assistant<T: Tagger>(
 
     // unpinned rooks and queens
     for from_sq in rook_movers & unpinned {
-        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & legal_targets {
+        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & target {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
