@@ -73,9 +73,10 @@ pub struct TTEntryGuard<'a> {
 }
 
 /// The number of entries in a single bucket.
-const BUCKET_SIZE: usize = 3;
+const BUCKET_SIZE: usize = 6;
 
 #[repr(C)]
+#[repr(align(64))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A `Bucket` is a container for transposition table entries, designed to make
 /// cache access faster.
@@ -84,9 +85,9 @@ const BUCKET_SIZE: usize = 3;
 struct Bucket {
     /// A block of entries.
     pub entries: [TTEntry; BUCKET_SIZE],
-    /// Padding bits to make a bucket exactly 32 bytes, the size of a cache
+    /// Padding bits to make a bucket exactly 64 bytes, the size of a cache
     /// line.
-    _pad: [u8; 2],
+    _pad: [u8; 4],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -565,6 +566,6 @@ mod tests {
     #[test]
     /// Test that a `Bucket` is in fact the size of a cache line.
     fn bucket_size() {
-        assert_eq!(size_of::<Bucket>(), 32);
+        assert_eq!(size_of::<Bucket>(), 64);
     }
 }
