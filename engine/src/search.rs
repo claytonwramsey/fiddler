@@ -668,7 +668,7 @@ pub mod tests {
         let info = search(
             g.clone(),
             depth,
-            &TTable::with_capacity(25),
+            &TTable::with_size(1000),
             &config,
             &SearchLimit::default(),
             true,

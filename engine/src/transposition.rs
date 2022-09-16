@@ -72,8 +72,11 @@ pub struct TTEntryGuard<'a> {
     _phantom: PhantomData<&'a TTable>,
 }
 
+/// The size of a cache line (in bytes) in the target architecture.
+/// TODO: make this a compilation parameter?
+const LINE_SIZE: usize = 64;
 /// The number of entries in a single bucket.
-const BUCKET_SIZE: usize = 6;
+const BUCKET_LEN: usize = LINE_SIZE / size_of::<TTEntry>();
 
 #[repr(C)]
 #[repr(align(64))]
@@ -81,13 +84,12 @@ const BUCKET_SIZE: usize = 6;
 /// A `Bucket` is a container for transposition table entries, designed to make
 /// cache access faster.
 /// The core idea is that we can load all the entries sent to a specific index
-/// in the transposition table all fit in one cache line.
+/// in the transposition table at once through a single cache load.
 struct Bucket {
     /// A block of entries.
-    pub entries: [TTEntry; BUCKET_SIZE],
-    /// Padding bits to make a bucket exactly 64 bytes, the size of a cache
-    /// line.
-    _pad: [u8; 4],
+    pub entries: [TTEntry; BUCKET_LEN],
+    /// Padding bits to make a bucket exactly the size of a cache line.
+    _pad: [u8; LINE_SIZE - BUCKET_LEN * size_of::<TTEntry>()],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -127,7 +129,7 @@ impl TTable {
     #[must_use]
     /// Construct a `TTable` with a given size, in megabytes.
     pub fn with_size(size_mb: usize) -> TTable {
-        let max_num_buckets = size_mb / size_of::<Bucket>();
+        let max_num_buckets = size_mb * 1_000_000 / size_of::<Bucket>();
         let new_size = if max_num_buckets.is_power_of_two() {
             max_num_buckets
         } else {
@@ -148,7 +150,7 @@ impl TTable {
     ///
     /// This function will panic if `capacity_log2` is large enough to cause
     /// overflow.
-    pub fn with_capacity(capacity_log2: usize) -> TTable {
+    fn with_capacity(capacity_log2: usize) -> TTable {
         let n_buckets = 1 << capacity_log2;
         TTable {
             buckets: unsafe {
@@ -186,51 +188,54 @@ impl TTable {
         }
         let idx = self.index_for(hash_key);
         let bucket = unsafe { self.buckets.add(idx) };
+
+        // pointer to entry currently being reviewed
         let mut entry_ptr = bucket.cast::<TTEntry>();
 
+        // pointer to entry which will get overwritten if we don't find a match
+        let mut replace_ptr = entry_ptr;
+
+        // age of oldest entry we've seen so far
+        let mut eldest_age = 0u8;
+
         // first, see if we can find a match in the bucket
-        for _ in 0..BUCKET_SIZE {
+        for _ in 0..BUCKET_LEN {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
-            // we intentionally truncate here
-            if entry_ref.key_low16 == hash_key as u16 && (entry_ref.tag & 0x80 != 0) {
-                // it's a match!
+ 
+            if entry_ref.tag & 0x80 == 0 {
+                // if we encounter an entry which is unused, mark it for
+                // replacement if we don't find a matching entry.
+                if eldest_age < 255 {
+                    eldest_age = 255;
+                    replace_ptr = entry_ptr;
+                }
+            } else if entry_ref.key_low16 == hash_key as u16 {
+                // found a matching entry
                 return TTEntryGuard {
                     valid: true,
                     hash: hash_key,
                     entry: entry_ptr,
                     _phantom: PhantomData,
                 };
+            } else {
+                // check if we can use this entry to overwrite if we don't find
+                // a match
+                let age = entry_ref.tag & 0x7F;
+                if eldest_age < age {
+                    replace_ptr = entry_ptr;
+                    eldest_age = age;
+                }
             }
+
             entry_ptr = unsafe { entry_ptr.add(1) }
         }
 
         // no match found. pick the oldest entry to replace
-        entry_ptr = bucket.cast::<TTEntry>();
-        let mut eldest_entry = entry_ptr;
-        let mut eldest_age = 0;
-        for _ in 0..BUCKET_SIZE {
-            let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
-            if entry_ref.tag & 0x80 == 0 {
-                // we found an unoccupied entry. return it immediately
-                return TTEntryGuard {
-                    valid: false,
-                    hash: hash_key,
-                    entry: entry_ptr,
-                    _phantom: PhantomData,
-                };
-            }
-            let age = entry_ref.tag & 0x7F;
-            if age > eldest_age {
-                eldest_entry = entry_ptr;
-                eldest_age = age;
-            }
-            entry_ptr = unsafe { entry_ptr.add(1) };
-        }
 
         TTEntryGuard {
             valid: false,
             hash: hash_key,
-            entry: eldest_entry,
+            entry: replace_ptr,
             _phantom: PhantomData,
         }
     }
@@ -265,7 +270,7 @@ impl TTable {
                 };
                 num_full += bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
             }
-            (num_full / BUCKET_SIZE) as u16
+            (num_full / BUCKET_LEN) as u16
         }
     }
 
@@ -566,6 +571,6 @@ mod tests {
     #[test]
     /// Test that a `Bucket` is in fact the size of a cache line.
     fn bucket_size() {
-        assert_eq!(size_of::<Bucket>(), 64);
+        assert_eq!(size_of::<Bucket>(), LINE_SIZE);
     }
 }

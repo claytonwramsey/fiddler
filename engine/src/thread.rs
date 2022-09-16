@@ -90,7 +90,7 @@ impl MainSearch {
     pub fn new() -> MainSearch {
         MainSearch {
             config: SearchConfig::new(),
-            ttable: TTable::with_capacity(25),
+            ttable: TTable::with_size(1000),
             limit: SearchLimit::new(),
         }
     }
