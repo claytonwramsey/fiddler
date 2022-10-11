@@ -976,9 +976,34 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
 ///
 /// This function will panic if `fen` is not a legal board.
 pub fn perft(fen: &str, depth: u8) -> u64 {
+    /// The core search algorithm for perft.
+    fn helper<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
+        let moves = get_moves::<ALL, NoTag>(b, &());
+        if depth == 1 {
+            return moves.len() as u64;
+        }
+        let mut total = 0;
+        let mut bcopy;
+        for (m, _) in moves {
+            bcopy = *b;
+            bcopy.make_move(m);
+            let perft_count = helper::<false>(&bcopy, depth - 1);
+            if DIVIDE {
+                println!("{}, {perft_count}", m);
+            }
+            total += perft_count;
+        }
+
+        total
+    }
+
     let b = Board::from_fen(fen).unwrap();
     let tic = Instant::now();
-    let num_nodes = perft_search::<true>(&b, depth);
+    let num_nodes = if depth == 0 {
+        1
+    } else {
+        helper::<true>(&b, depth)
+    };
     let toc = Instant::now();
     let time = toc - tic;
     let speed = (num_nodes as f64) / time.as_secs_f64();
@@ -988,28 +1013,4 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
     );
 
     num_nodes
-}
-
-/// The core search algorithm for perft.
-fn perft_search<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
-    if depth == 0 {
-        return 1;
-    }
-    let moves = get_moves::<ALL, NoTag>(b, &());
-    if depth == 1 {
-        return moves.len() as u64;
-    }
-    let mut total = 0;
-    let mut bcopy;
-    for (m, _) in moves {
-        bcopy = *b;
-        bcopy.make_move(m);
-        let perft_count = perft_search::<false>(&bcopy, depth - 1);
-        if DIVIDE {
-            println!("{}, {perft_count}", m);
-        }
-        total += perft_count;
-    }
-
-    total
 }
