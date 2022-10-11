@@ -491,69 +491,41 @@ impl Bitboard {
     }
 }
 
-impl BitAnd for Bitboard {
-    type Output = Self;
+/// Helper macro for definining binary operations on bitboards.
+macro_rules! bb_binop_define {
+    ($trait: ident, $fn_name: ident, $op: tt) => {
+        impl $trait for Bitboard {
+            type Output = Self;
 
-    #[inline(always)]
-    /// Compute the intersection of the sets represented by this bitboard and
-    /// the right-hand side.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use fiddler_base::Square;
-    /// # use fiddler_base::Bitboard;
-    /// let bb1 = Bitboard::new(7); // {A1, B1, C1}
-    /// let bb2 = Bitboard::new(14); // {B1, C1, D1}
-    /// let intersection = bb1 & bb2; // {B1, C1}
-    /// assert!(!intersection.contains(Square::A1));
-    /// assert!(intersection.contains(Square::B1));
-    /// assert!(intersection.contains(Square::C1));
-    /// assert!(!intersection.contains(Square::D1));
-    /// ```
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 & rhs.0)
-    }
+            #[inline(always)]
+            fn $fn_name(self, rhs: Self) -> Self::Output {
+                Bitboard(self.0 $op rhs.0)
+            }
+        }
+    };
 }
 
-impl BitAndAssign for Bitboard {
-    #[inline(always)]
-    fn bitand_assign(&mut self, rhs: Self) {
-        self.0 &= rhs.0;
-    }
+bb_binop_define!(BitAnd, bitand, &);
+bb_binop_define!(BitOr, bitor, |);
+bb_binop_define!(BitXor, bitxor, ^);
+bb_binop_define!(Mul, mul, *);
+
+/// Helper macro for defining assigning binary operations on bitboards.
+macro_rules! bb_binassign_define {
+    ($trait: ident, $fn_name: ident, $op: tt) => {
+        impl $trait for Bitboard {
+            #[inline(always)]
+            fn $fn_name(&mut self, rhs: Self) {
+                self.0 $op rhs.0;
+            }
+        }
+    };
 }
 
-impl BitOr for Bitboard {
-    type Output = Self;
-
-    #[inline(always)]
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 | rhs.0)
-    }
-}
-
-impl BitOrAssign for Bitboard {
-    #[inline(always)]
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl BitXor for Bitboard {
-    type Output = Self;
-
-    #[inline(always)]
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0 ^ rhs.0)
-    }
-}
-
-impl BitXorAssign for Bitboard {
-    #[inline(always)]
-    fn bitxor_assign(&mut self, rhs: Bitboard) {
-        self.0 ^= rhs.0
-    }
-}
+bb_binassign_define!(BitAndAssign, bitand_assign, &=);
+bb_binassign_define!(BitOrAssign, bitor_assign, |=);
+bb_binassign_define!(BitXorAssign, bitxor_assign, ^=);
+bb_binassign_define!(AddAssign, add_assign, +=);
 
 impl Shl<u8> for Bitboard {
     type Output = Self;
@@ -586,22 +558,6 @@ impl Not for Bitboard {
     #[inline(always)]
     fn not(self) -> Self::Output {
         Bitboard(!self.0)
-    }
-}
-
-impl AddAssign for Bitboard {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-    }
-}
-
-impl Mul for Bitboard {
-    type Output = Self;
-
-    #[inline(always)]
-    fn mul(self, rhs: Self) -> Self::Output {
-        Bitboard(self.0.wrapping_mul(rhs.0))
     }
 }
 
