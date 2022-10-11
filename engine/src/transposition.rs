@@ -152,11 +152,9 @@ impl TTable {
     /// overflow.
     fn with_capacity(capacity_log2: usize) -> TTable {
         let n_buckets = 1 << capacity_log2;
+        let layout = Layout::array::<Bucket>(n_buckets).unwrap();
         TTable {
-            buckets: unsafe {
-                let layout = Layout::array::<Bucket>(n_buckets).unwrap();
-                alloc_zeroed(layout).cast::<Bucket>()
-            },
+            buckets: unsafe { alloc_zeroed(layout).cast::<Bucket>() },
             mask: (n_buckets - 1) as u64,
         }
     }
@@ -201,7 +199,7 @@ impl TTable {
         // first, see if we can find a match in the bucket
         for _ in 0..BUCKET_LEN {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
- 
+
             if entry_ref.tag & 0x80 == 0 {
                 // if we encounter an entry which is unused, mark it for
                 // replacement if we don't find a matching entry.

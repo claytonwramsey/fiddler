@@ -24,12 +24,26 @@ use crate::MAGIC;
 
 use super::Square;
 
+#[macro_export]
+macro_rules! bb_foreach {
+    ($sq: ident in $bb: expr, $block: block) => {
+        let mut tmp_bb = $bb;
+        while tmp_bb != Bitboard::EMPTY {
+            let trailing = tmp_bb.trailing_zeros() as u8;
+            let $sq: Square = unsafe { std::mem::transmute(trailing) };
+            tmp_bb ^= Bitboard::new(1 << trailing);
+            $block;
+        }
+    };
+}
+
 use std::{
     fmt::{Display, Formatter, Result},
     iter::Iterator,
     mem::transmute,
     ops::{
-        AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Mul, Not, Shl, ShlAssign, Shr,
+        AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Mul, Not, Shl,
+        ShlAssign, Shr,
     },
 };
 
@@ -531,6 +545,13 @@ impl BitXor for Bitboard {
     #[inline(always)]
     fn bitxor(self, rhs: Self) -> Self::Output {
         Bitboard(self.0 ^ rhs.0)
+    }
+}
+
+impl BitXorAssign for Bitboard {
+    #[inline(always)]
+    fn bitxor_assign(&mut self, rhs: Bitboard) {
+        self.0 ^= rhs.0
     }
 }
 
