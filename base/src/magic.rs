@@ -357,7 +357,7 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[SquareAttacks; 64]) -> 
 #[inline(always)]
 /// Use magic hashing to get the index to look up attacks in a bitboad.
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
-    usize::from((occupancy * magic) >> shift)
+    usize::from((occupancy.wrapping_mul(magic)) >> shift)
 }
 
 /// Populate a magic table. If `is_rook` is true, it will make magics for rook

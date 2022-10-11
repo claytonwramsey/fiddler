@@ -42,7 +42,7 @@ use std::{
     iter::Iterator,
     mem::transmute,
     ops::{
-        AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Mul, Not, Shl,
+        AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl,
         ShlAssign, Shr,
     },
 };
@@ -297,6 +297,15 @@ impl Bitboard {
 
     #[inline(always)]
     #[must_use]
+    /// Perform a wrapping multiply on this bitboard.
+    /// A wrapping multiply will not panic on overflow, and instead quietly
+    /// allow this to happen.
+    pub const fn wrapping_mul(self, rhs: Bitboard) -> Bitboard {
+        Bitboard(self.0.wrapping_mul(rhs.0))
+    }
+
+    #[inline(always)]
+    #[must_use]
     /// Get a bitboard of all the squares between the two given squares, along
     /// the moves of a bishop or rook.
     pub fn between(sq1: Square, sq2: Square) -> Bitboard {
@@ -508,7 +517,6 @@ macro_rules! bb_binop_define {
 bb_binop_define!(BitAnd, bitand, &);
 bb_binop_define!(BitOr, bitor, |);
 bb_binop_define!(BitXor, bitxor, ^);
-bb_binop_define!(Mul, mul, *);
 
 /// Helper macro for defining assigning binary operations on bitboards.
 macro_rules! bb_binassign_define {
