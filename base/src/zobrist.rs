@@ -40,28 +40,14 @@ pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
 /// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is
 /// for white queen castle, 2 is for black king castle, and 3 is for black
 /// queen castle.
-pub const fn get_castle_key(right: u8) -> u64 {
-    CASTLE_KEYS[right as usize]
+pub fn castle_key(right: u8) -> u64 {
+    unsafe { *CASTLE_KEYS.get_unchecked(right as usize) }
 }
 
 #[inline(always)]
 /// Get the Zobrist key of an en passant square.
-pub fn ep_key(ep_square: Option<Square>) -> u64 {
-    match ep_square {
-        None => 0,
-        // Since the square is in the square enum, we can safely get this
-        // without checking.
-        Some(sq) => unsafe { *EP_KEYS.get_unchecked(sq.file() as usize) },
-    }
-}
-
-#[inline(always)]
-/// Get the Zobrist key for the player to move
-pub const fn player_key(player_to_move: Color) -> u64 {
-    match player_to_move {
-        Color::White => 0,
-        Color::Black => BLACK_TO_MOVE_KEY,
-    }
+pub fn ep_key(sq: Square) -> u64 {
+    unsafe { *EP_KEYS.get_unchecked(sq.file() as usize) }
 }
 
 #[allow(unused)]

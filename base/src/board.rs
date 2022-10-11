@@ -461,7 +461,9 @@ impl Board {
             self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
         }
         // remove previous EP square from hash
-        self.hash ^= zobrist::ep_key(self.en_passant_square);
+        if let Some(ep_sq) = self.en_passant_square {
+            self.hash ^= zobrist::ep_key(ep_sq);
+        }
         // update EP square
         if is_pawn_move && from_sq.rank_distance(to_sq) > 1 {
             let ep_candidate =
@@ -474,12 +476,12 @@ impl Board {
                 self.en_passant_square = None;
             } else {
                 self.en_passant_square = Some(ep_candidate);
+                self.hash ^= zobrist::ep_key(ep_candidate);
             }
         } else {
             self.en_passant_square = None;
         };
         // insert new EP key into hash
-        self.hash ^= zobrist::ep_key(self.en_passant_square);
 
         /* Handling castling and castle rights */
         // in normal castling, we describe it with a `Move` as a king move which
@@ -589,7 +591,7 @@ impl Board {
         //TODO optimize this?
         for i in 0..4 {
             if 1 << i & rights_actually_removed.0 != 0 {
-                self.hash ^= zobrist::get_castle_key(i);
+                self.hash ^= zobrist::castle_key(i);
             }
         }
 
@@ -683,11 +685,15 @@ impl Board {
         }
         for i in 0..4 {
             if 1 << i & self.castle_rights.0 != 0 {
-                hash ^= zobrist::get_castle_key(i);
+                hash ^= zobrist::castle_key(i);
             }
         }
-        hash ^= zobrist::ep_key(self.en_passant_square);
-        hash ^= zobrist::player_key(self.player);
+        if let Some(ep_sq) = self.en_passant_square {
+            hash ^= zobrist::ep_key(ep_sq);
+        }
+        if self.player == Color::Black {
+            hash ^= zobrist::BLACK_TO_MOVE_KEY;
+        }
         hash
     }
 }
