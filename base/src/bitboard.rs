@@ -24,19 +24,6 @@ use crate::MAGIC;
 
 use super::Square;
 
-#[macro_export]
-macro_rules! bb_foreach {
-    ($sq: ident in $bb: expr, $block: block) => {
-        let mut tmp_bb = $bb;
-        while tmp_bb != Bitboard::EMPTY {
-            let trailing = tmp_bb.trailing_zeros() as u8;
-            let $sq: Square = unsafe { std::mem::transmute(trailing) };
-            tmp_bb ^= Bitboard::new(1 << trailing);
-            $block;
-        }
-    };
-}
-
 use std::{
     fmt::{Display, Formatter, Result},
     iter::Iterator,
