@@ -60,13 +60,14 @@ static BETWEEN: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
     between
 });
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(transparent)]
 /// A bitboard, which uses an integer to express a set of `Square`s.
 /// This expression allows the efficient computation of set intersection, union,
 /// disjunction, element selection, and more, all in constant time.
 ///
 /// Nearly all board-related representations use `Bitboard`s as a key part of
 /// their construction.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Bitboard(u64);
 
 impl Bitboard {

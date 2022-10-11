@@ -226,7 +226,7 @@ impl<T: Tagger> TaggedGame<T> {
         let num_reps = self
             .repetitions
             .entry(b_removed.hash)
-            .or_insert((1, if self.searching { 1 } else { 0 }));
+            .or_insert((1, u8::from(self.searching)));
         num_reps.0 -= 1;
         if self.searching && num_reps.1 > 0 {
             num_reps.1 -= 1;

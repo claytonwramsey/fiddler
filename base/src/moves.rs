@@ -32,6 +32,7 @@ use std::{
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 /// The information of one move, containing its from- and to-squares, as well as
 /// its promote type.
 ///
