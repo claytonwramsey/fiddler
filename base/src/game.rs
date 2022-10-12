@@ -42,19 +42,21 @@ use std::{
 /// This allows consumers of `TaggedGame`s to annotate boards and moves
 /// efficiently, saving on allocations.
 pub struct TaggedGame<T: Tagger> {
-    /// The last element in `history` is the current state of the board. The
-    /// first element should be the starting position of the game, and in
-    /// between are sequential board states from the entire game. The right
-    /// half of the tuple is the number of moves since a pawn-move or capture
-    /// was made, and should start at 0.
+    /// The last element in `history` is the current state of the board.
+    /// The first element should be the starting position of the game, and in
+    /// between are sequential board states from the entire game.
+    /// The right half of the tuple is the number of moves since a pawn-move or
+    /// capture was made, and should start at 0.
     history: Vec<(Board, T::Cookie)>,
-    /// The list, in order, of all moves made in the game. They should all be
-    /// valid moves. The length of `moves` should always be one less than the
-    /// length of `history`.
+    /// The list, in order, of all moves made in the game.
+    /// They should all be valid moves.
+    /// The length of `moves` should always be one less than the length of
+    /// `history`.
     moves: Vec<Move>,
     /// Stores the number of times a position has been reached in the course of
-    /// this game. It is used for three-move-rule draws. The keys are the
-    /// Zobrist hashes of the boards previously visited.
+    /// this game.
+    /// It is used for three-move-rule draws.
+    /// The keys are the Zobrist hashes of the boards previously visited.
     ///
     /// The values are a tuple of two integers: the first is the total number of
     /// repetitions, and the second is the number of repetitions since the last
@@ -117,11 +119,7 @@ impl<T: Tagger> TaggedGame<T> {
         TaggedGame {
             history: vec![(b, T::init_cookie(&b))],
             moves: Vec::new(),
-            repetitions: {
-                let mut map = IntMap::default();
-                map.insert(b.hash, (1, 0));
-                map
-            },
+            repetitions: IntMap::from_iter([(b.hash, (1, 0))]),
             searching: false,
         }
     }
@@ -138,11 +136,7 @@ impl<T: Tagger> TaggedGame<T> {
         Ok(TaggedGame {
             history: vec![(b, T::init_cookie(&b))],
             moves: Vec::new(),
-            repetitions: {
-                let mut map = IntMap::default();
-                map.insert(b.hash, (1, 0));
-                map
-            },
+            repetitions: IntMap::from_iter([(b.hash, (1, 0))]),
             searching: false,
         })
     }
@@ -263,23 +257,23 @@ impl<T: Tagger> TaggedGame<T> {
     }
 
     #[must_use]
-    /// In the current state, is the game complete (i.e. is there no way the
-    /// game can continue)?
+    /// Detect how the game has ended.
+    /// There are three possible return values:
     ///
-    /// The returned value will be `(false, false)` if the game is ongoing,
-    /// `(true, false)` if the game is a draw, and `(true, true)` if the game is
-    /// over by mate.
-    pub fn is_over(&self) -> (bool, bool) {
+    /// * `None`: the game is not over.
+    /// * `Some(false)`: the game is over and is drawn.
+    /// * `Some(true)`: the game is over by checkmate.
+    pub fn end_state(&self) -> Option<bool> {
         let b = self.board();
         if self.drawn_by_repetition() || b.is_drawn() {
-            return (true, false);
+            return Some(false);
         }
 
         if has_moves(b) {
-            return (false, false);
+            return None;
         }
 
-        (true, !b.checkers.is_empty())
+        Some(!b.checkers.is_empty())
     }
 
     #[must_use]
@@ -472,7 +466,7 @@ mod tests {
         let moves = g.get_moves::<ALL>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
-        assert_eq!(g.is_over(), (true, true));
+        assert_eq!(g.end_state(), Some(true));
     }
 
     #[test]
@@ -482,12 +476,12 @@ mod tests {
         let moves = g.get_moves::<ALL>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
-        assert_eq!(g.is_over(), (true, true));
+        assert_eq!(g.end_state(), Some(true));
     }
 
     #[test]
     fn startpos_not_over() {
-        assert!(!Game::default().is_over().0);
+        assert!(Game::default().end_state().is_none());
     }
 
     #[test]
@@ -498,7 +492,7 @@ mod tests {
         let m = Move::normal(Square::B6, Square::B8);
         assert!(g.get_moves::<ALL>().contains(&(m, ())));
         g.make_move(m, &());
-        assert_eq!(g.is_over(), (true, true));
+        assert_eq!(g.end_state(), Some(true));
     }
 
     #[test]
@@ -517,7 +511,7 @@ mod tests {
         let g = Game::from_fen("r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10")
             .unwrap();
         let moves = g.get_moves::<ALL>();
-        let expected_moves = vec![
+        let expected_moves = [
             Move::normal(Square::E6, Square::D6),
             Move::normal(Square::E6, Square::F7),
             Move::normal(Square::E6, Square::E7),

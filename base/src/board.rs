@@ -181,13 +181,15 @@ impl Board {
         };
 
         // now compute player to move
-        let player_chr = fen_chrs
-            .next()
-            .ok_or("reached end of string while parsing for player to move")?;
-        board.player = match player_chr {
-            'w' => Color::White,
-            'b' => Color::Black,
-            _ => return Err("unrecognized player to move"),
+        board.player = {
+            let player_chr = fen_chrs
+                .next()
+                .ok_or("reached end of string while parsing for player to move")?;
+            match player_chr {
+                'w' => Color::White,
+                'b' => Color::Black,
+                _ => return Err("unrecognized player to move"),
+            }
         };
 
         // now a space
@@ -217,38 +219,44 @@ impl Board {
         // castle rights searching ate the space, so no need to check for it
 
         // en passant square
-        let ep_file_chr = fen_chrs
-            .next()
-            .ok_or("reached EOF while parsing en passant characters")?;
-        if ep_file_chr != '-' {
-            let ep_rank_chr = fen_chrs
+        board.en_passant_square = {
+            let ep_file_chr = fen_chrs
                 .next()
-                .ok_or("reached end of string while parsing en passant rank")?;
-            let mut s = String::from(ep_file_chr);
-            s.push(ep_rank_chr);
-            board.en_passant_square = Some(Square::from_algebraic(&s)?);
-        }
+                .ok_or("reached EOF while parsing en passant characters")?;
+            if ep_file_chr == '-' {
+                None
+            } else {
+                let ep_rank_chr = fen_chrs
+                    .next()
+                    .ok_or("reached end of string while parsing en passant rank")?;
+                Some(Square::from_algebraic(&format!(
+                    "{ep_file_chr}{ep_rank_chr}"
+                ))?)
+            }
+        };
 
         // now a space
         if fen_chrs.next() != Some(' ') {
             return Err("expected space after en passant square section of FEN");
         }
 
-        // 50 move tumer
-        let mut rule50_buf = String::new();
-        // there may be more digits
-        loop {
-            match fen_chrs.next() {
-                Some(' ') => break,
-                Some(c) if c.is_ascii_digit() => rule50_buf.push(c),
-                Some(_) => return Err("illegal character for rule50 counter"),
-                None => return Err("reached end of string while parsing rule 50"),
-            };
-        }
+        // 50 move timer
+        board.rule50 = {
+            let mut rule50_buf = String::new();
+            // there may be more digits
+            loop {
+                match fen_chrs.next() {
+                    Some(' ') => break,
+                    Some(c) if c.is_ascii_digit() => rule50_buf.push(c),
+                    Some(_) => return Err("illegal character for rule50 counter"),
+                    None => return Err("reached end of string while parsing rule 50"),
+                };
+            }
 
-        match rule50_buf.parse() {
-            Ok(num) if num <= 100 => board.rule50 = num,
-            _ => return Err("illegal number for rule50 counter"),
+            match rule50_buf.parse() {
+                Ok(num) if num <= 100 => num,
+                _ => return Err("illegal number for rule50 counter"),
+            }
         };
 
         // updating metadata

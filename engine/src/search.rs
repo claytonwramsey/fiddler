@@ -481,8 +481,7 @@ impl<'a> PVSearch<'a> {
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
         // check if the game is over before doing anything
-        let (over, mated) = self.game.is_over();
-        if over {
+        if let Some(mated) = self.game.end_state() {
             // game is over, quit out immediately
             let score = if mated { Eval::BLACK_MATE } else { Eval::DRAW };
 
