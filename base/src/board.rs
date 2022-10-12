@@ -248,12 +248,7 @@ impl Board {
 
         match rule50_buf.parse() {
             Ok(num) if num <= 100 => board.rule50 = num,
-            Ok(_) => return Err("illegal number for rule50 counter"),
-            Err(e) => {
-                println!("{rule50_buf}");
-                println!("{e}");
-                return Err("could not parse number for rule50");
-            }
+            _ => return Err("illegal number for rule50 counter"),
         };
 
         // updating metadata
@@ -360,27 +355,26 @@ impl Board {
     /// Check if the state of this board is valid.
     /// Returns false if the board is invalid.
     fn is_valid(&self) -> bool {
-        let mut sides_checksum = Bitboard::EMPTY;
-        let mut sides_checkor = Bitboard::EMPTY;
-        let mut pieces_checksum = Bitboard::EMPTY;
-        let mut pieces_checkor = Bitboard::EMPTY;
-        for bb in self.sides {
-            sides_checksum += bb;
-            sides_checkor |= bb;
+        let mut all_pieces = Bitboard::EMPTY;
+        for pt in Piece::ALL {
+            if !(all_pieces & self[pt]).is_empty() {
+                // piece overlap
+                return false;
+            }
+            all_pieces |= self[pt];
         }
-        for bb in self.pieces {
-            pieces_checksum += bb;
-            pieces_checkor |= bb;
-        }
-        if sides_checksum != sides_checkor {
+
+        if !(self[Color::White] & self[Color::Black]).is_empty() {
+            // colors overlap
             return false;
         }
-        if pieces_checksum != pieces_checkor {
+        let all_colors = self[Color::White] | self[Color::Black];
+
+        if all_pieces != all_colors {
+            // there are pieces which do not have a color
             return false;
         }
-        if sides_checksum != pieces_checksum {
-            return false;
-        }
+
         if self.hash != self.get_fresh_hash() {
             return false;
         }

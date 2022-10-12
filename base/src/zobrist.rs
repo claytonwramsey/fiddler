@@ -51,7 +51,7 @@ pub fn ep_key(sq: Square) -> u64 {
 }
 
 #[allow(unused)]
-#[test]
+// #[test]
 /// Helper function to create the definitions for all the keys in the binary.
 /// Prints out source code for each key.
 fn print_keys() {

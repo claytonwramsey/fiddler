@@ -29,8 +29,7 @@ use std::{
     iter::Iterator,
     mem::transmute,
     ops::{
-        AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl,
-        ShlAssign, Shr,
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr,
     },
 };
 
@@ -520,7 +519,6 @@ macro_rules! bb_binassign_define {
 bb_binassign_define!(BitAndAssign, bitand_assign, &=);
 bb_binassign_define!(BitOrAssign, bitor_assign, |=);
 bb_binassign_define!(BitXorAssign, bitxor_assign, ^=);
-bb_binassign_define!(AddAssign, add_assign, +=);
 
 impl Shl<u8> for Bitboard {
     type Output = Self;
