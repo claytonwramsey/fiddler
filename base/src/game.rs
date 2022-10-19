@@ -340,8 +340,8 @@ impl<T: Tagger> TaggedGame<T> {
     ///     g2.make_move(m, &());
     /// }
     ///
-    /// assert!(!g1.is_over().0);
-    /// assert!(g2.is_over().0);
+    /// assert!(!g1.end_state().is_some());
+    /// assert!(g2.end_state().is_some());
     /// ```
     pub fn start_search(&mut self) {
         self.searching = true;

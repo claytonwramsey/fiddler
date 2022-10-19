@@ -25,7 +25,7 @@ use std::ops::{Add, Mul, Neg, Sub};
 /// A difference between two squares. Directions form a vector field, which
 /// allows us to define subtraction between squares. Internally, they use the
 /// same representation as a Square but with a signed integer.
-pub struct Direction(pub i8);
+pub struct Direction(pub(crate) i8);
 
 impl Direction {
     /* Cardinal directions */

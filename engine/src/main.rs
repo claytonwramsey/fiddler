@@ -132,8 +132,6 @@ fn main() {
                     stop(&searcher, search_handle, debug);
                     search_handle = None;
                     // clear the transposititon table
-                    // (in actuality, just make a new one to get around Arc
-                    // immutability)
                     let mut searcher_guard = searcher.write().unwrap();
                     searcher_guard.ttable.clear();
                 }
