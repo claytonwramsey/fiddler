@@ -59,7 +59,6 @@ pub fn main() {
     let mut weights = load_weights();
     // fuzz(&mut weights, 0.05);
     let mut learn_rate = 5.;
-    let beta = 0.6;
 
     let nthreads = 8;
     let tic = Instant::now();
@@ -72,7 +71,7 @@ pub fn main() {
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
     for i in 0..500 {
-        weights = train_step(&input_sets, &weights, learn_rate, beta, nthreads);
+        weights = train_step(&input_sets, &weights, learn_rate, nthreads);
         learn_rate *= 0.999;
         println!("iteration {i}...");
     }
@@ -115,7 +114,6 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
 /// * `inputs`: a vector containing the input vector and the expected
 ///     evaluation.
 /// * `weights`: the weight vector to train on.
-/// * `sigmoid_scale`: the x-scaling of the sigmoid activation function.
 /// * `learn_rate`: a coefficient on the speed at which the engine learns.
 ///
 /// Each element of `inputs` must be the same length as `weights`.
@@ -123,7 +121,6 @@ fn train_step(
     inputs: &[(BoardFeatures, f32)],
     weights: &[f32],
     learn_rate: f32,
-    sigmoid_scale: f32,
     nthreads: usize,
 ) -> Vec<f32> {
     let tic = Instant::now();
@@ -135,9 +132,7 @@ fn train_step(
         for thread_id in 0..nthreads {
             // start the parallel work
             let start = chunk_size * thread_id;
-            grads.push(s.spawn(move || {
-                train_thread(&inputs[start..][..chunk_size], weights, sigmoid_scale)
-            }));
+            grads.push(s.spawn(move || train_thread(&inputs[start..][..chunk_size], weights)));
         }
         for grad_handle in grads {
             let (sub_grad, se) = grad_handle.join().unwrap();
@@ -161,17 +156,13 @@ fn train_step(
 
 /// Construct the gradient vector for a subset of the input data.
 /// Returns the sum of the squared error across this epoch.
-fn train_thread(
-    input: &[(BoardFeatures, f32)],
-    weights: &[f32],
-    sigmoid_scale: f32,
-) -> (Vec<f32>, f32) {
+fn train_thread(input: &[(BoardFeatures, f32)], weights: &[f32]) -> (Vec<f32>, f32) {
     let mut grad = vec![0.; weights.len()];
     let mut sum_se = 0.;
     for (features, sigm_expected) in input {
-        let sigm_eval = sigmoid(evaluate(features, weights), sigmoid_scale);
+        let sigm_eval = sigmoid(evaluate(features, weights));
         let err = sigm_expected - sigm_eval;
-        let coeff = -sigmoid_scale * sigm_eval * (1. - sigm_eval) * err;
+        let coeff = -sigm_eval * (1. - sigm_eval) * err;
         // construct the gradient
         for &(idx, feat_val) in features {
             grad[idx] += feat_val * coeff;
@@ -188,8 +179,8 @@ fn train_thread(
 ///
 /// The sigmoid function here is given by the LaTeX expression
 /// `f(x) = \frac{1}{1 - \exp (- \beta x)}`.
-fn sigmoid(x: f32, beta: f32) -> f32 {
-    1. / (1. + expf(-x * beta))
+fn sigmoid(x: f32) -> f32 {
+    1. / (1. + expf(-x))
 }
 
 /// Load the weight value constants from the ones defined in the PST evaluation.
@@ -251,7 +242,7 @@ fn print_weights(weights: &[f32]) {
     let mut offset = 10;
 
     // print PST
-    println!("pub const PST: Pst = expand_table(&[");
+    println!("pub const PST: Pst = unsafe {{ transmute([");
     for pt in Piece::ALL {
         println!("    [ // {pt}");
         let pt_idx = offset + (128 * pt as usize);
@@ -269,12 +260,14 @@ fn print_weights(weights: &[f32]) {
         }
         println!("    ],");
     }
-    println!("]);");
+    println!("]) }};");
     println!("-----");
 
     // print mobility
     offset = 778;
-    println!("pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = expand_attacks(&[");
+    println!(
+        "pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = unsafe {{ transmute(["
+    );
     for pt in Piece::ALL {
         let pt_idx = offset + 2 * MAX_MOBILITY * pt as usize;
         println!("    [ // {pt}");
@@ -288,7 +281,7 @@ fn print_weights(weights: &[f32]) {
         }
         println!("    ],");
     }
-    println!("]);");
+    println!("]) }};");
     println!("-----");
 
     // print potpourri
@@ -365,7 +358,6 @@ fn extract(b: &Board) -> BoardFeatures {
                 _ => continue,
             };
             let idx = offset + 128 * pt_idx + 2 * (sq as usize);
-
             features.push((idx, phase * increment));
             features.push((idx + 1, (1. - phase) * increment));
         }
