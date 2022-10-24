@@ -530,28 +530,52 @@ fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
 /// the directions in `dirs`, when the board is occupied by the pieces in
 /// `occupancy`. This is slow and should only be used for generatic magic
 /// bitboards (instead of for move generation.)
-fn directional_attacks(sq: Square, dirs: &[Direction], occupancy: Bitboard) -> Bitboard {
+pub(crate) const fn directional_attacks(
+    sq: Square,
+    dirs: &[Direction],
+    occupancy: Bitboard,
+) -> Bitboard {
+    // behold: much hackery for making this work as a const fn
     let mut result = Bitboard::EMPTY;
-    for dir in dirs.iter() {
+    let mut dir_idx = 0;
+    while dir_idx < dirs.len() {
+        let dir = dirs[dir_idx];
         let mut current_square = sq;
-        for _ in 0..7 {
-            if !is_valid_step(current_square, *dir) {
+        let mut loop_idx = 0;
+        while loop_idx < 7 {
+            let next_square_int: i16 = current_square as i16
+                + unsafe {
+                    // SAFETY: All values for an `i8` are valid.
+                    transmute::<Direction, i8>(dir) as i16
+                };
+            if next_square_int < 0 || 64 <= next_square_int {
                 break;
             }
-            current_square += *dir;
-            result.insert(current_square);
-            if occupancy.contains(current_square) {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let next_square: Square = unsafe {
+                // SAFETY: We checked that this next square was in the range
+                // 0..63, which is how a square is represented.
+                transmute(next_square_int as u8)
+            };
+            if next_square.chebyshev_to(current_square) > 1 {
                 break;
             }
+            result = Bitboard::new(
+                unsafe {
+                    // SAFETY: Any value is OK for an int.
+                    transmute::<Bitboard, u64>(result)
+                } | 1 << next_square as u8,
+            );
+            if occupancy.contains(next_square) {
+                break;
+            }
+            current_square = next_square;
+            loop_idx += 1;
         }
+        dir_idx += 1;
     }
 
     result
-}
-
-/// Return whether the following move is a single-step.
-fn is_valid_step(sq: Square, dir: Direction) -> bool {
-    sq.chebyshev_to(sq + dir) <= 1
 }
 
 #[inline(always)]
@@ -703,7 +727,7 @@ mod tests {
             Bitboard::new(0x0000_0000_0000_0A00), //
             Bitboard::new(0x0000_0000_0000_5000), //
         ];
-        for i in 0..3 {
+        for i in 0..4 {
             let resulting_attack = table.bishop_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }

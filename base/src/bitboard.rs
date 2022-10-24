@@ -18,9 +18,7 @@
 
 //! Bitboards, data structures used to efficiently represent sets of squares.
 
-use once_cell::sync::Lazy;
-
-use crate::MAGIC;
+use crate::{magic::directional_attacks, Direction};
 
 use super::Square;
 
@@ -32,33 +30,6 @@ use std::{
         BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr,
     },
 };
-
-/// A lookup table for the squares "between" two other squares, either down
-/// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
-/// would return a `Bitboard` with A2 as its only active square.
-static BETWEEN: Lazy<[[Bitboard; 64]; 64]> = Lazy::new(|| {
-    // start with an unitialized value and then set it element-wise
-    let mut between = [[Bitboard::EMPTY; 64]; 64];
-
-    for sq1 in Bitboard::ALL {
-        for sq2 in Bitboard::ALL {
-            if MAGIC.bishop_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
-                let bishop1 = MAGIC.bishop_attacks(Bitboard::from(sq2), sq1);
-                let bishop2 = MAGIC.bishop_attacks(Bitboard::from(sq1), sq2);
-
-                between[sq1 as usize][sq2 as usize] |= bishop1 & bishop2;
-            }
-            if MAGIC.rook_attacks(Bitboard::EMPTY, sq1).contains(sq2) {
-                let rook1 = MAGIC.rook_attacks(Bitboard::from(sq2), sq1);
-                let rook2 = MAGIC.rook_attacks(Bitboard::from(sq1), sq2);
-
-                between[sq1 as usize][sq2 as usize] |= rook1 & rook2;
-            }
-        }
-    }
-
-    between
-});
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
@@ -295,7 +266,81 @@ impl Bitboard {
     /// Get a bitboard of all the squares between the two given squares, along
     /// the moves of a bishop or rook.
     pub fn between(sq1: Square, sq2: Square) -> Bitboard {
-        BETWEEN[sq1 as usize][sq2 as usize]
+        /// A lookup table for the squares "between" two other squares, either down
+        /// a row like a rook or on a diagonal like a bishop. `between[A1][A3]`
+        /// would return a `Bitboard` with A2 as its only active square.
+        const BETWEEN: [[Bitboard; 64]; 64] = {
+            // start with an unitialized value and then set it element-wise
+            let mut between = [[Bitboard::EMPTY; 64]; 64];
+
+            let mut i = 0;
+            while i < 64 {
+                #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                let sq1: Square = unsafe { transmute(i as u8) };
+                let bishop_attacks =
+                    directional_attacks(sq1, &Direction::BISHOP_DIRECTIONS, Bitboard::EMPTY);
+                let rook_attacks =
+                    directional_attacks(sq1, &Direction::ROOK_DIRECTIONS, Bitboard::EMPTY);
+
+                let mut j = 0;
+
+                // our between table is symmetric; calculate half and copy the
+                // values across the diagonal
+                while j < i {
+                    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                    let sq2: Square = unsafe { transmute(j as u8) };
+
+                    if bishop_attacks.contains(sq2) {
+                        // some optimization is required to avoid reaching the
+                        // const interpreter step limit.
+                        // therefore we find a step in the direction between
+                        // sq1 and sq2 and use it to simplify the amount of
+                        // search here
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+                        let diff = j as i8 - i as i8;
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+                        let dir: Direction =
+                            unsafe { transmute(diff / (sq1.file_distance(sq2) as i8)) };
+                        let attacks =
+                            directional_attacks(sq1, &[dir], Bitboard::new(1 << j)).0 ^ (1 << j);
+                        between[i][j] = Bitboard::new(attacks);
+                    }
+
+                    if rook_attacks.contains(sq2) {
+                        // optimizing the bishop attacks was enough to come in
+                        // the interpreter limit.
+                        // however, we can still go back later to optimize this
+                        // further.
+                        let rook1 = directional_attacks(
+                            sq1,
+                            &Direction::ROOK_DIRECTIONS,
+                            Bitboard::new(1 << j),
+                        );
+                        let rook2 = directional_attacks(
+                            sq2,
+                            &Direction::ROOK_DIRECTIONS,
+                            Bitboard::new(1 << i),
+                        );
+
+                        between[i][j] = Bitboard::new(between[i][j].0 | (rook1.0 & rook2.0));
+                    }
+
+                    between[j][i] = between[i][j];
+                    j += 1;
+                }
+                i += 1;
+            }
+
+            between
+        };
+
+        unsafe {
+            // SAFETY: Because a square is always in the range 0..64, these
+            // squares are always valid indices.
+            *BETWEEN
+                .get_unchecked(sq1 as usize)
+                .get_unchecked(sq2 as usize)
+        }
     }
 
     #[inline(always)]

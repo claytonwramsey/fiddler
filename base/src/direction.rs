@@ -23,15 +23,16 @@ use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// A difference between two squares. Directions form a vector field, which
-/// allows us to define subtraction between squares. Internally, they use the
-/// same representation as a Square but with a signed integer.
+/// allows us to define subtraction between squares.
+/// Internally, they use the same representation as a Square but with a signed
+/// integer.
 pub struct Direction(pub(crate) i8);
 
 impl Direction {
     /* Cardinal directions */
 
     /// A `Direction` corresponding to a movement from nowhere to nowhere.
-    pub const NODIR: Direction = Direction(0);
+    pub const NONE: Direction = Direction(0);
 
     /// A `Direction` corresponding to a move "north" from White's point of
     /// view, in the direction a white pawn would travel.
@@ -188,8 +189,8 @@ mod tests {
 
     #[test]
     fn add_directions() {
-        assert_eq!(Direction::NODIR + Direction::EAST, Direction::EAST);
-        assert_eq!(Direction::EAST + Direction::WEST, Direction::NODIR);
+        assert_eq!(Direction::NONE + Direction::EAST, Direction::EAST);
+        assert_eq!(Direction::EAST + Direction::WEST, Direction::NONE);
     }
 
     #[test]
@@ -201,7 +202,7 @@ mod tests {
     #[test]
     fn subtraction() {
         assert_eq!(Direction::NORTHEAST - Direction::EAST, Direction::NORTH);
-        assert_eq!(Direction::EAST - Direction::EAST, Direction::NODIR);
+        assert_eq!(Direction::EAST - Direction::EAST, Direction::NONE);
     }
 
     #[test]
