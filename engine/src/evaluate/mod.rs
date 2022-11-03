@@ -180,10 +180,10 @@ impl Tagger for ScoreTag {
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-21, -33);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-18, -27);
 /// The value of having a rook with no same-colored pawns in front of it which
 /// are not advanced past the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(21, 52);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(18, 32);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]

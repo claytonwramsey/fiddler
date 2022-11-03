@@ -60,7 +60,7 @@ pub fn main() {
     // fuzz(&mut weights, 0.05);
     let mut learn_rate = 5.;
 
-    let nthreads = 8;
+    let nthreads = 14;
     let tic = Instant::now();
 
     // construct the datasets.
@@ -76,7 +76,14 @@ pub fn main() {
         println!("iteration {i}...");
     }
 
-    print_weights(&weights);
+    // normalize weights to midgame pawn value
+    let mg_pawn_val = weights[8];
+    print_weights(
+        &weights
+            .into_iter()
+            .map(|w| w / mg_pawn_val)
+            .collect::<Vec<_>>(),
+    );
 }
 
 /// Expand an EPD file into a set of features that can be used for training.
@@ -144,9 +151,9 @@ fn train_step(
     });
     let toc = Instant::now();
     println!(
-        "{} nodes in {} sec: {:.0} nodes/sec; mse {}",
+        "{} nodes in {:.3} sec: {:.0} nodes/sec; mse {}",
         inputs.len(),
-        (toc - tic).as_secs(),
+        (toc - tic).as_secs_f32(),
         inputs.len() as f32 / (toc - tic).as_secs_f32(),
         sum_se / inputs.len() as f32
     );
@@ -160,7 +167,7 @@ fn train_thread(input: &[(BoardFeatures, f32)], weights: &[f32]) -> (Vec<f32>, f
     let mut grad = vec![0.; weights.len()];
     let mut sum_se = 0.;
     for (features, sigm_expected) in input {
-        let sigm_eval = sigmoid(evaluate(features, weights));
+        let sigm_eval = sigmoid(features.iter().map(|&(idx, val)| val * weights[idx]).sum());
         let err = sigm_expected - sigm_eval;
         let coeff = -sigm_eval * (1. - sigm_eval) * err;
         // construct the gradient
@@ -477,11 +484,4 @@ fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, 
             }
         }
     }
-}
-
-#[inline(always)]
-/// Given the extracted feature vector of a position, and a weight vector, get
-/// the final evaluation.
-fn evaluate(features: &[(usize, f32)], weights: &[f32]) -> f32 {
-    features.iter().map(|&(idx, val)| val * weights[idx]).sum()
 }
