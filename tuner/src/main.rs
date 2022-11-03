@@ -58,7 +58,7 @@ pub fn main() {
     let path_str = &args[1..].join(" ");
     let mut weights = load_weights();
     // fuzz(&mut weights, 0.05);
-    let mut learn_rate = 5.;
+    let learn_rate = 5.;
 
     let nthreads = 14;
     let tic = Instant::now();
@@ -70,20 +70,12 @@ pub fn main() {
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for i in 0..500 {
-        weights = train_step(&input_sets, &weights, learn_rate, nthreads);
-        learn_rate *= 0.999;
+    for i in 0..10000 {
+        weights = train_step(&input_sets, &weights, learn_rate, nthreads).0;
         println!("iteration {i}...");
     }
 
-    // normalize weights to midgame pawn value
-    let mg_pawn_val = weights[8];
-    print_weights(
-        &weights
-            .into_iter()
-            .map(|w| w / mg_pawn_val)
-            .collect::<Vec<_>>(),
-    );
+    print_weights(&weights);
 }
 
 /// Expand an EPD file into a set of features that can be used for training.
@@ -115,7 +107,7 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
 
 #[allow(clippy::similar_names, clippy::cast_precision_loss)]
 /// Perform one step of PST training, and update the weights to reflect this.
-/// Returns the MSE of the current epoch.
+/// Returns the weight vector MSE of the current epoch.
 ///
 /// Inputs:
 /// * `inputs`: a vector containing the input vector and the expected
@@ -129,7 +121,7 @@ fn train_step(
     weights: &[f32],
     learn_rate: f32,
     nthreads: usize,
-) -> Vec<f32> {
+) -> (Vec<f32>, f32) {
     let tic = Instant::now();
     let chunk_size = inputs.len() / nthreads;
     let mut new_weights: Vec<f32> = weights.to_vec();
@@ -150,15 +142,16 @@ fn train_step(
         }
     });
     let toc = Instant::now();
+    let mse = sum_se / inputs.len() as f32;
     println!(
-        "{} nodes in {:.3} sec: {:.0} nodes/sec; mse {}",
+        "{} nodes in {:?}: {:.0} nodes/sec; mse {}",
         inputs.len(),
-        (toc - tic).as_secs_f32(),
+        (toc - tic),
         inputs.len() as f32 / (toc - tic).as_secs_f32(),
-        sum_se / inputs.len() as f32
+        mse
     );
 
-    new_weights
+    (new_weights, mse)
 }
 
 /// Construct the gradient vector for a subset of the input data.
