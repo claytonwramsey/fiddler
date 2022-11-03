@@ -275,11 +275,10 @@ impl Square {
 
     /// A constant implementation of `try_from`.
     pub(crate) fn const_try_from(x: u8) -> Result<Square, &'static str> {
-        match x {
-            // This transmutation is safe because i will always be less than
-            // the total number of squares.
-            x if x <= Square::H8 as u8 => Ok(unsafe { transmute(x) }),
-            _ => Err("input for square conversion is out of bounds"),
+        if x <= Square::H8 as u8 {
+            Ok(unsafe { transmute(x) })
+        } else {
+            Err("input for square conversion is out of bounds")
         }
     }
 }

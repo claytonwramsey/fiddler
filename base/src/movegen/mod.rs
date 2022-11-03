@@ -129,139 +129,135 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
     if !allies.contains(from_sq) {
         return false;
     }
-    match b.type_at_square(from_sq) {
-        Some(Piece::King) => {
-            if m.promote_type().is_some() {
-                // cannot promote non-pawn
-                return false;
-            }
 
-            if m.is_en_passant() {
-                // king cannot en passant
-                return false;
-            }
-            if m.is_castle() {
-                // just generate moves, since castle is quite rare
-                let mut move_buf = Vec::with_capacity(2);
-                castles::<NoTag>(b, &(), &mut move_buf);
-                return move_buf.contains(&(m, ()));
-            }
+    let Some(pt) = b.type_at_square(from_sq) else {
+        return false;
+    };
 
-            if !KING_MOVES[from_sq as usize].contains(to_sq) {
-                return false;
-            }
-
-            // normal king moves can't step into check
-            let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
-            square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty()
+    if pt == Piece::King {
+        // king has special rules for its behavior
+        if m.promote_type().is_some() {
+            // cannot promote non-pawn
+            return false;
         }
-        Some(pt) => {
-            if b.checkers.more_than_one() {
-                // non-kings can't get out of double check
-                return false;
-            }
 
-            if pt != Piece::Pawn && m.is_promotion() {
-                // cannot promote non-pawn
-                return false;
-            }
-
-            if m.is_castle() {
-                // only kings can castle
-                return false;
-            }
-
-            let is_ep = m.is_en_passant();
-            if is_ep {
-                if pt != Piece::Pawn {
-                    // only pawns can en passant
-                    return false;
-                }
-
-                if b.en_passant_square != Some(to_sq) {
-                    // en passant must target the en passant square
-                    return false;
-                }
-            }
-
-            // first, validate pseudolegality
-            if !match pt {
-                Piece::Pawn => {
-                    let pawn_dir = player.pawn_direction();
-                    let singlemove_sq = from_sq + pawn_dir;
-                    let pattacks = PAWN_ATTACKS[player as usize][from_sq as usize];
-                    (!occupancy.contains(singlemove_sq)
-                        && (to_sq == singlemove_sq //singlemove
-                        || (to_sq == singlemove_sq + pawn_dir //doublemove
-                            && player.pawn_start_rank().contains(from_sq)
-                            && !occupancy.contains(to_sq))))
-                        || (is_ep && b.en_passant_square == Some(to_sq))
-                        || (!is_ep && (pattacks & enemies).contains(m.to_square()))
-                }
-                Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
-                Piece::Bishop => MAGIC
-                    .bishop_attacks(allies | enemies, from_sq)
-                    .contains(to_sq),
-                Piece::Rook => MAGIC
-                    .rook_attacks(allies | enemies, from_sq)
-                    .contains(to_sq),
-                Piece::Queen => {
-                    let occupancy = allies | enemies;
-                    (MAGIC.bishop_attacks(occupancy, from_sq)
-                        | MAGIC.rook_attacks(occupancy, from_sq))
-                    .contains(to_sq)
-                }
-                Piece::King => unreachable!(),
-            } {
-                return false;
-            };
-
-            // check that the move is not a self check
-            if !b.checkers.is_empty() {
-                // we already handled the two-checker case, so there is only one
-                // checker
-                let checker_sq = Square::try_from(b.checkers).unwrap();
-                let player_idx = b.player as usize;
-                let mut targets = Bitboard::between(b.king_sqs[player_idx], checker_sq)
-                    | Bitboard::from(checker_sq);
-
-                if let Some(ep_sq) = b.en_passant_square {
-                    if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
-                        // allow en passants that let us escape check
-                        targets.insert(ep_sq);
-                    }
-                }
-
-                if !targets.contains(to_sq) {
-                    return false;
-                }
-            };
-
-            if is_ep {
-                // en passants have their own weird effects
-                let king_sq = b.king_sqs[b.player as usize];
-                let capture_bb = match player {
-                    Color::White => to_bb >> 8,
-                    Color::Black => to_bb << 8,
-                };
-
-                let new_occupancy = b.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
-
-                return (MAGIC.rook_attacks(new_occupancy, king_sq)
-                    & (b[Piece::Rook] | b[Piece::Queen])
-                    & enemies)
-                    .is_empty()
-                    && (MAGIC.bishop_attacks(new_occupancy, king_sq)
-                        & (b[Piece::Bishop] | b[Piece::Queen])
-                        & enemies)
-                        .is_empty();
-            }
-
-            !b.pinned.contains(from_sq)
-                || Square::aligned(from_sq, to_sq, b.king_sqs[player as usize])
+        if m.is_en_passant() {
+            // king cannot en passant
+            return false;
         }
-        None => false,
+        if m.is_castle() {
+            // just generate moves, since castle is quite rare
+            let mut move_buf = Vec::with_capacity(2);
+            castles::<NoTag>(b, &(), &mut move_buf);
+            return move_buf.contains(&(m, ()));
+        }
+
+        if !KING_MOVES[from_sq as usize].contains(to_sq) {
+            return false;
+        }
+
+        // normal king moves can't step into check
+        let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
+        return square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty();
     }
+
+    // normal piece
+
+    if b.checkers.more_than_one() {
+        // non-kings can't get out of double check
+        return false;
+    }
+
+    if pt != Piece::Pawn && m.is_promotion() {
+        // cannot promote non-pawn
+        return false;
+    }
+
+    if m.is_castle() {
+        // only kings can castle
+        return false;
+    }
+
+    let is_ep = m.is_en_passant();
+    if is_ep && (pt != Piece::Pawn || b.en_passant_square != Some(to_sq)) {
+        // only pawns can en passant
+        // also, en passant must target the en passant square
+        return false;
+    }
+
+    // first, validate pseudolegality
+    if !match pt {
+        Piece::Pawn => {
+            let pawn_dir = player.pawn_direction();
+            let singlemove_sq = from_sq + pawn_dir;
+            let pattacks = PAWN_ATTACKS[player as usize][from_sq as usize];
+            (!occupancy.contains(singlemove_sq)
+                && (to_sq == singlemove_sq //singlemove
+                || (to_sq == singlemove_sq + pawn_dir //doublemove
+                    && player.pawn_start_rank().contains(from_sq)
+                    && !occupancy.contains(to_sq))))
+                || (is_ep && b.en_passant_square == Some(to_sq))
+                || (!is_ep && (pattacks & enemies).contains(m.to_square()))
+        }
+        Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
+        Piece::Bishop => MAGIC
+            .bishop_attacks(allies | enemies, from_sq)
+            .contains(to_sq),
+        Piece::Rook => MAGIC
+            .rook_attacks(allies | enemies, from_sq)
+            .contains(to_sq),
+        Piece::Queen => {
+            let occupancy = allies | enemies;
+            (MAGIC.bishop_attacks(occupancy, from_sq) | MAGIC.rook_attacks(occupancy, from_sq))
+                .contains(to_sq)
+        }
+        Piece::King => unreachable!(),
+    } {
+        return false;
+    };
+
+    // check that the move is not a self check
+    if !b.checkers.is_empty() {
+        // we already handled the two-checker case, so there is only one
+        // checker
+        let checker_sq = Square::try_from(b.checkers).unwrap();
+        let player_idx = b.player as usize;
+        let mut targets =
+            Bitboard::between(b.king_sqs[player_idx], checker_sq) | Bitboard::from(checker_sq);
+
+        if let Some(ep_sq) = b.en_passant_square {
+            if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
+                // allow en passants that let us escape check
+                targets.insert(ep_sq);
+            }
+        }
+
+        if !targets.contains(to_sq) {
+            return false;
+        }
+    };
+
+    if is_ep {
+        // en passants have their own weird effects
+        let king_sq = b.king_sqs[b.player as usize];
+        let capture_bb = match player {
+            Color::White => to_bb >> 8,
+            Color::Black => to_bb << 8,
+        };
+
+        let new_occupancy = b.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
+
+        return (MAGIC.rook_attacks(new_occupancy, king_sq)
+            & (b[Piece::Rook] | b[Piece::Queen])
+            & enemies)
+            .is_empty()
+            && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+                & (b[Piece::Bishop] | b[Piece::Queen])
+                & enemies)
+                .is_empty();
+    }
+
+    !b.pinned.contains(from_sq) || Square::aligned(from_sq, to_sq, b.king_sqs[player as usize])
 }
 
 #[inline(always)]
