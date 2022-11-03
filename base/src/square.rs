@@ -216,14 +216,20 @@ impl Square {
             return Err("square name must be 2 characters");
         }
         let mut chars = s.chars();
-        let file = match "abcdefgh".match_indices(chars.next().unwrap()).next() {
-            Some(d) => d.0.try_into().map_err(|_| "bad file name")?,
-            None => return Err("illegal file for square"),
-        };
-        let rank: u8 = match chars.next().unwrap().to_digit(10) {
-            Some(n) => n.try_into().map_err(|_| "bad rank name")?,
-            None => return Err("expected number for square rank"),
-        };
+        let file: u8 = "abcdefgh"
+            .match_indices(chars.next().unwrap())
+            .next()
+            .ok_or("illegal file for square")?
+            .0
+            .try_into()
+            .map_err(|_| "bad file name")?;
+        let rank: u8 = chars
+            .next()
+            .unwrap()
+            .to_digit(10)
+            .ok_or("expected number for square rank")?
+            .try_into()
+            .map_err(|_| "bad rank name")?;
         // will not fail because we have already validated the rank and file
         Ok(Square::new(rank - 1, file).unwrap())
     }

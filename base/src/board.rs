@@ -253,10 +253,14 @@ impl Board {
                 };
             }
 
-            match rule50_buf.parse() {
-                Ok(num) if num <= 100 => num,
-                _ => return Err("illegal number for rule50 counter"),
+            let rule50_num = rule50_buf
+                .parse::<u8>()
+                .map_err(|_| "could not parse rule50 counter")?;
+            if rule50_num > 100 {
+                return Err("rule 50 number is too high");
             }
+
+            rule50_num
         };
 
         // updating metadata
@@ -823,15 +827,10 @@ mod tests {
 
         //Check castling worked correctly
         if m.is_castle() {
-            let rook_start_file = match m.to_square().file() {
-                2 => 0,
-                6 => 7,
-                _ => 9,
-            };
-            let rook_end_file = match m.to_square().file() {
-                2 => 3,
-                6 => 5,
-                _ => 9,
+            let (rook_start_file, rook_end_file) = match m.to_square().file() {
+                2 => (0, 3),
+                6 => (7, 5),
+                _ => panic!("illegal king move for castling"),
             };
             let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file).unwrap();
             let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file).unwrap();
