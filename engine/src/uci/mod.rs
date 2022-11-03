@@ -189,14 +189,11 @@ impl Command {
         // parse key
         let mut key = String::new();
         loop {
-            let key_tok = match tokens.next() {
-                Some(tok) => tok,
-                None => {
-                    return Ok(Command::SetOption {
-                        name: key,
-                        value: None,
-                    })
-                }
+            let Some(key_tok) = tokens.next() else {
+                return Ok(Command::SetOption {
+                    name: key,
+                    value: None,
+                });
             };
             if key_tok == "value" {
                 // we now expect a value string
@@ -295,17 +292,15 @@ impl Command {
     /// Assumes the token `go` has already been consumed.
     /// The current board is needed to annotate the moves with their effects.
     fn parse_go(tokens: &mut dyn Iterator<Item = &str>, board: &Board) -> ParseResult {
-        /// A helper function for `parse_go` which will attempt to parse an int out of
-        /// a token if it is `Some`, and fail if it cannot parse the int or if it is
-        /// given `None`.
+        /// A helper function for `parse_go` which will attempt to parse an int
+        /// out of a token if it is `Some`, and fail if it cannot parse the int
+        /// or if it is given `None`.
         fn parse_int(x: Option<&str>) -> Result<u64, String> {
-            match x {
-                None => Err("reached EOF while parsing int".into()),
-                Some(s) => s
-                    .parse()
-                    .map_err(|e| format!("could not parse int due to error: {e}")),
-            }
+            x.ok_or_else(|| "reached EOF while parsing int".to_string())?
+                .parse()
+                .map_err(|e| format!("could not parse int due to error: {e}"))
         }
+
         let mut opts = Vec::new();
         let mut peeks = tokens.peekable();
         // build the options
@@ -316,19 +311,11 @@ impl Command {
                     // continually add moves to the set of moves to search until we
                     // bump into a keyword
                     loop {
-                        let move_peek = peeks.peek();
-                        match move_peek {
-                            Some(m_tok) => {
-                                if let Ok(m) = Move::from_uci(m_tok, board) {
-                                    moves.push(m);
-                                    // consume the token that we peeked
-                                    peeks.next()
-                                } else {
-                                    break;
-                                }
-                            }
-                            None => break,
-                        };
+                        let Some(m_tok) = peeks.peek() else { break };
+                        let Ok(m) = Move::from_uci(m_tok, board) else { break };
+                        moves.push(m);
+                        // consume the token that we peeked
+                        peeks.next();
                     }
 
                     GoOption::SearchMoves(moves)
