@@ -989,7 +989,7 @@ pub fn perft(fen: &str, depth: u8) -> u64 {
             bcopy.make_move(m);
             let perft_count = helper::<false>(&bcopy, depth - 1);
             if DIVIDE {
-                println!("{}, {perft_count}", m);
+                println!("{m}, {perft_count}");
             }
             total += perft_count;
         }

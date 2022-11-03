@@ -382,7 +382,13 @@ impl Bitboard {
             lines
         };
 
-        LINES[sq1 as usize][sq2 as usize]
+        unsafe {
+            // SAFETY: Because a square is always in the range 0..64, these
+            // squares are always valid indices.
+            *LINES
+                .get_unchecked(sq1 as usize)
+                .get_unchecked(sq2 as usize)
+        }
     }
 
     #[inline(always)]
