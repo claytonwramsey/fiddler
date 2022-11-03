@@ -145,7 +145,7 @@ impl MainSearch {
                 if sub_result.is_ok() {
                     // update best result and inform GUI
                     best_result = sub_result;
-                    let elapsed = Instant::now() - tic;
+                    let elapsed = tic.elapsed();
                     if let Ok(ref best_info) = best_result {
                         prev_eval = Some(best_info.eval);
                         #[allow(clippy::cast_possible_truncation)]
