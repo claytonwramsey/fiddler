@@ -242,7 +242,7 @@ fn write_info(f: &mut fmt::Formatter, infos: &[EngineInfo]) -> fmt::Result {
             }
             EngineInfo::CurrMove(m) => write!(f, " currmove {}", m.to_uci())?,
             EngineInfo::CurrMoveNumber(num) => {
-                write!(f, " currmovenumber {num}")?
+                write!(f, " currmovenumber {num}")?;
             }
             EngineInfo::HashFull(load) => write!(f, " hashfull {load}")?,
             EngineInfo::NodeSpeed(speed) => write!(f, " nps {speed}")?,

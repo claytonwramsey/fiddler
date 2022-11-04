@@ -372,7 +372,7 @@ impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.promote_type() {
             None => {
-                write!(f, "{} -> {}", self.from_square(), self.to_square())?
+                write!(f, "{} -> {}", self.from_square(), self.to_square())?;
             }
             Some(p) => write!(
                 f,

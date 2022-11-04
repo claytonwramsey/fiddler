@@ -747,7 +747,7 @@ impl Display for Board {
                         match self.color_at_square(current_square).unwrap() {
                             Color::White => write!(f, "{p}")?,
                             Color::Black => {
-                                write!(f, "{}", p.code().to_lowercase())?
+                                write!(f, "{}", p.code().to_lowercase())?;
                             }
                         }
                     }
@@ -895,16 +895,16 @@ mod tests {
         if mover_type == Piece::Rook {
             match m.from_square() {
                 Square::A1 => {
-                    assert!(!new_board.castle_rights.queenside(Color::White))
+                    assert!(!new_board.castle_rights.queenside(Color::White));
                 }
                 Square::A8 => {
-                    assert!(!new_board.castle_rights.kingside(Color::White))
+                    assert!(!new_board.castle_rights.kingside(Color::White));
                 }
                 Square::H1 => {
-                    assert!(!new_board.castle_rights.queenside(Color::Black))
+                    assert!(!new_board.castle_rights.queenside(Color::Black));
                 }
                 Square::H8 => {
-                    assert!(!new_board.castle_rights.kingside(Color::Black))
+                    assert!(!new_board.castle_rights.kingside(Color::Black));
                 }
                 _ => {}
             };
@@ -912,16 +912,16 @@ mod tests {
 
         match m.to_square() {
             Square::A1 => {
-                assert!(!new_board.castle_rights.queenside(Color::White))
+                assert!(!new_board.castle_rights.queenside(Color::White));
             }
             Square::A8 => {
-                assert!(!new_board.castle_rights.kingside(Color::White))
+                assert!(!new_board.castle_rights.kingside(Color::White));
             }
             Square::H1 => {
-                assert!(!new_board.castle_rights.queenside(Color::Black))
+                assert!(!new_board.castle_rights.queenside(Color::Black));
             }
             Square::H8 => {
-                assert!(!new_board.castle_rights.kingside(Color::Black))
+                assert!(!new_board.castle_rights.kingside(Color::Black));
             }
             _ => {}
         };
