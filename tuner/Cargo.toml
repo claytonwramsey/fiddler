@@ -23,6 +23,5 @@ authors = ["Clayton Ramsey"]
 [dependencies]
 fiddler_engine = {path = "../engine"}
 fiddler_base = {path = "../base"}
-libm = "0.1.4"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

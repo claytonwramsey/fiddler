@@ -38,7 +38,6 @@ use fiddler_engine::evaluate::{
     pst::PST,
     DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE,
 };
-use libm::expf;
 
 /// The input feature set of a board.
 /// Each element is a (key, value) pair where the key is the index of the value
@@ -180,7 +179,7 @@ fn train_thread(input: &[(BoardFeatures, f32)], weights: &[f32]) -> (Vec<f32>, f
 /// The sigmoid function here is given by the LaTeX expression
 /// `f(x) = \frac{1}{1 - \exp (- \beta x)}`.
 fn sigmoid(x: f32) -> f32 {
-    1. / (1. + expf(-x))
+    1. / (1. + (-x).exp())
 }
 
 /// Load the weight value constants from the ones defined in the PST evaluation.
