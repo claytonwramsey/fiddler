@@ -18,7 +18,7 @@
 
 //! Hash key generation for boards.
 
-use crate::{Color, Piece, Square};
+use super::{Color, Piece, Square};
 
 #[inline(always)]
 /// Get the Zobrist key for a given key, type, and square.
@@ -55,7 +55,7 @@ pub fn ep_key(sq: Square) -> u64 {
 /// Helper function to create the definitions for all the keys in the binary.
 /// Prints out source code for each key.
 fn print_keys() {
-    use crate::Bitboard;
+    use super::Bitboard;
     fastrand::seed(12345);
 
     // player to move key

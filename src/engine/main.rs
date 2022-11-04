@@ -32,8 +32,8 @@ use std::{
     time::Duration,
 };
 
-use fiddler_base::{game::Tagger, Color};
-use fiddler_engine::{
+use fiddler::base::{game::Tagger, Color};
+use fiddler::engine::{
     evaluate::{ScoreTag, ScoredGame},
     thread::MainSearch,
     time::get_search_time,

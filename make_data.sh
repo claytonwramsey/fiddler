@@ -18,6 +18,6 @@ cutechess-cli \
     -ratinginterval 50 \
     -draw movenumber=50 movecount=5 score=20 \
     -openings file=$BOOK format=pgn order=random \
-    -engine cmd=./target/release/fiddler_engine name=fiddler1 tc=40/2+0.05 \
-    -engine cmd=./target/release/fiddler_engine name=fiddler2 tc=40/2+0.05 \
+    -engine cmd=./target/release/fiddler::engine name=fiddler1 tc=40/2+0.05 \
+    -engine cmd=./target/release/fiddler::engine name=fiddler2 tc=40/2+0.05 \
     -each timemargin=60000 option.Hash=512 proto=uci

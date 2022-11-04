@@ -19,7 +19,7 @@
 //! State representations of boards, which contain board state (such as piece
 //! positions), but neither history nor meta-information about a game.
 
-use crate::{
+use super::{
     movegen::{square_attackers, PAWN_ATTACKS},
     MAGIC,
 };
@@ -114,7 +114,7 @@ impl Board {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler_base::Board;
+    /// use fiddler::base::Board;
     ///
     /// let default_board = Board::new();
     /// let fen_board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")?;
@@ -287,7 +287,7 @@ impl Board {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Board, Bitboard};
+    /// use fiddler::base::{Board, Bitboard};
     ///
     /// let board = Board::new();
     /// assert_eq!(board.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
@@ -304,7 +304,7 @@ impl Board {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Board, Piece, Square};
+    /// use fiddler::base::{Board, Piece, Square};
     ///
     /// let board = Board::new();
     /// assert_eq!(board.type_at_square(Square::E1), Some(Piece::King));
@@ -322,7 +322,7 @@ impl Board {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Board, Color, Square};
+    /// use fiddler::base::{Board, Color, Square};
     ///
     /// let board = Board::new();
     /// assert_eq!(board.color_at_square(Square::E1), Some(Color::White));
@@ -348,7 +348,7 @@ impl Board {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler_base::{Board, Move, Square};
+    /// use fiddler::base::{Board, Move, Square};
     ///
     /// // Scandinavian defense. White can play exd5 to capture Black's pawn or
     /// // play e5 (among other moves).
@@ -424,7 +424,7 @@ impl Board {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler_base::{Board, Move, Square};
+    /// use fiddler::base::{Board, Move, Square};
     ///
     /// let mut board = Board::new();
     /// // board after 1. e4 is played
@@ -640,7 +640,7 @@ impl Board {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler_base::Board;
+    /// use fiddler::base::Board;
     ///
     /// // Start position of the game is not a draw.
     /// let board0 = Board::new();
@@ -778,7 +778,7 @@ impl Default for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::square::Square;
+    use crate::base::Square;
 
     /// A helper function which will load a board from a FEN and then try
     /// running the given move on that board.

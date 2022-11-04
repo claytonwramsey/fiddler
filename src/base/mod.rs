@@ -24,7 +24,7 @@
 // Many module elements are re-exported to make names more ergonomic to access.
 
 mod bitboard;
-pub use crate::bitboard::Bitboard;
+pub use bitboard::Bitboard;
 
 mod board;
 pub use board::Board;

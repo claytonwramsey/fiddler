@@ -152,7 +152,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::Square;
+    /// use fiddler::base::Square;
     ///
     /// let sq1 = Square::A8;
     /// let sq2 = Square::C1;
@@ -171,7 +171,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::Square;
+    /// use fiddler::base::Square;
     ///
     /// let sq1 = Square::A8;
     /// let sq2 = Square::C1;
@@ -190,7 +190,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::Square;
+    /// use fiddler::base::Square;
     /// let sq1 = Square::A1;
     /// let sq2 = sq1.opposite();
     /// assert_eq!(sq2, Square::A8);
@@ -256,7 +256,7 @@ impl Square {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::Square;
+    /// use fiddler::base::Square;
     ///
     /// assert_eq!(Square::A1.file_name(), 'a');
     /// assert_eq!(Square::E4.file_name(), 'e');
@@ -347,8 +347,8 @@ impl TryFrom<u8> for Square {
 #[cfg(test)]
 mod tests {
 
+    use super::Direction;
     use super::*;
-    use crate::Direction;
 
     #[test]
     fn add_square_and_direction() {

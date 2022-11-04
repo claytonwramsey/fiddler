@@ -38,13 +38,13 @@
 
 use std::mem::swap;
 
-use fiddler_base::{
+use crate::base::{
     game::Tagger,
     movegen::{get_moves, is_legal, CAPTURES, QUIETS},
     Board, Move,
 };
 
-use crate::evaluate::{material, Eval, Score, ScoreTag};
+use super::evaluate::{material, Eval, Score, ScoreTag};
 
 /// Create an estimate for how good a move is.
 /// `delta` is the PST difference created by this move.
@@ -294,7 +294,7 @@ impl Iterator for MovePicker {
 
 #[cfg(test)]
 mod tests {
-    use fiddler_base::{game::NoTag, movegen::ALL};
+    use crate::base::{game::NoTag, movegen::ALL};
 
     use super::*;
 

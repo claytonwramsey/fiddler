@@ -27,11 +27,11 @@ use std::{
     time::Instant,
 };
 
-use fiddler_base::{
+use fiddler::base::{
     movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
     Board, Color, Piece, Square, MAGIC,
 };
-use fiddler_engine::evaluate::{
+use fiddler::engine::evaluate::{
     material,
     mobility::{ATTACKS_VALUE, MAX_MOBILITY},
     net_doubled_pawns, net_open_rooks, phase_of,

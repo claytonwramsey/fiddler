@@ -27,9 +27,9 @@
 
 use std::intrinsics::transmute;
 
-use fiddler_base::{Board, Color, Move, Piece, Square};
+use crate::base::{Board, Color, Move, Piece, Square};
 
-use crate::evaluate::Score;
+use crate::engine::evaluate::Score;
 
 /// A lookup table for piece values.
 /// The outer index is the type of the piece
@@ -190,7 +190,7 @@ pub const PST: Pst = unsafe { transmute([
 mod tests {
 
     use super::*;
-    use fiddler_base::{game::Game, movegen::ALL};
+    use crate::base::{game::Game, movegen::ALL};
 
     fn delta_helper(fen: &str) {
         let mut g = Game::from_fen(fen).unwrap();

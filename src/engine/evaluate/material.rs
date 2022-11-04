@@ -29,9 +29,10 @@
 //! little more valuable than knights.
 //! Empirically, the engine agrees.
 
-use fiddler_base::{Board, Color, Move, Piece};
-
-use crate::evaluate::Score;
+use crate::{
+    base::{Board, Color, Move, Piece},
+    engine::evaluate::Score,
+};
 
 #[must_use]
 /// Get the value of one piece by its type.
@@ -94,7 +95,7 @@ pub fn evaluate(b: &Board) -> Score {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::{game::Game, movegen::ALL};
+    use crate::base::{game::Game, movegen::ALL};
 
     fn delta_helper(fen: &str) {
         let mut g = Game::from_fen(fen).unwrap();

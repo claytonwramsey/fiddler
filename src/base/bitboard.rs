@@ -18,10 +18,6 @@
 
 //! Bitboards, data structures used to efficiently represent sets of squares.
 
-use crate::{magic::directional_attacks, Direction};
-
-use super::Square;
-
 use std::{
     fmt::{Display, Formatter, Result},
     iter::Iterator,
@@ -30,6 +26,8 @@ use std::{
         BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr,
     },
 };
+
+use super::{magic::directional_attacks, Direction, Square};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
@@ -49,7 +47,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let sq = Square::A1; // this could be any square
     /// assert!(!Bitboard::EMPTY.contains(sq));
@@ -66,7 +64,7 @@ impl Bitboard {
     ///
     /// Basic usage:
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let sq = Square::A1;
     /// assert!(Bitboard::ALL.contains(sq));
@@ -74,7 +72,7 @@ impl Bitboard {
     ///
     /// Use as an iterator over all squares:
     /// ```
-    /// use fiddler_base::{Bitboard};
+    /// use fiddler::base::{Bitboard};
     ///
     /// for sq in Bitboard::ALL {
     ///     println!("Now visiting square {sq}!");
@@ -92,7 +90,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
     /// bb.insert(Square::A1);
@@ -110,7 +108,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// assert!(Bitboard::new(1).contains(Square::A1));
     /// assert!(!(Bitboard::new(2).contains(Square::A1)));
@@ -125,7 +123,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
     /// bb.insert(Square::A1);
@@ -144,7 +142,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let bb1 = Bitboard::EMPTY;
     /// let bb2 = bb1.with_square(Square::A1);
@@ -164,7 +162,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
     /// assert_eq!(bb.len(), 0);
@@ -199,7 +197,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
     /// assert!(bb.is_empty());
@@ -218,7 +216,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
     /// assert!(!bb.has_single_bit());
@@ -239,7 +237,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
     /// assert!(!bb.more_than_one());
@@ -399,7 +397,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let sq = Square::F1;
     /// let mut diag = Bitboard::EMPTY;
@@ -441,7 +439,7 @@ impl Bitboard {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Bitboard, Square};
+    /// use fiddler::base::{Bitboard, Square};
     ///
     /// let sq = Square::A3;
     /// let mut diag = Bitboard::EMPTY;

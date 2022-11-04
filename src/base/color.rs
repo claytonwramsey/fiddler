@@ -39,7 +39,7 @@ impl Color {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Color, Direction};
+    /// use fiddler::base::{Color, Direction};
     ///
     /// assert_eq!(Color::White.pawn_direction(), Direction::NORTH);
     /// ```
@@ -53,7 +53,7 @@ impl Color {
     /// Get the promotion rank of a given color.
     ///
     /// ```
-    /// use fiddler_base::{Color, Bitboard};
+    /// use fiddler::base::{Color, Bitboard};
     ///
     /// assert_eq!(Color::Black.pawn_promote_rank(), Bitboard::new(0xFF));
     /// ```
@@ -73,7 +73,7 @@ impl Color {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_base::{Color, Bitboard};
+    /// use fiddler::base::{Color, Bitboard};
     ///
     /// assert_eq!(Color::White.pawn_start_rank(), Bitboard::new(0xFF00));
     /// ```

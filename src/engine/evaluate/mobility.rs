@@ -12,7 +12,7 @@
 
 use std::mem::transmute;
 
-use fiddler_base::{
+use crate::base::{
     movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
     Bitboard, Board, Color, Piece, MAGIC,
 };

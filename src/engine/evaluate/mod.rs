@@ -47,12 +47,12 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-use fiddler_base::{
+use crate::base::{
     game::{TaggedGame, Tagger},
     Bitboard, Board, Color, Move, Piece,
 };
 
-use crate::pick::candidacy;
+use super::pick::candidacy;
 
 pub mod material;
 pub mod mobility;
@@ -76,7 +76,7 @@ pub mod pst;
 /// # Examples
 ///
 /// ```
-/// use fiddler_engine::evaluate::Eval;
+/// use fiddler::engine::evaluate::Eval;
 /// let mate_eval = Eval::mate_in(3);
 /// let draw_eval = Eval::DRAW;
 /// assert!(mate_eval > draw_eval);
@@ -233,8 +233,8 @@ fn leaf_rules(b: &Board) -> Score {
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use fiddler_base::Board;
-/// use fiddler_engine::evaluate::net_open_rooks;
+/// use fiddler::base::Board;
+/// use fiddler::engine::evaluate::net_open_rooks;
 ///
 /// assert_eq!(net_open_rooks(&Board::new()), 0);
 /// assert_eq!(net_open_rooks(&Board::from_fen("5r2/4r3/2k5/8/3K4/8/4p3/4R3 w - - 0 1")?), -1);
@@ -296,8 +296,8 @@ pub fn net_open_rooks(b: &Board) -> i8 {
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use fiddler_base::Board;
-/// use fiddler_engine::evaluate::net_doubled_pawns;
+/// use fiddler::base::Board;
+/// use fiddler::engine::evaluate::net_doubled_pawns;
 ///
 /// assert_eq!(net_doubled_pawns(&Board::new()), 0);
 /// # Ok(())
@@ -334,8 +334,8 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 /// # Examples
 ///
 /// ```
-/// use fiddler_base::Board;
-/// use fiddler_engine::evaluate::phase_of;
+/// use fiddler::base::Board;
+/// use fiddler::engine::evaluate::phase_of;
 ///
 /// assert!(phase_of(&Board::new()).eq(&1.0));
 /// ```
@@ -370,7 +370,7 @@ impl Eval {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::evaluate::Eval;
+    /// use fiddler::engine::evaluate::Eval;
     ///
     /// assert!(Eval::MIN < Eval::BLACK_MATE);
     /// assert!(Eval::MIN < Eval::DRAW);
@@ -384,7 +384,7 @@ impl Eval {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::evaluate::Eval;
+    /// use fiddler::engine::evaluate::Eval;
     ///
     /// assert!(Eval::MIN < Eval::MAX);
     /// assert!(Eval::BLACK_MATE < Eval::MAX);
@@ -398,7 +398,7 @@ impl Eval {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::evaluate::Eval;
+    /// use fiddler::engine::evaluate::Eval;
     ///
     /// assert!(Eval::MIN < Eval::BLACK_MATE);
     /// assert!(Eval::BLACK_MATE < Eval::DRAW);
@@ -412,7 +412,7 @@ impl Eval {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::evaluate::Eval;
+    /// use fiddler::engine::evaluate::Eval;
     ///
     /// assert!(Eval::MIN < Eval::WHITE_MATE);
     /// assert!(Eval::BLACK_MATE < Eval::WHITE_MATE);
@@ -469,7 +469,7 @@ impl Eval {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::evaluate::Eval;
+    /// use fiddler::engine::evaluate::Eval;
     /// let current_eval = Eval::mate_in(0);
     /// let previous_ply_eval = current_eval.step_back();
     /// assert_eq!(previous_ply_eval, Eval::mate_in(1));
@@ -502,7 +502,7 @@ impl Eval {
     /// # Examples
     ///
     /// ```
-    /// use fiddler_engine::evaluate::Eval;
+    /// use fiddler::engine::evaluate::Eval;
     /// let ev1 = Eval::pawns(2.5);
     /// let ev2 = Eval::mate_in(3);
     /// assert_eq!(ev1.moves_to_mate(), None);
@@ -731,7 +731,7 @@ impl Mul<u8> for Score {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::movegen::ALL;
+    use crate::base::movegen::ALL;
 
     fn delta_helper(fen: &str) {
         let mut g = ScoredGame::from_fen(fen).unwrap();

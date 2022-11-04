@@ -20,9 +20,9 @@
 
 use std::{fmt, time::Duration};
 
-use fiddler_base::Move;
+use crate::base::Move;
 
-use crate::evaluate::Eval;
+use crate::engine::evaluate::Eval;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 /// The set of messages that the engine can send to the GUI.
@@ -255,7 +255,7 @@ fn write_info(f: &mut fmt::Formatter, infos: &[EngineInfo]) -> fmt::Result {
 mod tests {
     use super::*;
 
-    use fiddler_base::{Move, Piece, Square};
+    use crate::base::{Move, Piece, Square};
 
     use std::time::Duration;
 

@@ -33,7 +33,7 @@
 //! [here](https://backscattering.de/).
 
 mod send;
-use fiddler_base::{Board, Move};
+use crate::base::{Board, Move};
 
 pub use send::{EngineInfo, Message, OptionType};
 
@@ -342,7 +342,7 @@ impl Command {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fiddler_base::Square;
+    use crate::base::Square;
 
     #[test]
     /// Test that an ordinary "startpos" UCI position command is parsed

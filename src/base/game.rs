@@ -18,7 +18,7 @@
 
 //! Full chess games, including history and metadata.
 
-use crate::movegen::is_legal;
+use super::movegen::is_legal;
 
 use super::{
     movegen::{get_moves, has_moves, GenMode},
@@ -322,7 +322,7 @@ impl<T: Tagger> TaggedGame<T> {
     /// search.
     ///
     /// ```
-    /// use fiddler_base::{game::Game, Move, Square};
+    /// use fiddler::base::{game::Game, Move, Square};
     ///
     /// let mut g1 = Game::new();
     /// let mut g2 = Game::new();
@@ -380,7 +380,7 @@ impl<T: Tagger> Display for TaggedGame<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{movegen::ALL, Board, Move, Square};
+    use crate::base::{movegen::ALL, Board, Move, Square};
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board

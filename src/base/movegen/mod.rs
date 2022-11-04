@@ -21,14 +21,13 @@
 #[cfg(test)]
 mod tests;
 
-use crate::{
-    game::{NoTag, Tagger},
-    MAGIC,
-};
-
-use super::{moves::Move, Bitboard, Board, Color, Direction, Piece, Square};
-
 use std::{convert::TryFrom, mem::transmute, time::Instant};
+
+use super::{
+    bitboard::Bitboard,
+    game::{NoTag, Tagger},
+    Board, Color, Direction, Move, Piece, Square, MAGIC,
+};
 
 /// A bitboard of all the squares a knight can move to if its position is
 /// the index of the list.
@@ -107,7 +106,7 @@ pub const QUIETS: GenMode = 2;
 /// # Examples
 ///
 /// ```
-/// use fiddler_base::{Board, Move, movegen::is_legal, Square};
+/// use fiddler::base::{Board, Move, movegen::is_legal, Square};
 ///
 /// let board = Board::new();
 /// assert!(is_legal(Move::normal(Square::E2, Square::E4), &board));
@@ -273,7 +272,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 ///
 /// `T` is a tagger for moves: it contains a callback function to tag moves as
 /// they are generated so that the user can save on total heap allocations.
-/// If no tag is needed, you can use `fiddler_base::game::NoTag` to avoid
+/// If no tag is needed, you can use `fiddler::base::game::NoTag` to avoid
 /// wasting effort tagging each move.
 ///
 /// `get_moves()` will make no regard to whether the position is drawn by
@@ -283,7 +282,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 ///
 /// Generate all legal moves:
 /// ```
-/// use fiddler_base::{Board, game::NoTag, movegen::{ALL, is_legal, get_moves}};
+/// use fiddler::base::{Board, game::NoTag, movegen::{ALL, is_legal, get_moves}};
 ///
 /// let b = Board::new();
 /// for (m, _) in get_moves::<ALL, NoTag>(&b, &()) {
@@ -294,7 +293,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate captures:
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>>{
-/// use fiddler_base::{Board, game::NoTag, Move, movegen::{CAPTURES, is_legal, get_moves}, Square};
+/// use fiddler::base::{Board, game::NoTag, Move, movegen::{CAPTURES, is_legal, get_moves}, Square};
 ///
 /// // Scandinavian defense. The only legal capture is exd5.
 /// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
@@ -310,7 +309,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate quiet moves:
 ///
 /// ```
-/// use fiddler_base::{Board, game::NoTag, movegen::{QUIETS, is_legal, get_moves}};
+/// use fiddler::base::{Board, game::NoTag, movegen::{QUIETS, is_legal, get_moves}};
 ///
 /// let b = Board::new();
 /// for (m, _) in get_moves::<QUIETS, NoTag>(&b, &()) {
@@ -359,7 +358,7 @@ pub fn get_moves<const M: GenMode, T: Tagger>(
 /// # Examples
 ///
 /// ```
-/// use fiddler_base::{Board, movegen::has_moves};
+/// use fiddler::base::{Board, movegen::has_moves};
 ///
 /// let b = Board::new();
 /// assert!(has_moves(&b));
@@ -505,7 +504,7 @@ pub fn has_moves(b: &Board) -> bool {
 /// # Examples
 ///
 /// ```
-/// use fiddler_base::{Board, Square, Color, movegen::is_square_attacked_by};
+/// use fiddler::base::{Board, Square, Color, movegen::is_square_attacked_by};
 ///
 /// let b = Board::new();
 /// assert!(is_square_attacked_by(&b, Square::E2, Color::White));
@@ -602,7 +601,7 @@ fn evasions<const M: GenMode, T: Tagger>(
 /// # Examples
 ///
 /// ```
-/// use fiddler_base::{Bitboard, Board, Square, Color, movegen::square_attackers};
+/// use fiddler::base::{Bitboard, Board, Square, Color, movegen::square_attackers};
 ///
 /// let b = Board::new();
 /// let mut attackers = Bitboard::EMPTY;

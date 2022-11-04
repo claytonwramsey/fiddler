@@ -18,7 +18,7 @@
 
 //! Definitions of moves, which can describe any legal playable move.
 
-use crate::{
+use super::{
     game::NoTag,
     movegen::{get_moves, is_legal, is_square_attacked_by, ALL},
     Board,
@@ -204,7 +204,7 @@ impl Move {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler_base::{Move, Board, Square};
+    /// use fiddler::base::{Move, Board, Square};
     ///
     /// let b = Board::default();
     /// let m = Move::normal(Square::E2, Square::E4);

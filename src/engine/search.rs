@@ -28,12 +28,12 @@
 //! search is performed to exhaust all captures in the position, preventing the
 //! mis-evaluation of positions with hanging pieces.
 
-use fiddler_base::{
+use crate::base::{
     movegen::{has_moves, is_legal, CAPTURES},
     Move,
 };
 
-use crate::{
+use super::{
     evaluate::{Eval, ScoredGame},
     transposition::{TTEntry, TTEntryGuard},
 };
@@ -645,12 +645,10 @@ fn ttable_store(
 }
 #[cfg(test)]
 pub mod tests {
-    use crate::evaluate::ScoreTag;
 
     use super::*;
-    use fiddler_base::game::Tagger;
-    use fiddler_base::Move;
-    use fiddler_base::Square;
+    use crate::base::{game::Tagger, Move, Square};
+    use crate::engine::evaluate::ScoreTag;
 
     /// Helper function to search a position at a given depth.
     ///
