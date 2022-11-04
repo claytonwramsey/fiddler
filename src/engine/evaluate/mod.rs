@@ -480,12 +480,42 @@ impl Eval {
 
     #[must_use]
     #[inline(always)]
+    /// Step this evaluation back in time by `n` moves.
+    /// This is equivalent to calling `step_back()` n times.
+    pub fn step_back_by(self, n: u8) -> Eval {
+        if self.0 < -Eval::MATE_CUTOFF {
+            Eval(self.0 - i16::from(n))
+        } else if Eval::MATE_CUTOFF < self.0 {
+            Eval(self.0 + i16::from(n))
+        } else {
+            self
+        }
+    }
+
+    #[must_use]
+    #[inline(always)]
     /// Step this evaluation forward in time one move. "normal" evaluations will
     /// not be changed, but mates will be moved one further from 0. When the
     /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined
     /// behavior.
     pub const fn step_forward(self) -> Eval {
         Eval(self.0 + self.0 / (Eval::MATE_CUTOFF + 1))
+    }
+
+    #[must_use]
+    #[inline(always)]
+    /// Step this evaluation forward by a given number of steps.
+    /// This is equivalent to calling `step_forward()` `n` times.
+    /// If the evaluation is within `n` steps of the mate cutoff, this will
+    /// result in weird behavior.
+    pub fn step_forward_by(self, n: u8) -> Eval {
+        if self.0 < -Eval::MATE_CUTOFF {
+            Eval(self.0 + i16::from(n))
+        } else if Eval::MATE_CUTOFF < self.0 {
+            Eval(self.0 - i16::from(n))
+        } else {
+            self
+        }
     }
 
     #[must_use]

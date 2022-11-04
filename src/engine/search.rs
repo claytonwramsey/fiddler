@@ -283,24 +283,26 @@ impl<'a> PVSearch<'a> {
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
         // mate distance pruning
-        if Eval::BLACK_MATE > alpha {
-            if beta <= Eval::BLACK_MATE {
+        let lower_bound = -Eval::mate_in(depth_so_far);
+        if alpha < lower_bound {
+            if beta <= lower_bound {
                 if PV {
                     parent_line.clear();
                 }
-                return Ok(Eval::BLACK_MATE);
+                return Ok(lower_bound);
             }
-            alpha = Eval::BLACK_MATE;
+            alpha = lower_bound;
         }
 
-        if Eval::mate_in(1) < beta {
-            if Eval::mate_in(1) <= alpha {
+        let upper_bound = Eval::mate_in(1 + depth_so_far);
+        if upper_bound < beta {
+            if upper_bound <= alpha {
                 if PV {
                     parent_line.clear();
                 }
-                return Ok(Eval::mate_in(1));
+                return Ok(upper_bound);
             }
-            beta = Eval::mate_in(1);
+            beta = upper_bound;
         }
 
         // detect draws.
@@ -324,11 +326,15 @@ impl<'a> PVSearch<'a> {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
                 if !PV && entry.depth as i8 >= depth_to_go {
-                    if entry.upper_bound <= alpha {
-                        return Ok(entry.upper_bound);
+                    let upper_bound =
+                        entry.upper_bound.step_back_by(depth_so_far);
+                    if upper_bound <= alpha {
+                        return Ok(upper_bound);
                     }
-                    if beta <= entry.lower_bound {
-                        return Ok(entry.lower_bound);
+                    let lower_bound =
+                        entry.lower_bound.step_back_by(depth_so_far);
+                    if beta <= lower_bound {
+                        return Ok(lower_bound);
                     }
                 }
             }
@@ -369,15 +375,13 @@ impl<'a> PVSearch<'a> {
                     depth_to_go - 1
                 };
 
-                score = -self
-                    .pvs::<false, false, REDUCE>(
-                        depth_to_search,
-                        depth_so_far + 1,
-                        -alpha.step_forward() - Eval::centipawns(1),
-                        -alpha.step_forward(),
-                        &mut line,
-                    )?
-                    .step_back();
+                score = -self.pvs::<false, false, REDUCE>(
+                    depth_to_search,
+                    depth_so_far + 1,
+                    -alpha - Eval::centipawns(1),
+                    -alpha,
+                    &mut line,
+                )?;
 
                 // if the LMR search causes an alpha cutoff, ZW search again at
                 // full depth.
@@ -385,29 +389,25 @@ impl<'a> PVSearch<'a> {
             }
 
             if search_full_depth {
-                score = -self
-                    .pvs::<false, false, REDUCE>(
-                        depth_to_go - 1,
-                        depth_so_far + 1,
-                        -alpha.step_forward() - Eval::centipawns(1),
-                        -alpha.step_forward(),
-                        &mut line,
-                    )?
-                    .step_back();
+                score = -self.pvs::<false, false, REDUCE>(
+                    depth_to_go - 1,
+                    depth_so_far + 1,
+                    -alpha - Eval::centipawns(1),
+                    -alpha,
+                    &mut line,
+                )?;
             }
 
             if PV && (move_count == 1 || (alpha < score && score < beta)) {
                 // Either this is the first move on a PV node, or the previous
                 // search returned a PV candidate.
-                score = -self
-                    .pvs::<true, false, REDUCE>(
-                        depth_to_go - 1,
-                        depth_so_far + 1,
-                        -beta.step_forward(),
-                        -alpha.step_forward(),
-                        &mut line,
-                    )?
-                    .step_back();
+                score = -self.pvs::<true, false, REDUCE>(
+                    depth_to_go - 1,
+                    depth_so_far + 1,
+                    -beta,
+                    -alpha,
+                    &mut line,
+                )?;
             }
 
             let undo_result = self.game.undo();
@@ -450,7 +450,7 @@ impl<'a> PVSearch<'a> {
                 Eval::DRAW
             } else {
                 // mated
-                Eval::BLACK_MATE
+                lower_bound
             };
         }
 
@@ -458,6 +458,7 @@ impl<'a> PVSearch<'a> {
 
         ttable_store(
             &mut tt_guard,
+            depth_so_far,
             depth_to_go,
             alpha,
             beta,
@@ -496,7 +497,11 @@ impl<'a> PVSearch<'a> {
         // check if the game is over before doing anything
         if let Some(mated) = self.game.end_state() {
             // game is over, quit out immediately
-            let score = if mated { Eval::BLACK_MATE } else { Eval::DRAW };
+            let score = if mated {
+                -Eval::mate_in(depth_so_far)
+            } else {
+                Eval::DRAW
+            };
 
             if PV && alpha < score {
                 parent_line.clear();
@@ -511,11 +516,13 @@ impl<'a> PVSearch<'a> {
         if let Some(entry) = tt_guard.entry() {
             if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES {
                 // this was a deeper search, just use it
-                if entry.upper_bound <= alpha {
-                    return Ok(entry.upper_bound);
+                let upper_bound = entry.upper_bound.step_back_by(depth_so_far);
+                if upper_bound <= alpha {
+                    return Ok(upper_bound);
                 }
-                if beta <= entry.lower_bound {
-                    return Ok(entry.lower_bound);
+                let lower_bound = entry.lower_bound.step_back_by(depth_so_far);
+                if beta <= lower_bound {
+                    return Ok(lower_bound);
                 }
             }
         }
@@ -534,6 +541,7 @@ impl<'a> PVSearch<'a> {
                 // use the call at the end
                 ttable_store(
                     &mut tt_guard,
+                    depth_so_far,
                     TTEntry::DEPTH_CAPTURES,
                     alpha,
                     beta,
@@ -556,26 +564,22 @@ impl<'a> PVSearch<'a> {
         for (m, tag) in moves {
             self.game.make_move(m, &tag);
             // zero-window search
-            score = -self
-                .quiesce::<false>(
-                    depth_so_far + 1,
-                    -alpha.step_forward() - Eval::centipawns(1),
-                    -alpha.step_forward(),
-                    &mut line,
-                )?
-                .step_back();
+            score = -self.quiesce::<false>(
+                depth_so_far + 1,
+                -alpha - Eval::centipawns(1),
+                -alpha,
+                &mut line,
+            )?;
             if PV && alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option
                 // in this tree. we already have a score from before that we
                 // can use as a lower bound in this search.
-                score = -self
-                    .quiesce::<PV>(
-                        depth_so_far + 1,
-                        -beta.step_forward(),
-                        -alpha.step_forward(),
-                        &mut line,
-                    )?
-                    .step_back();
+                score = -self.quiesce::<PV>(
+                    depth_so_far + 1,
+                    -beta,
+                    -alpha,
+                    &mut line,
+                )?;
             }
 
             let undo_result = self.game.undo();
@@ -601,6 +605,7 @@ impl<'a> PVSearch<'a> {
 
         ttable_store(
             &mut tt_guard,
+            depth_so_far,
             TTEntry::DEPTH_CAPTURES,
             alpha,
             beta,
@@ -648,15 +653,17 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
 /// to alpha-beta pruning in the game.
 fn ttable_store(
     guard: &mut TTEntryGuard,
-    depth: i8,
+    depth_so_far: u8,
+    depth_to_go: i8,
     alpha: Eval,
     beta: Eval,
     score: Eval,
     best_move: Move,
 ) {
-    let upper_bound = if score < beta { score } else { Eval::MAX };
-    let lower_bound = if alpha < score { score } else { Eval::MIN };
-    guard.save(depth, best_move, lower_bound, upper_bound);
+    let true_score = score.step_forward_by(depth_so_far);
+    let upper_bound = if score < beta { true_score } else { Eval::MAX };
+    let lower_bound = if alpha < score { true_score } else { Eval::MIN };
+    guard.save(depth_to_go, best_move, lower_bound, upper_bound);
 }
 #[cfg(test)]
 pub mod tests {
