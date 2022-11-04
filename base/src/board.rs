@@ -844,46 +844,26 @@ mod tests {
                 Some(old_board.player)
             );
 
-            assert!(!new_board
-                .castle_rights
-                .is_kingside_castle_legal(mover_color));
-            assert!(!new_board
-                .castle_rights
-                .is_queenside_castle_legal(mover_color));
+            assert!(!new_board.castle_rights.kingside(mover_color));
+            assert!(!new_board.castle_rights.queenside(mover_color));
         }
 
         // Check castling rights were removed correctly
         if mover_type == Piece::Rook {
             match m.from_square() {
-                Square::A1 => assert!(!new_board
-                    .castle_rights
-                    .is_queenside_castle_legal(Color::White)),
-                Square::A8 => assert!(!new_board
-                    .castle_rights
-                    .is_kingside_castle_legal(Color::White)),
-                Square::H1 => assert!(!new_board
-                    .castle_rights
-                    .is_queenside_castle_legal(Color::Black)),
-                Square::H8 => assert!(!new_board
-                    .castle_rights
-                    .is_kingside_castle_legal(Color::Black)),
+                Square::A1 => assert!(!new_board.castle_rights.queenside(Color::White)),
+                Square::A8 => assert!(!new_board.castle_rights.kingside(Color::White)),
+                Square::H1 => assert!(!new_board.castle_rights.queenside(Color::Black)),
+                Square::H8 => assert!(!new_board.castle_rights.kingside(Color::Black)),
                 _ => {}
             };
         }
 
         match m.to_square() {
-            Square::A1 => assert!(!new_board
-                .castle_rights
-                .is_queenside_castle_legal(Color::White)),
-            Square::A8 => assert!(!new_board
-                .castle_rights
-                .is_kingside_castle_legal(Color::White)),
-            Square::H1 => assert!(!new_board
-                .castle_rights
-                .is_queenside_castle_legal(Color::Black)),
-            Square::H8 => assert!(!new_board
-                .castle_rights
-                .is_kingside_castle_legal(Color::Black)),
+            Square::A1 => assert!(!new_board.castle_rights.queenside(Color::White)),
+            Square::A8 => assert!(!new_board.castle_rights.kingside(Color::White)),
+            Square::H1 => assert!(!new_board.castle_rights.queenside(Color::Black)),
+            Square::H8 => assert!(!new_board.castle_rights.kingside(Color::Black)),
             _ => {}
         };
     }

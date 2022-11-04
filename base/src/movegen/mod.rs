@@ -918,8 +918,8 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
         Color::Black => Bitboard::new(0x6000_0000_0000_0000),
     };
 
-    let can_kingside_castle = b.castle_rights.is_kingside_castle_legal(player)
-        && (occ & kingside_castle_passthrough_sqs).is_empty();
+    let can_kingside_castle =
+        b.castle_rights.kingside(player) && (occ & kingside_castle_passthrough_sqs).is_empty();
 
     if can_kingside_castle {
         // ignore start sq since we assume the king is not in check
@@ -943,8 +943,8 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
         Color::Black => Bitboard::new(0x0E00_0000_0000_0000),
     };
 
-    let can_queenside_castle = b.castle_rights.is_queenside_castle_legal(player)
-        && (occ & queenside_castle_passthrough_sqs).is_empty();
+    let can_queenside_castle =
+        b.castle_rights.queenside(player) && (occ & queenside_castle_passthrough_sqs).is_empty();
 
     if can_queenside_castle {
         // ignore start sq since we assume the king is not in check

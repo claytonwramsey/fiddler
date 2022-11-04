@@ -61,7 +61,7 @@ impl CastleRights {
 
     #[inline(always)]
     /// Can the given color legally castle kingside?
-    pub fn is_kingside_castle_legal(self, color: Color) -> bool {
+    pub fn kingside(self, color: Color) -> bool {
         self & match color {
             Color::White => CastleRights::WHITE_KINGSIDE,
             Color::Black => CastleRights::BLACK_KINGSIDE,
@@ -70,7 +70,7 @@ impl CastleRights {
 
     #[inline(always)]
     /// Can the given color legally castle kingside?
-    pub fn is_queenside_castle_legal(self, color: Color) -> bool {
+    pub fn queenside(self, color: Color) -> bool {
         self & match color {
             Color::White => CastleRights::WHITE_QUEENSIDE,
             Color::Black => CastleRights::BLACK_QUEENSIDE,

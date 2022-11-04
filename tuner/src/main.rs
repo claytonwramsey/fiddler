@@ -36,7 +36,7 @@ use fiddler_engine::evaluate::{
     mobility::{ATTACKS_VALUE, MAX_MOBILITY},
     net_doubled_pawns, net_open_rooks, phase_of,
     pst::PST,
-    DOUBLED_PAWN_VALUE, OPEN_ROOK_VALUE,
+    DOUBLED_PAWN_VALUE, KINGSIDE_CASTLE_VALUE, OPEN_ROOK_VALUE, QUEENSIDE_CASTLE_VALUE,
 };
 
 /// The input feature set of a board.
@@ -69,7 +69,7 @@ pub fn main() {
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for i in 0..10000 {
+    for i in 0..3000 {
         weights = train_step(&input_sets, &weights, learn_rate, nthreads).0;
         println!("iteration {i}...");
     }
@@ -216,6 +216,12 @@ fn load_weights() -> Vec<f32> {
     weights.push(OPEN_ROOK_VALUE.mg.float_val());
     weights.push(OPEN_ROOK_VALUE.eg.float_val());
 
+    weights.push(KINGSIDE_CASTLE_VALUE.mg.float_val());
+    weights.push(KINGSIDE_CASTLE_VALUE.eg.float_val());
+
+    weights.push(QUEENSIDE_CASTLE_VALUE.mg.float_val());
+    weights.push(QUEENSIDE_CASTLE_VALUE.eg.float_val());
+
     weights
 }
 
@@ -284,8 +290,10 @@ fn print_weights(weights: &[f32]) {
     println!("-----");
 
     // print potpourri
-    paired_val("DOUBLED_PAWN_VAL", 1114);
-    paired_val("OPEN_ROOK_VAL", 1116);
+    paired_val("DOUBLED_PAWN_VALUE", 1114);
+    paired_val("OPEN_ROOK_VALUE", 1116);
+    paired_val("KINGSIDE_CASTLE_VALUE", 1118);
+    paired_val("QUEENSIDE_CASTLE_VALUE", 1120);
 }
 
 #[allow(
@@ -321,6 +329,8 @@ fn print_weights(weights: &[f32]) {
 /// * 1114..1116: Number of doubled pawns (mg, eg) weighted
 ///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
 /// * 1116..1118: Net number of open rooks
+/// * 1118..1120: Net kingside castling rights.
+/// * 1120..1122: Net queenside castling rights.
 ///
 /// Ranges given above are lower-bound inclusive.
 /// The representation is sparse, so each usize corresponds to an index in the
@@ -381,6 +391,20 @@ fn extract(b: &Board) -> BoardFeatures {
     if open_rook_count != 0 {
         features.push((offset + 2, f32::from(open_rook_count) * phase));
         features.push((offset + 3, f32::from(open_rook_count) * (1. - phase)));
+    }
+
+    // Add gains from castling rights
+    let kingside_net = i8::from(b.castle_rights.kingside(b.player))
+        - i8::from(b.castle_rights.kingside(!b.player));
+    if kingside_net != 0 {
+        features.push((offset + 4, f32::from(kingside_net) * phase));
+        features.push((offset + 5, f32::from(kingside_net) * (1. - phase)));
+    }
+
+    let queenside_net = i8::from(b.castle_rights.queenside(b.player));
+    if queenside_net != 0 {
+        features.push((offset + 6, f32::from(queenside_net) * phase));
+        features.push((offset + 7, f32::from(queenside_net) * (1. - phase)));
     }
 
     features

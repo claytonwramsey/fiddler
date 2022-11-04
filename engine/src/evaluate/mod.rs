@@ -179,6 +179,12 @@ impl Tagger for ScoreTag {
 /// through 7 will cause it to become a mask for each file.
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
+/// The value of having the right to castle kingside.
+pub const KINGSIDE_CASTLE_VALUE: Score = Score::centipawns(-1, 0);
+
+/// The value of having the right to castle queenside.
+pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(4, 0);
+
 /// The value of having your own pawn doubled.
 pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-18, -26);
 /// The value of having a rook with no same-colored pawns in front of it which
@@ -196,8 +202,19 @@ pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
 
 /// Get the score gained from evaluations that are only performed at the leaf.
 fn leaf_rules(b: &Board) -> Score {
+    let mut score = Score::DRAW;
+
+    // Add gains from castling rights
+    let kingside_net = i8::from(b.castle_rights.kingside(b.player))
+        - i8::from(b.castle_rights.kingside(!b.player));
+    score += KINGSIDE_CASTLE_VALUE * kingside_net;
+
+    let queenside_net = i8::from(b.castle_rights.queenside(b.player))
+        - i8::from(b.castle_rights.queenside(!b.player));
+    score -= QUEENSIDE_CASTLE_VALUE * queenside_net;
+
     // Add losses due to doubled pawns
-    let mut score = DOUBLED_PAWN_VALUE * net_doubled_pawns(b);
+    score += DOUBLED_PAWN_VALUE * net_doubled_pawns(b);
 
     // Add gains from open rooks
     score += OPEN_ROOK_VALUE * net_open_rooks(b);
