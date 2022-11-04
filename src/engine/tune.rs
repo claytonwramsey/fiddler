@@ -16,6 +16,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//! The tuner for the Fiddler chess engine.
+//! This file exists to create a binary which can be used to generate weights
+//! from an annotated EPD file.
+//!
+//! The tuner operates by using gradient descent on logistic regression to
+//! classify the results of a given position.
+
 #![warn(clippy::pedantic)]
 #![allow(clippy::inline_always)]
 
@@ -47,6 +54,9 @@ type BoardFeatures = Vec<(usize, f32)>;
 
 #[allow(clippy::similar_names)]
 /// Run the main training function.
+///
+/// The first command line argument must the the path of the file containing
+/// training data.
 ///
 /// # Panics
 ///
