@@ -133,7 +133,8 @@ impl Square {
     pub const fn chebyshev_to(self, rhs: Square) -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
-            let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
+            let rankdiff =
+                ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
             let filediff = self.file_distance(rhs);
             // we would use `max()` here if it were a const function
             if rankdiff > filediff {

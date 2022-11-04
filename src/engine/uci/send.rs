@@ -158,7 +158,11 @@ impl<'a> fmt::Display for Message<'a> {
 }
 
 /// Helper function to build an output line to inform the GUI of an option.
-fn write_option(f: &mut fmt::Formatter, name: &str, opt: &OptionType) -> fmt::Result {
+fn write_option(
+    f: &mut fmt::Formatter,
+    name: &str,
+    opt: &OptionType,
+) -> fmt::Result {
     write!(f, "option name {name} ")?;
     match opt {
         OptionType::Spin { default, min, max } => {
@@ -237,7 +241,9 @@ fn write_info(f: &mut fmt::Formatter, infos: &[EngineInfo]) -> fmt::Result {
                 }
             }
             EngineInfo::CurrMove(m) => write!(f, " currmove {}", m.to_uci())?,
-            EngineInfo::CurrMoveNumber(num) => write!(f, " currmovenumber {num}")?,
+            EngineInfo::CurrMoveNumber(num) => {
+                write!(f, " currmovenumber {num}")?
+            }
             EngineInfo::HashFull(load) => write!(f, " hashfull {load}")?,
             EngineInfo::NodeSpeed(speed) => write!(f, " nps {speed}")?,
             // We split this info into two lines if
@@ -282,7 +288,11 @@ mod tests {
             format!(
                 "{}",
                 Message::Info(&[
-                    EngineInfo::CurrMove(Move::promoting(Square::E7, Square::E8, Piece::Queen)),
+                    EngineInfo::CurrMove(Move::promoting(
+                        Square::E7,
+                        Square::E8,
+                        Piece::Queen
+                    )),
                     EngineInfo::CurrMoveNumber(7),
                 ])
             ),

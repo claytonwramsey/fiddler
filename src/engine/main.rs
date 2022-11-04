@@ -72,7 +72,11 @@ fn main() {
                         Message::Id {
                             // we trust that the build script actually did its job
                             // and created the git hash environment variable
-                            name: Some(concat!("Fiddler 0.1.0 (", env!("GIT_HASH"), ")")),
+                            name: Some(concat!(
+                                "Fiddler 0.1.0 (",
+                                env!("GIT_HASH"),
+                                ")"
+                            )),
                             author: Some("Clayton Ramsey"),
                         }
                     );
@@ -91,7 +95,8 @@ fn main() {
                     add_option(
                         "Hash",
                         OptionType::Spin {
-                            default: searcher.read().unwrap().ttable.size_mb() as i64,
+                            default: searcher.read().unwrap().ttable.size_mb()
+                                as i64,
                             min: 0,
                             max: i64::MAX, // not my problem if you OOM your computer
                         },
@@ -109,22 +114,44 @@ fn main() {
                 }
                 Command::SetOption { name, value } => match name.as_str() {
                     "Thread Count" => match value {
-                        None => debug_info("error: no value given for number of threads", debug),
+                        None => debug_info(
+                            "error: no value given for number of threads",
+                            debug,
+                        ),
                         Some(num_str) => match num_str.parse::<u8>() {
-                            Ok(n) => searcher.write().unwrap().config.n_helpers = n - 1,
-                            _ => debug_info("error: illegal parameter for `Thread Count`", debug),
+                            Ok(n) => {
+                                searcher.write().unwrap().config.n_helpers =
+                                    n - 1
+                            }
+                            _ => debug_info(
+                                "error: illegal parameter for `Thread Count`",
+                                debug,
+                            ),
                         },
                     },
                     "Hash" => match value {
-                        None => debug_info("error: no value given for hashsize", debug),
+                        None => debug_info(
+                            "error: no value given for hashsize",
+                            debug,
+                        ),
                         Some(size_str) => match size_str.parse::<usize>() {
                             Ok(size_mb) => {
-                                searcher.write().unwrap().ttable.resize(size_mb);
+                                searcher
+                                    .write()
+                                    .unwrap()
+                                    .ttable
+                                    .resize(size_mb);
                             }
-                            _ => debug_info("error: illegal parameter for hash size", debug),
+                            _ => debug_info(
+                                "error: illegal parameter for hash size",
+                                debug,
+                            ),
                         },
                     },
-                    _ => debug_info(&format!("error: unknown option key `{}`", name), debug),
+                    _ => debug_info(
+                        &format!("error: unknown option key `{}`", name),
+                        debug,
+                    ),
                 },
                 Command::NewGame => {
                     game = ScoredGame::new();
@@ -141,11 +168,17 @@ fn main() {
                         Some(fen) => ScoredGame::from_fen(&fen).unwrap(),
                     };
                     for m in moves {
-                        game.try_move(m, &ScoreTag::tag_move(m, game.board(), game.cookie()))
-                            .unwrap();
+                        game.try_move(
+                            m,
+                            &ScoreTag::tag_move(m, game.board(), game.cookie()),
+                        )
+                        .unwrap();
                     }
 
-                    debug_info(&format!("current game: {}", game.board()), debug);
+                    debug_info(
+                        &format!("current game: {}", game.board()),
+                        debug,
+                    );
                 }
                 Command::Go(opts) => {
                     // spawn a new thread to go search
@@ -229,7 +262,8 @@ fn go<'a>(
                 searcher.write().unwrap().config.depth = d;
             }
             &GoOption::Nodes(num) => {
-                *searcher.read().unwrap().limit.nodes_cap.write().unwrap() = Some(num);
+                *searcher.read().unwrap().limit.nodes_cap.write().unwrap() =
+                    Some(num);
             }
             GoOption::Mate(_) => unimplemented!(),
             &GoOption::MoveTime(msecs) => {
@@ -250,7 +284,8 @@ fn go<'a>(
         Color::Black => (binc, btime),
     };
     // configure timeout condition
-    let mut search_duration_guard = searcher_guard.limit.search_duration.lock().unwrap();
+    let mut search_duration_guard =
+        searcher_guard.limit.search_duration.lock().unwrap();
     if infinite {
         *search_duration_guard = None;
     } else if let Some(mt) = movetime {
@@ -302,7 +337,11 @@ fn go<'a>(
 
 /// Notify any active searches to stop, and then block until they are all
 /// stopped.
-fn stop(searcher: &RwLock<MainSearch>, search_handle: Option<ScopedJoinHandle<()>>, debug: bool) {
+fn stop(
+    searcher: &RwLock<MainSearch>,
+    search_handle: Option<ScopedJoinHandle<()>>,
+    debug: bool,
+) {
     debug_info("now stopping search", debug);
     searcher.read().unwrap().limit.stop();
     if let Some(handle) = search_handle {

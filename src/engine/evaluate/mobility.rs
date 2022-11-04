@@ -242,10 +242,12 @@ pub fn evaluate(b: &Board) -> Score {
     let knights = b[Piece::Knight];
     // pinned knights can't move and so we don't bother counting them
     for sq in knights & white {
-        score += for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
+        score +=
+            for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
     }
     for sq in knights & black {
-        score -= for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_black);
+        score -=
+            for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_black);
     }
 
     // count bishop moves
@@ -266,20 +268,28 @@ pub fn evaluate(b: &Board) -> Score {
     // count rook moves
     let rooks = b[Piece::Rook];
     for sq in rooks & white {
-        score += for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_white);
+        score += for_piece(
+            Piece::Rook,
+            MAGIC.rook_attacks(occupancy, sq) & not_white,
+        );
     }
     for sq in rooks & black {
-        score -= for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_black);
+        score -= for_piece(
+            Piece::Rook,
+            MAGIC.rook_attacks(occupancy, sq) & not_black,
+        );
     }
 
     // count queen moves
     let queens = b[Piece::Queen];
     for sq in queens & white {
-        let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
+        let attacks = MAGIC.rook_attacks(occupancy, sq)
+            | MAGIC.bishop_attacks(occupancy, sq);
         score += for_piece(Piece::Queen, attacks & not_white);
     }
     for sq in rooks & black {
-        let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
+        let attacks = MAGIC.rook_attacks(occupancy, sq)
+            | MAGIC.bishop_attacks(occupancy, sq);
         score -= for_piece(Piece::Queen, attacks & not_black);
     }
 

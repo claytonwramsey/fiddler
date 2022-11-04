@@ -39,8 +39,8 @@ use super::{
 };
 
 use super::{
-    evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker, thread::SearchConfig,
-    transposition::TTable,
+    evaluate::leaf_evaluate, limit::SearchLimit, pick::MovePicker,
+    thread::SearchConfig, transposition::TTable,
 };
 
 use std::{cmp::max, sync::PoisonError};
@@ -103,7 +103,13 @@ pub fn search(
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
 
-    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
+    let eval = searcher.pvs::<true, true, true>(
+        depth as i8,
+        0,
+        alpha,
+        beta,
+        &mut pv,
+    )?;
 
     Ok(SearchInfo {
         pv,
@@ -354,7 +360,8 @@ impl<'a> PVSearch<'a> {
                 // or for moves which are not in a PV node,
                 // perform a zero-window search of the position.
 
-                let do_lmr = REDUCE && (PV && move_count > 3) || (!PV && move_count > 1);
+                let do_lmr =
+                    REDUCE && (PV && move_count > 3) || (!PV && move_count > 1);
 
                 let depth_to_search = if do_lmr {
                     depth_to_go - 2
@@ -474,7 +481,13 @@ impl<'a> PVSearch<'a> {
     ) -> Result<Eval, SearchError> {
         if !self.game.board().checkers.is_empty() {
             // don't allow settling if we are in check
-            return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, parent_line);
+            return self.pvs::<PV, false, false>(
+                1,
+                depth_so_far,
+                alpha,
+                beta,
+                parent_line,
+            );
         }
 
         self.increment_nodes()?;
@@ -603,7 +616,9 @@ impl<'a> PVSearch<'a> {
     fn increment_nodes(&mut self) -> Result<(), SearchError> {
         self.num_nodes_evaluated += 1;
         self.nodes_since_limit_update += 1;
-        if u64::from(self.nodes_since_limit_update) > self.config.limit_update_increment {
+        if u64::from(self.nodes_since_limit_update)
+            > self.config.limit_update_increment
+        {
             self.update_node_limits()?;
         }
         Ok(())

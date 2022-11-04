@@ -84,8 +84,8 @@ pub fn evaluate(b: &Board) -> Score {
         // Total the quantity of white and black pieces of this type, and
         // multiply their individual value to get the net effect on the eval.
         let pt_squares = b[pt];
-        let white_diff =
-            (white_occupancy & pt_squares).len() as i8 - (black_occupancy & pt_squares).len() as i8;
+        let white_diff = (white_occupancy & pt_squares).len() as i8
+            - (black_occupancy & pt_squares).len() as i8;
         score += value(pt) * white_diff;
     }
 
@@ -114,12 +114,16 @@ mod tests {
 
     #[test]
     fn delta_captures() {
-        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
+        delta_helper(
+            "r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8",
+        );
     }
 
     #[test]
     fn delta_promotion() {
         // undoubling capture promotion is possible
-        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
+        delta_helper(
+            "r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13",
+        );
     }
 }

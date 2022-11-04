@@ -263,11 +263,9 @@ impl Command {
             _ => return Err("illegal starting position token".to_string()),
         };
 
-        let mut board = Board::from_fen(
-            start_fen
-                .as_deref()
-                .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-        )?;
+        let mut board = Board::from_fen(start_fen.as_deref().unwrap_or(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        ))?;
 
         let mut moves = Vec::new();
         if let Some(m_tok) = next_move_tok {
@@ -291,7 +289,10 @@ impl Command {
     /// Parse a `go` command from UCI.
     /// Assumes the token `go` has already been consumed.
     /// The current board is needed to annotate the moves with their effects.
-    fn parse_go(tokens: &mut dyn Iterator<Item = &str>, board: &Board) -> ParseResult {
+    fn parse_go(
+        tokens: &mut dyn Iterator<Item = &str>,
+        board: &Board,
+    ) -> ParseResult {
         /// A helper function for `parse_go` which will attempt to parse an int
         /// out of a token if it is `Some`, and fail if it cannot parse the int
         /// or if it is given `None`.
@@ -325,13 +326,21 @@ impl Command {
                 "btime" => GoOption::BlackTime(parse_int(peeks.next())? as u32),
                 "winc" => GoOption::WhiteInc(parse_int(peeks.next())? as u32),
                 "binc" => GoOption::BlackInc(parse_int(peeks.next())? as u32),
-                "movestogo" => GoOption::MovesToGo(parse_int(peeks.next())? as u8),
+                "movestogo" => {
+                    GoOption::MovesToGo(parse_int(peeks.next())? as u8)
+                }
                 "depth" => GoOption::Depth(parse_int(peeks.next())? as u8),
                 "nodes" => GoOption::Nodes(parse_int(peeks.next())?),
                 "mate" => GoOption::Mate(parse_int(peeks.next())? as u8),
-                "movetime" => GoOption::MoveTime(parse_int(peeks.next())? as u32),
+                "movetime" => {
+                    GoOption::MoveTime(parse_int(peeks.next())? as u32)
+                }
                 "infinite" => GoOption::Infinite,
-                _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
+                _ => {
+                    return Err(format!(
+                        "unrecognized option {opt_tok} for `go`"
+                    ))
+                }
             });
         }
 
@@ -445,7 +454,10 @@ mod tests {
     /// Test that a key-value pair for a setoption is correct.
     fn setoption_key_value() {
         assert_eq!(
-            Command::parse_line("setoption name my option value 4 or 5\n", &Board::default()),
+            Command::parse_line(
+                "setoption name my option value 4 or 5\n",
+                &Board::default()
+            ),
             Ok(Command::SetOption {
                 name: "my option".into(),
                 value: Some("4 or 5".into())
@@ -494,9 +506,15 @@ mod tests {
     /// options.
     fn go_searchmoves() {
         assert_eq!(
-            Command::parse_line("go searchmoves e2e4 infinite\n", &Board::default()),
+            Command::parse_line(
+                "go searchmoves e2e4 infinite\n",
+                &Board::default()
+            ),
             Ok(Command::Go(vec![
-                GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
+                GoOption::SearchMoves(vec![Move::normal(
+                    Square::E2,
+                    Square::E4
+                )]),
                 GoOption::Infinite,
             ]))
         );

@@ -120,15 +120,18 @@ impl MainSearch {
                 let mut handles = Vec::new();
 
                 for _thread_id in 0..self.config.n_helpers {
-                    handles
-                        .push(s.spawn(move || self.aspiration_search(g, depth, false, prev_eval)));
+                    handles.push(s.spawn(move || {
+                        self.aspiration_search(g, depth, false, prev_eval)
+                    }));
                 }
 
                 // now it's our turn to think
-                let mut sub_result = self.aspiration_search(g, depth, true, prev_eval);
+                let mut sub_result =
+                    self.aspiration_search(g, depth, true, prev_eval);
 
                 for handle in handles {
-                    let eval_result = handle.join().map_err(|_| SearchError::Join)?;
+                    let eval_result =
+                        handle.join().map_err(|_| SearchError::Join)?;
 
                     match (&mut sub_result, &eval_result) {
                         // if this is our first successful thread, use its result
@@ -159,15 +162,21 @@ impl MainSearch {
                                         is_lower_bound: false,
                                         is_upper_bound: false
                                     },
-                                    EngineInfo::Nodes(best_info.num_nodes_evaluated),
+                                    EngineInfo::Nodes(
+                                        best_info.num_nodes_evaluated
+                                    ),
                                     EngineInfo::NodeSpeed(
                                         1000 * best_info.num_nodes_evaluated
                                             / (elapsed.as_millis() + 1) as u64
                                     ),
                                     EngineInfo::Time(elapsed),
                                     EngineInfo::Pv(&best_info.pv),
-                                    EngineInfo::HashFull(self.ttable.fill_rate_permill()),
-                                    EngineInfo::SelDepth(best_info.selective_depth),
+                                    EngineInfo::HashFull(
+                                        self.ttable.fill_rate_permill()
+                                    ),
+                                    EngineInfo::SelDepth(
+                                        best_info.selective_depth
+                                    ),
                                 ])
                             );
                         }
@@ -204,9 +213,13 @@ impl MainSearch {
             } else {
                 match depth & 0x1u8 {
                     // even depth means that we expect the evaluation to decrease
-                    0 => (ev - Eval::centipawns(100), ev + Eval::centipawns(10)),
+                    0 => {
+                        (ev - Eval::centipawns(100), ev + Eval::centipawns(10))
+                    }
                     // odd depth means that we expect the evaluation to increase
-                    1 => (ev - Eval::centipawns(10), ev + Eval::centipawns(100)),
+                    1 => {
+                        (ev - Eval::centipawns(10), ev + Eval::centipawns(100))
+                    }
                     _ => unreachable!(),
                 }
             };

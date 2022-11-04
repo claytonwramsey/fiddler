@@ -100,7 +100,8 @@ pub fn delta(board: &Board, m: Move) -> Score {
     }
 
     if m.is_en_passant() {
-        let to_opposite_idx = (to_alt - Color::White.pawn_direction()).opposite() as usize;
+        let to_opposite_idx =
+            (to_alt - Color::White.pawn_direction()).opposite() as usize;
         delta += PST[Piece::Pawn as usize][to_opposite_idx];
     }
 
@@ -112,7 +113,8 @@ pub fn delta(board: &Board, m: Move) -> Score {
             (Square::H1 as usize, Square::F1 as usize)
         };
 
-        delta += PST[Piece::Rook as usize][rook_to_idx] - PST[Piece::Rook as usize][rook_from_idx];
+        delta += PST[Piece::Rook as usize][rook_to_idx]
+            - PST[Piece::Rook as usize][rook_from_idx];
     }
 
     delta
@@ -211,16 +213,22 @@ mod tests {
     /// Test that adding deltas matches the same result as taking the PST value
     /// from scratch.
     fn pst_delta_equals_base_result() {
-        delta_helper("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7");
+        delta_helper(
+            "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+        );
     }
 
     #[test]
     fn delta_captures() {
-        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
+        delta_helper(
+            "r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8",
+        );
     }
 
     #[test]
     fn delta_promotion() {
-        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
+        delta_helper(
+            "r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13",
+        );
     }
 }

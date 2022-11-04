@@ -154,7 +154,10 @@ impl MovePicker {
 /// After this function terminates, `moves[idx]` will contain the best-rated
 /// move of the input moves from idx to the end.
 /// Requires that `0 <= idx < moves.len()`.
-fn select_best(moves: &mut [(Move, (Score, Eval))], idx: usize) -> (Move, (Score, Eval)) {
+fn select_best(
+    moves: &mut [(Move, (Score, Eval))],
+    idx: usize,
+) -> (Move, (Score, Eval)) {
     let mut best_entry = moves[idx];
     for entry in moves.iter_mut().skip(idx + 1) {
         // insertion sort to get the best move.
@@ -182,14 +185,18 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         // we assume that m was checked for legality before
                         self.ignore(m);
-                        Some((m, ScoreTag::tag_move(m, &self.board, &self.cookie)))
+                        Some((
+                            m,
+                            ScoreTag::tag_move(m, &self.board, &self.cookie),
+                        ))
                     }
                 }
             }
             PickPhase::PreGoodCapture => {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
-                self.capture_buffer = get_moves::<CAPTURES, ScoreTag>(&self.board, &self.cookie);
+                self.capture_buffer =
+                    get_moves::<CAPTURES, ScoreTag>(&self.board, &self.cookie);
                 self.next()
             }
             PickPhase::GoodCapture => {
@@ -198,7 +205,8 @@ impl Iterator for MovePicker {
                     self.phase = PickPhase::Killer;
                     return self.next();
                 }
-                let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
+                let capture_entry =
+                    select_best(&mut self.capture_buffer, self.capture_index);
                 if capture_entry.1 .1 < Eval::DRAW {
                     // we are now in bad captures, move on
                     self.phase = PickPhase::Killer;
@@ -221,7 +229,14 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         if is_legal(m, &self.board) {
                             self.ignore(m);
-                            Some((m, ScoreTag::tag_move(m, &self.board, &self.cookie)))
+                            Some((
+                                m,
+                                ScoreTag::tag_move(
+                                    m,
+                                    &self.board,
+                                    &self.cookie,
+                                ),
+                            ))
                         } else {
                             self.next()
                         }
@@ -231,7 +246,8 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                self.quiet_buffer = get_moves::<QUIETS, ScoreTag>(&self.board, &self.cookie);
+                self.quiet_buffer =
+                    get_moves::<QUIETS, ScoreTag>(&self.board, &self.cookie);
                 self.next()
             }
             PickPhase::Quiet => {
@@ -240,7 +256,8 @@ impl Iterator for MovePicker {
                     self.phase = PickPhase::BadCaptures;
                     return self.next();
                 }
-                let quiet_entry = select_best(&mut self.quiet_buffer, self.quiet_index);
+                let quiet_entry =
+                    select_best(&mut self.quiet_buffer, self.quiet_index);
                 self.quiet_index += 1;
                 if self.ignored.contains(&quiet_entry.0) {
                     // don't bother with ignored moves
@@ -253,7 +270,8 @@ impl Iterator for MovePicker {
                     // all out of moves!
                     return None;
                 }
-                let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
+                let capture_entry =
+                    select_best(&mut self.capture_buffer, self.capture_index);
                 self.capture_index += 1;
                 if self.ignored.contains(&capture_entry.0) {
                     // don't bother with ignored moves
@@ -278,7 +296,8 @@ impl Iterator for MovePicker {
             }
             PickPhase::Quiet | PickPhase::BadCaptures => {
                 // need to get through both the quiets and the bad captures
-                let n = self.capture_buffer.len() - self.capture_index + self.quiet_buffer.len()
+                let n = self.capture_buffer.len() - self.capture_index
+                    + self.quiet_buffer.len()
                     - self.quiet_index;
                 let n_ignored = self.ignored.len();
                 if n_ignored >= n {
@@ -302,8 +321,10 @@ mod tests {
     /// Test that all moves are generated in the move picker and that there are
     /// no duplicates.
     fn generation_correctness() {
-        let b = Board::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
-            .unwrap();
+        let b = Board::from_fen(
+            "r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12",
+        )
+        .unwrap();
         let mp = MovePicker::new(b, &ScoreTag::init_cookie(&b), None, None);
 
         let picker_moves = mp.map(|(m, _)| m);

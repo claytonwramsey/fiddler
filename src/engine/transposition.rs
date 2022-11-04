@@ -266,7 +266,8 @@ impl TTable {
                         .as_ref()
                         .unwrap()
                 };
-                num_full += bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
+                num_full +=
+                    bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
             }
             (num_full / BUCKET_LEN) as u16
         }
@@ -282,7 +283,9 @@ impl TTable {
         debug_assert!(max_age <= 0x7F);
         if !self.buckets.is_null() {
             for idx in 0..=self.mask {
-                let bucket = unsafe { self.buckets.add(self.index_for(idx)).as_mut().unwrap() };
+                let bucket = unsafe {
+                    self.buckets.add(self.index_for(idx)).as_mut().unwrap()
+                };
                 for entry in &mut bucket.entries {
                     if entry.tag & 0x7F > max_age {
                         *entry = TTEntry::new();
@@ -334,7 +337,8 @@ impl TTable {
                 let new_idx = idx & new_mask;
                 // TODO more intelligently overwrite than just blindly
                 // writing
-                let new_bucket_slot = unsafe { self.buckets.add(new_idx).as_mut().unwrap() };
+                let new_bucket_slot =
+                    unsafe { self.buckets.add(new_idx).as_mut().unwrap() };
                 *new_bucket_slot = bucket;
             }
             // realloc to shrink this
@@ -350,7 +354,8 @@ impl TTable {
         } else {
             // the table is growing
             self.buckets = unsafe {
-                alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()).cast::<Bucket>()
+                alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap())
+                    .cast::<Bucket>()
             };
 
             self.mask = (new_size - 1) as u64;
@@ -434,7 +439,13 @@ impl<'a> TTEntryGuard<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     /// Save the value pointed to by this entry guard.
-    pub fn save(&mut self, depth: i8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
+    pub fn save(
+        &mut self,
+        depth: i8,
+        best_move: Move,
+        lower_bound: Eval,
+        upper_bound: Eval,
+    ) {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
@@ -534,11 +545,19 @@ mod tests {
 
         let tt = TTable::with_capacity(4);
 
-        tt.get(2022)
-            .save(e0.depth, e0.best_move, e0.lower_bound, e0.upper_bound);
+        tt.get(2022).save(
+            e0.depth,
+            e0.best_move,
+            e0.lower_bound,
+            e0.upper_bound,
+        );
 
-        tt.get(2022)
-            .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
+        tt.get(2022).save(
+            e1.depth,
+            e1.best_move,
+            e1.lower_bound,
+            e1.upper_bound,
+        );
 
         assert_eq!(tt.get(2022).entry(), Some(&e1));
     }

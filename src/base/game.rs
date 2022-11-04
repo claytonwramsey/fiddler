@@ -81,7 +81,14 @@ impl Tagger for NoTag {
 
     fn tag_move(_: Move, _: &Board, _: &Self::Cookie) -> Self::Tag {}
 
-    fn update_cookie(_: Move, _: &Self::Tag, _: &Board, _: &Board, _: &Self::Cookie) {}
+    fn update_cookie(
+        _: Move,
+        _: &Self::Tag,
+        _: &Board,
+        _: &Board,
+        _: &Self::Cookie,
+    ) {
+    }
 
     fn init_cookie(_: &Board) {}
 }
@@ -185,7 +192,13 @@ impl<T: Tagger> TaggedGame<T> {
         }
         self.history.push((
             new_board,
-            T::update_cookie(m, tag, &previous_state.0, &new_board, &previous_state.1),
+            T::update_cookie(
+                m,
+                tag,
+                &previous_state.0,
+                &new_board,
+                &previous_state.1,
+            ),
         ));
         self.moves.push(m);
     }
@@ -280,7 +293,8 @@ impl<T: Tagger> TaggedGame<T> {
     /// Has this game been drawn due to history (i.e. repetition or the 50 move
     /// rule)?
     pub fn drawn_by_repetition(&self) -> bool {
-        let num_reps = self.repetitions.get(&self.board().hash).unwrap_or(&(0, 0));
+        let num_reps =
+            self.repetitions.get(&self.board().hash).unwrap_or(&(0, 0));
         if num_reps.0 >= 3 || num_reps.1 >= 2 {
             // draw by repetition
             return true;
@@ -461,8 +475,10 @@ mod tests {
     /// Test that a mated position is in fact over.
     fn is_mate_over() {
         // the position from the end of Scholar's mate
-        let g = Game::from_fen("rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
-            .unwrap();
+        let g = Game::from_fen(
+            "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
+        )
+        .unwrap();
         let moves = g.get_moves::<ALL>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
@@ -471,8 +487,10 @@ mod tests {
 
     #[test]
     fn is_mate_over_2() {
-        let g =
-            Game::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11").unwrap();
+        let g = Game::from_fen(
+            "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
+        )
+        .unwrap();
         let moves = g.get_moves::<ALL>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
@@ -508,8 +526,10 @@ mod tests {
     #[test]
     /// Test that a king can escape check without capturing the checker.
     fn king_escape_without_capture() {
-        let g = Game::from_fen("r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10")
-            .unwrap();
+        let g = Game::from_fen(
+            "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
+        )
+        .unwrap();
         let moves = g.get_moves::<ALL>();
         let expected_moves = [
             Move::normal(Square::E6, Square::D6),

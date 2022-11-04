@@ -23,7 +23,8 @@ use std::{
     iter::Iterator,
     mem::transmute,
     ops::{
-        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr,
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not,
+        Shl, ShlAssign, Shr,
     },
 };
 
@@ -273,19 +274,31 @@ impl Bitboard {
 
             let mut i = 0;
             while i < 64 {
-                #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_sign_loss,
+                    clippy::cast_possible_truncation
+                )]
                 let sq1: Square = unsafe { transmute(i as u8) };
-                let bishop_attacks =
-                    directional_attacks(sq1, &Direction::BISHOP_DIRECTIONS, Bitboard::EMPTY);
-                let rook_attacks =
-                    directional_attacks(sq1, &Direction::ROOK_DIRECTIONS, Bitboard::EMPTY);
+                let bishop_attacks = directional_attacks(
+                    sq1,
+                    &Direction::BISHOP_DIRECTIONS,
+                    Bitboard::EMPTY,
+                );
+                let rook_attacks = directional_attacks(
+                    sq1,
+                    &Direction::ROOK_DIRECTIONS,
+                    Bitboard::EMPTY,
+                );
 
                 let mut j = 0;
 
                 // our between table is symmetric; calculate half and copy the
                 // values across the diagonal
                 while j < i {
-                    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                    #[allow(
+                        clippy::cast_sign_loss,
+                        clippy::cast_possible_truncation
+                    )]
                     let sq2: Square = unsafe { transmute(j as u8) };
 
                     if bishop_attacks.contains(sq2) {
@@ -294,13 +307,24 @@ impl Bitboard {
                         // therefore we find a step in the direction between
                         // sq1 and sq2 and use it to simplify the amount of
                         // search here
-                        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+                        #[allow(
+                            clippy::cast_possible_truncation,
+                            clippy::cast_possible_wrap
+                        )]
                         let diff = j as i8 - i as i8;
-                        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-                        let dir: Direction =
-                            unsafe { transmute(diff / (sq1.file_distance(sq2) as i8)) };
-                        let attacks =
-                            directional_attacks(sq1, &[dir], Bitboard::new(1 << j)).0 ^ (1 << j);
+                        #[allow(
+                            clippy::cast_possible_truncation,
+                            clippy::cast_possible_wrap
+                        )]
+                        let dir: Direction = unsafe {
+                            transmute(diff / (sq1.file_distance(sq2) as i8))
+                        };
+                        let attacks = directional_attacks(
+                            sq1,
+                            &[dir],
+                            Bitboard::new(1 << j),
+                        )
+                        .0 ^ (1 << j);
                         between[i][j] = Bitboard::new(attacks);
                     }
 
@@ -320,7 +344,9 @@ impl Bitboard {
                             Bitboard::new(1 << i),
                         );
 
-                        between[i][j] = Bitboard::new(between[i][j].0 | (rook1.0 & rook2.0));
+                        between[i][j] = Bitboard::new(
+                            between[i][j].0 | (rook1.0 & rook2.0),
+                        );
                     }
 
                     between[j][i] = between[i][j];
@@ -363,13 +389,19 @@ impl Bitboard {
                     if bishop_1 & j_bb != 0 {
                         let bishop_2 = Bitboard::diags(sq2).0;
                         lines[i as usize][j as usize] = Bitboard(
-                            lines[i as usize][j as usize].0 | i_bb | j_bb | (bishop_1 & bishop_2),
+                            lines[i as usize][j as usize].0
+                                | i_bb
+                                | j_bb
+                                | (bishop_1 & bishop_2),
                         );
                     }
                     if rook_1 & j_bb != 0 {
                         let rook_2 = Bitboard::hv(sq2).0;
                         lines[i as usize][j as usize] = Bitboard(
-                            lines[i as usize][j as usize].0 | i_bb | j_bb | (rook_1 & rook_2),
+                            lines[i as usize][j as usize].0
+                                | i_bb
+                                | j_bb
+                                | (rook_1 & rook_2),
                         );
                     }
                     j += 1;
@@ -420,7 +452,8 @@ impl Bitboard {
                 let main_diag = 8 * (i & 7) - (i & 56);
                 let main_left_shift = (-main_diag & (main_diag >> 31)) as u8;
                 let main_right_shift = (main_diag & (-main_diag >> 31)) as u8;
-                let main_diag_mask = (MAIN_DIAG.0 >> main_right_shift) << main_left_shift;
+                let main_diag_mask =
+                    (MAIN_DIAG.0 >> main_right_shift) << main_left_shift;
                 boards[i as usize] = Bitboard(main_diag_mask);
                 i += 1;
             }
@@ -463,7 +496,8 @@ impl Bitboard {
                 let anti_diag = 56 - 8 * (i & 7) - (i & 56);
                 let anti_left_shift = (-anti_diag & (anti_diag >> 31)) as u8;
                 let anti_right_shift = (anti_diag & (-anti_diag >> 31)) as u8;
-                let anti_diag_mask = (ANTI_DIAG.0 >> anti_right_shift) << anti_left_shift;
+                let anti_diag_mask =
+                    (ANTI_DIAG.0 >> anti_right_shift) << anti_left_shift;
                 boards[i as usize] = Bitboard(anti_diag_mask);
                 i += 1;
             }
@@ -502,8 +536,9 @@ impl Bitboard {
             let mut i = 0u8;
             while i < 64 {
                 let sq = unsafe { transmute(i) };
-                masks[i as usize] =
-                    Bitboard::new(Bitboard::vertical(sq).0 ^ Bitboard::horizontal(sq).0);
+                masks[i as usize] = Bitboard::new(
+                    Bitboard::vertical(sq).0 ^ Bitboard::horizontal(sq).0,
+                );
                 i += 1;
             }
 
@@ -523,8 +558,9 @@ impl Bitboard {
             let mut i = 0u8;
             while i < 64 {
                 let sq = unsafe { transmute(i) };
-                masks[i as usize] =
-                    Bitboard::new(Bitboard::diagonal(sq).0 ^ Bitboard::anti_diagonal(sq).0);
+                masks[i as usize] = Bitboard::new(
+                    Bitboard::diagonal(sq).0 ^ Bitboard::anti_diagonal(sq).0,
+                );
                 i += 1;
             }
 

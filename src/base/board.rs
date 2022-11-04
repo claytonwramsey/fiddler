@@ -166,7 +166,8 @@ impl Board {
                 c = 0;
             } else {
                 // number stating number of blank spaces in this row
-                let num_blanks = chr.to_digit(10).ok_or("expected number of blanks")?;
+                let num_blanks =
+                    chr.to_digit(10).ok_or("expected number of blanks")?;
                 // advance the square under review by the number of blanks
                 #[allow(clippy::cast_possible_truncation)]
                 {
@@ -182,9 +183,9 @@ impl Board {
 
         // now compute player to move
         board.player = {
-            let player_chr = fen_chrs
-                .next()
-                .ok_or("reached end of string while parsing for player to move")?;
+            let player_chr = fen_chrs.next().ok_or(
+                "reached end of string while parsing for player to move",
+            )?;
             match player_chr {
                 'w' => Color::White,
                 'b' => Color::Black,
@@ -226,9 +227,9 @@ impl Board {
             if ep_file_chr == '-' {
                 None
             } else {
-                let ep_rank_chr = fen_chrs
-                    .next()
-                    .ok_or("reached end of string while parsing en passant rank")?;
+                let ep_rank_chr = fen_chrs.next().ok_or(
+                    "reached end of string while parsing en passant rank",
+                )?;
                 Some(Square::from_algebraic(&format!(
                     "{ep_file_chr}{ep_rank_chr}"
                 ))?)
@@ -237,7 +238,9 @@ impl Board {
 
         // now a space
         if fen_chrs.next() != Some(' ') {
-            return Err("expected space after en passant square section of FEN");
+            return Err(
+                "expected space after en passant square section of FEN",
+            );
         }
 
         // 50 move timer
@@ -248,8 +251,14 @@ impl Board {
                 match fen_chrs.next() {
                     Some(' ') => break,
                     Some(c) if c.is_ascii_digit() => rule50_buf.push(c),
-                    Some(_) => return Err("illegal character for rule50 counter"),
-                    None => return Err("reached end of string while parsing rule 50"),
+                    Some(_) => {
+                        return Err("illegal character for rule50 counter")
+                    }
+                    None => {
+                        return Err(
+                            "reached end of string while parsing rule 50",
+                        )
+                    }
                 };
             }
 
@@ -269,8 +278,11 @@ impl Board {
             Square::try_from(board[Piece::King] & board[Color::White])?,
             Square::try_from(board[Piece::King] & board[Color::Black])?,
         ];
-        board.checkers =
-            square_attackers(&board, board.king_sqs[board.player as usize], !board.player);
+        board.checkers = square_attackers(
+            &board,
+            board.king_sqs[board.player as usize],
+            !board.player,
+        );
         board.recompute_pinned();
         if !(board.is_valid()) {
             return Err("board state after loading was illegal");
@@ -403,7 +415,11 @@ impl Board {
         }
 
         if self.checkers
-            != square_attackers(self, self.king_sqs[self.player as usize], !self.player)
+            != square_attackers(
+                self,
+                self.king_sqs[self.player as usize],
+                !self.player,
+            )
         {
             return false;
         }
@@ -462,8 +478,11 @@ impl Board {
         /* En passant handling */
         // perform an en passant capture
         if m.is_en_passant() {
-            let capturee_sq =
-                Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
+            let capturee_sq = Square::new(
+                from_sq.rank(),
+                self.en_passant_square.unwrap().file(),
+            )
+            .unwrap();
             self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
         }
         // remove previous EP square from hash
@@ -472,8 +491,11 @@ impl Board {
         }
         // update EP square
         if is_pawn_move && from_sq.rank_distance(to_sq) > 1 {
-            let ep_candidate =
-                Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
+            let ep_candidate = Square::new(
+                (from_sq.rank() + to_sq.rank()) / 2,
+                from_sq.file(),
+            )
+            .unwrap();
             if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
                 & self[Piece::Pawn]
                 & self[opponent])
@@ -508,8 +530,10 @@ impl Board {
                 } else {
                     (0, 3) // rook moves from A to D for queenside caslting
                 };
-                let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
-                let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
+                let rook_from_sq =
+                    Square::new(from_sq.rank(), rook_from_file).unwrap();
+                let rook_to_sq =
+                    Square::new(from_sq.rank(), rook_to_file).unwrap();
                 self.remove_known_piece(rook_from_sq, Piece::Rook, player);
                 self.add_piece(rook_to_sq, Piece::Rook, self.player);
             }
@@ -556,7 +580,11 @@ impl Board {
         }
 
         // checkers
-        self.checkers = square_attackers(self, self.king_sqs[self.player as usize], !self.player);
+        self.checkers = square_attackers(
+            self,
+            self.king_sqs[self.player as usize],
+            !self.player,
+        );
 
         // pinned pieces
         self.recompute_pinned();
@@ -715,10 +743,14 @@ impl Display for Board {
                 let i = 64 - (r + 1) * 8 + c;
                 let current_square = Square::try_from(i).unwrap();
                 match self.type_at_square(current_square) {
-                    Some(p) => match self.color_at_square(current_square).unwrap() {
-                        Color::White => write!(f, "{p}")?,
-                        Color::Black => write!(f, "{}", p.code().to_lowercase())?,
-                    },
+                    Some(p) => {
+                        match self.color_at_square(current_square).unwrap() {
+                            Color::White => write!(f, "{p}")?,
+                            Color::Black => {
+                                write!(f, "{}", p.code().to_lowercase())?
+                            }
+                        }
+                    }
                     None => write!(f, ".")?,
                 }
                 write!(f, " ")?;
@@ -804,9 +836,15 @@ mod tests {
         assert!(new_board.is_valid());
 
         if m.is_promotion() {
-            assert_eq!(new_board.type_at_square(m.to_square()), m.promote_type());
+            assert_eq!(
+                new_board.type_at_square(m.to_square()),
+                m.promote_type()
+            );
         } else {
-            assert_eq!(new_board.type_at_square(m.to_square()), Some(mover_type));
+            assert_eq!(
+                new_board.type_at_square(m.to_square()),
+                Some(mover_type)
+            );
         }
         assert_eq!(new_board.color_at_square(m.to_square()), Some(mover_color));
 
@@ -832,13 +870,18 @@ mod tests {
                 6 => (7, 5),
                 _ => panic!("illegal king move for castling"),
             };
-            let rook_start_sq = Square::new(m.from_square().rank(), rook_start_file).unwrap();
-            let rook_end_sq = Square::new(m.from_square().rank(), rook_end_file).unwrap();
+            let rook_start_sq =
+                Square::new(m.from_square().rank(), rook_start_file).unwrap();
+            let rook_end_sq =
+                Square::new(m.from_square().rank(), rook_end_file).unwrap();
 
             assert_eq!(new_board.type_at_square(rook_start_sq), None);
             assert_eq!(new_board.color_at_square(rook_start_sq), None);
 
-            assert_eq!(new_board.type_at_square(rook_end_sq), Some(Piece::Rook));
+            assert_eq!(
+                new_board.type_at_square(rook_end_sq),
+                Some(Piece::Rook)
+            );
             assert_eq!(
                 new_board.color_at_square(rook_end_sq),
                 Some(old_board.player)
@@ -851,19 +894,35 @@ mod tests {
         // Check castling rights were removed correctly
         if mover_type == Piece::Rook {
             match m.from_square() {
-                Square::A1 => assert!(!new_board.castle_rights.queenside(Color::White)),
-                Square::A8 => assert!(!new_board.castle_rights.kingside(Color::White)),
-                Square::H1 => assert!(!new_board.castle_rights.queenside(Color::Black)),
-                Square::H8 => assert!(!new_board.castle_rights.kingside(Color::Black)),
+                Square::A1 => {
+                    assert!(!new_board.castle_rights.queenside(Color::White))
+                }
+                Square::A8 => {
+                    assert!(!new_board.castle_rights.kingside(Color::White))
+                }
+                Square::H1 => {
+                    assert!(!new_board.castle_rights.queenside(Color::Black))
+                }
+                Square::H8 => {
+                    assert!(!new_board.castle_rights.kingside(Color::Black))
+                }
                 _ => {}
             };
         }
 
         match m.to_square() {
-            Square::A1 => assert!(!new_board.castle_rights.queenside(Color::White)),
-            Square::A8 => assert!(!new_board.castle_rights.kingside(Color::White)),
-            Square::H1 => assert!(!new_board.castle_rights.queenside(Color::Black)),
-            Square::H8 => assert!(!new_board.castle_rights.kingside(Color::Black)),
+            Square::A1 => {
+                assert!(!new_board.castle_rights.queenside(Color::White))
+            }
+            Square::A8 => {
+                assert!(!new_board.castle_rights.kingside(Color::White))
+            }
+            Square::H1 => {
+                assert!(!new_board.castle_rights.queenside(Color::Black))
+            }
+            Square::H8 => {
+                assert!(!new_board.castle_rights.kingside(Color::Black))
+            }
             _ => {}
         };
     }
@@ -902,7 +961,9 @@ mod tests {
     /// Test that the start position of a normal chess game can be loaded from
     /// its FEN.
     fn start_fen() {
-        let result = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let result = Board::from_fen(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        );
         assert_eq!(result, Ok(Board::default()));
     }
 
@@ -917,8 +978,10 @@ mod tests {
     /// correctly.
     fn load_en_passant() {
         // exf6 is en passant here
-        let b = Board::from_fen("rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
-            .unwrap();
+        let b = Board::from_fen(
+            "rnbqkb1r/ppppp1pp/7n/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+        )
+        .unwrap();
         assert_eq!(b.en_passant_square, Some(Square::F6));
     }
 

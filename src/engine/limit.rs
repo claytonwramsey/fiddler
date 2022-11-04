@@ -82,13 +82,15 @@ impl SearchLimit {
     pub fn start(&self) -> Result<(), SearchError> {
         self.num_nodes.store(0, Ordering::Relaxed);
         self.over.store(false, Ordering::Relaxed);
-        *self.start_time.lock().map_err(|_| SearchError::Poison)? = Instant::now();
+        *self.start_time.lock().map_err(|_| SearchError::Poison)? =
+            Instant::now();
         let opt_duration = self
             .search_duration
             .lock()
             .map_err(|_| SearchError::Poison)?;
         if let Some(dur) = *opt_duration {
-            *self.end_time.write().map_err(|_| SearchError::Poison)? = Some(Instant::now() + dur);
+            *self.end_time.write().map_err(|_| SearchError::Poison)? =
+                Some(Instant::now() + dur);
         };
         Ok(())
     }
@@ -112,7 +114,9 @@ impl SearchLimit {
     ///
     /// This function will return an error if a lock was poisoned.
     pub fn update_time(&self) -> Result<bool, SearchError> {
-        if let Some(end) = *self.end_time.read().map_err(|_| SearchError::Poison)? {
+        if let Some(end) =
+            *self.end_time.read().map_err(|_| SearchError::Poison)?
+        {
             if Instant::now() > end {
                 self.over.store(true, Ordering::Relaxed);
                 return Ok(true);

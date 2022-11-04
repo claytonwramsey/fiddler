@@ -324,7 +324,8 @@ fn load_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
                 &Direction::BISHOP_DIRECTIONS
             };
             let attack = directional_attacks(sq, directions, occupancy);
-            let key = compute_magic_key(occupancy, table[i].magic, table[i].shift);
+            let key =
+                compute_magic_key(occupancy, table[i].magic, table[i].shift);
             if table[i].attacks[key].is_empty() {
                 table[i].attacks[key] = attack;
             } else if table[i].attacks[key] != attack {
@@ -343,13 +344,18 @@ fn load_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
 
 /// Get the attacks a square has, given a magic lookup table and the current
 /// occupancy.
-fn get_attacks(occupancy: Bitboard, sq: Square, table: &[SquareAttacks; 64]) -> Bitboard {
+fn get_attacks(
+    occupancy: Bitboard,
+    sq: Square,
+    table: &[SquareAttacks; 64],
+) -> Bitboard {
     // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
     // Additionally, we can trust that the key was masked correctly in
     // `compute_magic_key` as it was shifted out properly.
     let magic_data = unsafe { table.get_unchecked(sq as usize) };
     let masked_occupancy = occupancy & magic_data.mask;
-    let key = compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
+    let key =
+        compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
 
     unsafe { *magic_data.attacks.get_unchecked(key) }
 }
@@ -392,9 +398,17 @@ fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
             occupancies[j] = index_to_occupancy(j, table[i].mask);
             // compute attacks
             attacks[j] = if is_rook {
-                directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancies[j])
+                directional_attacks(
+                    sq,
+                    &Direction::ROOK_DIRECTIONS,
+                    occupancies[j],
+                )
             } else {
-                directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancies[j])
+                directional_attacks(
+                    sq,
+                    &Direction::BISHOP_DIRECTIONS,
+                    occupancies[j],
+                )
             };
         }
         // try random magics until one works
@@ -407,7 +421,8 @@ fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
             used = [Bitboard::EMPTY; 1 << 12];
             found_magic = true;
             for j in 0..(1 << num_points) {
-                let key = compute_magic_key(occupancies[j], magic, table[i].shift);
+                let key =
+                    compute_magic_key(occupancies[j], magic, table[i].shift);
                 if used[key].is_empty() {
                     used[key] = attacks[j];
                 } else if used[key] != attacks[j] {
@@ -430,7 +445,11 @@ fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
                 .attacks
                 .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
             for j in 0..(1 << num_points) {
-                let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
+                let key = compute_magic_key(
+                    occupancies[j],
+                    table[i].magic,
+                    table[i].shift,
+                );
                 table[i].attacks[key] = attacks[j];
             }
         } else {
@@ -664,7 +683,8 @@ mod tests {
         let squares = [Square::A1, Square::A1];
         let attacks = [Bitboard::new(0x102), Bitboard::new(0x102)];
         for i in 0..1 {
-            let resulting_attack = table.rook_attacks(occupancies[i], squares[i]);
+            let resulting_attack =
+                table.rook_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }
@@ -695,8 +715,11 @@ mod tests {
             Bitboard::new(0x0000_0000_0000_5000), //
         ];
         for i in 0..3 {
-            let resulting_attack =
-                directional_attacks(squares[i], &Direction::BISHOP_DIRECTIONS, occupancies[i]);
+            let resulting_attack = directional_attacks(
+                squares[i],
+                &Direction::BISHOP_DIRECTIONS,
+                occupancies[i],
+            );
             assert_eq!(attacks[i], resulting_attack);
         }
     }
@@ -728,7 +751,8 @@ mod tests {
             Bitboard::new(0x0000_0000_0000_5000), //
         ];
         for i in 0..4 {
-            let resulting_attack = table.bishop_attacks(occupancies[i], squares[i]);
+            let resulting_attack =
+                table.bishop_attacks(occupancies[i], squares[i]);
             assert_eq!(attacks[i], resulting_attack);
         }
     }

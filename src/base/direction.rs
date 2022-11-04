@@ -55,50 +55,62 @@ impl Direction {
 
     /// A `Direction` corresponding to a move "southwest" from White's point of
     /// view.
-    pub const NORTHWEST: Direction = Direction(Direction::NORTH.0 + Direction::WEST.0);
+    pub const NORTHWEST: Direction =
+        Direction(Direction::NORTH.0 + Direction::WEST.0);
     /// A `Direction` corresponding to a move "northeast" from White's point of
     /// view.
-    pub const NORTHEAST: Direction = Direction(Direction::NORTH.0 + Direction::EAST.0);
+    pub const NORTHEAST: Direction =
+        Direction(Direction::NORTH.0 + Direction::EAST.0);
     /// A `Direction` corresponding to a move "southeast" from White's point of
     /// view.
-    pub const SOUTHEAST: Direction = Direction(Direction::SOUTH.0 + Direction::EAST.0);
+    pub const SOUTHEAST: Direction =
+        Direction(Direction::SOUTH.0 + Direction::EAST.0);
     /// A `Direction` corresponding to a move "southwest" from White's point of
     /// view.
-    pub const SOUTHWEST: Direction = Direction(Direction::SOUTH.0 + Direction::WEST.0);
+    pub const SOUTHWEST: Direction =
+        Direction(Direction::SOUTH.0 + Direction::WEST.0);
 
     /* Knight directions */
 
     /// A `Direction` corresponding to a move "north-by-northwest" from White's
     /// point of view.
-    pub const NNW: Direction = Direction(2 * Direction::NORTH.0 + Direction::WEST.0);
+    pub const NNW: Direction =
+        Direction(2 * Direction::NORTH.0 + Direction::WEST.0);
 
     /// A `Direction` corresponding to a move "north-by-northeast" from White's
     /// point of view.
-    pub const NNE: Direction = Direction(2 * Direction::NORTH.0 + Direction::EAST.0);
+    pub const NNE: Direction =
+        Direction(2 * Direction::NORTH.0 + Direction::EAST.0);
 
     /// A `Direction` corresponding to a move "east-by-northeast" from White's
     /// point of view.
-    pub const ENE: Direction = Direction(Direction::NORTH.0 + 2 * Direction::EAST.0);
+    pub const ENE: Direction =
+        Direction(Direction::NORTH.0 + 2 * Direction::EAST.0);
 
     /// A `Direction` corresponding to a move "east-by-southeast" from White's
     /// point of view.
-    pub const ESE: Direction = Direction(Direction::SOUTH.0 + 2 * Direction::EAST.0);
+    pub const ESE: Direction =
+        Direction(Direction::SOUTH.0 + 2 * Direction::EAST.0);
 
     /// A `Direction` corresponding to a move "south-by-southeast" from White's
     /// point of view.
-    pub const SSE: Direction = Direction(2 * Direction::SOUTH.0 + Direction::EAST.0);
+    pub const SSE: Direction =
+        Direction(2 * Direction::SOUTH.0 + Direction::EAST.0);
 
     /// A `Direction` corresponding to a move "south-by-southwest" from White's
     /// point of view.
-    pub const SSW: Direction = Direction(2 * Direction::SOUTH.0 + Direction::WEST.0);
+    pub const SSW: Direction =
+        Direction(2 * Direction::SOUTH.0 + Direction::WEST.0);
 
     /// A `Direction` corresponding to a move "west-by-southwest" from White's
     /// point of view.
-    pub const WSW: Direction = Direction(Direction::SOUTH.0 + 2 * Direction::WEST.0);
+    pub const WSW: Direction =
+        Direction(Direction::SOUTH.0 + 2 * Direction::WEST.0);
 
     /// A `Direction` corresponding to a move "west-by-northwest" from White's
     /// point of view.
-    pub const WNW: Direction = Direction(Direction::NORTH.0 + 2 * Direction::WEST.0);
+    pub const WNW: Direction =
+        Direction(Direction::NORTH.0 + 2 * Direction::WEST.0);
 
     /// The directions that a rook can move, along only one step.
     pub const ROOK_DIRECTIONS: [Direction; 4] = [

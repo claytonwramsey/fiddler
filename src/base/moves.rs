@@ -74,7 +74,11 @@ impl Move {
     #[must_use]
     /// Create a `Move` with the given promotion type. The promote type must
     /// not be a pawn or a king.
-    pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
+    pub const fn promoting(
+        from_square: Square,
+        to_square: Square,
+        promote_type: Piece,
+    ) -> Move {
         Move(
             Move::normal(from_square, to_square).0
                 | ((promote_type as u16) << 12)
@@ -163,11 +167,15 @@ impl Move {
             return Ok(Move::promoting(from_sq, to_sq, pt));
         }
 
-        if board[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
+        if board[Piece::King].contains(from_sq)
+            && from_sq.file_distance(to_sq) > 1
+        {
             return Ok(Move::castling(from_sq, to_sq));
         }
 
-        if board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq) {
+        if board[Piece::Pawn].contains(from_sq)
+            && board.en_passant_square == Some(to_sq)
+        {
             return Ok(Move::en_passant(from_sq, to_sq));
         }
 
@@ -231,7 +239,8 @@ impl Move {
         } else {
             let mover_type = b.type_at_square(self.from_square()).unwrap();
             let is_move_capture = b.is_move_capture(self);
-            let other_moves = get_moves::<ALL, NoTag>(b, &()).into_iter().map(|x| x.0);
+            let other_moves =
+                get_moves::<ALL, NoTag>(b, &()).into_iter().map(|x| x.0);
             let from_sq = self.from_square();
 
             // Resolution of un-clarity on mover location
@@ -251,7 +260,8 @@ impl Move {
                 if self != other_move
                     && other_move.to_square() == self.to_square()
                     && other_move.from_square() != self.from_square()
-                    && b.type_at_square(other_move.from_square()).unwrap() == mover_type
+                    && b.type_at_square(other_move.from_square()).unwrap()
+                        == mover_type
                 {
                     is_unclear = true;
                     if other_move.from_square().rank() == from_sq.rank() {
@@ -294,7 +304,9 @@ impl Move {
         let enemy_king_sq = b.king_sqs[!b.player as usize];
         bcopy.make_move(self);
         if is_square_attacked_by(&bcopy, enemy_king_sq, b.player) {
-            if get_moves::<ALL, NoTag>(&bcopy, &()).is_empty() && !bcopy.is_drawn() {
+            if get_moves::<ALL, NoTag>(&bcopy, &()).is_empty()
+                && !bcopy.is_drawn()
+            {
                 s += "#";
             } else {
                 s += "+";
@@ -359,8 +371,16 @@ impl Debug for Move {
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.promote_type() {
-            None => write!(f, "{} -> {}", self.from_square(), self.to_square())?,
-            Some(p) => write!(f, "{} -> {} ={}", self.from_square(), self.to_square(), p)?,
+            None => {
+                write!(f, "{} -> {}", self.from_square(), self.to_square())?
+            }
+            Some(p) => write!(
+                f,
+                "{} -> {} ={}",
+                self.from_square(),
+                self.to_square(),
+                p
+            )?,
         };
         if self.is_en_passant() {
             write!(f, " [e.p.]")?;
@@ -447,8 +467,10 @@ mod tests {
     /// Test that capturing a pawn is parsed correctly.
     fn algebraic_from_pawn_capture() {
         // exf5 is legal here
-        let b = Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2")
-            .unwrap();
+        let b = Board::from_fen(
+            "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
+        )
+        .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
         assert_eq!(m.to_algebraic(&b).unwrap(), "exf5");
     }
@@ -466,8 +488,10 @@ mod tests {
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn algebraic_move_from_pawn_capture() {
-        let b = Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2")
-            .unwrap();
+        let b = Board::from_fen(
+            "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
+        )
+        .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
         let s = "exf5";
 
@@ -497,8 +521,10 @@ mod tests {
     /// Test that algebraic moves are correctly disambiguated by their rank if
     /// needed.
     fn algebraic_rank_identifier() {
-        let b = Board::from_fen("rnbqkbnr/pppppppp/8/8/3P4/1N6/PPP1PPPP/RNBQKB1R w KQkq - 1 5")
-            .unwrap();
+        let b = Board::from_fen(
+            "rnbqkbnr/pppppppp/8/8/3P4/1N6/PPP1PPPP/RNBQKB1R w KQkq - 1 5",
+        )
+        .unwrap();
         let m = Move::normal(Square::B3, Square::D2);
         let s = "N3d2";
         assert_eq!(m.to_algebraic(&b).unwrap(), s);

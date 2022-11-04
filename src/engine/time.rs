@@ -45,7 +45,11 @@ use std::cmp::min;
 /// * `remaining`: the remaining time that we have, measured in milliseconds.
 /// * `player`: the color of the player for whom we are making the timing
 ///     decision.
-pub fn get_search_time(movestogo: Option<u8>, increment: u32, remaining: u32) -> u32 {
+pub fn get_search_time(
+    movestogo: Option<u8>,
+    increment: u32,
+    remaining: u32,
+) -> u32 {
     // for now, simply try to exhaust our remaining time to the increment, with
     // a little buffer time.
 

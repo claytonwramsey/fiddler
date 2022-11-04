@@ -73,7 +73,8 @@ impl Piece {
     ];
 
     /// The types of pieces that a pawn can be promted to.
-    pub const PROMOTING: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+    pub const PROMOTING: [Piece; 4] =
+        [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
     #[must_use]
     /// Get the FEN code of this piece as an uppercase string.
