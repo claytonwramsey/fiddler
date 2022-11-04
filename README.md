@@ -23,9 +23,9 @@ with a master-level player.
 
 Fiddler is built like any Rust project, but has multiple binary files. To create
 the main UCI executable, navigate to the root of this repository and run
-`cargo build --release --bin fiddler::engine`. This will then create the
-executable `target/release/fiddler::engine` (or
-`target/release/fiddler::engine.exe` for Windows users).
+`cargo build --release --bin engine`. This will then create the
+executable `target/release/engine` (or
+`target/release/engine.exe` for Windows users).
 
 Fiddler uses features from relatively new versions of Rust, so you may need to
 update your installation of Rust to compile Fiddler. To do so, you can simply
@@ -54,13 +54,13 @@ Once you have obtained the target triple (in my case, `x86_64-pc-windows-gnu`),
 you can then build with a single target architecture.
 
 ```sh
-cargo build --release --bin fiddler::engine --target=<your target triple here>
+cargo build --release --bin engine --target=<your target triple here>
 ```
 
 This will then create a a new directory in the `target` folder named after your
 target triple containing the target-optimized binary.
 In my case, the path to the binary is
-`./target/x86_64-pc-windows-gnu/release/fiddler::engine.exe`.
+`./target/x86_64-pc-windows-gnu/release/engine.exe`.
 
 ## UCI options supported
 
@@ -93,19 +93,6 @@ interest:
 - Develop intelligent time-management schemes
 
 - PEXT sliding movegen on x86 architectures
-
-## File structure
-
-Fiddler currently consists of three crates:
-
-- `base` contains common definitions across all of Fiddler, such as board state
-  and move generation.
-
-- `engine` contains all code for running the Fiddler engine, including the main
-  UCI executable.
-
-- `tuner` contains the tuner, which will automatically tune constant values for
-  evaluation.
 
 ## Contributing
 
