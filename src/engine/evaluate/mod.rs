@@ -461,32 +461,23 @@ impl Eval {
 
     #[must_use]
     #[inline(always)]
-    /// Step this evaluation back in time one move. "normal" evaluations will
-    /// not be changed, but mates will be moved one closer to 0. When the
-    /// evaluation is `+/-(Eval::MATE_CUTOFF+1)`, this will result in undefined
-    /// behavior.
+    /// Step this evaluation back in time by `n` moves.
+    /// If the evaluation is within `n` steps of the mate cutoff, this will
+    /// result in weird behavior.
     ///
     /// # Examples
     ///
     /// ```
     /// use fiddler::engine::evaluate::Eval;
     /// let current_eval = Eval::mate_in(0);
-    /// let previous_ply_eval = current_eval.step_back();
+    /// let previous_ply_eval = current_eval.step_back_by(1);
     /// assert_eq!(previous_ply_eval, Eval::mate_in(1));
     /// ```
-    pub const fn step_back(self) -> Eval {
-        Eval(self.0 - self.0 / (Eval::MATE_CUTOFF + 1))
-    }
-
-    #[must_use]
-    #[inline(always)]
-    /// Step this evaluation back in time by `n` moves.
-    /// This is equivalent to calling `step_back()` n times.
     pub fn step_back_by(self, n: u8) -> Eval {
         if self.0 < -Eval::MATE_CUTOFF {
-            Eval(self.0 - i16::from(n))
-        } else if Eval::MATE_CUTOFF < self.0 {
             Eval(self.0 + i16::from(n))
+        } else if Eval::MATE_CUTOFF < self.0 {
+            Eval(self.0 - i16::from(n))
         } else {
             self
         }
@@ -494,25 +485,14 @@ impl Eval {
 
     #[must_use]
     #[inline(always)]
-    /// Step this evaluation forward in time one move. "normal" evaluations will
-    /// not be changed, but mates will be moved one further from 0. When the
-    /// evaluation is `+/-(Eval::MATE_CUTOFF)`, this will result in undefined
-    /// behavior.
-    pub const fn step_forward(self) -> Eval {
-        Eval(self.0 + self.0 / (Eval::MATE_CUTOFF + 1))
-    }
-
-    #[must_use]
-    #[inline(always)]
     /// Step this evaluation forward by a given number of steps.
-    /// This is equivalent to calling `step_forward()` `n` times.
     /// If the evaluation is within `n` steps of the mate cutoff, this will
     /// result in weird behavior.
     pub fn step_forward_by(self, n: u8) -> Eval {
         if self.0 < -Eval::MATE_CUTOFF {
-            Eval(self.0 + i16::from(n))
-        } else if Eval::MATE_CUTOFF < self.0 {
             Eval(self.0 - i16::from(n))
+        } else if Eval::MATE_CUTOFF < self.0 {
+            Eval(self.0 + i16::from(n))
         } else {
             self
         }
@@ -804,81 +784,6 @@ mod tests {
     #[allow(clippy::float_cmp)]
     fn certainly_midgame() {
         assert_eq!(phase_of(&Board::default()), 1.0);
-    }
-
-    #[test]
-    /// Test that stepping forward a normal evaluation will make no changes.
-    fn step_forward_draw() {
-        assert_eq!(Eval(0), Eval(0).step_forward());
-    }
-
-    #[test]
-    /// Test that stepping backward a normal evaluation will make no changes.
-    fn step_backward_draw() {
-        assert_eq!(Eval(0), Eval(0).step_back());
-    }
-
-    #[test]
-    /// Test that stepping forward the highest non-mate will make no change.
-    fn step_forward_highest_non_mate() {
-        assert_eq!(
-            Eval(Eval::MATE_CUTOFF),
-            Eval(Eval::MATE_CUTOFF).step_forward()
-        );
-    }
-
-    #[test]
-    /// Test that stepping backward the highest non-mate will make no change.
-    fn step_bacwkard_highest_non_mate() {
-        assert_eq!(
-            Eval(Eval::MATE_CUTOFF),
-            Eval(Eval::MATE_CUTOFF).step_back()
-        );
-    }
-
-    #[test]
-    /// Test that stepping forward the lowest non-mate will make no change.
-    fn step_forward_lowest_non_mate() {
-        assert_eq!(
-            -Eval(Eval::MATE_CUTOFF),
-            -Eval(Eval::MATE_CUTOFF).step_forward()
-        );
-    }
-
-    #[test]
-    /// Test that stepping backward the lowest non-mate will make no change.
-    fn step_bacwkard_lowest_non_mate() {
-        assert_eq!(
-            -Eval(Eval::MATE_CUTOFF),
-            -Eval(Eval::MATE_CUTOFF).step_back()
-        );
-    }
-
-    #[test]
-    /// Test that stepping forward the mates closest to being a normal
-    /// evaluation will correctly step forward.
-    fn step_forward_tighmates() {
-        assert_eq!(
-            Eval(Eval::MATE_CUTOFF + 2),
-            Eval(Eval::MATE_CUTOFF + 1).step_forward()
-        );
-        assert_eq!(
-            -Eval(Eval::MATE_CUTOFF + 2),
-            -Eval(Eval::MATE_CUTOFF + 1).step_forward()
-        );
-    }
-    #[test]
-    /// Test that stepping forward the mates closest to being a normal
-    /// evaluation will correctly step forward.
-    fn step_backward_tighmates() {
-        assert_eq!(
-            Eval(Eval::MATE_CUTOFF + 1),
-            Eval(Eval::MATE_CUTOFF + 2).step_back()
-        );
-        assert_eq!(
-            -Eval(Eval::MATE_CUTOFF + 1),
-            -Eval(Eval::MATE_CUTOFF + 2).step_back()
-        );
     }
 
     #[test]

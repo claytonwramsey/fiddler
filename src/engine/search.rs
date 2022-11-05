@@ -662,7 +662,11 @@ fn ttable_store(
 ) {
     let true_score = score.step_forward_by(depth_so_far);
     let upper_bound = if score < beta { true_score } else { Eval::MAX };
-    let lower_bound = if alpha < score { true_score } else { Eval::MIN };
+    let lower_bound = if alpha <= score {
+        true_score
+    } else {
+        Eval::MIN
+    };
     guard.save(depth_to_go, best_move, lower_bound, upper_bound);
 }
 #[cfg(test)]
@@ -772,5 +776,37 @@ pub mod tests {
             Eval::mate_in(9),
             11,
         );
+    }
+
+    #[test]
+    /// Test that the transposition table contains an entry for the root node of
+    /// the search.
+    fn ttable_populated() {
+        let ttable = TTable::with_size(1);
+        let g = ScoredGame::new();
+        let depth = 5;
+
+        let search_info = search(
+            g.clone(),
+            depth,
+            &ttable,
+            &SearchConfig {
+                depth: 5,
+                ..Default::default()
+            },
+            &SearchLimit::new(),
+            true,
+            Eval::MIN,
+            Eval::MAX,
+        )
+        .unwrap();
+
+        let entry = ttable.get(g.board().hash).entry().unwrap();
+
+        // println!("{entry:?}");
+        // println!("{search_info:?}");
+        assert_eq!(entry.depth, i8::try_from(depth).unwrap());
+        assert_eq!(entry.best_move, search_info.pv[0]);
+        assert_eq!(entry.lower_bound, entry.upper_bound);
     }
 }
