@@ -352,7 +352,8 @@ impl<'a> PVSearch<'a> {
         // The number of moves checked. If this is zero after the move search
         // loop, no moves were played.
         let mut move_count = 0;
-
+        // Whether we were able to overwrite alpha by searching moves.
+        let mut overwrote_alpha = false;
         for (m, tag) in moves_iter {
             // The principal variation line, following the best move.
             let mut line = Vec::new();
@@ -435,6 +436,7 @@ impl<'a> PVSearch<'a> {
 
                     // to keep alpha < beta, only write to alpha if there was
                     // not a beta cutoff
+                    overwrote_alpha = true;
                     alpha = score;
                 }
             }
@@ -460,7 +462,7 @@ impl<'a> PVSearch<'a> {
             &mut tt_guard,
             depth_so_far,
             depth_to_go,
-            alpha,
+            if overwrote_alpha { Eval::MIN } else { alpha },
             beta,
             best_score,
             best_move,
@@ -531,6 +533,10 @@ impl<'a> PVSearch<'a> {
         let mut score = leaf_evaluate(&self.game).in_perspective(player);
         // println!("{g}: {score}");
 
+        // Whether alpha was overwritten by any move at this depth.
+        // Used to determine whether this is an exact evaluation on a position
+        // when writing to the transposition table.
+        let mut overwrote_alpha = false;
         if alpha < score {
             if PV {
                 parent_line.clear();
@@ -543,7 +549,7 @@ impl<'a> PVSearch<'a> {
                     &mut tt_guard,
                     depth_so_far,
                     TTEntry::DEPTH_CAPTURES,
-                    alpha,
+                    Eval::MIN,
                     beta,
                     score,
                     Move::BAD_MOVE,
@@ -553,6 +559,7 @@ impl<'a> PVSearch<'a> {
                 return Ok(score);
             }
 
+            overwrote_alpha = true;
             alpha = score;
         }
 
@@ -598,6 +605,7 @@ impl<'a> PVSearch<'a> {
                         break;
                     }
 
+                    overwrote_alpha = true;
                     alpha = score;
                 }
             }
@@ -607,7 +615,7 @@ impl<'a> PVSearch<'a> {
             &mut tt_guard,
             depth_so_far,
             TTEntry::DEPTH_CAPTURES,
-            alpha,
+            if overwrote_alpha { Eval::MIN } else { alpha },
             beta,
             best_score,
             Move::BAD_MOVE,
@@ -662,11 +670,7 @@ fn ttable_store(
 ) {
     let true_score = score.step_forward_by(depth_so_far);
     let upper_bound = if score < beta { true_score } else { Eval::MAX };
-    let lower_bound = if alpha <= score {
-        true_score
-    } else {
-        Eval::MIN
-    };
+    let lower_bound = if alpha < score { true_score } else { Eval::MIN };
     guard.save(depth_to_go, best_move, lower_bound, upper_bound);
 }
 #[cfg(test)]

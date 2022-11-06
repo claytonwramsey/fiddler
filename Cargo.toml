@@ -19,7 +19,7 @@ name = "fiddler"
 version = "0.1.0"
 edition = "2021"
 authors = ["Clayton Ramsey"]
-default-run = "engine"
+default-run = "fiddler"
 
 [dependencies]
 # Random number generator for creating magic bitboards.
@@ -44,7 +44,7 @@ panic = "abort"
 codegen-units = 1
 
 [[bin]]
-name = "engine"
+name = "fiddler"
 path = "src/engine/main.rs"
 
 [[bin]]
