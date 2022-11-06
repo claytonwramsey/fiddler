@@ -1,6 +1,6 @@
 /*
   Fiddler, a UCI-compatible chess engine.
-  Copyright (C) 2022 The Fiddler Authors&& (see AUTHORS.md file)
+  Copyright (C) 2022 Clayton Ramsey.
 
   Fiddler is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

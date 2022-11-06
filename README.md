@@ -97,8 +97,7 @@ interest:
 ## Contributing
 
 If you are interested in contributing to Fiddler, please open a pull request.
-Any help is welcome! If you do submit a pull request, make sure to add your name
-to `AUTHORS.md`.
+Any help is welcome!
 
 ## License
 
