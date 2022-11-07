@@ -361,7 +361,6 @@ impl<'a> PVSearch<'a> {
             self.game.make_move(m, &tag);
             self.ttable.prefetch(self.game.board().hash);
             let mut score = Eval::MIN;
-            let mut search_full_depth = false;
 
             if !PV || move_count > 1 {
                 // For moves which are not the first move searched at a PV node,
@@ -387,17 +386,15 @@ impl<'a> PVSearch<'a> {
 
                 // if the LMR search causes an alpha cutoff, ZW search again at
                 // full depth.
-                search_full_depth = score > alpha && do_lmr;
-            }
-
-            if search_full_depth {
-                score = -self.pvs::<false, false, REDUCE>(
-                    depth_to_go - 1,
-                    depth_so_far + 1,
-                    -alpha - Eval::centipawns(1),
-                    -alpha,
-                    &mut line,
-                )?;
+                if score > alpha && do_lmr {
+                    score = -self.pvs::<false, false, REDUCE>(
+                        depth_to_go - 1,
+                        depth_so_far + 1,
+                        -alpha - Eval::centipawns(1),
+                        -alpha,
+                        &mut line,
+                    )?;
+                }
             }
 
             if PV && (move_count == 1 || (alpha < score && score < beta)) {
@@ -443,7 +440,7 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        debug_assert!((move_count == 0) != has_moves(self.game.board()));
+        debug_assert!((move_count == 0) ^ has_moves(self.game.board()));
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a
