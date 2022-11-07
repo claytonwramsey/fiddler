@@ -110,7 +110,7 @@ impl Square {
     /// Create a Square from the given rank and file. The ranks run from 0 to 7
     /// (instead of 1 through 8), and the files run from A to H.
     pub fn new(rank: u8, file: u8) -> Option<Square> {
-        Square::try_from(((rank << 3) | file) as u8).ok()
+        Square::try_from((rank << 3) | file).ok()
     }
 
     #[inline(always)]

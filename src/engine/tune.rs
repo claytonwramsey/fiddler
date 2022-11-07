@@ -225,7 +225,7 @@ fn load_weights() -> Vec<f32> {
 
     for pt in Piece::ALL {
         for count in 0..MAX_MOBILITY {
-            let score = ATTACKS_VALUE[pt as usize][count as usize];
+            let score = ATTACKS_VALUE[pt as usize][count];
             weights.push(score.mg.float_val());
             weights.push(score.eg.float_val());
         }

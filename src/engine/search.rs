@@ -325,7 +325,7 @@ impl<'a> PVSearch<'a> {
             if is_legal(m, self.game.board()) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
-                if !PV && entry.depth as i8 >= depth_to_go {
+                if !PV && entry.depth >= depth_to_go {
                     let upper_bound =
                         entry.upper_bound.step_back_by(depth_so_far);
                     if upper_bound <= alpha {

@@ -279,7 +279,7 @@ impl Move {
                     s.push(from_sq.file_name());
                 } else if !is_unclear_file {
                     //we can specify the mover by its rank
-                    s = format!("{}{}", s, from_sq.rank() + 1);
+                    s = format!("{s}{}", from_sq.rank() + 1);
                 } else {
                     //we need the complete square to specify the location of the mover
                     s += &from_sq.to_string();

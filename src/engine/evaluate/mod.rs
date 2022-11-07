@@ -42,7 +42,6 @@
 //! allowing us to cheaply evaluate the final leaf position.
 
 use std::{
-    cmp::{max, min},
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
@@ -359,7 +358,7 @@ pub fn phase_of(b: &Board) -> f32 {
 pub fn calculate_phase(mg_npm: Eval) -> f32 {
     const MG_LIMIT: Eval = Eval::centipawns(2500);
     const EG_LIMIT: Eval = Eval::centipawns(1400);
-    let bounded_npm = max(EG_LIMIT, min(MG_LIMIT, mg_npm));
+    let bounded_npm = mg_npm.clamp(EG_LIMIT, MG_LIMIT);
 
     (EG_LIMIT - bounded_npm).float_val() / (EG_LIMIT - MG_LIMIT).float_val()
 }

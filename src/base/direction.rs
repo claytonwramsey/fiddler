@@ -220,6 +220,6 @@ mod tests {
     #[test]
     fn direction_out_of_bounds() {
         let bad_sq = Square::A1 + Direction::SOUTH;
-        println!("{}", bad_sq);
+        println!("{bad_sq}");
     }
 }
