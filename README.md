@@ -21,11 +21,19 @@ with a master-level player.
 
 ## Usage
 
-Fiddler is built like any Rust project, but has multiple binary files. To create
-the main UCI executable, navigate to the root of this repository and run
-`cargo build --release --bin engine`. This will then create the
-executable `target/release/engine` (or
-`target/release/engine.exe` for Windows users).
+Fiddler uses nightly, unstable Rust, mostly to gain access to LLVM's prefetch
+intrinsic.
+As a result, you must use the nightly compiler to compile this code.
+The most simple way of doing this is by running `rustup default stable` before
+proceeding.
+
+To create the main UCI executable, navigate to the root of this repository and
+run `cargo build --release --bin fiddler`.
+This will then create the executable `target/release/fiddler` (or
+`target/release/fiddler.exe` for Windows users).
+
+You can also create a tuner executable.
+To do so, run `cargo build --release --bin tune`.
 
 Fiddler uses features from relatively new versions of Rust, so you may need to
 update your installation of Rust to compile Fiddler. To do so, you can simply
