@@ -32,6 +32,7 @@
 
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
+    intrinsics::prefetch_read_data,
     marker::PhantomData,
     mem::size_of,
     ptr::null,
@@ -163,6 +164,20 @@ impl TTable {
     /// Compute the index for an entry with a given key.
     fn index_for(&self, hash_key: u64) -> usize {
         ((hash_key >> 16) & self.mask) as usize
+    }
+
+    /// Prefetch the entry in this table associated with `hash_key`.
+    /// This will pre-load the entry and make `get` run faster.
+    /// On some architectures, this may be a no-op.
+    pub fn prefetch(&self, hash_key: u64) {
+        unsafe {
+            // SAFETY: Calling prefetch has no actual measurable results on the
+            // code's behavior, so this cannot cause UB.
+            let idx = self.index_for(hash_key);
+            // TODO: figure out which locality (from 0 to 3, inclusive) yields
+            // the best performance.
+            prefetch_read_data(self.buckets.add(idx), 2);
+        }
     }
 
     #[must_use]
