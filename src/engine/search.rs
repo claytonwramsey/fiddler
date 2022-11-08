@@ -369,11 +369,15 @@ impl<'a> PVSearch<'a> {
                 // or for moves which are not in a PV node,
                 // perform a zero-window search of the position.
 
+                // Late move reduction:
+                // search positions which are unlikely to be the PV at a lower
+                // depth.
+                // ~373 Elo
                 let do_lmr =
                     REDUCE && (PV && move_count > 3) || (!PV && move_count > 1);
 
                 let depth_to_search = if do_lmr {
-                    depth_to_go - 2
+                    depth_to_go - 3
                 } else {
                     depth_to_go - 1
                 };
