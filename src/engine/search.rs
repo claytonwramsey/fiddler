@@ -359,6 +359,8 @@ impl<'a> PVSearch<'a> {
             let mut line = Vec::new();
             move_count += 1;
             self.game.make_move(m, &tag);
+            // Prefetch the next transposition table entry as early as possible
+            // (~12 Elo)
             self.ttable.prefetch(self.game.board().hash);
             let mut score = Eval::MIN;
 
@@ -568,6 +570,8 @@ impl<'a> PVSearch<'a> {
 
         for (m, tag) in moves {
             self.game.make_move(m, &tag);
+            // Prefetch the next transposition table entry as early as possible
+            // (~12 Elo)
             self.ttable.prefetch(self.game.board().hash);
             // zero-window search
             score = -self.quiesce::<false>(

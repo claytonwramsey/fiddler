@@ -174,8 +174,8 @@ impl TTable {
             // SAFETY: Calling prefetch has no actual measurable results on the
             // code's behavior, so this cannot cause UB.
             let idx = self.index_for(hash_key);
-            // TODO: figure out which locality (from 0 to 3, inclusive) yields
-            // the best performance.
+            // Experimental data shows that using a locality of 2 yields the
+            // best Elo improvement.
             prefetch_read_data(self.buckets.add(idx), 2);
         }
     }
