@@ -372,9 +372,9 @@ impl<'a> PVSearch<'a> {
                 // Late move reduction:
                 // search positions which are unlikely to be the PV at a lower
                 // depth.
-                // ~373 Elo
+                // ~400 Elo
                 let do_lmr =
-                    REDUCE && (PV && move_count > 3) || (!PV && move_count > 1);
+                    REDUCE && (PV && move_count > 2) || (!PV && move_count > 1);
 
                 let depth_to_search = if do_lmr {
                     depth_to_go - 3
