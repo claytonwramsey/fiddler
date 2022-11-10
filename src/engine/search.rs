@@ -773,7 +773,7 @@ pub mod tests {
     fn mate_in_4_ply() {
         // because black, the player to move, is getting mated, the evaluation
         // is negative here
-        eval_helper("3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1", -Eval::mate_in(4), 5);
+        eval_helper("3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1", -Eval::mate_in(4), 6);
     }
 
     #[test]
