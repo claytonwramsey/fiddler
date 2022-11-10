@@ -305,6 +305,7 @@ impl TTable {
                     if entry.tag & 0x7F > max_age {
                         *entry = TTEntry::new();
                     }
+                    entry.tag += 1;
                 }
             }
         }

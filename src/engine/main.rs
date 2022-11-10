@@ -40,6 +40,9 @@ use fiddler::engine::{
     uci::{Command, EngineInfo, GoOption, Message, OptionType},
 };
 
+/// The default size of the transposition table.
+const DEFAULT_HASH_SIZE_MB: usize = 2_000;
+
 /// Run the Fiddler UCI engine.
 fn main() {
     // whether we are in debug mode
@@ -47,6 +50,11 @@ fn main() {
     let searcher = RwLock::new(MainSearch::new());
     let mut game = ScoredGame::new();
     searcher.write().unwrap().config.n_helpers = 0;
+    searcher
+        .write()
+        .unwrap()
+        .ttable
+        .resize(DEFAULT_HASH_SIZE_MB);
 
     scope(|s| {
         let mut search_handle = None;
@@ -95,9 +103,9 @@ fn main() {
                     add_option(
                         "Hash",
                         OptionType::Spin {
-                            default: 0,
+                            default: DEFAULT_HASH_SIZE_MB as i64,
                             min: 0,
-                            max: i64::MAX, // not my problem if you OOM your computer
+                            max: 128_000, // not my problem if you OOM your computer
                         },
                     );
 
