@@ -95,8 +95,7 @@ fn main() {
                     add_option(
                         "Hash",
                         OptionType::Spin {
-                            default: searcher.read().unwrap().ttable.size_mb()
-                                as i64,
+                            default: 0,
                             min: 0,
                             max: i64::MAX, // not my problem if you OOM your computer
                         },

@@ -90,7 +90,7 @@ impl MainSearch {
     pub fn new() -> MainSearch {
         MainSearch {
             config: SearchConfig::new(),
-            ttable: TTable::with_size(1000),
+            ttable: TTable::with_size(0),
             limit: SearchLimit::new(),
         }
     }
@@ -272,6 +272,7 @@ mod tests {
         let mut main = MainSearch::new();
         main.config.n_helpers = 0;
         main.config.depth = depth;
+        main.ttable.resize(1000);
         let info = main.evaluate(&g).unwrap();
         for m in info.pv {
             assert!(is_legal(m, g.board()));
