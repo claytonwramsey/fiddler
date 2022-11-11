@@ -291,9 +291,12 @@ impl TTable {
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
     ///
+    /// `max_age` must be less than or equal to 0x7F.
+    ///
     /// # Panics
     ///
-    /// This function may panic due to an internal error.
+    /// This function will panic in debug mode if `max_age` is greater than or
+    /// equal to 0x7F.
     pub fn age_up(&mut self, max_age: u8) {
         debug_assert!(max_age <= 0x7F);
         if !self.buckets.is_null() {

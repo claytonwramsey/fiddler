@@ -31,6 +31,7 @@ use super::{
 
 /// A bitboard of all the squares a knight can move to if its position is
 /// the index of the list.
+// bob seger
 pub const KNIGHT_MOVES: [Bitboard; 64] =
     create_step_attacks(&Direction::KNIGHT_STEPS, 2);
 

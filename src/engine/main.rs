@@ -41,7 +41,7 @@ use fiddler::engine::{
 };
 
 /// The default size of the transposition table.
-const DEFAULT_HASH_SIZE_MB: usize = 2_000;
+const DEFAULT_HASH_SIZE_MB: usize = 1_000;
 
 /// Run the Fiddler UCI engine.
 fn main() {
