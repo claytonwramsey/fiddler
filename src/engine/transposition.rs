@@ -34,7 +34,7 @@ use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
     intrinsics::prefetch_read_data,
     marker::PhantomData,
-    mem::size_of,
+    mem::{size_of, transmute},
     ptr::null,
 };
 
@@ -130,6 +130,9 @@ impl TTable {
     #[must_use]
     /// Construct a `TTable` with a given size, in megabytes.
     pub fn with_size(size_mb: usize) -> TTable {
+        if size_mb == 0 {
+            return TTable::new();
+        }
         let max_num_buckets = size_mb * 1_000_000 / size_of::<Bucket>();
         let new_size = if max_num_buckets.is_power_of_two() {
             max_num_buckets
@@ -152,11 +155,10 @@ impl TTable {
     /// This function will panic if `capacity_log2` is large enough to cause
     /// overflow.
     fn with_capacity(capacity_log2: usize) -> TTable {
-        let n_buckets = 1 << capacity_log2;
-        let layout = Layout::array::<Bucket>(n_buckets).unwrap();
+        let layout = Layout::array::<Bucket>(1 << capacity_log2).unwrap();
         TTable {
             buckets: unsafe { alloc_zeroed(layout).cast::<Bucket>() },
-            mask: (n_buckets - 1) as u64,
+            mask: ((1usize << capacity_log2) - 1usize) as u64,
         }
     }
 
@@ -215,7 +217,7 @@ impl TTable {
         for _ in 0..BUCKET_LEN {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
 
-            if entry_ref.tag & 0x80 == 0 {
+            if entry_ref.liveness() != Liveness::Occupied {
                 // if we encounter an entry which is unused, mark it for
                 // replacement if we don't find a matching entry.
                 if eldest_age < 255 {
@@ -233,7 +235,7 @@ impl TTable {
             } else {
                 // check if we can use this entry to overwrite if we don't find
                 // a match
-                let age = entry_ref.tag & 0x7F;
+                let age = entry_ref.age();
                 if eldest_age < age {
                     replace_ptr = entry_ptr;
                     eldest_age = age;
@@ -281,8 +283,11 @@ impl TTable {
                         .as_ref()
                         .unwrap()
                 };
-                num_full +=
-                    bucket.entries.iter().filter(|e| e.tag & 0x80 != 0).count();
+                num_full += bucket
+                    .entries
+                    .iter()
+                    .filter(|e| e.liveness() == Liveness::Occupied)
+                    .count();
             }
             (num_full / BUCKET_LEN) as u16
         }
@@ -291,24 +296,37 @@ impl TTable {
     /// Age up all the entries in this table, and for any slot which is at
     /// least as old as the max age, evict it.
     ///
-    /// `max_age` must be less than or equal to 0x7F.
+    /// `max_age` must be less than or equal to 0x3F.
     ///
     /// # Panics
     ///
     /// This function will panic in debug mode if `max_age` is greater than or
-    /// equal to 0x7F.
+    /// equal to 0x3f.
     pub fn age_up(&mut self, max_age: u8) {
-        debug_assert!(max_age <= 0x7F);
+        debug_assert!(max_age <= 0x3F);
         if !self.buckets.is_null() {
             for idx in 0..=self.mask {
+                #[allow(clippy::cast_possible_truncation)]
                 let bucket = unsafe {
-                    self.buckets.add(self.index_for(idx)).as_mut().unwrap()
+                    // SAFETY:
+                    // Computing `index_for` keeps the bucket inbounds.
+                    // The call to `as_mut` is safe because we have access to
+                    // `&mut self`, so no other references to this transposition
+                    // table can exist.
+                    self.buckets
+                        .add((idx & self.mask) as usize)
+                        .as_mut()
+                        .unwrap()
                 };
                 for entry in &mut bucket.entries {
-                    if entry.tag & 0x7F > max_age {
-                        *entry = TTEntry::new();
+                    if entry.liveness() == Liveness::Occupied {
+                        // only age up the occupied entries
+                        if max_age <= entry.age() {
+                            entry.tag = Liveness::Deleted as u8;
+                        } else {
+                            entry.tag += 1;
+                        }
                     }
-                    entry.tag += 1;
                 }
             }
         }
@@ -405,16 +423,28 @@ impl TTable {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+/// The liveness of a transposition table entry.
+enum Liveness {
+    #[allow(unused)]
+    /// An empty entry, with no occupied or deleted entries following it.
+    Empty = 0,
+    /// An occupied entry, with data inside.
+    Occupied = 1 << 6,
+    /// A deleted entry, which may have extra data inside it.
+    Deleted = 2 << 6,
+}
+
 impl TTEntry {
-    const fn new() -> TTEntry {
-        TTEntry {
-            tag: 0,
-            key_low16: 0,
-            depth: 0,
-            best_move: Move::BAD_MOVE,
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::DRAW,
-        }
+    /// Get the age of this entry.
+    const fn age(&self) -> u8 {
+        self.tag & 0x3f
+    }
+
+    /// Get the liveness of this entry.
+    /// Evaluated it by comparing
+    const fn liveness(&self) -> Liveness {
+        unsafe { transmute(self.tag & 0xc0) }
     }
 }
 
@@ -468,7 +498,7 @@ impl<'a> TTEntryGuard<'a> {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
-                    tag: 0x80,
+                    tag: Liveness::Occupied as u8,
                     key_low16: self.hash as u16,
                     depth,
                     best_move,
@@ -503,7 +533,7 @@ mod tests {
     fn guaranteed_hit() {
         let tt = TTable::with_capacity(4);
         let entry = TTEntry {
-            tag: 0x80,
+            tag: Liveness::Occupied as u8,
             key_low16: 12,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
@@ -521,11 +551,11 @@ mod tests {
     }
 
     #[test]
-    /// Test that writing to an empty table is a no-op.
-    fn attempt_write_empty_table() {
+    /// Test that writing to a zero-size table is a no-op.
+    fn attempt_write_nosize_table() {
         let tt = TTable::new();
         let entry = TTEntry {
-            tag: 0x80,
+            tag: Liveness::Occupied as u8,
             key_low16: 12,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
@@ -546,7 +576,7 @@ mod tests {
     /// Test that an entry with the same hash can overwrite another entry.
     fn overwrite() {
         let e0 = TTEntry {
-            tag: 0x80,
+            tag: Liveness::Occupied as u8,
             key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
@@ -554,7 +584,7 @@ mod tests {
             upper_bound: Eval::centipawns(100),
         };
         let e1 = TTEntry {
-            tag: 0x80,
+            tag: Liveness::Occupied as u8,
             key_low16: 2022,
             depth: 7,
             best_move: Move::normal(Square::E4, Square::E5),
@@ -587,7 +617,7 @@ mod tests {
         let mut tt = TTable::new();
         tt.resize(2000);
         let entry = TTEntry {
-            tag: 0x80,
+            tag: Liveness::Occupied as u8,
             key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
@@ -608,5 +638,57 @@ mod tests {
     /// Test that a `Bucket` is in fact the size of a cache line.
     fn bucket_size() {
         assert_eq!(size_of::<Bucket>(), LINE_SIZE);
+    }
+
+    #[test]
+    /// Test that aging up a table with a maximum age of zero clears it.
+    fn age_up_zero_clear() {
+        let mut tt = TTable::with_capacity(3);
+        tt.get(2022).save(
+            10,
+            Move::normal(Square::E2, Square::E4),
+            Eval::BLACK_MATE,
+            Eval::DRAW,
+        );
+
+        tt.age_up(0);
+        assert!(tt.get(2022).entry().is_none());
+    }
+
+    #[test]
+    /// Test that aging up a transposition table removes old entries but keeps
+    /// young ones.
+    fn age_up_discrimination() {
+        let e0 = TTEntry {
+            tag: Liveness::Occupied as u8,
+            key_low16: 2022,
+            depth: 5,
+            best_move: Move::normal(Square::E2, Square::E4),
+            lower_bound: Eval::DRAW,
+            upper_bound: Eval::centipawns(100),
+        };
+        let e1 = TTEntry {
+            tag: Liveness::Occupied as u8,
+            key_low16: 2022,
+            depth: 7,
+            best_move: Move::normal(Square::E4, Square::E5),
+            lower_bound: Eval::BLACK_MATE,
+            upper_bound: -Eval::centipawns(100),
+        };
+
+        let mut tt = TTable::with_capacity(3);
+
+        tt.get(1)
+            .save(e0.depth, e0.best_move, e0.lower_bound, e0.upper_bound);
+
+        tt.age_up(10);
+
+        tt.get(2)
+            .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
+
+        tt.age_up(1);
+
+        assert!(tt.get(1).entry().is_none());
+        assert!(tt.get(2).entry().is_some());
     }
 }

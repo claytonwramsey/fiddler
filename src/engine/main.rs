@@ -41,7 +41,7 @@ use fiddler::engine::{
 };
 
 /// The default size of the transposition table.
-const DEFAULT_HASH_SIZE_MB: usize = 1_000;
+const DEFAULT_HASH_SIZE_MB: usize = 5_000;
 
 /// Run the Fiddler UCI engine.
 fn main() {
@@ -338,7 +338,7 @@ fn go<'a>(
         }
         drop(searcher_guard);
         // clean up after ourselves by aging up the transposition table
-        searcher.write().unwrap().ttable.age_up(2);
+        searcher.write().unwrap().ttable.age_up(0);
     }))
 }
 
