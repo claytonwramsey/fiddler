@@ -24,7 +24,7 @@ with a master-level player.
 Fiddler uses nightly, unstable Rust, mostly to gain access to LLVM's prefetch
 intrinsic.
 As a result, you must use the nightly compiler to compile this code.
-The most simple way of doing this is by running `rustup default stable` before
+The most simple way of doing this is by running `rustup default nightly` before
 proceeding.
 
 To create the main UCI executable, navigate to the root of this repository and
