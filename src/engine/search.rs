@@ -29,7 +29,7 @@
 //! mis-evaluation of positions with hanging pieces.
 
 use crate::base::{
-    movegen::{has_moves, is_legal, CAPTURES},
+    movegen::{has_moves, is_legal, GenMode},
     Move,
 };
 
@@ -567,7 +567,7 @@ impl<'a> PVSearch<'a> {
         }
 
         let mut best_score = score;
-        let mut moves = self.game.get_moves::<CAPTURES>();
+        let mut moves = self.game.get_moves::<{ GenMode::Captures }>();
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut line = Vec::new();
 

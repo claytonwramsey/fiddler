@@ -95,12 +95,12 @@ pub fn evaluate(b: &Board) -> Score {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::{game::Game, movegen::ALL};
+    use crate::base::{game::Game, movegen::GenMode};
 
     fn delta_helper(fen: &str) {
         let mut g = Game::from_fen(fen).unwrap();
         let orig_eval = evaluate(g.board());
-        for (m, _) in g.get_moves::<ALL>() {
+        for (m, _) in g.get_moves::<{ GenMode::All }>() {
             let delta = delta(g.board(), m);
             let new_eval = match g.board().player {
                 Color::White => orig_eval + delta,

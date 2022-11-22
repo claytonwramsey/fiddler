@@ -87,16 +87,18 @@ const fn create_step_attacks(
     attacks
 }
 
-/// The types of move generation. These are used in const generics, as enums are
-/// not supported in const generics.
-pub type GenMode = u8;
-
-/// The mode identifier for `get_moves()` to generate all legal moves.
-pub const ALL: GenMode = 0;
-/// The mode identifier for `get_moves()` to generate captures only.
-pub const CAPTURES: GenMode = 1;
-/// The mode identifier for `get_moves()` to generate non-captures only.
-pub const QUIETS: GenMode = 2;
+#[derive(PartialEq, Eq, Debug)]
+/// The types of move generation.
+/// These are used in const generics for specifying the generation mode of m
+/// ovegen.
+pub enum GenMode {
+    /// The mode identifier for `get_moves()` to generate all legal moves.
+    All,
+    /// The mode identifier for `get_moves()` to generate captures only.
+    Captures,
+    /// The mode identifier for `get_moves()` to generate non-captures only.
+    Quiets,
+}
 
 #[must_use]
 /// Determine whether any given move is legal, given a position in which it
@@ -294,10 +296,10 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 ///
 /// Generate all legal moves:
 /// ```
-/// use fiddler::base::{Board, game::NoTag, movegen::{ALL, is_legal, get_moves}};
+/// use fiddler::base::{Board, game::NoTag, movegen::{GenMode, is_legal, get_moves}};
 ///
 /// let b = Board::new();
-/// for (m, _) in get_moves::<ALL, NoTag>(&b, &()) {
+/// for (m, _) in get_moves::<{GenMode::All}, NoTag>(&b, &()) {
 ///     assert!(is_legal(m, &b));
 /// }
 /// ```
@@ -305,13 +307,13 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate captures:
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>>{
-/// use fiddler::base::{Board, game::NoTag, Move, movegen::{CAPTURES, is_legal, get_moves}, Square};
+/// use fiddler::base::{Board, game::NoTag, Move, movegen::{GenMode, is_legal, get_moves}, Square};
 ///
 /// // Scandinavian defense. The only legal capture is exd5.
 /// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
 ///
 /// assert_eq!(
-///     get_moves::<CAPTURES, NoTag>(&b, &()),
+///     get_moves::<{GenMode::Captures}, NoTag>(&b, &()),
 ///     vec![(Move::normal(Square::E4, Square::D5), ())],
 /// );
 /// # Ok(())
@@ -321,10 +323,10 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate quiet moves:
 ///
 /// ```
-/// use fiddler::base::{Board, game::NoTag, movegen::{QUIETS, is_legal, get_moves}};
+/// use fiddler::base::{Board, game::NoTag, movegen::{GenMode, is_legal, get_moves}};
 ///
 /// let b = Board::new();
-/// for (m, _) in get_moves::<QUIETS, NoTag>(&b, &()) {
+/// for (m, _) in get_moves::<{GenMode::Quiets}, NoTag>(&b, &()) {
 ///     assert!(is_legal(m, &b));
 ///     assert!(!b.is_move_capture(m));
 /// }
@@ -333,9 +335,6 @@ pub fn get_moves<const M: GenMode, T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
 ) -> Vec<(Move, T::Tag)> {
-    // prevent wonky generation modes
-    debug_assert!(M == ALL || M == CAPTURES || M == QUIETS);
-
     let mut moves;
     let in_check = !b.checkers.is_empty();
 
@@ -348,10 +347,9 @@ pub fn get_moves<const M: GenMode, T: Tagger>(
         // in the overwhelming majority of cases, there are fewer than 50
         // legal moves total
         let capacity = match M {
-            ALL => 50,
-            CAPTURES => 8,
-            QUIETS => 40,
-            _ => unreachable!(),
+            GenMode::All => 50,
+            GenMode::Captures => 8,
+            GenMode::Quiets => 40,
         };
         moves = Vec::with_capacity(capacity);
         non_evasions::<M, T>(b, cookie, &mut moves);
@@ -545,14 +543,13 @@ fn non_evasions<const M: GenMode, T: Tagger>(
     moves: &mut Vec<(Move, T::Tag)>,
 ) {
     let target_sqs = match M {
-        ALL => !b[b.player],
-        CAPTURES => !b[b.player] & b[!b.player],
-        QUIETS => !b[b.player] & !b[!b.player],
-        _ => unreachable!(),
+        GenMode::All => !b[b.player],
+        GenMode::Captures => !b[b.player] & b[!b.player],
+        GenMode::Quiets => !b.occupancy(),
     };
 
     let mut pawn_targets = target_sqs;
-    if M != QUIETS {
+    if M != GenMode::Quiets {
         if let Some(ep_sq) = b.en_passant_square {
             pawn_targets.insert(ep_sq);
         }
@@ -562,7 +559,7 @@ fn non_evasions<const M: GenMode, T: Tagger>(
     normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
 
     // generate king moves
-    if M != CAPTURES {
+    if M != GenMode::Captures {
         castles::<T>(b, cookie, moves);
     }
     king_move_non_castle::<T>(b, cookie, moves, target_sqs);
@@ -586,14 +583,13 @@ fn evasions<const M: GenMode, T: Tagger>(
         let mut target_sqs =
             !b[b.player] & Bitboard::between(king_sq, checker_sq) | b.checkers;
         match M {
-            ALL => (),
-            CAPTURES => target_sqs &= b[!player],
-            QUIETS => target_sqs &= !b[!player],
-            _ => unreachable!(),
+            GenMode::All => (),
+            GenMode::Captures => target_sqs &= b[!player],
+            GenMode::Quiets => target_sqs &= !b[!player],
         }
 
         let mut pawn_targets = target_sqs;
-        if M != QUIETS {
+        if M != GenMode::Quiets {
             if let Some(ep_sq) = b.en_passant_square {
                 // can en passant save us from check?
                 let ep_attacker_sq = ep_sq - player.pawn_direction();
@@ -608,10 +604,9 @@ fn evasions<const M: GenMode, T: Tagger>(
     }
 
     let king_targets = match M {
-        ALL => !b[b.player],
-        CAPTURES => !b[b.player] & b[!player],
-        QUIETS => !b.occupancy(),
-        _ => unreachable!(),
+        GenMode::All => !b[b.player],
+        GenMode::Captures => !b[b.player] & b[!player],
+        GenMode::Quiets => !b.occupancy(),
     };
     king_move_non_castle::<T>(b, cookie, moves, king_targets);
 }
@@ -700,7 +695,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     let unpinned = !board.pinned;
     let king_sq = board.king_sqs[player as usize];
     let king_file_mask = Bitboard::vertical(king_sq);
-    if M != QUIETS {
+    if M != GenMode::Quiets {
         // pawn captures
 
         const NOT_WESTMOST: Bitboard = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
@@ -803,7 +798,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         }
     }
 
-    if M != CAPTURES {
+    if M != GenMode::Captures {
         // pawn forward moves
 
         // pawns which are not pinned or on the same file as the king can move
@@ -1008,7 +1003,7 @@ fn castles<T: Tagger>(
 pub fn perft(fen: &str, depth: u8) -> u64 {
     /// The core search algorithm for perft.
     fn helper<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
-        let moves = get_moves::<ALL, NoTag>(b, &());
+        let moves = get_moves::<{ GenMode::All }, NoTag>(b, &());
         if depth == 1 {
             return moves.len() as u64;
         }

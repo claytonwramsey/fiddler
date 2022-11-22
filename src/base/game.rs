@@ -394,7 +394,7 @@ impl<T: Tagger> Display for TaggedGame<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::{movegen::ALL, Board, Move, Square};
+    use crate::base::{Board, Move, Square};
 
     #[test]
     /// Test that we can play a simple move on a `Game` and have the board
@@ -479,7 +479,7 @@ mod tests {
             "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
         )
         .unwrap();
-        let moves = g.get_moves::<ALL>();
+        let moves = g.get_moves::<{ GenMode::All }>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
         assert_eq!(g.end_state(), Some(true));
@@ -491,7 +491,7 @@ mod tests {
             "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
         )
         .unwrap();
-        let moves = g.get_moves::<ALL>();
+        let moves = g.get_moves::<{ GenMode::All }>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
         assert_eq!(g.end_state(), Some(true));
@@ -508,7 +508,7 @@ mod tests {
         // Rb8# is the winning move
         let mut g = Game::from_fen("3k4/R7/1R6/5K2/8/8/8/8 w - - 0 1").unwrap();
         let m = Move::normal(Square::B6, Square::B8);
-        assert!(g.get_moves::<ALL>().contains(&(m, ())));
+        assert!(g.get_moves::<{ GenMode::All }>().contains(&(m, ())));
         g.make_move(m, &());
         assert_eq!(g.end_state(), Some(true));
     }
@@ -530,7 +530,7 @@ mod tests {
             "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
         )
         .unwrap();
-        let moves = g.get_moves::<ALL>();
+        let moves = g.get_moves::<{ GenMode::All }>();
         let expected_moves = [
             Move::normal(Square::E6, Square::D6),
             Move::normal(Square::E6, Square::F7),

@@ -192,12 +192,12 @@ pub const PST: Pst = unsafe { transmute([
 mod tests {
 
     use super::*;
-    use crate::base::{game::Game, movegen::ALL};
+    use crate::base::{game::Game, movegen::GenMode};
 
     fn delta_helper(fen: &str) {
         let mut g = Game::from_fen(fen).unwrap();
         let orig_eval = evaluate(g.board());
-        for (m, _) in g.get_moves::<ALL>() {
+        for (m, _) in g.get_moves::<{ GenMode::All }>() {
             let new_eval = match g.board().player {
                 Color::White => orig_eval + delta(g.board(), m),
                 Color::Black => orig_eval - delta(g.board(), m),

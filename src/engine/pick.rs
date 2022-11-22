@@ -40,7 +40,7 @@ use std::mem::swap;
 
 use crate::base::{
     game::Tagger,
-    movegen::{get_moves, is_legal, CAPTURES, QUIETS},
+    movegen::{get_moves, is_legal, GenMode},
     Board, Move,
 };
 
@@ -196,7 +196,10 @@ impl Iterator for MovePicker {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
                 self.capture_buffer =
-                    get_moves::<CAPTURES, ScoreTag>(&self.board, &self.cookie);
+                    get_moves::<{ GenMode::Captures }, ScoreTag>(
+                        &self.board,
+                        &self.cookie,
+                    );
                 self.next()
             }
             PickPhase::GoodCapture => {
@@ -246,8 +249,10 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                self.quiet_buffer =
-                    get_moves::<QUIETS, ScoreTag>(&self.board, &self.cookie);
+                self.quiet_buffer = get_moves::<{ GenMode::Quiets }, ScoreTag>(
+                    &self.board,
+                    &self.cookie,
+                );
                 self.next()
             }
             PickPhase::Quiet => {
@@ -313,7 +318,7 @@ impl Iterator for MovePicker {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::{game::NoTag, movegen::ALL};
+    use crate::base::game::NoTag;
 
     use super::*;
 
@@ -328,7 +333,7 @@ mod tests {
         let mp = MovePicker::new(b, &ScoreTag::init_cookie(&b), None, None);
 
         let picker_moves = mp.map(|(m, _)| m);
-        let gen_moves = get_moves::<ALL, NoTag>(&b, &());
+        let gen_moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
         for m in picker_moves.clone() {
             assert!(gen_moves.contains(&(m, ())));
             println!("{}", m.to_algebraic(&b).unwrap());
@@ -340,6 +345,7 @@ mod tests {
         }
 
         for m in picker_moves.clone() {
+            println!("counting {m}");
             assert_eq!(picker_moves.clone().filter(|&m2| m2 == m).count(), 1);
         }
     }

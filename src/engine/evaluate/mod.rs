@@ -739,12 +739,13 @@ impl Mul<u8> for Score {
 
 #[cfg(test)]
 mod tests {
+    use crate::base::movegen::GenMode;
+
     use super::*;
-    use crate::base::movegen::ALL;
 
     fn delta_helper(fen: &str) {
         let mut g = ScoredGame::from_fen(fen).unwrap();
-        for (m, tag) in g.get_moves::<ALL>() {
+        for (m, tag) in g.get_moves::<{ GenMode::All }>() {
             g.make_move(m, &tag);
             // println!("{g}");
             assert_eq!(ScoreTag::init_cookie(g.board()), *g.cookie());
