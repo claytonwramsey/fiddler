@@ -486,7 +486,7 @@ impl<'a> PVSearch<'a> {
         parent_line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
         if !self.game.board().checkers.is_empty() {
-            // don't allow settling if we are in check
+            // don't allow settling if we are in check (~48 Elo)
             return self.pvs::<PV, false, false>(
                 1,
                 depth_so_far,
