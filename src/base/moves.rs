@@ -33,21 +33,21 @@ use std::{
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-/// The information of one move, containing its from- and to-squares, as well as
-/// its promote type.
-///
-/// Internally, moves are represented as packed structures in a single unsigned
-/// 16-bit integer. From MSB to LSB, the bits inside of a `Move` are as follows:
-/// * 2 bits: flags (promotion, castling, or en passant)
-/// * 2 bits: promote type
-/// * 6 bits: from-square
-/// * 6 bits: to-square
+/// The information of one move, containing its from- and to-squares, as well as its promote type.
+
+// Internally, moves are represented as packed structures in a single unsigned 16-bit integer.
+// From MSB to LSB, the bits inside of a `Move` are as follows:
+// * 2 bits: flags (promotion, castling, or en passant)
+// * 2 bits: promote type
+// * 6 bits: from-square
+// * 6 bits: to-square
 pub struct Move(u16);
 
 impl Move {
-    /// A sentinel value for a move which is illegal, or otherwise
-    /// inexpressible. It is *strongly* recommended that `Option<Move>` is used
-    /// instead of this.
+    /// A sentinel value for a move which is illegal, or otherwise inexpressible.
+    ///
+    /// It is *strongly* recommended that `Option<Move>` is used instead of this whenever space is
+    /// not an enormous concern.
     pub const BAD_MOVE: Move = Move(0xFFFF);
 
     /// The mask used to extract the flag bits from a move.
@@ -64,21 +64,17 @@ impl Move {
 
     #[inline(always)]
     #[must_use]
-    /// Create a `Move` with no promotion type, which is not marked as having
-    /// any extra special flags.
+    /// Create a `Move` with no promotion type, which is not marked as having any extra special
+    /// flags.
     pub const fn normal(from_square: Square, to_square: Square) -> Move {
         Move(((to_square as u16) << 6) | from_square as u16)
     }
 
     #[inline(always)]
     #[must_use]
-    /// Create a `Move` with the given promotion type. The promote type must
-    /// not be a pawn or a king.
-    pub const fn promoting(
-        from_square: Square,
-        to_square: Square,
-        promote_type: Piece,
-    ) -> Move {
+    /// Create a `Move` with the given promotion type.
+    /// The promote type must not be a pawn or a king.
+    pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
         Move(
             Move::normal(from_square, to_square).0
                 | ((promote_type as u16) << 12)
@@ -139,8 +135,8 @@ impl Move {
 
     #[inline(always)]
     #[must_use]
-    /// Get the promotion type of this move. The resulting type will never be a
-    /// pawn or a king.
+    /// Get the promotion type of this move.
+    /// The resulting type will never be a pawn or a king.
     pub const fn promote_type(self) -> Option<Piece> {
         if self.is_promotion() {
             Some(unsafe { std::mem::transmute(((self.0 >> 12) & 3u16) as u8) })
@@ -149,8 +145,8 @@ impl Move {
         }
     }
 
-    /// Convert a move from its UCI representation. Requires the board the move
-    /// was played on to determine extra flags about the move.
+    /// Convert a move from its UCI representation.
+    /// Requires the board the move was played on to determine extra flags about the move.
     ///
     /// # Errors
     ///
@@ -167,15 +163,11 @@ impl Move {
             return Ok(Move::promoting(from_sq, to_sq, pt));
         }
 
-        if board[Piece::King].contains(from_sq)
-            && from_sq.file_distance(to_sq) > 1
-        {
+        if board[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
             return Ok(Move::castling(from_sq, to_sq));
         }
 
-        if board[Piece::Pawn].contains(from_sq)
-            && board.en_passant_square == Some(to_sq)
-        {
+        if board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq) {
             return Ok(Move::en_passant(from_sq, to_sq));
         }
 
@@ -196,17 +188,14 @@ impl Move {
         }
     }
 
-    /// Given a `Move` and the `Board` it was played on, construct the
-    /// algebraic-notation version of the move. Assumes the move was legal.
+    #[allow(clippy::missing_panics_doc)]
+    /// Given a `Move` and the `Board` it was played on, construct the  algebraic-notation version
+    /// of the move.
     ///
     /// # Errors
     ///
     /// This function will return an `Err` if the move is illegal on the given
     /// board.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic in the case of an internal error.
     ///
     /// # Examples
     ///
@@ -221,8 +210,8 @@ impl Move {
     /// # }
     /// ```
     pub fn to_algebraic(self, b: &Board) -> Result<String, &'static str> {
-        // longest possible algebraic string would be something along the lines
-        // of Qe4xd4#, exd8=Q#, and O-O-O+
+        // longest possible algebraic string would be something along the lines of Qe4xd4#, exd8=Q#,
+        // and O-O-O+
         let mut s = String::with_capacity(7);
         if !is_legal(self, b) {
             // can't make an algebraic form of an illegal move
@@ -231,7 +220,7 @@ impl Move {
 
         if self.is_castle() {
             if self.to_square().file() > self.from_square().file() {
-                //moving right, must be O-O
+                // moving right, must be O-O
                 s += "O-O";
             } else {
                 s += "O-O-O";
@@ -261,8 +250,7 @@ impl Move {
                 if self != other_move
                     && other_move.to_square() == self.to_square()
                     && other_move.from_square() != self.from_square()
-                    && b.type_at_square(other_move.from_square()).unwrap()
-                        == mover_type
+                    && b.type_at_square(other_move.from_square()).unwrap() == mover_type
                 {
                     is_unclear = true;
                     if other_move.from_square().rank() == from_sq.rank() {
@@ -276,13 +264,13 @@ impl Move {
 
             if is_unclear {
                 if !is_unclear_rank {
-                    //we can specify the mover by its file
+                    // we can specify the mover by its file
                     s.push(from_sq.file_name());
                 } else if !is_unclear_file {
-                    //we can specify the mover by its rank
+                    // we can specify the mover by its rank
                     s = format!("{s}{}", from_sq.rank() + 1);
                 } else {
-                    //we need the complete square to specify the location of the mover
+                    // we need the complete square to specify the location of the mover
                     s += &from_sq.to_string();
                 }
             }
@@ -305,9 +293,7 @@ impl Move {
         let enemy_king_sq = b.king_sqs[!b.player as usize];
         bcopy.make_move(self);
         if is_square_attacked_by(&bcopy, enemy_king_sq, b.player) {
-            if get_moves::<{ GenMode::All }, NoTag>(&bcopy, &()).is_empty()
-                && !bcopy.is_drawn()
-            {
+            if get_moves::<{ GenMode::All }, NoTag>(&bcopy, &()).is_empty() && !bcopy.is_drawn() {
                 s += "#";
             } else {
                 s += "+";
@@ -317,17 +303,13 @@ impl Move {
         Ok(s)
     }
 
-    /// Given the string of an algebraic-notation move, get the `Move` which can be
-    /// played.
+    #[allow(clippy::missing_panics_doc)]
+    /// Given the string of an algebraic-notation move, get the `Move` which can be played.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` if `s` is not a valid
-    /// algebraically-represented move in `b`.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic in the case of an internal error.
+    /// This function will return an `Err` if `s` is not a valid algebraically-represented move in
+    /// `b`.
     pub fn from_algebraic(s: &str, b: &Board) -> Result<Move, &'static str> {
         get_moves::<{ GenMode::All }, NoTag>(b, &())
             .into_iter()
@@ -338,16 +320,16 @@ impl Move {
 
     #[inline(always)]
     #[must_use]
-    /// Get a number representing this move uniquely. The value may change from
-    /// version to version.
+    /// Get a number representing this move uniquely.
+    /// The value returned may change from version to version.
     pub const fn value(self) -> u16 {
         self.0
     }
 
     #[inline(always)]
     #[must_use]
-    /// Reconstruct a move based on its `value`. Should only be used with
-    /// values returned from `Move::value()`.
+    /// Reconstruct a move based on its `value`.
+    /// Should only be used with values returned from `Move::value()`.
     pub const fn from_val(val: u16) -> Move {
         Move(val)
     }
@@ -372,16 +354,8 @@ impl Debug for Move {
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.promote_type() {
-            None => {
-                write!(f, "{} -> {}", self.from_square(), self.to_square())?;
-            }
-            Some(p) => write!(
-                f,
-                "{} -> {} ={}",
-                self.from_square(),
-                self.to_square(),
-                p
-            )?,
+            None => write!(f, "{} -> {}", self.from_square(), self.to_square())?,
+            Some(p) => write!(f, "{} -> {} ={p}", self.from_square(), self.to_square())?,
         };
         if self.is_en_passant() {
             write!(f, " [e.p.]")?;
@@ -445,8 +419,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that playing e4 can be successfully converted to its algebraic
-    /// form.
+    /// Test that playing e4 can be successfully converted to its algebraic form.
     fn e4_to_algebraic() {
         let b = Board::default();
         let m = Move::normal(Square::E2, Square::E4);
@@ -468,10 +441,8 @@ mod tests {
     /// Test that capturing a pawn is parsed correctly.
     fn algebraic_from_pawn_capture() {
         // exf5 is legal here
-        let b = Board::from_fen(
-            "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
-        )
-        .unwrap();
+        let b = Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2")
+            .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
         assert_eq!(m.to_algebraic(&b).unwrap(), "exf5");
     }
@@ -489,10 +460,8 @@ mod tests {
     #[test]
     /// Test that capturing a pawn is parsed correctly.
     fn algebraic_move_from_pawn_capture() {
-        let b = Board::from_fen(
-            "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
-        )
-        .unwrap();
+        let b = Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2")
+            .unwrap();
         let m = Move::normal(Square::E4, Square::F5);
         let s = "exf5";
 
@@ -519,13 +488,10 @@ mod tests {
     }
 
     #[test]
-    /// Test that algebraic moves are correctly disambiguated by their rank if
-    /// needed.
+    /// Test that algebraic moves are correctly disambiguated by their rank if needed.
     fn algebraic_rank_identifier() {
-        let b = Board::from_fen(
-            "rnbqkbnr/pppppppp/8/8/3P4/1N6/PPP1PPPP/RNBQKB1R w KQkq - 1 5",
-        )
-        .unwrap();
+        let b = Board::from_fen("rnbqkbnr/pppppppp/8/8/3P4/1N6/PPP1PPPP/RNBQKB1R w KQkq - 1 5")
+            .unwrap();
         let m = Move::normal(Square::B3, Square::D2);
         let s = "N3d2";
         assert_eq!(m.to_algebraic(&b).unwrap(), s);

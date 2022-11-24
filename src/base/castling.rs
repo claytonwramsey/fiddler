@@ -23,11 +23,10 @@ use super::Color;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-/// A simple struct to store a piece's castling rights. Internally, the bits of
-/// the rights flag each represent one castling right.
+/// A simple struct to store a piece's castling rights.
 ///
-/// Only the lower 4 bits of these rights are used. Internally, the bits have
-/// the following assignments:
+/// Internally, a castling rights is represented as a packed bitmask.
+/// The bits in this mask have the following assignments:
 /// * `1 << 0` (LSB): White kingside castling.
 /// * `1 << 1`: White queenside castling.
 /// * `1 << 2`: Black kingside castling.

@@ -25,8 +25,8 @@ use super::{Color, Piece, Square};
 pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
         None => 0,
-        // Because sq, p, and color are all enums with fixed ranges, we can
-        // perform an unchecekd get on these indices.
+        // Because sq, p, and color are all enums with fixed ranges, we can perform an unchecked
+        // get on these indices.
         Some(p) => unsafe {
             *SQUARE_KEYS
                 .get_unchecked(sq as usize)
@@ -37,9 +37,9 @@ pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
 }
 
 #[inline(always)]
-/// Get the Zobrist key for a castling right. 0 is for white king castle, 1 is
-/// for white queen castle, 2 is for black king castle, and 3 is for black
-/// queen castle.
+/// Get the Zobrist key for a castling right.
+/// 0 is for white king castle, 1 is for white queen castle, 2 is for black king castle, and 3 is
+/// for black queen castle.
 pub fn castle_key(right: u8) -> u64 {
     unsafe { *CASTLE_KEYS.get_unchecked(right as usize) }
 }

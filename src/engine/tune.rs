@@ -17,11 +17,11 @@
 */
 
 //! The tuner for the Fiddler chess engine.
-//! This file exists to create a binary which can be used to generate weights
-//! from an annotated EPD file.
+//! This file exists to create a binary which can be used to generate weights from an annotated EPD
+//! file.
 //!
-//! The tuner operates by using gradient descent on logistic regression to
-//! classify the results of a given position.
+//! The tuner operates by using gradient descent on logistic regression to classify the results of a
+//! given position.
 
 #![warn(clippy::pedantic)]
 #![allow(clippy::inline_always)]
@@ -43,25 +43,22 @@ use fiddler::engine::evaluate::{
     mobility::{ATTACKS_VALUE, MAX_MOBILITY},
     net_doubled_pawns, net_open_rooks, phase_of,
     pst::PST,
-    DOUBLED_PAWN_VALUE, KINGSIDE_CASTLE_VALUE, OPEN_ROOK_VALUE,
-    QUEENSIDE_CASTLE_VALUE,
+    DOUBLED_PAWN_VALUE, KINGSIDE_CASTLE_VALUE, OPEN_ROOK_VALUE, QUEENSIDE_CASTLE_VALUE,
 };
 
 /// The input feature set of a board.
-/// Each element is a (key, value) pair where the key is the index of the value
-/// in the full feature vector.
+/// Each element is a (key, value) pair where the key is the index of the value in the full feature
+/// vector.
 type BoardFeatures = Vec<(usize, f32)>;
 
 #[allow(clippy::similar_names)]
 /// Run the main training function.
 ///
-/// The first command line argument must the the path of the file containing
-/// training data.
+/// The first command line argument must the the path of the file containing training data.
 ///
 /// # Panics
 ///
-/// This function will panic if the EPD training data is not specified or does
-/// not exist.
+/// This function will panic if the EPD training data is not specified or does not exist.
 pub fn main() {
     let args: Vec<String> = env::args().collect();
     // first argument is the name of the binary
@@ -89,9 +86,7 @@ pub fn main() {
 }
 
 /// Expand an EPD file into a set of features that can be used for training.
-fn extract_epd(
-    location: &str,
-) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std::error::Error>> {
+fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std::error::Error>> {
     let file = File::open(location)?;
     let reader = BufReader::new(file);
     let mut data = Vec::new();
@@ -99,8 +94,7 @@ fn extract_epd(
     for line_result in reader.lines() {
         let line = line_result?;
         let mut split_line = line.split('"');
-        // first part of the split is the FEN, second is the score, last is just
-        // a semicolon
+        // first part of the split is the FEN, second is the score, last is just a semicolon
         let fen = split_line.next().ok_or("no FEN given")?;
         let b = Board::from_fen(fen)?;
         let features = extract(&b);
@@ -122,8 +116,7 @@ fn extract_epd(
 /// Returns the weight vector MSE of the current epoch.
 ///
 /// Inputs:
-/// * `inputs`: a vector containing the input vector and the expected
-///     evaluation.
+/// * `inputs`: a vector containing the input vector and the expected evaluation.
 /// * `weights`: the weight vector to train on.
 /// * `learn_rate`: a coefficient on the speed at which the engine learns.
 ///
@@ -143,16 +136,13 @@ fn train_step(
         for thread_id in 0..nthreads {
             // start the parallel work
             let start = chunk_size * thread_id;
-            grads.push(s.spawn(move || {
-                train_thread(&inputs[start..][..chunk_size], weights)
-            }));
+            grads.push(s.spawn(move || train_thread(&inputs[start..][..chunk_size], weights)));
         }
         for grad_handle in grads {
             let (sub_grad, se) = grad_handle.join().unwrap();
             sum_se += se;
             for i in 0..new_weights.len() {
-                new_weights[i] -=
-                    learn_rate * sub_grad[i] / inputs.len() as f32;
+                new_weights[i] -= learn_rate * sub_grad[i] / inputs.len() as f32;
             }
         }
     });
@@ -171,16 +161,11 @@ fn train_step(
 
 /// Construct the gradient vector for a subset of the input data.
 /// Returns the sum of the squared error across this epoch.
-fn train_thread(
-    input: &[(BoardFeatures, f32)],
-    weights: &[f32],
-) -> (Vec<f32>, f32) {
+fn train_thread(input: &[(BoardFeatures, f32)], weights: &[f32]) -> (Vec<f32>, f32) {
     let mut grad = vec![0.; weights.len()];
     let mut sum_se = 0.;
     for (features, sigm_expected) in input {
-        let sigm_eval = sigmoid(
-            features.iter().map(|&(idx, val)| val * weights[idx]).sum(),
-        );
+        let sigm_eval = sigmoid(features.iter().map(|&(idx, val)| val * weights[idx]).sum());
         let err = sigm_expected - sigm_eval;
         let coeff = -sigm_eval * (1. - sigm_eval) * err;
         // construct the gradient
@@ -324,8 +309,8 @@ fn print_weights(weights: &[f32]) {
 )]
 /// Extract a feature vector from a board.
 /// The resulting vector will have dimension 1118.
-/// The PST values can be up to 1 for a white piece on the given PST square, -1
-/// for a black piece, or 0 for both or neither.
+/// The PST values can be up to 1 for a white piece on the given PST square, -1 for a black piece,
+/// or 0 for both or neither.
 /// The PST values are then pre-blended by game phase.
 ///
 /// The elements of the vector are listed by their indices as follows:
@@ -343,10 +328,9 @@ fn print_weights(weights: &[f32]) {
 ///     Note that the indices for the first and eight ranks do not matter.
 /// * 650..778: King PST
 /// * 778..1114: Mobility lookup.
-///     This is not the most efficient representation, but it's easy to
-///     implement.
-///     The most major index is the piece type, then the number of attacked
-///     squares, and lastly whether the evaluation is midgame or endgame.
+///     This is not the most efficient representation, but it's easy to implement.
+///     The most major index is the piece type, then the number of attacked squares, and lastly
+///     whether the evaluation is midgame or endgame.
 /// * 1114..1116: Number of doubled pawns (mg, eg) weighted
 ///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
 /// * 1116..1118: Net number of open rooks
@@ -354,8 +338,8 @@ fn print_weights(weights: &[f32]) {
 /// * 1120..1122: Net queenside castling rights.
 ///
 /// Ranges given above are lower-bound inclusive.
-/// The representation is sparse, so each usize corresponds to an index in the
-/// true vector. Zero entries will not be in the output.
+/// The representation is sparse, so each usize corresponds to an index in the true vector.
+/// Zero entries will not be in the output.
 fn extract(b: &Board) -> BoardFeatures {
     let mut features = Vec::with_capacity(28);
     let phase = phase_of(b);
@@ -431,14 +415,8 @@ fn extract(b: &Board) -> BoardFeatures {
     features
 }
 
-/// Helper function to extract mobility information into the sparse feature
-/// vector.
-fn extract_mobility(
-    b: &Board,
-    features: &mut Vec<(usize, f32)>,
-    offset: usize,
-    phase: f32,
-) {
+/// Helper function to extract mobility information into the sparse feature vector.
+fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, phase: f32) {
     let white = b[Color::White];
     let black = b[Color::Black];
     let not_white = !white;
@@ -460,28 +438,22 @@ fn extract_mobility(
     // count bishop moves
     let bishops = b[Piece::Bishop];
     for sq in bishops & white {
-        let idx = usize::from(
-            (MAGIC.bishop_attacks(occupancy, sq) & not_white).len(),
-        );
+        let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_white).len());
         count[Piece::Bishop as usize][idx] += 1;
     }
     for sq in bishops & black {
-        let idx = usize::from(
-            (MAGIC.bishop_attacks(occupancy, sq) & not_black).len(),
-        );
+        let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_black).len());
         count[Piece::Bishop as usize][idx] -= 1;
     }
 
     // count rook moves
     let rooks = b[Piece::Rook];
     for sq in rooks & white {
-        let idx =
-            usize::from((MAGIC.rook_attacks(occupancy, sq) & not_white).len());
+        let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_white).len());
         count[Piece::Rook as usize][idx] += 1;
     }
     for sq in rooks & black {
-        let idx =
-            usize::from((MAGIC.rook_attacks(occupancy, sq) & not_black).len());
+        let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_black).len());
         count[Piece::Rook as usize][idx] -= 1;
     }
 
@@ -489,18 +461,14 @@ fn extract_mobility(
     let queens = b[Piece::Queen];
     for sq in queens & white {
         let idx = usize::from(
-            ((MAGIC.rook_attacks(occupancy, sq)
-                | MAGIC.bishop_attacks(occupancy, sq))
-                & not_white)
+            ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_white)
                 .len(),
         );
         count[Piece::Queen as usize][idx] += 1;
     }
     for sq in rooks & black {
         let idx = usize::from(
-            ((MAGIC.rook_attacks(occupancy, sq)
-                | MAGIC.bishop_attacks(occupancy, sq))
-                & not_black)
+            ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_black)
                 .len(),
         );
         count[Piece::Queen as usize][idx] -= 1;
@@ -510,43 +478,29 @@ fn extract_mobility(
     // pawns can't capture by pushing, so we only examine their capture squares
     let pawns = b[Piece::Pawn];
     for sq in pawns & white {
-        let idx = usize::from(
-            (PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white)
-                .len(),
-        );
+        let idx = usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white).len());
         count[Piece::Pawn as usize][idx] += 1;
     }
     for sq in pawns & black {
-        let idx = usize::from(
-            (PAWN_ATTACKS[Color::Black as usize][sq as usize] & not_black)
-                .len(),
-        );
+        let idx = usize::from((PAWN_ATTACKS[Color::Black as usize][sq as usize] & not_black).len());
         count[Piece::Pawn as usize][idx] -= 1;
     }
 
     // king
-    let white_king_idx = usize::from(
-        (KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white)
-            .len(),
-    );
+    let white_king_idx =
+        usize::from((KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white).len());
     count[Piece::King as usize][white_king_idx] += 1;
-    let black_king_idx = usize::from(
-        (KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black)
-            .len(),
-    );
+    let black_king_idx =
+        usize::from((KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black).len());
     count[Piece::King as usize][black_king_idx] -= 1;
 
     for pt in Piece::ALL {
         for idx in 0..MAX_MOBILITY {
             let num_mobile = count[pt as usize][idx];
             if num_mobile != 0 {
-                let feature_idx =
-                    offset + 2 * (MAX_MOBILITY * pt as usize + idx);
+                let feature_idx = offset + 2 * (MAX_MOBILITY * pt as usize + idx);
                 features.push((feature_idx, phase * f32::from(num_mobile)));
-                features.push((
-                    feature_idx + 1,
-                    (1. - phase) * f32::from(num_mobile),
-                ));
+                features.push((feature_idx + 1, (1. - phase) * f32::from(num_mobile)));
             }
         }
     }

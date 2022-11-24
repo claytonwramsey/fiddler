@@ -1,14 +1,12 @@
 //! Evaluation of positions based on the mobility of pieces.
 //!
-//! We count mobility by examining the number of squares that a piece can move
-//! to according to pseudo-legal moves.
-//! This means that captures and empty squares visible to a piece (independent
-//! of whether it is pinned) count towards its mobility score.
+//! We count mobility by examining the number of squares that a piece can move to according to
+//! pseudo-legal moves.
+//! This means that captures and empty squares visible to a piece (independent of whether it is
+//! pinned) count towards its mobility score.
 //!
-//! For each piece, for each number of squares attacked, a unique mobility bonus
-//! is given.
-//! This prevents pieces from being placed uselessly in the name of being able
-//! to see more squares.
+//! For each piece, for each number of squares attacked, a unique mobility bonus is given.
+//! This prevents pieces from being placed uselessly in the name of being able to see more squares.
 
 use std::mem::transmute;
 
@@ -222,8 +220,7 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = unsafe {
 /// * `pt`: the type of the piece being scored.
 /// * `attacks`: the squares that the piece is attacking.
 ///
-/// Returns the score associated with `pt` attacking all the squares in
-/// `attacks`.
+/// Returns the score associated with `pt` attacking all the squares in `attacks`.
 pub const fn for_piece(pt: Piece, attacks: Bitboard) -> Score {
     ATTACKS_VALUE[pt as usize][attacks.len() as usize]
 }
@@ -242,12 +239,10 @@ pub fn evaluate(b: &Board) -> Score {
     let knights = b[Piece::Knight];
     // pinned knights can't move and so we don't bother counting them
     for sq in knights & white {
-        score +=
-            for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
+        score += for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
     }
     for sq in knights & black {
-        score -=
-            for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_black);
+        score -= for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_black);
     }
 
     // count bishop moves
@@ -268,28 +263,20 @@ pub fn evaluate(b: &Board) -> Score {
     // count rook moves
     let rooks = b[Piece::Rook];
     for sq in rooks & white {
-        score += for_piece(
-            Piece::Rook,
-            MAGIC.rook_attacks(occupancy, sq) & not_white,
-        );
+        score += for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_white);
     }
     for sq in rooks & black {
-        score -= for_piece(
-            Piece::Rook,
-            MAGIC.rook_attacks(occupancy, sq) & not_black,
-        );
+        score -= for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_black);
     }
 
     // count queen moves
     let queens = b[Piece::Queen];
     for sq in queens & white {
-        let attacks = MAGIC.rook_attacks(occupancy, sq)
-            | MAGIC.bishop_attacks(occupancy, sq);
+        let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
         score += for_piece(Piece::Queen, attacks & not_white);
     }
     for sq in rooks & black {
-        let attacks = MAGIC.rook_attacks(occupancy, sq)
-            | MAGIC.bishop_attacks(occupancy, sq);
+        let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
         score -= for_piece(Piece::Queen, attacks & not_black);
     }
 

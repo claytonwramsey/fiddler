@@ -22,15 +22,15 @@ use std::fmt::{Display, Formatter, Result};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 #[repr(u8)]
-/// The type of a piece. This contains no information about the location of a
-/// piece, or of its color.
+/// The type of a piece.
+/// This contains no information about the location of a piece, or of its color.
 ///
-/// The ordering of elements of this enumeration is highly intentional. The
-/// first four pieces (knight, bishop, rook, and queen) are generally
-/// well-behaved and subject to the same rules, and are all valid promotion
-/// types. However, pawns and kings have no such obligations. Having the
-/// well-behaved types as the lower integers allows them to be more efficiently
-/// packed as promotion types and generally reduces hassle.
+/// The ordering of elements of this enumeration is highly intentional.
+/// The first four pieces (knight, bishop, rook, and queen) are generally well-behaved and subject
+/// to the same rules, and are all valid promotion types.
+/// However, pawns and kings have no such obligations.
+/// Having the  well-behaved types as the lower integers allows them to be more efficiently packed
+/// as promotion types and generally reduces hassle.
 pub enum Piece {
     Knight = 0,
     Bishop,
@@ -73,8 +73,7 @@ impl Piece {
     ];
 
     /// The types of pieces that a pawn can be promted to.
-    pub const PROMOTING: [Piece; 4] =
-        [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+    pub const PROMOTING: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
     #[must_use]
     /// Get the FEN code of this piece as an uppercase string.
@@ -90,7 +89,8 @@ impl Piece {
     }
 
     #[must_use]
-    /// Given a FEN character, convert it to a piece type. Must be uppercase.
+    /// Given a FEN character, convert it to a piece type.
+    /// Must be uppercase.
     pub const fn from_code(c: char) -> Option<Piece> {
         match c {
             'N' => Some(Piece::Knight),

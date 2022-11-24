@@ -18,17 +18,17 @@
 
 //! Transposition tables.
 //!
-//! A transposition table is a large hash-map from hashkeys of board positions
-//! to useful information about each position.
-//! The intent of a transposition table is twofold: first, if the same position
-//! is reached through multiple lines, the engine can reuse its old evaluation.
-//! Second, in multithreaded contexts, the transposition table is the only way
-//! in which two threads can communicate about their search.
+//! A transposition table is a large hash-map from hashkeys of board positions to useful information
+//! about each position.
+//! The intent of a transposition table is twofold: first, if the same position is reached through
+//! multiple lines, the engine can reuse its old evaluation.
+//! Second, in multithreaded contexts, the transposition table is the only way in which two threads
+//! can communicate about their search.
 //!
-//! Fiddler's transposition table has no locks and is unsafe; i.e. it has
-//! concurrent access to the same entries.
-//! We require that the retrieved move from a transposition table be checked for
-//! legality before it is played.
+//! Fiddler's transposition table has no locks and is unsafe; i.e. it has concurrent access to the
+//! same entries.
+//! We require that the retrieved move from a transposition table be checked for legality before it
+//! is played.
 
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -60,8 +60,7 @@ pub struct TTable {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A safe-exposed API for accessing entries in a transposition table.
-/// The guard is annotated with a lifetime so that it cannot outlive the table
-/// it indexes into.
+/// The guard is annotated with a lifetime so that it cannot outlive the table it indexes into.
 pub struct TTEntryGuard<'a> {
     /// Whether the entry we point to is actually valid.
     valid: bool,
@@ -82,10 +81,9 @@ const BUCKET_LEN: usize = LINE_SIZE / size_of::<TTEntry>();
 #[repr(C)]
 #[repr(align(64))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// A `Bucket` is a container for transposition table entries, designed to make
-/// cache access faster.
-/// The core idea is that we can load all the entries sent to a specific index
-/// in the transposition table at once through a single cache load.
+/// A `Bucket` is a container for transposition table entries, designed to make cache access faster.
+/// The core idea is that we can load all the entries sent to a specific index in the transposition
+/// table at once through a single cache load.
 struct Bucket {
     /// A block of entries.
     pub entries: [TTEntry; BUCKET_LEN],
@@ -96,25 +94,23 @@ struct Bucket {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// An entry in the transposition table.
 pub struct TTEntry {
-    /// A packed tag containing the age of the entry in the lower 7 bits and a
-    /// bit to determine whether this entry is unused in the highest bit.
+    /// A packed tag containing the age of the entry in the lower 7 bits and a bit to determine
+    /// whether this entry is unused in the highest bit.
     tag: u8, // 1 byte
     /// The lower 16 bits hash key of the entry.
     key_low16: u16, // 2 bytes
     /// The depth to which this entry was searched.
-    /// If the depth is negative, this means that it was a special type of
-    /// search.
+    /// If the depth is negative, this means that it was a special type of search.
     pub depth: i8, // 1 byte
     /// The best move in the position when this entry was searched.
-    /// Will be `Move::BAD_MOVE` when there are no moves or the best move is
-    /// unknown.
+    /// Will be `Move::BAD_MOVE` when there are no moves or the best move is unknown.
     pub best_move: Move, // 2 bytes
     /// The lower bound on the evaluation of the position.
     pub lower_bound: Eval, // 2 bytes
     /// The upper bound on the evaluation of the position.
     pub upper_bound: Eval, // 2 bytes
 
-                           // total size of an entry: 10 bytes. TODO think of ways of shrinking this.
+                           /* total size: 10 bytes */
 }
 
 impl TTable {
@@ -147,13 +143,11 @@ impl TTable {
     #[must_use]
     #[allow(clippy::cast_ptr_alignment)]
     /// Create a transposition table with a fixed capacity.
-    /// The capacity is *not* the number of entries, but rather log base 2 of
-    /// the number of buckets.
+    /// The capacity is *not* the number of entries, but rather log base 2 of the number of buckets.
     ///
     /// # Panics
     ///
-    /// This function will panic if `capacity_log2` is large enough to cause
-    /// overflow.
+    /// This function will panic if `capacity_log2` is large enough to cause overflow.
     fn with_capacity(capacity_log2: usize) -> TTable {
         let layout = Layout::array::<Bucket>(1 << capacity_log2).unwrap();
         TTable {
@@ -173,24 +167,22 @@ impl TTable {
     /// On some architectures, this may be a no-op.
     pub fn prefetch(&self, hash_key: u64) {
         unsafe {
-            // SAFETY: Calling prefetch has no actual measurable results on the
-            // code's behavior, so this cannot cause UB.
+            // SAFETY: Calling prefetch has no actual measurable results on the code's behavior, so
+            // this cannot cause UB.
             let idx = self.index_for(hash_key);
-            // Experimental data shows that using a locality of 2 yields the
-            // best Elo improvement.
+            // Experimental data shows that using a locality of 2 yields the best Elo improvement.
             prefetch_read_data(self.buckets.add(idx), 2);
         }
     }
 
     #[must_use]
-    #[allow(clippy::cast_ptr_alignment, clippy::cast_possible_truncation)]
-    /// Get the evaluation data stored by this table for a given key, if it
-    /// exists.
+    #[allow(
+        clippy::cast_ptr_alignment,
+        clippy::cast_possible_truncation,
+        clippy::missing_panics_doc
+    )]
+    /// Get the evaluation data stored by this table for a given key, if it exists.
     /// Returns `None` if no data corresponding to the key exists.
-    ///
-    /// # Panics
-    ///
-    /// This function may panic due to an internal error.
     pub fn get<'a>(&self, hash_key: u64) -> TTEntryGuard<'a> {
         if self.buckets.is_null() {
             // cannot index into empty table.
@@ -218,8 +210,8 @@ impl TTable {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
 
             if entry_ref.liveness() != Liveness::Occupied {
-                // if we encounter an entry which is unused, mark it for
-                // replacement if we don't find a matching entry.
+                // if we encounter an entry which is unused, mark it for replacement if we don't
+                // find a matching entry.
                 if eldest_age < 255 {
                     eldest_age = 255;
                     replace_ptr = entry_ptr;
@@ -233,8 +225,7 @@ impl TTable {
                     _phantom: PhantomData,
                 };
             } else {
-                // check if we can use this entry to overwrite if we don't find
-                // a match
+                // check if we can use this entry to overwrite if we don't find a match
                 let age = entry_ref.age();
                 if eldest_age < age {
                     replace_ptr = entry_ptr;
@@ -256,14 +247,9 @@ impl TTable {
     }
 
     #[must_use]
-    #[allow(clippy::cast_possible_truncation)]
-    /// Get an estimate of the fill rate proportion of this transposition table
-    /// out of 1000.
+    #[allow(clippy::cast_possible_truncation, clippy::missing_panics_doc)]
+    /// Get an estimate of the fill rate proportion of this transposition table out of 1000.
     /// Typically used for UCI.
-    ///
-    /// # Panics
-    ///
-    /// This function may panic due to an internal error.
     pub fn fill_rate_permill(&self) -> u16 {
         if self.buckets.is_null() {
             // I suppose a transposition table with no entries is 100% full.
@@ -272,9 +258,8 @@ impl TTable {
             // take a sample of the first 1000 entries
             let mut num_full = 0;
 
-            // if the size is lower than 1000, we will visit some entries twice,
-            // but I guess that's OK since it's meant to just be a rough
-            // estimate.
+            // if the size is lower than 1000, we will visit some entries twice, but I guess that's
+            // OK since it's meant to just be a rough estimate.
             for idx_unbounded in 0..1000 {
                 // prevent overflow
                 let bucket = unsafe {
@@ -293,15 +278,14 @@ impl TTable {
         }
     }
 
-    /// Age up all the entries in this table, and for any slot which is at
-    /// least as old as the max age, evict it.
+    /// Age up all the entries in this table, and for any slot which is at least as old as the max
+    /// age, evict it.
     ///
     /// `max_age` must be less than or equal to 0x3F.
     ///
     /// # Panics
     ///
-    /// This function will panic in debug mode if `max_age` is greater than or
-    /// equal to 0x3f.
+    /// This function will panic in debug mode if `max_age` is greater than or equal to 0x3f.
     pub fn age_up(&mut self, max_age: u8) {
         debug_assert!(max_age <= 0x3F);
         if !self.buckets.is_null() {
@@ -309,10 +293,9 @@ impl TTable {
                 #[allow(clippy::cast_possible_truncation)]
                 let bucket = unsafe {
                     // SAFETY:
-                    // Computing `index_for` keeps the bucket inbounds.
-                    // The call to `as_mut` is safe because we have access to
-                    // `&mut self`, so no other references to this transposition
-                    // table can exist.
+                    // Masking the index keeps the bucket inbounds.
+                    // The call to `as_mut` is safe because we have access to `&mut self`, so no
+                    // other references to this transposition table can exist.
                     self.buckets
                         .add((idx & self.mask) as usize)
                         .as_mut()
@@ -369,13 +352,10 @@ impl TTable {
             for idx in new_size..old_size {
                 // try to copy the entries which will be deallocated backward
                 let bucket = unsafe { *self.buckets.add(idx) };
-                // if there was an entry at this index, move it down to fit
-                // into the shrunken table
+                // if there was an entry at this index, move it down to fit into the shrunken table
                 let new_idx = idx & new_mask;
-                // TODO more intelligently overwrite than just blindly
-                // writing
-                let new_bucket_slot =
-                    unsafe { self.buckets.add(new_idx).as_mut().unwrap() };
+                // TODO more intelligently overwrite than just blindly writing
+                let new_bucket_slot = unsafe { self.buckets.add(new_idx).as_mut().unwrap() };
                 *new_bucket_slot = bucket;
             }
             // realloc to shrink this
@@ -391,8 +371,7 @@ impl TTable {
         } else {
             // the table is growing
             self.buckets = unsafe {
-                alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap())
-                    .cast::<Bucket>()
+                alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()).cast::<Bucket>()
             };
 
             self.mask = (new_size - 1) as u64;
@@ -402,8 +381,8 @@ impl TTable {
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     /// Get the size of this table, in megabytes.
-    /// Does not include the size of the struct itself, but rather just the
-    /// heap-allocated table size.
+    /// Does not include the size of the struct itself, but rather just the heap-allocated table
+    /// size.
     pub fn size_mb(&self) -> usize {
         if self.buckets.is_null() {
             0
@@ -442,7 +421,6 @@ impl TTEntry {
     }
 
     /// Get the liveness of this entry.
-    /// Evaluated it by comparing
     const fn liveness(&self) -> Liveness {
         unsafe { transmute(self.tag & 0xc0) }
     }
@@ -471,12 +449,11 @@ impl Drop for TTable {
 impl<'a> TTEntryGuard<'a> {
     #[must_use]
     /// Get the entry pointed to by this guard.
-    /// Will return `None` if the guard was created by a probe miss on the
-    /// transposition table.
+    /// Will return `None` if the guard was created by a probe miss on the transposition table.
     ///
     /// Due to hash collision, the entry may not be correct for us.
-    /// Therefore it is prudent to check that the move in the transposition
-    /// table is actually legal before playing it.
+    /// Therefore it is prudent to check that the move in the transposition table is actually legal
+    /// before playing it.
     pub fn entry(&self) -> Option<&'a TTEntry> {
         if self.valid {
             // null case is handled by `as_ref()`
@@ -488,13 +465,7 @@ impl<'a> TTEntryGuard<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     /// Save the value pointed to by this entry guard.
-    pub fn save(
-        &mut self,
-        depth: i8,
-        best_move: Move,
-        lower_bound: Eval,
-        upper_bound: Eval,
-    ) {
+    pub fn save(&mut self, depth: i8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
@@ -594,19 +565,11 @@ mod tests {
 
         let tt = TTable::with_capacity(4);
 
-        tt.get(2022).save(
-            e0.depth,
-            e0.best_move,
-            e0.lower_bound,
-            e0.upper_bound,
-        );
+        tt.get(2022)
+            .save(e0.depth, e0.best_move, e0.lower_bound, e0.upper_bound);
 
-        tt.get(2022).save(
-            e1.depth,
-            e1.best_move,
-            e1.lower_bound,
-            e1.upper_bound,
-        );
+        tt.get(2022)
+            .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
 
         assert_eq!(tt.get(2022).entry(), Some(&e1));
     }
@@ -656,8 +619,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that aging up a transposition table removes old entries but keeps
-    /// young ones.
+    /// Test that aging up a transposition table removes old entries but keeps young ones.
     fn age_up_discrimination() {
         let e0 = TTEntry {
             tag: Liveness::Occupied as u8,

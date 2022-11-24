@@ -29,32 +29,70 @@ use super::{
     Board, Color, Direction, Move, Piece, Square, MAGIC,
 };
 
-/// A bitboard of all the squares a knight can move to if its position is
-/// the index of the list.
+/// A lookup table for the legal squares a knight to move to from a given square.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{movegen::KNIGHT_MOVES, Square, Bitboard};
+///
+/// let mut knight_attacks_a1 = Bitboard::EMPTY
+///     .with_square(Square::C2)
+///     .with_square(Square::B3);
+///
+/// assert_eq!(KNIGHT_MOVES[Square::A1 as usize], knight_attacks_a1);
+/// ```
 // bob seger
-pub const KNIGHT_MOVES: [Bitboard; 64] =
-    create_step_attacks(&Direction::KNIGHT_STEPS, 2);
+pub const KNIGHT_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KNIGHT_STEPS, 2);
 
-/// A bitboard of all the squares a king can move to if his position is the
-/// index in the list.
-pub const KING_MOVES: [Bitboard; 64] =
-    create_step_attacks(&Direction::KING_STEPS, 1);
+/// A lookup table for the legal squares a king can move to from a given square.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{movegen::KING_MOVES, Square, Bitboard};
+///
+/// let mut king_attacks_a1 = Bitboard::EMPTY
+///     .with_square(Square::A2)
+///     .with_square(Square::B1)
+///     .with_square(Square::B2);
+///
+/// assert_eq!(KING_MOVES[Square::A1 as usize], king_attacks_a1);
+/// ```
+pub const KING_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KING_STEPS, 1);
 
-/// A bitboard of all the squares which a pawn on the given square can
-/// attack. The first index is for White's pawn attacks, the second is for
-/// Black's.
+/// A lookup table for the legal squares a pawn can attack if it is on a given square and of a given
+/// color.
+///
+/// `PAWN_ATTACKS[0]` is a lookup table for the squares that a white pawn can attack, while
+/// `PAWN_ATTACKS[1]` is a lookup table for the squares that a black pawn can attack.
+///
+/// This table does not include squares that pawns can move to by pushing forward.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{movegen::PAWN_ATTACKS, Color, Square, Bitboard};
+///
+/// let mut attacked_squares = Bitboard::EMPTY
+///     .with_square(Square::A4)
+///     .with_square(Square::C4);
+///
+/// // A white pawn on B3 can attack squares A4 and C4.
+/// assert_eq!(PAWN_ATTACKS[Color::White as usize][Square::B3 as usize], attacked_squares);
+/// // A black pawn on B5 can attack squares A4 and C4.
+/// assert_eq!(PAWN_ATTACKS[Color::Black as usize][Square::B5 as usize], attacked_squares);
+/// ```
 pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
     create_step_attacks(&[Direction::SOUTHEAST, Direction::SOUTHWEST], 1),
 ];
 
-/// Get the step attacks that could be made by moving in `dirs` from each point
-/// in the square. Exclude the steps that travel more than `max_dist` (this
-/// prevents overflow around the edges of the board).
-const fn create_step_attacks(
-    dirs: &[Direction],
-    max_dist: u8,
-) -> [Bitboard; 64] {
+/// Get the step attacks that could be made by moving in `dirs` from each point in the square.
+///
+/// Exclude the steps that travel more than `max_dist` (this prevents overflow around the edges of
+/// the board).
+const fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64] {
     let mut attacks = [Bitboard::EMPTY; 64];
     let mut i = 0;
     #[allow(clippy::cast_possible_truncation)]
@@ -72,8 +110,7 @@ const fn create_step_attacks(
                 j += 1;
                 continue;
             }
-            let target_sq: Square =
-                unsafe { transmute((sq as i8 + dir.0) as u8) };
+            let target_sq: Square = unsafe { transmute((sq as i8 + dir.0) as u8) };
             if target_sq.chebyshev_to(sq) <= max_dist {
                 attacks[i] = attacks[i].with_square(target_sq);
             }
@@ -88,9 +125,8 @@ const fn create_step_attacks(
 }
 
 #[derive(PartialEq, Eq, Debug)]
-/// The types of move generation.
-/// These are used in const generics for specifying the generation mode of m
-/// ovegen.
+/// The possible modes for move generation.
+/// They are inteded for use as const-generic parameters for `get_moves()`.
 pub enum GenMode {
     /// The mode identifier for `get_moves()` to generate all legal moves.
     All,
@@ -101,12 +137,10 @@ pub enum GenMode {
 }
 
 #[must_use]
-/// Determine whether any given move is legal, given a position in which it
-/// could be played.
-/// Requires that the move must have been legal on *some* board, but not
-/// necessarily the given one.
-/// `is_legal` will make no regard to whether a position is drawn by repetition,
-/// 50-move-rule, or insufficient material.
+/// Determine whether any given move is legal, given a position in which it could be played.
+/// Requires that the move must have been legal on *some* board, but not necessarily the given one.
+/// `is_legal` will make no regard to whether a position is drawn by repetition, 50-move-rule, or
+/// insufficient material.
 ///
 /// # Panics
 ///
@@ -166,8 +200,7 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 
         // normal king moves can't step into check
         let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
-        return square_attackers_occupancy(b, to_sq, !b.player, new_occupancy)
-            .is_empty();
+        return square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty();
     }
 
     // normal piece
@@ -217,9 +250,8 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
             .contains(to_sq),
         Piece::Queen => {
             let occupancy = allies | enemies;
-            (MAGIC.bishop_attacks(occupancy, from_sq)
-                | MAGIC.rook_attacks(occupancy, from_sq))
-            .contains(to_sq)
+            (MAGIC.bishop_attacks(occupancy, from_sq) | MAGIC.rook_attacks(occupancy, from_sq))
+                .contains(to_sq)
         }
         Piece::King => unreachable!(),
     } {
@@ -232,13 +264,11 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
         // checker
         let checker_sq = Square::try_from(b.checkers).unwrap();
         let player_idx = b.player as usize;
-        let mut targets = Bitboard::between(b.king_sqs[player_idx], checker_sq)
-            | Bitboard::from(checker_sq);
+        let mut targets =
+            Bitboard::between(b.king_sqs[player_idx], checker_sq) | Bitboard::from(checker_sq);
 
         if let Some(ep_sq) = b.en_passant_square {
-            if pt == Piece::Pawn
-                && (checker_sq == ep_sq - player.pawn_direction())
-            {
+            if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
                 // allow en passants that let us escape check
                 targets.insert(ep_sq);
             }
@@ -269,20 +299,20 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
                 .is_empty();
     }
 
-    !b.pinned.contains(from_sq)
-        || Square::aligned(from_sq, to_sq, b.king_sqs[player as usize])
+    !b.pinned.contains(from_sq) || Square::aligned(from_sq, to_sq, b.king_sqs[player as usize])
 }
 
 #[inline(always)]
 #[must_use]
 /// Get the legal moves in a board.
 ///
-/// `M` is the generation mode of move generation: it specifies which subset of
-/// all legal moves to generate. There are currently 3 legal generation modes:
+/// `M` is the generation mode of move generation: it specifies which subset of all legal moves to
+/// generate.
+/// There are currently 3 legal generation modes:
 ///
-/// * `ALL` will generate all legal moves.
-/// * `CAPTURES` will generate all captures, including en passant.
-/// * `QUIETS` will generate all quiet (i.e. non-capture) moves.
+/// * `GenMode::All` will generate all legal moves.
+/// * `GenMode::Captures` will generate all captures, including en passant.
+/// * `GenMode::Quiets` will generate all quiet (i.e. non-capture) moves.
 ///
 /// `T` is a tagger for moves: it contains a callback function to tag moves as
 /// they are generated so that the user can save on total heap allocations.
@@ -359,11 +389,13 @@ pub fn get_moves<const M: GenMode, T: Tagger>(
 }
 
 #[must_use]
-/// Does the player to move have any legal moves in this position?
+/// Determine whether the player to move have any legal moves in this position.
+///
+/// Returns `true` if there are any legal moves, and `false` if there are none.
 /// Requires that the board is legal (i.e. has one of each king) to be correct.
 ///
-/// Note that since a `Board` does not contain historical information, it will
-/// still return `true` on positions with repetition.
+/// Note that since a `Board` does not contain historical information, it will still return `true`
+/// on positions with repetition.
 ///
 /// # Examples
 ///
@@ -394,9 +426,7 @@ pub fn has_moves(b: &Board) -> bool {
         // in double check, only consider king moves
         let new_occupancy = occupancy ^ Bitboard::from(king_sq);
         for to_sq in king_to_sqs {
-            if square_attackers_occupancy(b, to_sq, opponent, new_occupancy)
-                .is_empty()
-            {
+            if square_attackers_occupancy(b, to_sq, opponent, new_occupancy).is_empty() {
                 return true;
             }
         }
@@ -432,9 +462,7 @@ pub fn has_moves(b: &Board) -> bool {
     // pinned bishops/diagonal queens
     let king_diags = Bitboard::diagonal(king_sq);
     for sq in bishop_movers & b.pinned & king_diags {
-        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & king_diags)
-            .is_empty()
-        {
+        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & king_diags).is_empty() {
             return true;
         }
     }
@@ -450,9 +478,7 @@ pub fn has_moves(b: &Board) -> bool {
     // pinned rooks/horizontal queens
     let king_hv = Bitboard::hv(king_sq);
     for sq in rook_movers & b.pinned & king_hv {
-        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & king_hv)
-            .is_empty()
-        {
+        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & king_hv).is_empty() {
             return true;
         }
     }
@@ -462,9 +488,7 @@ pub fn has_moves(b: &Board) -> bool {
     for sq in our_pawns {
         let singlemove_sq = sq + player.pawn_direction();
         let mut to_bb = Bitboard::from(singlemove_sq);
-        if !occupancy.contains(singlemove_sq)
-            && player.pawn_start_rank().contains(sq)
-        {
+        if !occupancy.contains(singlemove_sq) && player.pawn_start_rank().contains(sq) {
             to_bb.insert(singlemove_sq + player.pawn_direction());
         }
 
@@ -505,9 +529,7 @@ pub fn has_moves(b: &Board) -> bool {
     // king moves are expensive to validate
     let new_occupancy = occupancy ^ Bitboard::from(king_sq);
     for to_sq in king_to_sqs {
-        if square_attackers_occupancy(b, to_sq, opponent, new_occupancy)
-            .is_empty()
-        {
+        if square_attackers_occupancy(b, to_sq, opponent, new_occupancy).is_empty() {
             return true;
         }
     }
@@ -517,9 +539,9 @@ pub fn has_moves(b: &Board) -> bool {
 
 #[inline(always)]
 #[must_use]
-/// In a given board state, is a square attacked by the given color?
-/// Squares which are threatened by only non-capture moves (i.e. pawn-pushes)
-/// will not qualify as attacked.
+/// Determine whether a square is attacked by the pieces of a given color in a position.
+/// Squares which are threatened by only non-capture moves (i.e. pawn-pushes) will not qualify as
+/// attacked.
 ///
 /// # Examples
 ///
@@ -528,15 +550,17 @@ pub fn has_moves(b: &Board) -> bool {
 ///
 /// let b = Board::new();
 /// assert!(is_square_attacked_by(&b, Square::E2, Color::White));
+/// assert!(!is_square_attacked_by(&b, Square::E4, Color::White));
 /// ```
 pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
     !square_attackers(board, sq, color).is_empty()
 }
 
 #[inline(always)]
-/// Enumerate the legal moves a player of the given color would be
-/// able to make if it were their turn to move, and if the player is not in
-/// check.
+/// Enumerate the legal moves a player of the given color would be able to make if it were their
+/// turn to move, assuming the player's king is not in check.
+///
+/// Requires that the player to move's king is not in check.
 fn non_evasions<const M: GenMode, T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
@@ -565,8 +589,10 @@ fn non_evasions<const M: GenMode, T: Tagger>(
     king_move_non_castle::<T>(b, cookie, moves, target_sqs);
 }
 
-/// Compute the evasions in a position where the king is checked, and then push
-/// those evading moves into the moves buffer.
+/// Enumerate the legal moves a player of the given color would be able to make if it were their
+/// turn to move, assuming the player's king is in check.
+///
+/// Requires that the player to move's king is in check.
 fn evasions<const M: GenMode, T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
@@ -580,8 +606,7 @@ fn evasions<const M: GenMode, T: Tagger>(
         // SAFETY: We checked that the square is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(b.checkers) };
         // Look for blocks or captures
-        let mut target_sqs =
-            !b[b.player] & Bitboard::between(king_sq, checker_sq) | b.checkers;
+        let mut target_sqs = !b[b.player] & Bitboard::between(king_sq, checker_sq) | b.checkers;
         match M {
             GenMode::All => (),
             GenMode::Captures => target_sqs &= b[!player],
@@ -613,8 +638,8 @@ fn evasions<const M: GenMode, T: Tagger>(
 
 #[inline(always)]
 #[must_use]
-/// Get the attackers of a given color on a square as a `Bitboard`
-/// representing the squares of the attackers.
+/// Get the attackers of a given color on a square as a `Bitboard` representing the squares of the
+/// attackers.
 ///
 /// # Examples
 ///
@@ -622,19 +647,20 @@ fn evasions<const M: GenMode, T: Tagger>(
 /// use fiddler::base::{Bitboard, Board, Square, Color, movegen::square_attackers};
 ///
 /// let b = Board::new();
-/// let mut attackers = Bitboard::EMPTY;
-/// attackers.insert(Square::E1);
-/// attackers.insert(Square::D1);
-/// attackers.insert(Square::F1);
-/// attackers.insert(Square::G1);
+/// let attackers = Bitboard::EMPTY
+///     .with_square(Square::E1)
+///     .with_square(Square::D1)
+///     .with_square(Square::F1)
+///     .with_square(Square::G1);
+///
 /// assert_eq!(square_attackers(&b, Square::E2, Color::White), attackers);
 /// ```
 pub fn square_attackers(board: &Board, sq: Square, color: Color) -> Bitboard {
     square_attackers_occupancy(board, sq, color, board.occupancy())
 }
 
-/// Same functionality as `square_attackers`, but uses the provided
-/// `occupancy` bitboard (as opposed to the board's occupancy.)
+/// Same functionality as `square_attackers`, but uses the provided `occupancy` bitboard (as
+/// opposed to the board's occupancy.)
 fn square_attackers_occupancy(
     board: &Board,
     sq: Square,
@@ -668,9 +694,11 @@ fn square_attackers_occupancy(
     attackers & color_bb
 }
 
-/// Generate the moves all pawns can make and populate `moves` with those
-/// moves. `target` is the set of squares for which it is desired to move a
-/// pawn.
+/// Generate the moves all pawns can make and populate `moves` with those moves.
+/// Only moves which result in a pawn landing on `target` will be generated.
+///
+/// Moves which capture allies will also be generated.
+/// To prevent this, ensure all squares containing allies are excluded from `target`.
 fn pawn_assistant<const M: GenMode, T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
@@ -719,21 +747,20 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         let west_capturers = pawns & NOT_WESTMOST & (unpinned | west_pin_diag);
         let east_capturers = pawns & NOT_EASTMOST & (unpinned | east_pin_diag);
         // hack because negative bitshift is UB
-        let (west_targets, west_direction, east_targets, east_direction) =
-            match player {
-                Color::White => (
-                    west_capturers << 7 & capture_mask,
-                    Direction::NORTHWEST,
-                    east_capturers << 9 & capture_mask,
-                    Direction::NORTHEAST,
-                ),
-                Color::Black => (
-                    west_capturers >> 9 & capture_mask,
-                    Direction::SOUTHWEST,
-                    east_capturers >> 7 & capture_mask,
-                    Direction::SOUTHEAST,
-                ),
-            };
+        let (west_targets, west_direction, east_targets, east_direction) = match player {
+            Color::White => (
+                west_capturers << 7 & capture_mask,
+                Direction::NORTHWEST,
+                east_capturers << 9 & capture_mask,
+                Direction::NORTHEAST,
+            ),
+            Color::Black => (
+                west_capturers >> 9 & capture_mask,
+                Direction::SOUTHWEST,
+                east_capturers >> 7 & capture_mask,
+                Direction::SOUTHEAST,
+            ),
+        };
 
         // promotion captures
         for to_sq in east_targets & rank8 {
@@ -774,13 +801,10 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                     Color::White => to_bb >> 8,
                     Color::Black => to_bb << 8,
                 };
-                let from_sqs =
-                    PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
+                let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
                 for from_sq in from_sqs {
-                    let new_occupancy = b.occupancy()
-                        ^ Bitboard::from(from_sq)
-                        ^ capture_bb
-                        ^ to_bb;
+                    let new_occupancy =
+                        b.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
                     if (MAGIC.rook_attacks(new_occupancy, king_sq)
                         & (b[Piece::Rook] | b[Piece::Queen])
                         & enemy)
@@ -838,9 +862,10 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
     }
 }
 
-/// Generate all the moves for a knight, bishop, rook, or queen which end
-/// up on the target.
-/// Will not filter out moves which capture allies.
+/// Generate all the moves for a knight, bishop, rook, or queen which end up on the target.
+///
+/// Moves which capture allies will also be generated.
+/// To prevent this, ensure all squares containing allies are excluded from `target`.
 fn normal_piece_assistant<T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
@@ -869,9 +894,7 @@ fn normal_piece_assistant<T: Tagger>(
 
     // pinned bishops and queens
     for from_sq in bishop_movers & board.pinned & king_diags {
-        for to_sq in
-            MAGIC.bishop_attacks(occupancy, from_sq) & target & king_diags
-        {
+        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target & king_diags {
             let m = Move::normal(from_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -903,8 +926,12 @@ fn normal_piece_assistant<T: Tagger>(
 }
 
 #[inline(always)]
-/// Get the moves that a king could make in a position that are not castles,
-/// and append them into the moves buffer.
+/// Get the moves that a king could make in a position that are not castles, and append them onto
+/// `moves`.
+///
+/// Only moves which result in a king landing on a square contained by `target` will be generated.
+/// If `target` contains a square occupied by an ally, it can generate a move with the ally as the
+/// target square.
 fn king_move_non_castle<T: Tagger>(
     b: &Board,
     cookie: &T::Cookie,
@@ -918,9 +945,7 @@ fn king_move_non_castle<T: Tagger>(
     let old_occupancy = b.occupancy();
     for to_sq in to_bb {
         let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(to_sq);
-        if square_attackers_occupancy(b, to_sq, !b.player, new_occupancy)
-            .is_empty()
-        {
+        if square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty() {
             let m = Move::normal(king_sq, to_sq);
             moves.push((m, T::tag_move(m, b, cookie)));
         }
@@ -928,15 +953,10 @@ fn king_move_non_castle<T: Tagger>(
 }
 
 #[inline(always)]
-/// Get the castling moves that the king could make in this position, and
-/// append them onto the target vector.
+/// Get the castling moves that the king could make in this position, and append them onto `moves`.
 ///
 /// Will not generate valid moves if the king is in check.
-fn castles<T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
+fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
     let player = b.player;
     let occ = b.occupancy();
     let king_sq = b.king_sqs[player as usize];
@@ -947,8 +967,8 @@ fn castles<T: Tagger>(
         Color::Black => Bitboard::new(0x6000_0000_0000_0000),
     };
 
-    let can_kingside_castle = b.castle_rights.kingside(player)
-        && (occ & kingside_castle_passthrough_sqs).is_empty();
+    let can_kingside_castle =
+        b.castle_rights.kingside(player) && (occ & kingside_castle_passthrough_sqs).is_empty();
 
     if can_kingside_castle {
         // ignore start sq since we assume the king is not in check
@@ -972,8 +992,8 @@ fn castles<T: Tagger>(
         Color::Black => Bitboard::new(0x0E00_0000_0000_0000),
     };
 
-    let can_queenside_castle = b.castle_rights.queenside(player)
-        && (occ & queenside_castle_passthrough_sqs).is_empty();
+    let can_queenside_castle =
+        b.castle_rights.queenside(player) && (occ & queenside_castle_passthrough_sqs).is_empty();
 
     if can_queenside_castle {
         // ignore start sq since we assume the king is not in check
@@ -993,9 +1013,27 @@ fn castles<T: Tagger>(
 
 #[must_use]
 #[allow(clippy::cast_precision_loss, clippy::similar_names)]
-/// Perform a performance test on the move generator and print out facts. The
-/// input fen is the FEN of the board to start from, and the depth is the depth
-/// from which to generate moves.
+/// Perform a performance test on the move generator.
+/// Returns the number of independent paths to a leaf reachable in `depth` plies from a board with
+/// starting position `fen`.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::movegen::perft;
+///
+/// // Use the starting position FEN and calculate the number of legal moves.
+///
+/// // There is only ever one position reachable in zero moves.
+/// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0), 1);
+///
+/// // There are 20 legal moves in the starting board position.
+/// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 1), 20);
+///
+///
+/// // There are 400 legal openings at depth 2.
+/// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 2), 400);
+/// ```
 ///
 /// # Panics
 ///

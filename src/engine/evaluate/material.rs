@@ -19,14 +19,13 @@
 //! Material values for each piece.
 //!
 //! Every piece is assigned a numeric value in centipawns (cp).
-//! Under normal conditions, a centipawn defined as 100cp; however, the
-//! consequences of tuning have yielded values for pawns slightly off of that
-//! mark.
+//! Under normal conditions, a centipawn defined as 100cp; however, the consequences of tuning have
+//! yielded values for pawns slightly off of that mark.
 //!
-//! In traditional chess, pawns are worth 100cp, knights and bishops are worth
-//! 300cp, rooks are worth 500cp, and queens are worth 900cp each.
-//! However, any chess player worth their salt might tell you that bishops are a
-//! little more valuable than knights.
+//! In traditional chess, pawns are worth 100cp, knights and bishops are worth 300cp, rooks are
+//! worth 500cp, and queens are worth 900cp each.
+//! However, any chess player worth their salt might tell you that bishops are a little more
+//! valuable than knights.
 //! Empirically, the engine agrees.
 
 use crate::{
@@ -48,11 +47,10 @@ pub const fn value(pt: Piece) -> Score {
 }
 
 #[must_use]
-/// Compute the effect that a move will have on the total material evaluation of
-/// the board it will be played on.
+/// Compute the effect that a move will have on the total material evaluation of the board it will
+/// be played on.
 pub fn delta(b: &Board, m: Move) -> Score {
-    // material only ever changes value based on captures and promotions, so
-    // this is easy
+    // material only ever changes value based on captures and promotions, so this is easy
     let capturee_type = if m.is_en_passant() {
         Some(Piece::Pawn)
     } else {
@@ -61,8 +59,7 @@ pub fn delta(b: &Board, m: Move) -> Score {
     let mut gain = capturee_type.map_or_else(|| Score::centipawns(0, 0), value);
 
     if let Some(promote_type) = m.promote_type() {
-        // we already checked that m is a promotion, so we can trust that it has
-        // a promotion
+        // we already checked that m is a promotion, so we can trust that it has a promotion
         gain += value(promote_type);
         gain -= value(Piece::Pawn);
     }
@@ -81,11 +78,11 @@ pub fn evaluate(b: &Board) -> Score {
     let black_occupancy = b[Color::Black];
 
     for pt in Piece::ALL {
-        // Total the quantity of white and black pieces of this type, and
-        // multiply their individual value to get the net effect on the eval.
+        // Total the quantity of white and black pieces of this type, and multiply their individual
+        // value to get the net effect on the eval.
         let pt_squares = b[pt];
-        let white_diff = (white_occupancy & pt_squares).len() as i8
-            - (black_occupancy & pt_squares).len() as i8;
+        let white_diff =
+            (white_occupancy & pt_squares).len() as i8 - (black_occupancy & pt_squares).len() as i8;
         score += value(pt) * white_diff;
     }
 
@@ -114,16 +111,12 @@ mod tests {
 
     #[test]
     fn delta_captures() {
-        delta_helper(
-            "r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8",
-        );
+        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
     }
 
     #[test]
     fn delta_promotion() {
         // undoubling capture promotion is possible
-        delta_helper(
-            "r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13",
-        );
+        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
     }
 }

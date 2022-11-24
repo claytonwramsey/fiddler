@@ -19,18 +19,15 @@
 //! Parsing and constructing Universal Chess Interface (UCI) messages.
 //!
 //! UCI is a MVC standard for writing chess engines.
-//! The GUI sends commands to the engine, and the engine then thinks according
-//! to the messages sent to it.
-//! In general, the GUI dictates much of the pace of this interaction, and the
-//! engine just plays along.
+//! The GUI sends commands to the engine, and the engine then thinks according to the messages sent
+//! to it.
+//! In general, the GUI dictates much of the pace of this interaction, and the engine just plays
+//! along.
 //!
-//! `UciCommand` describes all the messages that can be received for a UCI
-//! engine.
-//! Meanwhile, `UciMessage` describes all the messages that the engine can send
-//! back to the GUI.
+//! `UciCommand` describes all the messages that can be received for a UCI engine.
+//! Meanwhile, `UciMessage` describes all the messages that the engine can send back to the GUI.
 //!
-//! For a full specification of the UCI standard, see
-//! [here](https://backscattering.de/).
+//! For a full specification of the UCI standard, see [here](https://backscattering.de/).
 
 mod send;
 use crate::base::{Board, Move};
@@ -38,54 +35,58 @@ use crate::base::{Board, Move};
 pub use send::{EngineInfo, Message, OptionType};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-/// An enum representing the set of all commands that the GUI can send to the
-/// engine via UCI.
+/// An enum representing the set of all commands that the GUI can send to the engine via UCI.
 pub enum Command {
     /// Command given at the start of UCI.
-    /// The engine must reply with `UciMessage::Id` message and send the
-    /// `UciMessage::Option` commands to tell the GUI which engine commands it
-    /// supports.
-    /// After that receipt, the engine must then send a `UciMessage::Ok` to
-    /// complete the setup.
+    ///
+    /// The engine must reply with `UciMessage::Id` message and send the `UciMessage::Option`
+    /// messages to tell the GUI which engine commands it supports.
+    /// After that receipt, the engine must then send a `UciMessage::Ok` to complete the setup.
     /// If not, the GUI will kill the engine process.
     Uci,
     /// Switch whether the engine should turn on or off debug mode.
-    /// If true, the engine should activate debug mode and send info strings to
-    /// the GUI.
+    ///
+    /// If true, the engine should activate debug mode and send info strings to the GUI.
     /// By default, debug mode should be off.
     Debug(bool),
     /// Request an update from the engine as to whether it is ready to proceed.
-    /// If the engine is busy thinking, it can wait until it is done thinking
-    /// to reply to this.
+    ///
+    /// If the engine is busy thinking, it can wait until it is done thinking to reply to this.
     /// When it is ready, the engine must reply with `UciMessage::ReadyOk`.
     IsReady,
     /// Set a parameter of the engine, or send a custom command.
-    /// `name` is the name of the key for the option, and `value` is an optional
-    /// parameter for the given value to set.
+    ///
+    /// `name` is the name of the key for the option, and `value` is an optional parameter for the
+    /// given value to set.
     SetOption { name: String, value: Option<String> },
-    /// Inform the engine that the next position it will be requested to
-    /// evaluate will be from a new game.
+    /// Inform the engine that the next position it will be requested to evaluate will be from a
+    /// new game.
+    ///
     /// An engine should not, however, expect a `NewGame`.
     NewGame,
     /// Update the next position the engine will be asked to evaluate.
-    /// The engine should set up the position starting from the given FEN, and
-    /// then play the given list of moves to reach the position.
+    ///
+    /// The engine should set up the position starting from the given FEN, and then play the given
+    /// list of moves to reach the position.
     Position {
         /// The FEN from which to set up the position.
-        /// If `fen` is `None`, then start from the default start position for a
-        /// normal game of chess.
+        ///
+        /// If `fen` is `None`, then start from the default start position for a normal game of
+        /// chess.
         fen: Option<String>,
         /// The set of moves to play after setting up with the given FEN.
         moves: Vec<Move>,
     },
     /// A `Go` will always be given after a `Position` command.
+    ///
     /// The options are given as a table of options.
     Go(Vec<GoOption>),
     /// Stop searching immediately, and when done, reply with a best move and
     /// potentially a ponder.
     Stop,
-    /// While the engine was in pondering mode, the player opposing the engine
-    /// selected to play the ponder-move.
+    /// While the engine was in pondering mode, the player opposing the engine selected to play the
+    /// ponder-move.
+    ///
     /// Continue searching, but know that the player chose the ponder-move.
     PonderHit,
     /// Quit the program as soon as possible.
@@ -98,30 +99,23 @@ pub enum GoOption {
     /// Restrict the search to these moves only.
     SearchMoves(Vec<Move>),
     /// Search in "ponder" mode.
-    /// The engine must not exit the search until ordered, no matter the
-    /// conditions.
-    /// The last move which was sent in the previous `UciCommand::Position`
-    /// should be considered the "ponder-move", which is the suggested move to
-    /// consider.
-    /// When a `UciCommand::PonderHit` is given, the engine will then execute
-    /// the ponder command.
+    ///
+    /// The engine must not exit the search until ordered, no matter the conditions.
+    /// The last move which was sent in the previous `UciCommand::Position`should be considered the
+    /// "ponder-move", which is the suggested move to consider.
+    /// When a `UciCommand::PonderHit` is given, the engine will then execute the ponder command.
     Ponder,
-    /// Inform the engine that White has the given number of milliseconds
-    /// remaining.
+    /// Inform the engine that White has the given number of milliseconds remaining.
     WhiteTime(u32),
-    /// Inform the engine that Black has the given number of milliseconds
-    /// remaining.
+    /// Inform the engine that Black has the given number of milliseconds remaining.
     BlackTime(u32),
-    /// Inform the engine that White has the given number of milliseconds as
-    /// their time increment.
+    /// Inform the engine that White has the given number of milliseconds as their time increment.
     WhiteInc(u32),
-    /// Inform the engine that Black has the given number of milliseconds as
-    /// their time increment.
+    /// Inform the engine that Black has the given number of milliseconds as their time increment.
     BlackInc(u32),
-    /// Inform the engine that there are the given number of moves remaining
-    /// until the next time control.
-    /// If `WhiteTime` and `BlackTime` are not given, this means the current
-    /// game is sudden death.
+    /// Inform the engine that there are the given number of moves remaining until the next time
+    /// control.
+    /// If `WhiteTime` and `BlackTime` are not given, this means the current game is sudden death.
     MovesToGo(u8),
     /// Search with the given depth, looking at only the given number of plies.
     Depth(u8),
@@ -137,19 +131,19 @@ pub enum GoOption {
 }
 
 /// The result type for processing a line from a UCI command.
-/// According to the UCI protocol, these errors should generally be logged or
-/// ignored completely.
+///
+/// According to the UCI protocol, these errors should generally be logged or ignored completely.
 pub type ParseResult = Result<Command, String>;
 
 impl Command {
     /// Perform a read of a single UCI instruction.
-    /// A board state is given to allow for the `searchmoves` parameter on UCI
-    /// to know what metadata to add to the moves.
+    ///
+    /// A board state is given to allow for the `searchmoves` parameter on UCI to know what metadata
+    /// to add to the moves.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` if the line is not a legal UCI
-    /// command.
+    /// This function will return an `Err` if the line is not a legal UCI command.
     pub fn parse_line(line: &str, board: &Board) -> ParseResult {
         let mut tokens = line.split_ascii_whitespace();
         let first_tok = tokens.next().ok_or("line contains no tokens")?;
@@ -173,8 +167,9 @@ impl Command {
     }
 
     /// Parse a `setoption` line from a UCI string.
-    /// Assumes that the `"setoption"` token in the line has already been
-    /// consumed (i.e. that the next token will be `"name"`).
+    ///
+    /// Assumes that the `"setoption"` token in the line has already been consumed (i.e. that the
+    /// next token will be `"name"`).
     fn parse_set_option(tokens: &mut dyn Iterator<Item = &str>) -> ParseResult {
         // consume `name` token
         let name_tok = tokens
@@ -226,8 +221,9 @@ impl Command {
     }
 
     /// Parse a `position` UCI command line.
-    /// Assumes that the `"position"` token has already been consumed, so the
-    /// next token will either be `"fen"` or `"startpos"`.
+    ///
+    /// Assumes that the `"position"` token has already been consumed, so the next token will either
+    /// be `"fen"` or `"startpos"`.
     fn parse_position(tokens: &mut dyn Iterator<Item = &str>) -> ParseResult {
         let (start_fen, next_move_tok) = match tokens
             .next()
@@ -263,9 +259,11 @@ impl Command {
             _ => return Err("illegal starting position token".to_string()),
         };
 
-        let mut board = Board::from_fen(start_fen.as_deref().unwrap_or(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        ))?;
+        let mut board = Board::from_fen(
+            start_fen
+                .as_deref()
+                .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+        )?;
 
         let mut moves = Vec::new();
         if let Some(m_tok) = next_move_tok {
@@ -287,15 +285,12 @@ impl Command {
 
     #[allow(clippy::cast_possible_truncation)]
     /// Parse a `go` command from UCI.
+    ///
     /// Assumes the token `go` has already been consumed.
     /// The current board is needed to annotate the moves with their effects.
-    fn parse_go(
-        tokens: &mut dyn Iterator<Item = &str>,
-        board: &Board,
-    ) -> ParseResult {
-        /// A helper function for `parse_go` which will attempt to parse an int
-        /// out of a token if it is `Some`, and fail if it cannot parse the int
-        /// or if it is given `None`.
+    fn parse_go(tokens: &mut dyn Iterator<Item = &str>, board: &Board) -> ParseResult {
+        /// A helper function for `parse_go` which will attempt to parse an int out of a token if it
+        /// is `Some`, and fail if it cannot parse the int or if it is given `None`.
         fn parse_int(x: Option<&str>) -> Result<u64, String> {
             x.ok_or_else(|| "reached EOF while parsing int".to_string())?
                 .parse()
@@ -309,8 +304,8 @@ impl Command {
             opts.push(match opt_tok {
                 "searchmoves" => {
                     let mut moves = Vec::new();
-                    // continually add moves to the set of moves to search until we
-                    // bump into a keyword
+                    // continually add moves to the set of moves to search until we bump into a
+                    // keyword
                     loop {
                         let Some(m_tok) = peeks.peek() else { break };
                         let Ok(m) = Move::from_uci(m_tok, board) else { break };
@@ -326,21 +321,13 @@ impl Command {
                 "btime" => GoOption::BlackTime(parse_int(peeks.next())? as u32),
                 "winc" => GoOption::WhiteInc(parse_int(peeks.next())? as u32),
                 "binc" => GoOption::BlackInc(parse_int(peeks.next())? as u32),
-                "movestogo" => {
-                    GoOption::MovesToGo(parse_int(peeks.next())? as u8)
-                }
+                "movestogo" => GoOption::MovesToGo(parse_int(peeks.next())? as u8),
                 "depth" => GoOption::Depth(parse_int(peeks.next())? as u8),
                 "nodes" => GoOption::Nodes(parse_int(peeks.next())?),
                 "mate" => GoOption::Mate(parse_int(peeks.next())? as u8),
-                "movetime" => {
-                    GoOption::MoveTime(parse_int(peeks.next())? as u32)
-                }
+                "movetime" => GoOption::MoveTime(parse_int(peeks.next())? as u32),
                 "infinite" => GoOption::Infinite,
-                _ => {
-                    return Err(format!(
-                        "unrecognized option {opt_tok} for `go`"
-                    ))
-                }
+                _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
             });
         }
 
@@ -354,8 +341,7 @@ mod tests {
     use crate::base::Square;
 
     #[test]
-    /// Test that an ordinary "startpos" UCI position command is parsed
-    /// correctly.
+    /// Test that an ordinary "startpos" UCI position command is parsed  correctly.
     fn position_starting() {
         assert_eq!(
             Command::parse_line("position startpos moves\n", &Board::default()),
@@ -367,8 +353,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that a position string can still pe parsed from startpos without a
-    /// moves token.
+    /// Test that a position string can still pe parsed from startpos without a  moves token.
     fn position_starting_no_moves_tok() {
         assert_eq!(
             Command::parse_line("position startpos\n", &Board::default()),
@@ -454,10 +439,7 @@ mod tests {
     /// Test that a key-value pair for a setoption is correct.
     fn setoption_key_value() {
         assert_eq!(
-            Command::parse_line(
-                "setoption name my option value 4 or 5\n",
-                &Board::default()
-            ),
+            Command::parse_line("setoption name my option value 4 or 5\n", &Board::default()),
             Ok(Command::SetOption {
                 name: "my option".into(),
                 value: Some("4 or 5".into())
@@ -475,9 +457,9 @@ mod tests {
     }
 
     #[test]
-    /// Test that a `go` command with every option is parsed correctly. In
-    /// practice this command would be invalid since the `infinite` option
-    /// would remove the validity of all others.
+    /// Test that a `go` command with every option is parsed correctly.
+    /// In practice, this command would be invalid since the `infinite` option would remove the
+    /// validity of all others.
     fn go_all() {
         assert_eq!(
             Command::parse_line(
@@ -502,19 +484,12 @@ mod tests {
     }
 
     #[test]
-    /// Test that a `go searchmoves` does not cause the moves to eat future
-    /// options.
+    /// Test that a `go searchmoves` does not cause the moves to eat future options.
     fn go_searchmoves() {
         assert_eq!(
-            Command::parse_line(
-                "go searchmoves e2e4 infinite\n",
-                &Board::default()
-            ),
+            Command::parse_line("go searchmoves e2e4 infinite\n", &Board::default()),
             Ok(Command::Go(vec![
-                GoOption::SearchMoves(vec![Move::normal(
-                    Square::E2,
-                    Square::E4
-                )]),
+                GoOption::SearchMoves(vec![Move::normal(Square::E2, Square::E4)]),
                 GoOption::Infinite,
             ]))
         );

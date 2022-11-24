@@ -18,8 +18,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::inline_always, clippy::too_many_lines)]
 
-//! Shared data types and useful basic definitions found across the entire
-//! Fiddler engine.
+//! Shared data types and useful basic definitions found across the entire Fiddler engine.
 
 // Many module elements are re-exported to make names more ergonomic to access.
 

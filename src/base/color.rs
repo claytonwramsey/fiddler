@@ -67,8 +67,7 @@ impl Color {
 
     #[inline(always)]
     #[must_use]
-    /// Get a `Bitboard` with 1's on the start rank of the pawn of the given
-    /// color.
+    /// Get a `Bitboard` with 1's on the start rank of the pawn of the given color.
     ///
     /// # Examples
     ///
@@ -90,8 +89,8 @@ impl Not for Color {
     type Output = Self;
     #[inline(always)]
     fn not(self) -> Color {
-        // SAFETY: `self` will always be equal to 0 or 1, so the xor operation
-        // will still return a valid color.
+        // SAFETY: `self` will always be equal to 0 or 1, so the xor operation will still return a
+        // valid color.
         unsafe { transmute(self as u8 ^ 1) }
     }
 }
@@ -101,16 +100,14 @@ mod tests {
     use super::*;
 
     #[test]
-    /// Test that the opposite color of `Color::White` is `Color::Black`, and
-    /// vice versa.
+    /// Test that the opposite color of `Color::White` is `Color::Black`, and vice versa.
     fn opposite_color() {
         assert_eq!(Color::White, !Color::Black);
         assert_eq!(Color::Black, !Color::White);
     }
 
     #[test]
-    /// Test that the direction for White pawns is north and the direction for
-    /// Black pawns is south.
+    /// Test that the direction for White pawns is north and the direction for Black pawns is south.
     fn directions() {
         assert_eq!(Color::White.pawn_direction(), Direction::NORTH);
         assert_eq!(Color::Black.pawn_direction(), Direction::SOUTH);

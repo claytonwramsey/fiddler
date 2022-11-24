@@ -18,20 +18,18 @@
 
 //! Static evaluation of positions.
 //!
-//! Of all the parts of a chess engine, static evaluation is arguably the most
-//! important.
-//! Every leaf of the search is statically evaluated, and based on the
-//! comparisons of each evaluation, the full minimax search is achieved.
+//! Of all the parts of a chess engine, static evaluation is arguably the most important.
+//! Every leaf of the search is statically evaluated, and based on the comparisons of each
+//! evaluation, the full minimax search is achieved.
 //!
-//! Fiddler uses a classical approach to static evaluation:
-//! the final evaluation is the sum of a number of rules.
+//! Fiddler uses a classical approach to static evaluation: the final evaluation is the sum of a
+//! number of rules.
 //! Each rule contributes a quantity to the evaluation.
 //!
-//! Also like other engines, Fiddler uses a "tapered" evaluation:
-//! rules are given different weights at different phases of the game.
-//! To prevent sharp changes in evaluation as the phase blends, a "midgame" and
-//! "endgame" evaluation is created, and then the final evaluation is a linear
-//! combination of those two.
+//! Also like other engines, Fiddler uses a "tapered" evaluation: rules are given different weights
+//! at different phases of the game.
+//! To prevent sharp changes in evaluation as the phase blends, a "midgame" and "endgame" evaluation
+//! is created, and then the final evaluation is a linear combination of those two.
 //!
 //! More uniquely, Fiddler is obsessed with cumulative evaluation.
 //! Often, learning facts about a board is lengthy and difficult
@@ -60,17 +58,17 @@ pub mod pst;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[repr(C)]
 /// A wrapper for the evaluation of a position.
-/// The higher an evaluation is, the better the position is for White. An
-/// evaluation of 0 is a draw.
-/// Internally, the i32 represents an integer. The integer value is 1/1000 of a
-/// pawn (so if the internal value is +2000, the position is +2 pawns for White)
-/// .
+/// The higher an evaluation is, the better the position is for White.
+/// An evaluation of 0 is a draw.
+/// Internally, an evaluation is a 16-bit signed interger.
+/// The integer value is 1/1000 of a pawn (so if the internal value is +2000, the position is +2
+/// pawns for White).
 ///
-/// Values > 29,000 are reserved for mates. 30,000 is White to mate in
-/// 0 (i.e. White has won the game), 29,999 is White to mate in 1 (White will
-/// play their move and mate), 29,998 is White to mate in 1, with Black to
-/// move (Black will play their move, then White will play their move to mate)
-/// and so on. Values of < -29,000 are reserved for black mates, likewise.
+/// Values > 29,000 are reserved for mates.
+/// 30,000 is White to mate in 0 (i.e. White has won the game), 29,999 is White to mate in 1 (White
+/// will play their move and mate), 29,998 is White to mate in 1, with Black to move (Black will
+/// play their move, then White will play their move to mate) and so on.
+/// Values of < -29,000 are reserved for black mates, likewise.
 ///
 /// # Examples
 ///
@@ -84,8 +82,7 @@ pub struct Eval(i16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
-/// A `Score` is a pair of two `Evals` - one for the midgame and one for the
-/// endgame.
+/// A `Score` is a pair of two `Evals` - one for the midgame and one for the endgame.
 /// The values inside of a `Score` should never be mate values.
 pub struct Score {
     /// The midgame-only evaluation of a position.
@@ -101,13 +98,12 @@ pub type ScoredGame = TaggedGame<ScoreTag>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// A piece of metadata which tags along with each board.
-/// In the Fiddler engine, every board gets tagged with an `EvalCookie` which is
-/// used to quickly evaluate positions.
+/// In the Fiddler engine, every board gets tagged with an `EvalCookie` which is used to quickly
+/// evaluate positions.
 pub struct EvalCookie {
     /// The score of the position.
     score: Score,
-    /// The quantity of non-pawn material on the board, measured in midgame
-    /// centipawns.
+    /// The quantity of non-pawn material on the board, measured in midgame centipawns.
     mg_non_pawn_material: Eval,
     /// The phase of the position.
     phase: f32,
@@ -155,9 +151,8 @@ impl Tagger for ScoreTag {
     /// Compute a static, cumulative-invariant evaluation of a position.
     /// It is much faster in search to use cumulative evaluation, but this should be used when
     /// importing positions.
-    /// Static evaluation will not include the leaf rules (such as number of
-    /// doubled pawns), as this will be handled by `leaf_evaluate` at the end of
-    /// the search tree.
+    /// Static evaluation will not include the leaf rules (such as number of doubled pawns), as this
+    /// will be handled by `leaf_evaluate` at the end of the search tree.
     fn init_cookie(b: &Board) -> Self::Cookie {
         let mg_npm = {
             let mut total = Eval::DRAW;
@@ -174,8 +169,8 @@ impl Tagger for ScoreTag {
     }
 }
 
-/// Mask containing ones along the A file. Bitshifting left by a number from 0
-/// through 7 will cause it to become a mask for each file.
+/// Mask containing ones along the A file.
+/// Bitshifting left by a number from 0 through 7 will cause it to become a mask for each file.
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having the right to castle kingside.
@@ -186,14 +181,13 @@ pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(4, 0);
 
 /// The value of having your own pawn doubled.
 pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-18, -26);
-/// The value of having a rook with no same-colored pawns in front of it which
-/// are not advanced past the 3rd rank.
+/// The value of having a rook with no same-colored pawns in front of it which are not advanced past
+/// the 3rd rank.
 pub const OPEN_ROOK_VALUE: Score = Score::centipawns(20, 21);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
-/// Evaluate a leaf position on a game whose cumulative values have been
-/// computed correctly.
+/// Evaluate a leaf position on a game whose cumulative values have been computed correctly.
 pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
     let b = g.board();
     (leaf_rules(b) + g.cookie().score).blend(g.cookie().phase)
@@ -223,10 +217,9 @@ fn leaf_rules(b: &Board) -> Score {
 }
 
 #[must_use]
-/// Count the number of "open" rooks (i.e., those which are not blocked by
-/// unadvanced pawns) in a position.
-/// The number is a net value, so it will be negative if Black has more open
-/// rooks than White.
+/// Count the number of "open" rooks (i.e., those which are not blocked by unadvanced pawns) in a
+/// position.
+/// The number is a net value, so it will be negative if Black has more open rooks than White.
 ///
 /// # Examples
 ///
@@ -241,8 +234,7 @@ fn leaf_rules(b: &Board) -> Score {
 /// # }
 /// ```
 pub fn net_open_rooks(b: &Board) -> i8 {
-    // Mask for pawns which are below rank 3 (i.e. on the white half of the
-    // board).
+    // Mask for pawns which are below rank 3 (i.e. on the white half of the board).
     const WHITE_HALF: Bitboard = Bitboard::new(0x0000_0000_FFFF_FFFF);
     // Mask for pawns which are on the black half of the board
     const BLACK_HALF: Bitboard = Bitboard::new(0xFFFF_FFFF_0000_0000);
@@ -260,8 +252,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
         }
         let pawns_in_col = (pawns & white) & (A_FILE_MASK << wrook_sq.file());
         let important_pawns = WHITE_HALF & pawns_in_col;
-        // check that the forward-most pawn of the important pawns is in front
-        // of or behind the rook
+        // check that the forward-most pawn of the important pawns is in front of or behind the rook
         if important_pawns.leading_zeros() > (63 - (wrook_sq as u32)) {
             // all the important pawns are behind the rook
             net_open_rooks += 1;
@@ -276,8 +267,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
         }
         let pawns_in_col = (pawns & black) & (A_FILE_MASK << brook_sq.file());
         let important_pawns = BLACK_HALF & pawns_in_col;
-        // check that the lowest-rank pawn that could block the rook is behind
-        // the rook
+        // check that the lowest-rank pawn that could block the rook is behind the rook
         if important_pawns.trailing_zeros() > brook_sq as u32 {
             net_open_rooks -= 1;
         }
@@ -288,8 +278,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
 
 #[must_use]
 /// Count the number of doubled pawns, in net.
-/// For instance, if White had 1 doubled pawn, and Black had 2, this function
-/// would return -1.
+/// For instance, if White had 1 doubled pawn, and Black had 2, this function would return -1.
 ///
 /// # Examples
 ///
@@ -327,8 +316,8 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 }
 
 #[must_use]
-/// Get a blending float describing the current phase of the game. Will range
-/// from 0 (full endgame) to 1 (full midgame).
+/// Get a blending float describing the current phase of the game.
+/// Will range from 0 (full endgame) to 1 (full midgame).
 ///
 /// # Examples
 ///
@@ -423,8 +412,8 @@ impl Eval {
     /// The evaluation of a drawn position.
     pub const DRAW: Eval = Eval(0);
 
-    /// The internal evaluation of a mate in 0 for White (i.e. White made the
-    /// mating move on the previous ply).
+    /// The internal evaluation of a mate in 0 for White (i.e. White made the mating move on the
+    /// previous ply).
     const MATE_0_VAL: i16 = 30_000;
 
     /// The highest value of a position which is not a mate.
@@ -451,9 +440,8 @@ impl Eval {
 
     #[must_use]
     #[inline(always)]
-    /// Create an `Eval` based on the number of half-moves required for White to
-    /// mate. `-Eval::mate_in(n)` will give Black to mate in the number of
-    /// plies.
+    /// Create an `Eval` based on the number of half-moves required for White to mate.
+    /// `-Eval::mate_in(n)` will give Black to mate in the number of plies.
     pub const fn mate_in(nplies: u8) -> Eval {
         Eval(Eval::MATE_0_VAL - (nplies as i16))
     }
@@ -461,8 +449,8 @@ impl Eval {
     #[must_use]
     #[inline(always)]
     /// Step this evaluation back in time by `n` moves.
-    /// If the evaluation is within `n` steps of the mate cutoff, this will
-    /// result in weird behavior.
+    /// If the evaluation is within `n` steps of the mate cutoff, this will result in weird
+    /// behavior.
     ///
     /// # Examples
     ///
@@ -485,8 +473,8 @@ impl Eval {
     #[must_use]
     #[inline(always)]
     /// Step this evaluation forward by a given number of steps.
-    /// If the evaluation is within `n` steps of the mate cutoff, this will
-    /// result in weird behavior.
+    /// If the evaluation is within `n` steps of the mate cutoff, this will result in weird
+    /// behavior.
     pub fn step_forward_by(self, n: u8) -> Eval {
         if self.0 < -Eval::MATE_CUTOFF {
             Eval(self.0 - i16::from(n))
@@ -529,8 +517,8 @@ impl Eval {
 
     #[inline(always)]
     #[must_use]
-    /// Get the value in centipawns of this evaluation. Will return a number
-    /// with magnitude greater than 29000 for mates.
+    /// Get the value in centipawns of this evaluation.
+    /// Will return a number with magnitude greater than 29000 for mates.
     pub const fn centipawn_val(self) -> i16 {
         self.0
     }
@@ -545,10 +533,10 @@ impl Eval {
     #[inline(always)]
     #[must_use]
     /// Put this evaluation into the perspective of the given player.
-    /// In essence, if the player is Black, the evaluation will be inverted, but
-    /// if the player is White, the evaluation will remain the same. This
-    /// function is an involution, meaning that calling it twice with the same
-    /// player will yield the original evaluation.
+    /// In essence, if the player is Black, the evaluation will be inverted, but if the player is
+    /// White, the evaluation will remain the same.
+    /// This function is an involution, meaning that calling it twice with the same player will
+    /// yield the original evaluation.
     pub const fn in_perspective(self, player: Color) -> Eval {
         match player {
             Color::White => self,
@@ -755,27 +743,20 @@ mod tests {
 
     #[test]
     fn delta_captures() {
-        delta_helper(
-            "r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8",
-        );
+        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
     }
 
     #[test]
     fn delta_promotion() {
         // undoubling capture promotion is possible
-        delta_helper(
-            "r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13",
-        );
+        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
     }
 
     #[test]
     #[allow(clippy::float_cmp)]
     fn certainly_endgame() {
         assert_eq!(
-            phase_of(
-                &Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37")
-                    .unwrap()
-            ),
+            phase_of(&Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()),
             0.0
         );
     }

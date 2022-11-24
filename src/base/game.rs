@@ -34,45 +34,40 @@ use std::{
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-/// A struct containing game information, which unlike a `Board`, knows about
-/// its history and can do things like repetition timing.
+/// A struct containing game information, which unlike a `Board`, knows about its history and can
+/// do things like repetition detection.
 ///
 /// `T` is a *tagger*, which will apply tags to moves.
 /// `T` also uses a cookie to annotate boards.
-/// This allows consumers of `TaggedGame`s to annotate boards and moves
-/// efficiently, saving on allocations.
+/// This allows consumers of `TaggedGame`s to annotate boards and moves efficiently, saving on
+/// allocations.
 pub struct TaggedGame<T: Tagger> {
     /// The last element in `history` is the current state of the board.
-    /// The first element should be the starting position of the game, and in
-    /// between are sequential board states from the entire game.
-    /// The right half of the tuple is the number of moves since a pawn-move or
-    /// capture was made, and should start at 0.
+    /// The first element should be the starting position of the game, and in between are sequential
+    /// board states from the entire game.
+    /// The right half of the tuple is the number of moves since a pawn-move or capture was made,
+    /// and should start at 0.
     history: Vec<(Board, T::Cookie)>,
     /// The list, in order, of all moves made in the game.
     /// They should all be valid moves.
-    /// The length of `moves` should always be one less than the length of
-    /// `history`.
+    /// The length of `moves` should always be one less than the length of `history`.
     moves: Vec<Move>,
-    /// Stores the number of times a position has been reached in the course of
-    /// this game.
+    /// Stores the number of times a position has been reached in the course of this game.
     /// It is used for three-move-rule draws.
     /// The keys are the Zobrist hashes of the boards previously visited.
     ///
-    /// The values are a tuple of two integers: the first is the total number of
-    /// repetitions, and the second is the number of repetitions since the last
-    /// search start.
+    /// The values are a tuple of two integers: the first is the total number of repetitions, and
+    /// the second is the number of repetitions since the last search start.
     repetitions: IntMap<u64, (u8, u8)>,
     /// Whether this game is currently part of a search.
-    /// If it is, then the search-level repetitions will be incremented and
-    /// result in draws.
+    /// If it is, then the search-level repetitions will be incremented and result in draws.
     searching: bool,
 }
 
 pub type Game = TaggedGame<NoTag>;
 
 #[derive(Debug, PartialEq, Eq)]
-/// A tagger which will perform no tagging, allowing ergonomic use of tagged
-/// games without metadata.
+/// A tagger which will perform no tagging, allowing ergonomic use of tagged games without metadata.
 pub struct NoTag {}
 
 impl Tagger for NoTag {
@@ -81,14 +76,7 @@ impl Tagger for NoTag {
 
     fn tag_move(_: Move, _: &Board, _: &Self::Cookie) -> Self::Tag {}
 
-    fn update_cookie(
-        _: Move,
-        _: &Self::Tag,
-        _: &Board,
-        _: &Board,
-        _: &Self::Cookie,
-    ) {
-    }
+    fn update_cookie(_: Move, _: &Self::Tag, _: &Board, _: &Board, _: &Self::Cookie) {}
 
     fn init_cookie(_: &Board) {}
 }
@@ -96,8 +84,7 @@ impl Tagger for NoTag {
 pub trait Tagger {
     /// The type of the metadata with which is attached to each move.
     type Tag;
-    /// The type of the metadata which is persistent on boards, and which `Tag`
-    /// is used to update.
+    /// The type of the metadata which is persistent on boards, and which `Tag` is used to update.
     type Cookie;
 
     /// Add a tag to a given move, made on board `b`.
@@ -119,8 +106,7 @@ pub trait Tagger {
 
 impl<T: Tagger> TaggedGame<T> {
     #[must_use]
-    /// Construct a new `Game` in the conventional chess starting position. The
-    /// cumulative evaluation will be initialized to zero.
+    /// Construct a new `Game` in the conventional chess starting position.
     pub fn new() -> TaggedGame<T> {
         let b = Board::default();
         TaggedGame {
@@ -131,8 +117,7 @@ impl<T: Tagger> TaggedGame<T> {
         }
     }
 
-    /// Construct a new `TaggedGame` using the Forsyth-Edwards notation
-    /// description of its position.
+    /// Construct a new `TaggedGame` using the Forsyth-Edwards notation description of its position.
     ///
     /// # Errors
     ///
@@ -148,8 +133,8 @@ impl<T: Tagger> TaggedGame<T> {
         })
     }
 
-    /// Empty out the history of this game completely, but leave the original
-    /// start state of the board.
+    /// Empty out the history of this game completely, but leave the original start state of the
+    /// board.
     /// Will also end the searching period for the game.
     pub fn clear(&mut self) {
         self.history.truncate(1);
@@ -161,18 +146,15 @@ impl<T: Tagger> TaggedGame<T> {
         self.searching = false;
     }
 
-    /// Make a move, assuming said move is legal. If the history is empty
-    /// (this should never happen if normal operations occurred), the move will
-    /// be made from the default state of a `Board`. `delta` is the
-    /// expected gain in evaluation for the player making the move. Typically,
-    /// `delta` will be positive.
+    /// Make a move, assuming said move is legal.
+    ///
+    /// `tag` should have been generated by `T::tag_move(m)`.
     ///
     /// # Panics
     ///
     /// This function may panic if `m` is not a legal move.
     /// However, it is not guaranteed to.
-    /// It is recommended to only call `make_move` with moves that were already
-    /// validated.
+    /// It is recommended to only call `make_move` with moves that were already validated.
     pub fn make_move(&mut self, m: Move, tag: &T::Tag) {
         /*
         #[cfg(debug_assertions)]
@@ -192,24 +174,17 @@ impl<T: Tagger> TaggedGame<T> {
         }
         self.history.push((
             new_board,
-            T::update_cookie(
-                m,
-                tag,
-                &previous_state.0,
-                &new_board,
-                &previous_state.1,
-            ),
+            T::update_cookie(m, tag, &previous_state.0, &new_board, &previous_state.1),
         ));
         self.moves.push(m);
     }
 
-    /// Attempt to play a move, which may or may not be legal. Will return
-    /// `Ok(())` if `m` was a legal move.
+    /// Attempt to play a move, which may or may not be legal.
+    /// Will return `Ok(())` if `m` was a legal move.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` describing the source of the problem
-    /// if `m` is illegal.
+    /// This function will return an `Err` describing the source of the problem if `m` is illegal.
     pub fn try_move(&mut self, m: Move, tag: &T::Tag) -> Result<(), &str> {
         if is_legal(m, self.board()) {
             self.make_move(m, tag);
@@ -219,14 +194,14 @@ impl<T: Tagger> TaggedGame<T> {
         }
     }
 
-    /// Undo the most recent move. This function will return `Ok()` if there was
-    /// history to undo.
+    /// Undo the most recent move.
+    /// This function will return `Ok()` if there was history to undo.
     /// The move inside the `Ok` variant will be the most recent move played.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` if the history of this game has no
-    /// more positions left to undo.
+    /// This function will return an `Err` if the history of this game has no more positions left
+    /// to undo.
     pub fn undo(&mut self) -> Result<Move, &'static str> {
         let m_removed = self.moves.pop().ok_or("no moves to remove")?;
         let b_removed = self.history.pop().ok_or("no boards in history")?.0;
@@ -247,32 +222,24 @@ impl<T: Tagger> TaggedGame<T> {
 
     #[inline(always)]
     #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     /// Get the position representing the current state of the game.
-    ///
-    /// # Panics
-    ///
-    /// This function might panic due to an internal error eliminating all
-    /// history from the internal board. However, this is very unlikely.
     pub fn board(&self) -> &Board {
         &self.history.last().unwrap().0
     }
 
     #[inline(always)]
     #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     /// Get the cookie of the current state of the game.
-    ///
-    /// # Panics
-    ///
-    /// This function might panic due to an internal error eliminating all
-    /// history from the internal board. However, this is very unlikely.
     pub fn cookie(&self) -> &T::Cookie {
         &self.history.last().unwrap().1
     }
 
     #[must_use]
     /// Detect how the game has ended.
-    /// There are three possible return values:
     ///
+    /// There are three possible return values:
     /// * `None`: the game is not over.
     /// * `Some(false)`: the game is over and is drawn.
     /// * `Some(true)`: the game is over by checkmate.
@@ -290,11 +257,9 @@ impl<T: Tagger> TaggedGame<T> {
     }
 
     #[must_use]
-    /// Has this game been drawn due to history (i.e. repetition or the 50 move
-    /// rule)?
+    /// Determine whether this game been drawn due to history (i.e. repetition or the 50 move rule).
     pub fn drawn_by_repetition(&self) -> bool {
-        let num_reps =
-            self.repetitions.get(&self.board().hash).unwrap_or(&(0, 0));
+        let num_reps = self.repetitions.get(&self.board().hash).unwrap_or(&(0, 0));
         if num_reps.0 >= 3 || num_reps.1 >= 2 {
             // draw by repetition
             return true;
@@ -304,8 +269,9 @@ impl<T: Tagger> TaggedGame<T> {
     }
 
     #[must_use]
-    /// Get the legal moves in this position. Will be empty if the position is
-    /// drawn or the game is over.
+    /// Get the legal moves in this position.
+    ///
+    /// Will return an empty vector if there are no legal moves.
     pub fn get_moves<const M: GenMode>(&self) -> Vec<(Move, T::Tag)> {
         if self.drawn_by_repetition() {
             return Vec::new();
@@ -314,7 +280,6 @@ impl<T: Tagger> TaggedGame<T> {
         get_moves::<M, T>(self.board(), self.cookie())
     }
 
-    // no need for `is_empty` since history should always be nonempty
     #[allow(clippy::len_without_is_empty)]
     #[must_use]
     /// Get the number of total positions in this history of this game.
@@ -323,17 +288,14 @@ impl<T: Tagger> TaggedGame<T> {
     }
 
     /// Begin searching.
-    /// During a search, repetitions of positions that were seen as the search
-    /// went on will be immediately marked as draws.
-    /// The current position of the board will also be marked as a possible
-    /// repetition.
+    /// During a search, repetitions of positions that were seen as the search went on will be
+    /// immediately marked as draws.
+    /// The current position of the board will also be marked as a possible repetition.
     ///
     /// # Examples
     ///
-    /// `g1` is not over because a position must be reached 3 times to reach a
-    /// draw.
-    /// However, `g2` is over because it repeated the same position twice in a
-    /// search.
+    /// `g1` is not over because a position must be reached 3 times to reach a draw.
+    /// However, `g2` is over because it repeated the same position twice in a search.
     ///
     /// ```
     /// use fiddler::base::{game::Game, Move, Square};
@@ -397,8 +359,8 @@ mod tests {
     use crate::base::{Board, Move, Square};
 
     #[test]
-    /// Test that we can play a simple move on a `Game` and have the board
-    /// states update accordingly.
+    /// Test that we can play a simple move on a `Game` and have the board  states update
+    /// accordingly.
     fn play_e4() {
         let mut g = Game::new();
         let m = Move::normal(Square::E2, Square::E4);
@@ -442,8 +404,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that a `Game` becomes exactly the same as what it started as if a
-    /// move is undone.
+    /// Test that a `Game` becomes exactly the same as what it started as if a  move is undone.
     fn undo_equality() {
         let mut g = Game::new();
         g.make_move(Move::normal(Square::E2, Square::E4), &());
@@ -475,10 +436,8 @@ mod tests {
     /// Test that a mated position is in fact over.
     fn is_mate_over() {
         // the position from the end of Scholar's mate
-        let g = Game::from_fen(
-            "rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
-        )
-        .unwrap();
+        let g = Game::from_fen("rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
+            .unwrap();
         let moves = g.get_moves::<{ GenMode::All }>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
@@ -487,10 +446,8 @@ mod tests {
 
     #[test]
     fn is_mate_over_2() {
-        let g = Game::from_fen(
-            "r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11",
-        )
-        .unwrap();
+        let g =
+            Game::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11").unwrap();
         let moves = g.get_moves::<{ GenMode::All }>();
         assert!(moves.is_empty());
         assert!(!has_moves(g.board()));
@@ -514,8 +471,8 @@ mod tests {
     }
 
     #[test]
-    /// Test that clearing a board has the same effect of replacing it with a
-    /// default board, if the initial state was the initial board state.
+    /// Test that clearing a board has the same effect of replacing it with a default board if the
+    /// initial state was the initial board state.
     fn clear_board() {
         let mut g = Game::new();
         g.make_move(Move::normal(Square::E2, Square::E4), &());
@@ -526,10 +483,8 @@ mod tests {
     #[test]
     /// Test that a king can escape check without capturing the checker.
     fn king_escape_without_capture() {
-        let g = Game::from_fen(
-            "r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10",
-        )
-        .unwrap();
+        let g = Game::from_fen("r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10")
+            .unwrap();
         let moves = g.get_moves::<{ GenMode::All }>();
         let expected_moves = [
             Move::normal(Square::E6, Square::D6),

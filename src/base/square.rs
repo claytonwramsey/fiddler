@@ -31,8 +31,8 @@ use std::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 /// A square: one of 64 spots on a `Board` that a `Piece` can occupy.
 ///
-/// Internally, `Square`s are represented as a single integer to maintain a
-/// small size.From MSB to LSB, each square is composed of:
+/// Internally, `Square`s are represented as a single integer to maintain a small size.
+/// From MSB to LSB, each square is composed of:
 /// * 2 unused bits
 /// * 3 bits for the rank
 /// * 3 bits for the file
@@ -107,8 +107,9 @@ impl Square {
     #[inline(always)]
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
-    /// Create a Square from the given rank and file. The ranks run from 0 to 7
-    /// (instead of 1 through 8), and the files run from A to H.
+    /// Create a Square from the given rank and file.
+    ///
+    /// The ranks run from 0 to 7 (instead of 1 through 8), and the files run from A to H.
     pub fn new(rank: u8, file: u8) -> Option<Square> {
         Square::try_from((rank << 3) | file).ok()
     }
@@ -133,8 +134,7 @@ impl Square {
     pub const fn chebyshev_to(self, rhs: Square) -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
-            let rankdiff =
-                ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
+            let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
             let filediff = self.file_distance(rhs);
             // we would use `max()` here if it were a const function
             if rankdiff > filediff {
@@ -185,8 +185,7 @@ impl Square {
 
     #[inline(always)]
     #[must_use]
-    /// Get what this square would appear to be from the point of view of the
-    /// opposing player.
+    /// Get what this square would appear to be from the point of view of the opposing player.
     ///
     /// # Examples
     ///
@@ -200,18 +199,15 @@ impl Square {
         unsafe { transmute(self as u8 ^ 56) }
     }
 
+    #[allow(clippy::missing_panics_doc)]
     /// Convert an algebraic string (such as 'e7') to a square.
+    ///
     /// To get an `Ok` result, the string must be two characters.
     /// The file must be in lowercase.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` if `s` is not a legal algebraic
-    /// square.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic in the case of an internal error.
+    /// This function will return an `Err` if `s` is not a legal algebraic square.
     pub fn from_algebraic(s: &str) -> Result<Square, &'static str> {
         if s.len() != 2 {
             return Err("square name must be 2 characters");
@@ -237,22 +233,21 @@ impl Square {
 
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
-    /// Unsafely convert a `Bitboard` to a `Square` by creating the square
-    /// representing its lowest occupied bit. Will result in undefined behavior
-    /// (most likely a `Square` whose enum value is not in 0..64) if the given
-    /// board is empty.
+    /// Unsafely convert a `Bitboard` to a `Square` by creating the square representing its lowest
+    /// occupied bit.
+    /// Will result in undefined behavior (most likely a `Square` whose enum value is not in 0..64)
+    /// if the given board is empty.
     ///
     /// # Safety
     ///
-    /// This function will behave safely if `bb` is nonzero. It will result in
-    /// undefined behavior if `bb` is equal to `Bitboard::EMPTY`.
+    /// This function will behave safely if `bb` is nonzero.
+    /// It will result in undefined behavior if `bb` is equal to `Bitboard::EMPTY`.
     pub unsafe fn unsafe_from(bb: Bitboard) -> Square {
         transmute(bb.trailing_zeros() as u8)
     }
 
     #[must_use]
-    /// Get the name of the file of this square. For instance, the square
-    /// representing A1 will have the name "a".
+    /// Get the name of the file of this square.
     ///
     /// # Examples
     ///
@@ -268,8 +263,7 @@ impl Square {
 
     #[inline(always)]
     #[must_use]
-    /// Determine whether three squares are aligned according to rook or bishop
-    /// directions.
+    /// Determine whether three squares are aligned according to rook or bishop directions.
     pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
         Bitboard::line(sq1, sq2).contains(sq3)
     }
@@ -328,8 +322,7 @@ impl Sub<Direction> for Square {
 impl TryFrom<Bitboard> for Square {
     type Error = &'static str;
 
-    /// Create the square closest to A1 (prioritizing rank) on the given
-    /// bitboard.
+    /// Create the square closest to A1 (prioritizing rank) on the given bitboard.
     #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {

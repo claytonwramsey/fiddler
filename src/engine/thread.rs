@@ -18,12 +18,10 @@
 
 //! Thread management and synchronization.
 //!
-//! This is the meat of parallelism in the engine: a `MainSearch` is responsible
-//! for corralling all the threads and getting them to work together and on
-//! time.
-//! The main search also collects all of the output from each individual search
-//! and composes it into a single easily-used structure for consumption in the
-//! main process.
+//! This is the meat of parallelism in the engine: a `MainSearch` is responsible or corralling all
+//! the threads and getting them to work together and on time.
+//! The main search also collects all of the output from each individual search and composes it into
+//! a single easily-used structure for consumption in the main process.
 
 use std::{thread::scope, time::Instant};
 
@@ -47,11 +45,11 @@ pub struct SearchConfig {
     /// The number of helper threads.
     /// If this value is 0, then the search is single-threaded.
     pub n_helpers: u8,
-    /// The number of moves at each layer which will be searched to a full
-    /// depth, as opposed to a lower-than-target depth.
+    /// The number of moves at each layer which will be searched to a full depth, as opposed to a
+    /// lower-than-target depth.
     pub num_early_moves: usize,
-    /// The number of nodes which have to be searched before it is worthwhile
-    /// to update the search limit with this information.
+    /// The number of nodes which have to be searched before it is worthwhile to update the search
+    /// limit with this information.
     pub limit_update_increment: u64,
 }
 
@@ -96,17 +94,15 @@ impl MainSearch {
     }
 
     /// Evaluate a position.
-    /// The searcher will continue searching until its field `limit` marks
-    /// itself as over.
+    /// The searcher will continue searching until its field `limit` marks itself as over.
     ///
     /// # Errors
     ///
-    /// An error will be returned according to the cases outlined in
-    /// `SearchError`.
-    /// Such errors are rare, and are generally either the result of an internal
-    /// bug or a critical OS interrupt.
-    /// However, a timeout error is most likely if the search times out before
-    /// it can do any computation.
+    /// An error will be returned according to the cases outlined in `SearchError`.
+    /// Such errors are rare, and are generally either the result of an internal bug or a critical
+    /// OS interrupt.
+    /// However, a timeout error is most likely if the search times out before it can do any
+    /// computation.
     pub fn evaluate(&self, g: &ScoredGame) -> SearchResult {
         let tic = Instant::now();
         let mut best_result = Err(SearchError::Timeout);
@@ -120,18 +116,15 @@ impl MainSearch {
                 let mut handles = Vec::new();
 
                 for _thread_id in 0..self.config.n_helpers {
-                    handles.push(s.spawn(move || {
-                        self.aspiration_search(g, depth, false, prev_eval)
-                    }));
+                    handles
+                        .push(s.spawn(move || self.aspiration_search(g, depth, false, prev_eval)));
                 }
 
                 // now it's our turn to think
-                let mut sub_result =
-                    self.aspiration_search(g, depth, true, prev_eval);
+                let mut sub_result = self.aspiration_search(g, depth, true, prev_eval);
 
                 for handle in handles {
-                    let eval_result =
-                        handle.join().map_err(|_| SearchError::Join)?;
+                    let eval_result = handle.join().map_err(|_| SearchError::Join)?;
 
                     match (&mut sub_result, &eval_result) {
                         // if this is our first successful thread, use its result
@@ -162,21 +155,15 @@ impl MainSearch {
                                         is_lower_bound: false,
                                         is_upper_bound: false
                                     },
-                                    EngineInfo::Nodes(
-                                        best_info.num_nodes_evaluated
-                                    ),
+                                    EngineInfo::Nodes(best_info.num_nodes_evaluated),
                                     EngineInfo::NodeSpeed(
                                         1000 * best_info.num_nodes_evaluated
                                             / (elapsed.as_millis() + 1) as u64
                                     ),
                                     EngineInfo::Time(elapsed),
                                     EngineInfo::Pv(&best_info.pv),
-                                    EngineInfo::HashFull(
-                                        self.ttable.fill_rate_permill()
-                                    ),
-                                    EngineInfo::SelDepth(
-                                        best_info.selective_depth
-                                    ),
+                                    EngineInfo::HashFull(self.ttable.fill_rate_permill()),
+                                    EngineInfo::SelDepth(best_info.selective_depth),
                                 ])
                             );
                         }
@@ -203,8 +190,8 @@ impl MainSearch {
             // we have a previous score we can use to window this search
             let (alpha, beta) = if ev.is_mate() {
                 if ev < Eval::DRAW {
-                    // we are getting mated. search for ways we can get mated
-                    // faster
+                    // we are getting mated.
+                    // search for ways we can get mated faster
                     (Eval::MIN, ev + Eval::centipawns(1))
                 } else {
                     // we are matting, search for faster wins
@@ -213,13 +200,9 @@ impl MainSearch {
             } else {
                 match depth & 0x1u8 {
                     // even depth means that we expect the evaluation to decrease
-                    0 => {
-                        (ev - Eval::centipawns(100), ev + Eval::centipawns(10))
-                    }
+                    0 => (ev - Eval::centipawns(100), ev + Eval::centipawns(10)),
                     // odd depth means that we expect the evaluation to increase
-                    1 => {
-                        (ev - Eval::centipawns(10), ev + Eval::centipawns(100))
-                    }
+                    1 => (ev - Eval::centipawns(10), ev + Eval::centipawns(100)),
                     _ => unreachable!(),
                 }
             };

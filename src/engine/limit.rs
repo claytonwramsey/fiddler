@@ -18,13 +18,13 @@
 
 //! Search limiting.
 //!
-//! It makes little sense to wait until a search decides that it's done, as it's
-//! hard to predict when said search will be done.
-//! The code in here is used to create limits to how long we can search, so that
-//! we don't have to wait forever.
+//! It makes little sense to wait until a search decides that it's done, as it's hard to predict
+//! when said search will be done.
+//! The code in here is used to create limits to how long we can search, so that we don't have to
+//! wait forever.
 //!
-//! A search limit is an inherently concurrent structure - much care must be
-//! taken to avoid deadlocking.
+//! A search limit is an inherently concurrent structure - much care must be taken to avoid
+//! deadlocking.
 
 use std::{
     sync::{
@@ -42,12 +42,10 @@ use super::SearchError;
 pub struct SearchLimit {
     /// Whether the search is truly over.
     over: AtomicBool,
-    /// The cumulative number of nodes which have been searched since the first
-    /// call to `start`.
+    /// The cumulative number of nodes which have been searched since the first call to `start`.
     num_nodes: AtomicU64,
     /// A cap on the total number of nodes to search.
-    /// If the cap is `None`, then there is no limit to the number of nodes to
-    /// search.
+    /// If the cap is `None`, then there is no limit to the number of nodes to search.
     pub nodes_cap: RwLock<Option<u64>>,
     /// The time at which the search was started.
     start_time: Mutex<Instant>,
@@ -55,8 +53,7 @@ pub struct SearchLimit {
     /// Will be `None` if the search is untimed.
     end_time: RwLock<Option<Instant>>,
     /// The duration of the search.
-    /// If the duration is `None`, then there is no limit to the duration of the
-    /// search.
+    /// If the duration is `None`, then there is no limit to the duration of the search.
     pub search_duration: Mutex<Option<Duration>>,
 }
 
@@ -82,15 +79,13 @@ impl SearchLimit {
     pub fn start(&self) -> Result<(), SearchError> {
         self.num_nodes.store(0, Ordering::Relaxed);
         self.over.store(false, Ordering::Relaxed);
-        *self.start_time.lock().map_err(|_| SearchError::Poison)? =
-            Instant::now();
+        *self.start_time.lock().map_err(|_| SearchError::Poison)? = Instant::now();
         let opt_duration = self
             .search_duration
             .lock()
             .map_err(|_| SearchError::Poison)?;
         if let Some(dur) = *opt_duration {
-            *self.end_time.write().map_err(|_| SearchError::Poison)? =
-                Some(Instant::now() + dur);
+            *self.end_time.write().map_err(|_| SearchError::Poison)? = Some(Instant::now() + dur);
         };
         Ok(())
     }
@@ -114,9 +109,7 @@ impl SearchLimit {
     ///
     /// This function will return an error if a lock was poisoned.
     pub fn update_time(&self) -> Result<bool, SearchError> {
-        if let Some(end) =
-            *self.end_time.read().map_err(|_| SearchError::Poison)?
-        {
+        if let Some(end) = *self.end_time.read().map_err(|_| SearchError::Poison)? {
             if Instant::now() > end {
                 self.over.store(true, Ordering::Relaxed);
                 return Ok(true);
