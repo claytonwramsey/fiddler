@@ -34,12 +34,12 @@ use std::{
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-/// A struct containing game information, which unlike a `Board`, knows about its history and can
+/// A struct containing game information, which unlike a [`Board`], knows about its history and can
 /// do things like repetition detection.
 ///
 /// `T` is a *tagger*, which will apply tags to moves.
 /// `T` also uses a cookie to annotate boards.
-/// This allows consumers of `TaggedGame`s to annotate boards and moves efficiently, saving on
+/// This allows consumers of [`TaggedGame`]s to annotate boards and moves efficiently, saving on
 /// allocations.
 pub struct TaggedGame<T: Tagger> {
     /// The last element in `history` is the current state of the board.
@@ -64,6 +64,7 @@ pub struct TaggedGame<T: Tagger> {
     searching: bool,
 }
 
+/// A useful type alias for a game which does not tag moves or positions.
 pub type Game = TaggedGame<NoTag>;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -81,6 +82,12 @@ impl Tagger for NoTag {
     fn init_cookie(_: &Board) {}
 }
 
+/// A tagger, which can tag moves with metadata and construct cookies which aid in performant
+/// analysis of boards.
+///
+/// A [`Tagger`] is required to use a [`Game`].
+/// It is recommended to use [`NoTag`] if you do not need to tag anything (as this will incur no
+/// performance penalty.)
 pub trait Tagger {
     /// The type of the metadata with which is attached to each move.
     type Tag;
@@ -106,7 +113,7 @@ pub trait Tagger {
 
 impl<T: Tagger> TaggedGame<T> {
     #[must_use]
-    /// Construct a new `Game` in the conventional chess starting position.
+    /// Construct a new [`Game`] in the conventional chess starting position.
     pub fn new() -> TaggedGame<T> {
         let b = Board::default();
         TaggedGame {
@@ -117,7 +124,7 @@ impl<T: Tagger> TaggedGame<T> {
         }
     }
 
-    /// Construct a new `TaggedGame` using the Forsyth-Edwards notation description of its position.
+    /// Construct a new [`TaggedGame`] using the Forsyth-Edwards notation description of its position.
     ///
     /// # Errors
     ///
@@ -179,18 +186,19 @@ impl<T: Tagger> TaggedGame<T> {
         self.moves.push(m);
     }
 
+    #[allow(clippy::result_unit_err)]
     /// Attempt to play a move, which may or may not be legal.
     /// Will return `Ok(())` if `m` was a legal move.
     ///
     /// # Errors
     ///
-    /// This function will return an `Err` describing the source of the problem if `m` is illegal.
-    pub fn try_move(&mut self, m: Move, tag: &T::Tag) -> Result<(), &str> {
+    /// This function will return an `Err(())` if the move is illegal.
+    pub fn try_move(&mut self, m: Move, tag: &T::Tag) -> Result<(), ()> {
         if is_legal(m, self.board()) {
             self.make_move(m, tag);
             Ok(())
         } else {
-            Err("illegal move given!")
+            Err(())
         }
     }
 
@@ -294,7 +302,8 @@ impl<T: Tagger> TaggedGame<T> {
     ///
     /// # Examples
     ///
-    /// `g1` is not over because a position must be reached 3 times to reach a draw.
+    /// In the following example, `g1` is not over because a position must be reached 3 times to
+    /// reach a draw.
     /// However, `g2` is over because it repeated the same position twice in a search.
     ///
     /// ```
@@ -330,6 +339,9 @@ impl<T: Tagger> TaggedGame<T> {
             .and_modify(|v| v.1 = 1);
     }
 
+    /// Stop performing a search.
+    ///
+    /// This will result in repetitions being counted at 3 once more.
     pub fn stop_search(&mut self) {
         self.searching = false;
     }
@@ -359,7 +371,7 @@ mod tests {
     use crate::base::{Board, Move, Square};
 
     #[test]
-    /// Test that we can play a simple move on a `Game` and have the board  states update
+    /// Test that we can play a simple move on a [`Game`] and have the board  states update
     /// accordingly.
     fn play_e4() {
         let mut g = Game::new();
@@ -404,7 +416,7 @@ mod tests {
     }
 
     #[test]
-    /// Test that a `Game` becomes exactly the same as what it started as if a  move is undone.
+    /// Test that a [`Game`] becomes exactly the same as what it started as if a move is undone.
     fn undo_equality() {
         let mut g = Game::new();
         g.make_move(Move::normal(Square::E2, Square::E4), &());
