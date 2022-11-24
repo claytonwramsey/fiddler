@@ -137,14 +137,11 @@ pub enum GenMode {
 }
 
 #[must_use]
+#[allow(clippy::missing_panics_doc)]
 /// Determine whether any given move is legal, given a position in which it could be played.
 /// Requires that the move must have been legal on *some* board, but not necessarily the given one.
 /// `is_legal` will make no regard to whether a position is drawn by repetition, 50-move-rule, or
 /// insufficient material.
-///
-/// # Panics
-///
-/// This function might panic, but this is only due to an internal error.
 ///
 /// # Examples
 ///
