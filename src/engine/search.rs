@@ -108,7 +108,6 @@ pub fn search(
     Ok(SearchInfo {
         pv,
         eval,
-        num_transpositions: searcher.num_transpositions,
         num_nodes_evaluated: searcher.num_nodes_evaluated,
         depth,
         selective_depth: searcher.selective_depth,
@@ -123,8 +122,6 @@ pub struct SearchInfo {
     pub pv: Vec<Move>,
     /// The evaluation of the position.
     pub eval: Eval,
-    /// The number of times a transposition table get was successful.
-    pub num_transpositions: u64,
     /// The number of nodes evaluated in this search.
     pub num_nodes_evaluated: u64,
     /// The highest depth at which this search succeeded.
@@ -147,7 +144,6 @@ impl SearchInfo {
         }
         self.selective_depth = max(self.selective_depth, other.selective_depth);
         self.num_nodes_evaluated += other.num_nodes_evaluated;
-        self.num_transpositions += other.num_transpositions;
     }
 }
 
@@ -165,8 +161,6 @@ struct PVSearch<'a> {
     num_nodes_evaluated: u64,
     /// The cumulative number of nodes visited since we last updated the limit.
     nodes_since_limit_update: u16,
-    /// The cumulative number of transpositions.
-    num_transpositions: u64,
     /// The configuration of this search.
     config: &'a SearchConfig,
     /// The limit to this search.
@@ -195,7 +189,6 @@ impl<'a> PVSearch<'a> {
             killer_moves: vec![Move::BAD_MOVE; usize::from(u8::MAX) + 1],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
-            num_transpositions: 0,
             config,
             limit,
             is_main,
@@ -308,7 +301,6 @@ impl<'a> PVSearch<'a> {
         let mut tt_move = None;
         let mut tt_guard = self.ttable.get(self.game.board().hash);
         if let Some(entry) = tt_guard.entry() {
-            self.num_transpositions += 1;
             let m = entry.best_move;
             if is_legal(m, self.game.board()) {
                 tt_move = Some(m);
