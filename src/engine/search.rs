@@ -244,7 +244,7 @@ impl<'a> PVSearch<'a> {
         depth_so_far: u8,
         mut alpha: Eval,
         mut beta: Eval,
-        parent_line: &mut Vec<Move>,
+        line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
         // verify that ROOT implies PV
         debug_assert!(if ROOT { PV } else { true });
@@ -258,7 +258,7 @@ impl<'a> PVSearch<'a> {
         }
 
         if depth_to_go <= 0 {
-            return self.quiesce::<PV>(depth_so_far, alpha, beta, parent_line);
+            return self.quiesce::<PV>(depth_so_far, alpha, beta, line);
         }
 
         self.increment_nodes()?;
@@ -269,7 +269,7 @@ impl<'a> PVSearch<'a> {
         if alpha < lower_bound {
             if beta <= lower_bound {
                 if PV {
-                    parent_line.clear();
+                    line.clear();
                 }
                 return Ok(lower_bound);
             }
@@ -280,7 +280,7 @@ impl<'a> PVSearch<'a> {
         if upper_bound < beta {
             if upper_bound <= alpha {
                 if PV {
-                    parent_line.clear();
+                    line.clear();
                 }
                 return Ok(upper_bound);
             }
@@ -289,8 +289,8 @@ impl<'a> PVSearch<'a> {
 
         // detect draws.
         if self.game.drawn_by_repetition() || self.game.board().is_drawn() {
-            if PV && alpha < Eval::DRAW {
-                parent_line.clear();
+            if PV {
+                line.clear();
             }
             // required so that movepicker only needs to know about current position, and not about
             // history
@@ -305,13 +305,21 @@ impl<'a> PVSearch<'a> {
             if is_legal(m, self.game.board()) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
-                if !PV && entry.depth >= depth_to_go {
+                if entry.depth >= depth_to_go {
                     let upper_bound = entry.upper_bound.step_back_by(depth_so_far);
                     if upper_bound <= alpha {
+                        if PV {
+                            line.clear();
+                            line.push(m);
+                        }
                         return Ok(upper_bound);
                     }
                     let lower_bound = entry.lower_bound.step_back_by(depth_so_far);
                     if beta <= lower_bound {
+                        if PV {
+                            line.clear();
+                            line.push(m);
+                        }
                         return Ok(lower_bound);
                     }
                 }
@@ -332,9 +340,9 @@ impl<'a> PVSearch<'a> {
         let mut move_count = 0;
         // Whether we were able to overwrite alpha by searching moves.
         let mut overwrote_alpha = false;
+        // The principal variation line, following the best move.
+        let mut child_line = Vec::new();
         for (m, tag) in moves_iter {
-            // The principal variation line, following the best move.
-            let mut line = Vec::new();
             move_count += 1;
             self.game.make_move(m, &tag);
             // Prefetch the next transposition table entry as early as possible
@@ -362,7 +370,7 @@ impl<'a> PVSearch<'a> {
                     depth_so_far + 1,
                     -alpha - Eval::centipawns(1),
                     -alpha,
-                    &mut line,
+                    &mut child_line,
                 )?;
 
                 // if the LMR search causes an alpha cutoff, ZW search again at full depth.
@@ -372,7 +380,7 @@ impl<'a> PVSearch<'a> {
                         depth_so_far + 1,
                         -alpha - Eval::centipawns(1),
                         -alpha,
-                        &mut line,
+                        &mut child_line,
                     )?;
                 }
             }
@@ -385,7 +393,7 @@ impl<'a> PVSearch<'a> {
                     depth_so_far + 1,
                     -beta,
                     -alpha,
-                    &mut line,
+                    &mut child_line,
                 )?;
             }
 
@@ -400,7 +408,7 @@ impl<'a> PVSearch<'a> {
                     // if this move was better than what we've seen before, write it as the
                     // principal variation
                     if PV {
-                        write_line(parent_line, m, &line);
+                        write_line(line, m, &child_line);
                     }
 
                     if beta <= score {
@@ -422,6 +430,7 @@ impl<'a> PVSearch<'a> {
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a stalemate or a mate.
+            line.clear();
             best_score = if self.game.board().checkers.is_empty() {
                 // stalemated
                 Eval::DRAW
@@ -455,11 +464,11 @@ impl<'a> PVSearch<'a> {
         depth_so_far: u8,
         mut alpha: Eval,
         beta: Eval,
-        parent_line: &mut Vec<Move>,
+        line: &mut Vec<Move>,
     ) -> Result<Eval, SearchError> {
         if !self.game.board().checkers.is_empty() {
             // don't allow settling if we are in check (~48 Elo)
-            return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, parent_line);
+            return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, line);
         }
 
         self.increment_nodes()?;
@@ -474,8 +483,8 @@ impl<'a> PVSearch<'a> {
                 Eval::DRAW
             };
 
-            if PV && alpha < score {
-                parent_line.clear();
+            if PV {
+                line.clear();
             }
 
             return Ok(score);
@@ -485,14 +494,22 @@ impl<'a> PVSearch<'a> {
 
         let mut tt_guard = self.ttable.get(self.game.board().hash);
         if let Some(entry) = tt_guard.entry() {
-            if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES {
+            if entry.depth >= TTEntry::DEPTH_CAPTURES {
                 // this was a deeper search, just use it
                 let upper_bound = entry.upper_bound.step_back_by(depth_so_far);
                 if upper_bound <= alpha {
+                    if PV {
+                        line.clear();
+                        line.push(entry.best_move);
+                    }
                     return Ok(upper_bound);
                 }
                 let lower_bound = entry.lower_bound.step_back_by(depth_so_far);
                 if beta <= lower_bound {
+                    if PV {
+                        line.clear();
+                        line.push(entry.best_move);
+                    }
                     return Ok(lower_bound);
                 }
             }
@@ -507,7 +524,7 @@ impl<'a> PVSearch<'a> {
         let mut overwrote_alpha = false;
         if alpha < score {
             if PV {
-                parent_line.clear();
+                line.clear();
             }
 
             if beta <= score {
@@ -534,7 +551,7 @@ impl<'a> PVSearch<'a> {
         let mut best_score = score;
         let mut moves = self.game.get_moves::<{ GenMode::Captures }>();
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
-        let mut line = Vec::new();
+        let mut child_line = Vec::new();
 
         for (m, tag) in moves {
             self.game.make_move(m, &tag);
@@ -546,13 +563,13 @@ impl<'a> PVSearch<'a> {
                 depth_so_far + 1,
                 -alpha - Eval::centipawns(1),
                 -alpha,
-                &mut line,
+                &mut child_line,
             )?;
             if PV && alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option in this tree.
                 // we already have a score from before that we can use as a lower bound in this
                 // search.
-                score = -self.quiesce::<PV>(depth_so_far + 1, -beta, -alpha, &mut line)?;
+                score = -self.quiesce::<PV>(depth_so_far + 1, -beta, -alpha, &mut child_line)?;
             }
 
             let undo_result = self.game.undo();
@@ -563,7 +580,7 @@ impl<'a> PVSearch<'a> {
                 best_score = score;
                 if alpha < score {
                     if PV {
-                        write_line(parent_line, m, &line);
+                        write_line(line, m, &child_line);
                     }
                     if beta <= score {
                         // Beta cutoff, we have ound a better line somewhere else
