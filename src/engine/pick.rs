@@ -190,13 +190,18 @@ impl Iterator for MovePicker {
                 self.next()
             }
             PickPhase::GoodCapture => {
+                /// The cutoff for good captures.
+                ///
+                /// Captures with a score below this value will be sent to the back of the list.
+                const GOOD_CAPTURE_CUTOFF: Eval = Eval::centipawns(-300);
+
                 if self.capture_index >= self.capture_buffer.len() {
                     // out of captures
                     self.phase = PickPhase::Killer;
                     return self.next();
                 }
                 let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
-                if capture_entry.1 .1 < Eval::DRAW {
+                if capture_entry.1 .1 < GOOD_CAPTURE_CUTOFF {
                     // we are now in bad captures, move on
                     self.phase = PickPhase::Killer;
                     // make sure to leave this move in place
