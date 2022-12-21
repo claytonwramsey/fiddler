@@ -169,21 +169,27 @@ impl Tagger for ScoreTag {
     }
 }
 
+/// The cutoff for pure midgame material.
+pub const MG_LIMIT: Eval = Eval::centipawns(2408);
+
+/// The cutoff for pure endgame material.
+pub const EG_LIMIT: Eval = Eval::centipawns(1348);
+
 /// Mask containing ones along the A file.
 /// Bitshifting left by a number from 0 through 7 will cause it to become a mask for each file.
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
-/// The value of having the right to castle kingside.
-pub const KINGSIDE_CASTLE_VALUE: Score = Score::centipawns(-1, 0);
-
-/// The value of having the right to castle queenside.
-pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(4, 0);
-
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-18, -26);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-21, -21);
 /// The value of having a rook with no same-colored pawns in front of it which are not advanced past
 /// the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(20, 21);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(26, 27);
+
+/// The value of having the right to castle kingside.
+pub const KINGSIDE_CASTLE_VALUE: Score = Score::centipawns(0, 0);
+
+/// The value of having the right to castle queenside.
+pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(1, 1);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
@@ -339,14 +345,11 @@ pub fn phase_of(b: &Board) -> f32 {
 
     calculate_phase(mg_npm)
 }
-
 #[must_use]
 /// Get a blending float describing the current phase of the game.
 /// Will range from 0 (full endgame) to 1 (full midgame).
 /// `mg_npm` is the amount of midgame non-pawn material on the board.
 pub fn calculate_phase(mg_npm: Eval) -> f32 {
-    const MG_LIMIT: Eval = Eval::centipawns(2500);
-    const EG_LIMIT: Eval = Eval::centipawns(1400);
     let bounded_npm = mg_npm.clamp(EG_LIMIT, MG_LIMIT);
 
     (EG_LIMIT - bounded_npm).float_val() / (EG_LIMIT - MG_LIMIT).float_val()

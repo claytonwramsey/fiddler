@@ -30,26 +30,25 @@ use std::{
     env,
     fs::File,
     io::{BufRead, BufReader},
+    ops::{MulAssign, SubAssign},
     thread::scope,
     time::Instant,
 };
 
-use fiddler::base::{
-    movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
-    Board, Color, Piece, Square, MAGIC,
-};
 use fiddler::engine::evaluate::{
     material,
     mobility::{ATTACKS_VALUE, MAX_MOBILITY},
-    net_doubled_pawns, net_open_rooks, phase_of,
+    net_doubled_pawns, net_open_rooks,
     pst::PST,
     DOUBLED_PAWN_VALUE, KINGSIDE_CASTLE_VALUE, OPEN_ROOK_VALUE, QUEENSIDE_CASTLE_VALUE,
 };
-
-/// The input feature set of a board.
-/// Each element is a (key, value) pair where the key is the index of the value in the full feature
-/// vector.
-type BoardFeatures = Vec<(usize, f32)>;
+use fiddler::{
+    base::{
+        movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
+        Board, Color, Piece, Square, MAGIC,
+    },
+    engine::evaluate::{EG_LIMIT, MG_LIMIT},
+};
 
 #[allow(clippy::similar_names)]
 /// Run the main training function.
@@ -64,8 +63,8 @@ pub fn main() {
     // first argument is the name of the binary
     let path_str = &args[1..].join(" ");
     let mut weights = load_weights();
-    // fuzz(&mut weights, 0.05);
-    let learn_rate = 5.;
+    let mut err = f32::INFINITY;
+    let learn_rate = 0.1;
 
     let nthreads = 14;
     let tic = Instant::now();
@@ -77,13 +76,43 @@ pub fn main() {
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for i in 0..3000 {
-        weights = train_step(&input_sets, &weights, learn_rate, nthreads).0;
+    let mut i = 0;
+    loop {
         println!("iteration {i}...");
+        let (new_weights, new_err) = train_step(&input_sets, &weights, learn_rate, nthreads);
+        if new_err > err {
+            break;
+        }
+        weights = new_weights;
+        err = new_err;
+        i += 1;
     }
 
     print_weights(&weights);
 }
+
+/// Extracted features from a board for gradient descent.
+struct BoardFeatures {
+    /// The total (not net) quantities of each piece type on the board.
+    piece_counts: [f32; Piece::NUM - 1],
+    /// The net rule counts for pieces on the board.
+    /// Includes material counts.
+    rules: Vec<(usize, f32)>,
+}
+
+#[derive(Clone)]
+/// Weights for an evaulation.
+/// These values will be gradient-descended on.
+struct Weights {
+    /// The cutoffs for blending bedween midgame and endgame.
+    phase_cutoffs: (f32, f32),
+    /// The values of each rule (such as square occupancy, mobility, or handmade rules).
+    /// The first five entries in `rule_values` must always be the material values.
+    rule_values: Vec<(f32, f32)>,
+}
+
+/// The gradient of the error with respect to the weights has the same dimension as weights.
+type GradWeights = Weights;
 
 /// Expand an EPD file into a set of features that can be used for training.
 fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std::error::Error>> {
@@ -112,24 +141,25 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
 }
 
 #[allow(clippy::similar_names, clippy::cast_precision_loss)]
-/// Perform one step of PST training, and update the weights to reflect this.
-/// Returns the weight vector MSE of the current epoch.
+#[inline(never)]
+/// Perform one epoch of gradient descent training.
 ///
 /// Inputs:
 /// * `inputs`: a vector containing the input vector and the expected evaluation.
 /// * `weights`: the weight vector to train on.
 /// * `learn_rate`: a coefficient on the speed at which the engine learns.
+/// * `nthreads`: the number of threads to parallelize over.
 ///
 /// Each element of `inputs` must be the same length as `weights`.
 fn train_step(
     inputs: &[(BoardFeatures, f32)],
-    weights: &[f32],
+    weights: &Weights,
     learn_rate: f32,
     nthreads: usize,
-) -> (Vec<f32>, f32) {
+) -> (Weights, f32) {
     let tic = Instant::now();
     let chunk_size = inputs.len() / nthreads;
-    let mut new_weights: Vec<f32> = weights.to_vec();
+    let mut new_weights = weights.clone();
     let mut sum_se = 0.;
     scope(|s| {
         let mut grads = Vec::new();
@@ -139,11 +169,10 @@ fn train_step(
             grads.push(s.spawn(move || train_thread(&inputs[start..][..chunk_size], weights)));
         }
         for grad_handle in grads {
-            let (sub_grad, se) = grad_handle.join().unwrap();
+            let (mut sub_grad, se) = grad_handle.join().unwrap();
             sum_se += se;
-            for i in 0..new_weights.len() {
-                new_weights[i] -= learn_rate * sub_grad[i] / inputs.len() as f32;
-            }
+            sub_grad *= learn_rate / inputs.len() as f32;
+            new_weights -= sub_grad;
         }
     });
     let toc = Instant::now();
@@ -161,18 +190,16 @@ fn train_step(
 
 /// Construct the gradient vector for a subset of the input data.
 /// Returns the sum of the squared error across this epoch.
-fn train_thread(input: &[(BoardFeatures, f32)], weights: &[f32]) -> (Vec<f32>, f32) {
-    let mut grad = vec![0.; weights.len()];
+fn train_thread(input: &[(BoardFeatures, f32)], weights: &Weights) -> (Weights, f32) {
+    let mut grad = Weights::zero(weights);
     let mut sum_se = 0.;
     for (features, sigm_expected) in input {
-        let sigm_eval = sigmoid(features.iter().map(|&(idx, val)| val * weights[idx]).sum());
-        let err = sigm_expected - sigm_eval;
-        let coeff = -sigm_eval * (1. - sigm_eval) * err;
-        // construct the gradient
-        for &(idx, feat_val) in features {
-            grad[idx] += feat_val * coeff;
-        }
+        let sigm_eval = sigmoid(weights.evaluate(features));
+        let err = sigm_eval - sigm_expected;
+        let coeff = sigm_eval * (1. - sigm_eval) * err;
+
         sum_se += err * err;
+        weights.eval_gradient(&mut grad, coeff, features);
     }
 
     (grad, sum_se)
@@ -189,12 +216,18 @@ fn sigmoid(x: f32) -> f32 {
 }
 
 /// Load the weight value constants from the ones defined in the PST evaluation.
-fn load_weights() -> Vec<f32> {
-    let mut weights = Vec::new();
+fn load_weights() -> Weights {
+    let mut weights = Weights {
+        phase_cutoffs: (MG_LIMIT.float_val(), EG_LIMIT.float_val()),
+        rule_values: Vec::new(),
+    };
+
+    // apply material values
     for pt in Piece::NON_KING {
         let val = material::value(pt);
-        weights.push(val.mg.float_val());
-        weights.push(val.eg.float_val());
+        weights
+            .rule_values
+            .push((val.mg.float_val(), val.eg.float_val()));
     }
 
     for pt in Piece::ALL {
@@ -202,8 +235,9 @@ fn load_weights() -> Vec<f32> {
             for file in 0..8 {
                 let sq_idx = 8 * rank + file;
                 let score = PST[pt as usize][sq_idx];
-                weights.push(score.mg.float_val());
-                weights.push(score.eg.float_val());
+                weights
+                    .rule_values
+                    .push((score.mg.float_val(), score.eg.float_val()));
             }
         }
     }
@@ -211,60 +245,82 @@ fn load_weights() -> Vec<f32> {
     for pt in Piece::ALL {
         for count in 0..MAX_MOBILITY {
             let score = ATTACKS_VALUE[pt as usize][count];
-            weights.push(score.mg.float_val());
-            weights.push(score.eg.float_val());
+            weights
+                .rule_values
+                .push((score.mg.float_val(), score.eg.float_val()));
         }
     }
 
-    weights.push(DOUBLED_PAWN_VALUE.mg.float_val());
-    weights.push(DOUBLED_PAWN_VALUE.eg.float_val());
+    weights.rule_values.push((
+        DOUBLED_PAWN_VALUE.mg.float_val(),
+        DOUBLED_PAWN_VALUE.eg.float_val(),
+    ));
 
-    weights.push(OPEN_ROOK_VALUE.mg.float_val());
-    weights.push(OPEN_ROOK_VALUE.eg.float_val());
+    weights.rule_values.push((
+        OPEN_ROOK_VALUE.mg.float_val(),
+        OPEN_ROOK_VALUE.eg.float_val(),
+    ));
 
-    weights.push(KINGSIDE_CASTLE_VALUE.mg.float_val());
-    weights.push(KINGSIDE_CASTLE_VALUE.eg.float_val());
+    weights.rule_values.push((
+        KINGSIDE_CASTLE_VALUE.mg.float_val(),
+        KINGSIDE_CASTLE_VALUE.eg.float_val(),
+    ));
 
-    weights.push(QUEENSIDE_CASTLE_VALUE.mg.float_val());
-    weights.push(QUEENSIDE_CASTLE_VALUE.eg.float_val());
+    weights.rule_values.push((
+        QUEENSIDE_CASTLE_VALUE.mg.float_val(),
+        QUEENSIDE_CASTLE_VALUE.eg.float_val(),
+    ));
 
     weights
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::similar_names)]
 /// Print out a weights vector so it can be used as code.
-fn print_weights(weights: &[f32]) {
-    let paired_val = |name: &str, start: usize| {
+fn print_weights(weights: &Weights) {
+    let print_rule = |name: &str, idx: usize| {
         println!(
-            "pub const {name}: Score = (Eval::centipawns({}), Eval::centipawns({}));",
-            (weights[start] * 100.) as i16,
-            (weights[start + 1] * 100.) as i16,
+            "pub const {name}: Score = Score::centipawns({}, {});",
+            (weights.rule_values[idx].0 * 100.) as i16,
+            (weights.rule_values[idx].1 * 100.) as i16,
         );
     };
 
-    // print material values
-    paired_val("KNIGHT_VAL", 0);
-    paired_val("BISHOP_VAL", 2);
-    paired_val("ROOK_VAL", 4);
-    paired_val("QUEEN_VAL", 6);
-    paired_val("PAWN_VAL", 8);
-    println!("-----");
+    println!(
+        "pub const MG_LIMIT: Eval = Eval::centipawns({})",
+        (weights.phase_cutoffs.0 * 100.) as i16
+    );
 
-    let mut offset = 10;
+    println!(
+        "pub const EG_LIMIT: Eval = Eval::centipawns({})",
+        (weights.phase_cutoffs.1 * 100.) as i16
+    );
+
+    let mut offset = 0;
+    // print material values
+    for pt in Piece::NON_KING {
+        let fscore = weights.rule_values[offset + pt as usize];
+        println!(
+            "Piece::{pt:?} => Score::centipawns({}, {}),",
+            (fscore.0 * 100.) as i16,
+            (fscore.1 * 100.) as i16
+        );
+    }
+
+    offset += 5;
+    println!("-----");
 
     // print PST
     println!("pub const PST: Pst = unsafe {{ transmute([");
     for pt in Piece::ALL {
         println!("    [ // {pt}");
-        let pt_idx = offset + (128 * pt as usize);
+        let pt_idx = offset + (64 * pt as usize);
         for rank in 0..8 {
             print!("        ");
             for file in 0..8 {
                 let sq = Square::new(rank, file).unwrap();
-                let mg_idx = pt_idx + (2 * sq as usize);
-                let eg_idx = mg_idx + 1;
-                let mg_val = (weights[mg_idx] * 100.) as i16;
-                let eg_val = (weights[eg_idx] * 100.) as i16;
+                let fscore = weights.rule_values[pt_idx + sq as usize];
+                let mg_val = (fscore.0 * 100.) as i16;
+                let eg_val = (fscore.1 * 100.) as i16;
                 print!("({mg_val}, {eg_val}), ");
             }
             println!();
@@ -272,34 +328,37 @@ fn print_weights(weights: &[f32]) {
         println!("    ],");
     }
     println!("]) }};");
+
+    offset += 384;
     println!("-----");
 
     // print mobility
-    offset = 778;
     println!(
         "pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = unsafe {{ transmute(["
     );
     for pt in Piece::ALL {
-        let pt_idx = offset + 2 * MAX_MOBILITY * pt as usize;
+        let pt_idx = offset + MAX_MOBILITY * pt as usize;
         println!("    [ // {pt}");
         for count in 0..MAX_MOBILITY {
-            let count_idx = pt_idx + 2 * count;
+            let fscore = weights.rule_values[pt_idx + count];
             println!(
                 "        ({}, {}), ",
-                (weights[count_idx] * 100.) as i16,
-                (weights[count_idx + 1] * 100.) as i16
+                (fscore.0 * 100.) as i16,
+                (fscore.1 * 100.) as i16
             );
         }
         println!("    ],");
     }
     println!("]) }};");
+
+    offset += 168;
     println!("-----");
 
     // print potpourri
-    paired_val("DOUBLED_PAWN_VALUE", 1114);
-    paired_val("OPEN_ROOK_VALUE", 1116);
-    paired_val("KINGSIDE_CASTLE_VALUE", 1118);
-    paired_val("QUEENSIDE_CASTLE_VALUE", 1120);
+    print_rule("DOUBLED_PAWN_VALUE", offset);
+    print_rule("OPEN_ROOK_VALUE", offset + 1);
+    print_rule("KINGSIDE_CASTLE_VALUE", offset + 2);
+    print_rule("QUEENSIDE_CASTLE_VALUE", offset + 3);
 }
 
 #[allow(
@@ -308,115 +367,82 @@ fn print_weights(weights: &[f32]) {
     clippy::similar_names
 )]
 /// Extract a feature vector from a board.
-/// The resulting vector will have dimension 1118.
-/// The PST values can be up to 1 for a white piece on the given PST square, -1 for a black piece,
-/// or 0 for both or neither.
-/// The PST values are then pre-blended by game phase.
-///
-/// The elements of the vector are listed by their indices as follows:
-///
-/// * 0..2: Knight quantity
-/// * 2..4: Bishop quantity
-/// * 4..6: Rook quantity
-/// * 6..8: Queen quantity
-/// * 8..10: Pawn quantity
-/// * 10..138: Knight PST, paired (midgame, endgame) element-wise
-/// * 138..266: Bishop PST
-/// * 266..394: Rook PST
-/// * 394..522: Queen PST
-/// * 522..650: Pawn PST.
-///     Note that the indices for the first and eight ranks do not matter.
-/// * 650..778: King PST
-/// * 778..1114: Mobility lookup.
-///     This is not the most efficient representation, but it's easy to implement.
-///     The most major index is the piece type, then the number of attacked squares, and lastly
-///     whether the evaluation is midgame or endgame.
-/// * 1114..1116: Number of doubled pawns (mg, eg) weighted
-///     (e.g. 1 if White has 2 doubled pawns and Black has 1)
-/// * 1116..1118: Net number of open rooks
-/// * 1118..1120: Net kingside castling rights.
-/// * 1120..1122: Net queenside castling rights.
-///
-/// Ranges given above are lower-bound inclusive.
-/// The representation is sparse, so each usize corresponds to an index in the true vector.
-/// Zero entries will not be in the output.
 fn extract(b: &Board) -> BoardFeatures {
-    let mut features = Vec::with_capacity(28);
-    let phase = phase_of(b);
-    // Indices 0..8: non-king piece values
-    for pt in Piece::NON_KING {
-        let n_white = (b[pt] & b[Color::White]).len() as i8;
-        let n_black = (b[pt] & b[Color::Black]).len() as i8;
-        let net = n_white - n_black;
-        if net != 0 {
-            let idx = 2 * (pt as usize);
-            features.push((idx, phase * f32::from(net)));
-            features.push((idx, (1. - phase) * f32::from(net)));
-        }
-    }
-    // just leave indices 9 and 10 unoccupied, I guess
-
-    let mut offset = 10; // offset added to PST positions
-
     let bocc = b[Color::Black];
     let wocc = b[Color::White];
 
+    let mut piece_counts = [0.0; Piece::NUM - 1];
+    let mut rules = Vec::new();
+    // Indices 0..8: non-king piece values
+    for pt in Piece::NON_KING {
+        let n_white = (b[pt] & wocc).len() as i8;
+        let n_black = (b[pt] & bocc).len() as i8;
+        piece_counts[pt as usize] = f32::from(n_white + n_black);
+        let net = n_white - n_black;
+        if net != 0 {
+            rules.push((pt as usize, f32::from(net)));
+        }
+    }
+    let mut offset = 5;
+
     // Get piece-square quantities
     for pt in Piece::ALL {
-        let pt_idx = pt as usize;
         for sq in b[pt] {
             let alt_sq = sq.opposite();
             let increment = match (wocc.contains(sq), bocc.contains(alt_sq)) {
                 (true, false) => 1.,
                 (false, true) => -1.,
-                _ => continue,
+                _ => continue, // sparsity requires no entry
             };
-            let idx = offset + 128 * pt_idx + 2 * (sq as usize);
-            features.push((idx, phase * increment));
-            features.push((idx + 1, (1. - phase) * increment));
+            let idx = offset + 64 * pt as usize;
+            rules.push((idx, increment));
         }
     }
 
     // New offset after everything in the PST.
-    offset = 778;
-    extract_mobility(b, &mut features, offset, phase);
+    offset += 384;
+    extract_mobility(b, &mut rules, offset);
 
     // Offset after mobility.
-    offset = 1114;
+    offset += 168;
 
     // Doubled pawns
     let doubled_count = net_doubled_pawns(b);
     if doubled_count != 0 {
-        features.push((offset, f32::from(doubled_count) * phase));
-        features.push((offset + 1, f32::from(doubled_count) * (1. - phase)));
+        rules.push((offset, f32::from(doubled_count)));
     }
+    offset += 1;
 
     // Open rooks
     let open_rook_count = net_open_rooks(b);
     if open_rook_count != 0 {
-        features.push((offset + 2, f32::from(open_rook_count) * phase));
-        features.push((offset + 3, f32::from(open_rook_count) * (1. - phase)));
+        rules.push((offset, f32::from(open_rook_count)));
     }
+    offset += 1;
 
     // Add gains from castling rights
     let kingside_net = i8::from(b.castle_rights.kingside(b.player))
         - i8::from(b.castle_rights.kingside(!b.player));
     if kingside_net != 0 {
-        features.push((offset + 4, f32::from(kingside_net) * phase));
-        features.push((offset + 5, f32::from(kingside_net) * (1. - phase)));
+        rules.push((offset, f32::from(kingside_net)));
     }
+    offset += 1;
 
     let queenside_net = i8::from(b.castle_rights.queenside(b.player));
     if queenside_net != 0 {
-        features.push((offset + 6, f32::from(queenside_net) * phase));
-        features.push((offset + 7, f32::from(queenside_net) * (1. - phase)));
+        rules.push((offset, f32::from(queenside_net)));
     }
+    // offset += 1;
 
-    features
+    BoardFeatures {
+        piece_counts,
+        rules,
+    }
 }
 
 /// Helper function to extract mobility information into the sparse feature vector.
-fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, phase: f32) {
+/// Adds 168 new features.
+fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
     let white = b[Color::White];
     let black = b[Color::Black];
     let not_white = !white;
@@ -498,10 +524,117 @@ fn extract_mobility(b: &Board, features: &mut Vec<(usize, f32)>, offset: usize, 
         for idx in 0..MAX_MOBILITY {
             let num_mobile = count[pt as usize][idx];
             if num_mobile != 0 {
-                let feature_idx = offset + 2 * (MAX_MOBILITY * pt as usize + idx);
-                features.push((feature_idx, phase * f32::from(num_mobile)));
-                features.push((feature_idx + 1, (1. - phase) * f32::from(num_mobile)));
+                let feature_idx = offset + (MAX_MOBILITY * pt as usize + idx);
+                rules.push((feature_idx, f32::from(num_mobile)));
             }
+        }
+    }
+}
+
+impl Weights {
+    /// Construct a new zero weights with the same dimension for rules as `w`.
+    fn zero(w: &Weights) -> Weights {
+        Weights {
+            phase_cutoffs: (0.0, 0.0),
+            rule_values: vec![(0.0, 0.0); w.rule_values.len()],
+        }
+    }
+    /// Get the evaluation of a board with a given set of features.
+    fn evaluate(&self, x: &BoardFeatures) -> f32 {
+        let midgame_material = self
+            .rule_values
+            .iter()
+            .zip(&x.piece_counts)
+            .map(|(&(value, _), &count)| value * count)
+            .sum::<f32>();
+        let phase = (self.phase_cutoffs.1 - midgame_material)
+            / (self.phase_cutoffs.1 - self.phase_cutoffs.0);
+
+        let rule_values = x
+            .rules
+            .iter()
+            .map(|&(idx, value)| {
+                (
+                    self.rule_values[idx].0 * value,
+                    self.rule_values[idx].1 * value,
+                )
+            })
+            .fold((0.0, 0.0), |(a, b), (c, d)| (a + c, b + d));
+
+        phase * rule_values.0 + (1.0 - phase) * rule_values.1
+    }
+
+    /// Compute the gradient of the evaluation at a point `x`, multiply it by `scale`, and add it
+    /// to `add_to`.
+    fn eval_gradient(&self, add_to: &mut GradWeights, scale: f32, x: &BoardFeatures) {
+        let midgame_material = self
+            .rule_values
+            .iter()
+            .zip(&x.piece_counts)
+            .map(|(&(value, _), &count)| value * count)
+            .sum::<f32>();
+        let phase = (self.phase_cutoffs.1 - midgame_material)
+            / (self.phase_cutoffs.1 - self.phase_cutoffs.0);
+
+        let inv_phase = 1.0 - phase;
+
+        let rule_values = x
+            .rules
+            .iter()
+            .map(|&(idx, rule)| {
+                (
+                    self.rule_values[idx].0 * rule,
+                    self.rule_values[idx].1 * rule,
+                )
+            })
+            .fold((0.0, 0.0), |(a, b), (c, d)| (a + c, b + d));
+
+        // Compute gradient with respect to phase cutoffs.
+        if 0.0 < phase && phase < 1.0 {
+            let mult = scale
+                * (rule_values.0 - rule_values.1)
+                * (self.phase_cutoffs.1 - self.phase_cutoffs.0).powi(-2);
+            add_to.phase_cutoffs.0 += mult * (self.phase_cutoffs.1 - midgame_material);
+            add_to.phase_cutoffs.1 += mult * (midgame_material - self.phase_cutoffs.0);
+        }
+
+        // Compute gradient with respect to material weights
+
+        // extra increase to partial with respect to material weight due to phase
+        let phase_bonus = if 0.0 < phase && phase < 1.0 {
+            (rule_values.0 - rule_values.1) / (self.phase_cutoffs.0 - self.phase_cutoffs.1)
+        } else {
+            0.0
+        };
+        // Compute gradient with respect to rule weights
+        for &(rule_idx, rule_count) in &x.rules {
+            add_to.rule_values[rule_idx].0 += scale * phase * rule_count;
+            if rule_idx < 5 {
+                add_to.rule_values[rule_idx].0 += scale * phase_bonus;
+            }
+            add_to.rule_values[rule_idx].1 += scale * inv_phase * rule_count;
+        }
+    }
+}
+
+impl SubAssign for Weights {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.phase_cutoffs.0 -= rhs.phase_cutoffs.0;
+        self.phase_cutoffs.1 -= rhs.phase_cutoffs.1;
+        for (a, b) in self.rule_values.iter_mut().zip(rhs.rule_values) {
+            a.0 -= b.0;
+            a.1 -= b.1;
+        }
+    }
+}
+
+impl MulAssign<f32> for Weights {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.phase_cutoffs.0 *= rhs;
+        self.phase_cutoffs.1 *= rhs;
+        for v in &mut self.rule_values {
+            v.0 *= rhs;
+            v.1 *= rhs;
         }
     }
 }

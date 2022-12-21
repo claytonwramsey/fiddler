@@ -632,9 +632,45 @@ const SQUARE_KEYS: [[[u64; 2]; Piece::NUM]; 64] = [
 mod tests {
     use super::*;
 
-    #[test]
-    fn no_equal_hashes() {
-        // first, collect all the hash keys
+    /// Verify that every subset of size `n` of the Zobrist keys do not sum to zero.
+    fn verify_independence(n: usize) -> bool {
+        /// A list, used for generating all subsets.
+        struct Lindep<'a> {
+            vector: u64,
+            parent: Option<&'a Lindep<'a>>,
+        }
+
+        /// Helper function to aid in determining linear independence in the set of Zobrist keys.
+        fn independence_help(n: usize, vectors: &[u64], parent: Option<&Lindep>) -> bool {
+            if n == 0 {
+                return true;
+            }
+
+            if n == 1 {
+                for &vec in vectors {
+                    let mut temp_parent = parent;
+                    let mut ortho = vec;
+                    while let Some(p) = temp_parent {
+                        ortho ^= p.vector;
+                        temp_parent = p.parent;
+                    }
+                    if ortho == 0 {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            for (idx, &vector) in vectors.iter().enumerate() {
+                let new_parent = Lindep { vector, parent };
+                if !independence_help(n - 1, &vectors[idx + 1..], Some(&new_parent)) {
+                    return false;
+                };
+            }
+
+            true
+        }
         let mut hash_keys: Vec<u64> = Vec::new();
         hash_keys.extend(
             SQUARE_KEYS
@@ -646,10 +682,15 @@ mod tests {
         hash_keys.extend(EP_KEYS);
         hash_keys.push(BLACK_TO_MOVE_KEY);
 
-        for (i, k0) in hash_keys.iter().enumerate() {
-            for k1 in hash_keys[i + 1..].iter() {
-                assert_ne!(k0, k1);
-            }
+        independence_help(n, &hash_keys, None)
+    }
+
+    #[test]
+    /// Test exhaustively for linear independence in subsets of all Zobrist keys.
+    fn exhaustive_independence() {
+        for n in 1..=3 {
+            println!("testing for independence of order {n}");
+            assert!(verify_independence(n));
         }
     }
 }

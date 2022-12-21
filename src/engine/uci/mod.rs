@@ -203,14 +203,11 @@ impl Command {
         // optionally parse value
         let mut value = String::new();
         loop {
-            let val_tok = match tokens.next() {
-                Some(val) => val,
-                None => {
-                    return Ok(Command::SetOption {
-                        name: key,
-                        value: Some(value),
-                    })
-                }
+            let Some(val_tok) = tokens.next() else {
+                return Ok(Command::SetOption {
+                    name: key,
+                    value: Some(value),
+                })
             };
 
             if !value.is_empty() {

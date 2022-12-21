@@ -132,7 +132,7 @@ fn main() {
                             _ => debug_info("error: illegal parameter for hash size", debug),
                         },
                     },
-                    _ => debug_info(&format!("error: unknown option key `{}`", name), debug),
+                    _ => debug_info(&format!("error: unknown option key `{name}`"), debug),
                 },
                 Command::NewGame => {
                     game = ScoredGame::new();
@@ -295,7 +295,7 @@ fn go<'a>(
             Err(e) => {
                 // search failed :(
                 // notify the GUI in debug mode, otherwise there's not much we can do
-                debug_info(&format!("search failed: {:?}", e), debug);
+                debug_info(&format!("search failed: {e:?}"), debug);
             }
         }
         drop(searcher_guard);

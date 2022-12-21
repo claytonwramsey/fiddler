@@ -9,5 +9,5 @@ fn main() {
         .output()
         .expect("unable to get git version");
     let git_hash = String::from_utf8(output.stdout).expect("could not parse git version");
-    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
+    println!("cargo:rustc-env=GIT_HASH={git_hash}");
 }
