@@ -2,8 +2,8 @@
 
 Fiddler is a chess engine developed by Clayton Ramsey as a hobby project.
 It's written in Rust, with an emphasis on ergonomic usage and good performance.
-Right now, I would guess that its playing quality is roughly 2100 Elo, on par
-with a master-level player.
+Right now, I would guess that its playing quality is roughly 2100 Elo, on par with a master-level
+player.
 
 ## Features
 
@@ -21,30 +21,28 @@ with a master-level player.
 
 ## Usage
 
-Fiddler uses nightly, unstable Rust, mostly to gain access to LLVM's prefetch
-intrinsic.
+Fiddler uses nightly, unstable Rust, mostly to gain access to LLVM's prefetch intrinsic.
 As a result, you must use the nightly compiler to compile this code.
-The most simple way of doing this is by running `rustup default nightly` before
-proceeding.
+Because [`rustup-toolchain.toml`](rustup-toolchain.toml) specifies the Rust channel, you do not
+need to do anything special to make this work.
 
-To create the main UCI executable, navigate to the root of this repository and
-run `cargo build --release --bin fiddler`.
-This will then create the executable `target/release/fiddler` (or
-`target/release/fiddler.exe` for Windows users).
+To create the main UCI executable, navigate to the root of this repository and run
+`cargo build --release --bin fiddler`.
+This will then create the executable `target/release/fiddler` (or `target/release/fiddler.exe` for
+Windows users).
 
 You can also create a tuner executable.
 To do so, run `cargo build --release --bin tune`.
 
-Fiddler uses features from relatively new versions of Rust, so you may need to
-update your installation of Rust to compile Fiddler. To do so, you can simply
-invoke `rustup update`.
+Fiddler uses features from relatively new versions of Rust, so you may need to update your
+installation of Rust to compile Fiddler. To do so, you can simply invoke
+`rustup update && rustup upgrade`.
 
 ### Building with a specific target in mind
 
-If you want to have a build which is fully optimized for your machine, you can
-set your machine as the target architecture.
-To do this, learn your target triple by running `rustc -vV` and reading the
-`host` line.
+If you want to have a build which is fully optimized for your machine, you can set your machine as
+the target architecture.
+To do this, learn your target triple by running `rustc -vV` and reading the `host` line.
 For an example of how to do this, here's the output on my machine:
 
 ```sh
@@ -58,24 +56,22 @@ release: 1.63.0
 LLVM version: 14.0.5
 ```
 
-Once you have obtained the target triple (in my case, `x86_64-pc-windows-gnu`),
-you can then build with a single target architecture.
+Once you have obtained the target triple (in my case, `x86_64-pc-windows-gnu`), you can then build
+with a single target architecture.
 
 ```sh
 cargo build --release --bin engine --target=<your target triple here>
 ```
 
-This will then create a a new directory in the `target` folder named after your
-target triple containing the target-optimized binary.
-In my case, the path to the binary is
-`./target/x86_64-pc-windows-gnu/release/engine.exe`.
+This will then create a a new directory in the `target` folder named after your target triple
+containing the target-optimized binary.
+In my case, the path to the binary is `./target/x86_64-pc-windows-gnu/release/engine.exe`.
 
 ## UCI options supported
 
 - `Thread Count`: Set the number of worker threads for searching.
-  _Warning_: since there are currently no heuristics for differentiating
-  search threads, increasing `Thread Count` to more than 1 will likely reduce
-  perfomance.
+  _Warning_: since there are currently no heuristics for differentiating search threads, increasing
+  `Thread Count` to more than 1 will likely reduce perfomance.
 
 - `Hash`: Set the transposition table size, in megabytes.
 
@@ -96,8 +92,6 @@ interest:
 
 - Opening book support
 
-- Add loads of doctests to make usage more clear
-
 - Develop intelligent time-management schemes
 
 - PEXT sliding movegen on x86 architectures
@@ -109,5 +103,4 @@ Any help is welcome!
 
 ## License
 
-This code is licensed under the GNU GPLv3. For mor information, refer to
-`LICENSE.md`.
+This code is licensed under the GNU GPLv3. For mor information, refer to [LICENSE.md](LICENSE.md).
