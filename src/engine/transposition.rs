@@ -73,7 +73,6 @@ pub struct TTEntryGuard<'a> {
 }
 
 /// The size of a cache line (in bytes) in the target architecture.
-/// TODO: make this a compilation parameter?
 const LINE_SIZE: usize = 64;
 /// The number of entries in a single bucket.
 const BUCKET_LEN: usize = LINE_SIZE / size_of::<TTEntry>();
@@ -354,7 +353,6 @@ impl TTable {
                 let bucket = unsafe { *self.buckets.add(idx) };
                 // if there was an entry at this index, move it down to fit into the shrunken table
                 let new_idx = idx & new_mask;
-                // TODO more intelligently overwrite than just blindly writing
                 let new_bucket_slot = unsafe { self.buckets.add(new_idx).as_mut().unwrap() };
                 *new_bucket_slot = bucket;
             }
@@ -370,6 +368,7 @@ impl TTable {
             self.mask = new_mask as u64;
         } else {
             // the table is growing
+            // we cannot reuse the buckets because we don't know what hash they were associated with
             self.buckets = unsafe {
                 alloc_zeroed(Layout::array::<Bucket>(new_size).unwrap()).cast::<Bucket>()
             };

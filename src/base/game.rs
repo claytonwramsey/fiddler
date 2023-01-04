@@ -131,7 +131,6 @@ impl<T: Tagger> TaggedGame<T> {
     /// This function will return an `Err` if the FEN string is invalid.
     pub fn from_fen(fen: &str) -> Result<TaggedGame<T>, String> {
         let b = Board::from_fen(fen)?;
-        // TODO extract 50 move rule from the FEN
         Ok(TaggedGame {
             history: vec![(b, T::init_cookie(&b))],
             moves: Vec::new(),

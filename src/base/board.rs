@@ -441,7 +441,6 @@ impl Board {
 
         let player = self.player;
         let opponent = !player;
-        // TODO figure out a way to remove the (slow) call to `type_at_square`?
         let mover_type = self.type_at_square(from_sq).unwrap();
         let is_pawn_move = mover_type == Piece::Pawn;
         let is_king_move = mover_type == Piece::King;
@@ -501,7 +500,7 @@ impl Board {
             };
             if from_sq.file_distance(to_sq) > 1 {
                 // a long move from a king means this must be a castle
-                // G file is file 6 (TODO move this to be a constant?)
+                // G file is file 6
                 let is_kingside_castle = to_sq.file() == 6;
                 let (rook_from_file, rook_to_file) = if is_kingside_castle {
                     (7, 5) // rook moves from H file for kingside castling
@@ -594,14 +593,13 @@ impl Board {
     fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
         let rights_actually_removed = rights_to_remove & self.castle_rights;
 
-        //TODO optimize this?
+        self.castle_rights ^= rights_actually_removed;
+
         for i in 0..4 {
             if 1 << i & rights_actually_removed.0 != 0 {
                 self.hash ^= zobrist::castle_key(i);
             }
         }
-
-        self.castle_rights &= !rights_actually_removed;
     }
 
     #[inline(always)]

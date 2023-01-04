@@ -20,7 +20,7 @@
 
 use super::Color;
 
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXorAssign, Not};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 /// A simple struct to store a piece's castling rights.
@@ -112,5 +112,12 @@ impl Not for CastleRights {
     #[inline(always)]
     fn not(self) -> CastleRights {
         CastleRights(self.0 ^ 15)
+    }
+}
+
+impl BitXorAssign for CastleRights {
+
+    fn bitxor_assign(&mut self, rhs: CastleRights) {
+        self.0 ^= rhs.0;
     }
 }
