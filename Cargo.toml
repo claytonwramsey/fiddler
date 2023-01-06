@@ -19,7 +19,7 @@ name = "fiddler"
 version = "0.1.0"
 edition = "2021"
 authors = ["Clayton Ramsey"]
-default-run = "main"
+default-run = "fiddler"
 
 [dependencies]
 # Random number generator for creating magic bitboards.
