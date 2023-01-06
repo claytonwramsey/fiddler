@@ -30,7 +30,7 @@ use std::{
     env,
     fs::File,
     io::{BufRead, BufReader},
-    ops::{MulAssign, SubAssign},
+    ops::SubAssign,
     thread::scope,
     time::Instant,
 };
@@ -63,10 +63,11 @@ pub fn main() {
     // first argument is the name of the binary
     let path_str = &args[1..].join(" ");
     let mut weights = load_weights();
-    let mut err = f32::INFINITY;
-    let learn_rate = 0.1;
+    let value_learn_rate = 0.1;
+    // The learn rate for the midgame/endgame cutoffs.
+    let cutoff_learn_rate = 150.;
 
-    let nthreads = 14;
+    let nthreads = 8;
     let tic = Instant::now();
 
     // construct the datasets.
@@ -76,16 +77,16 @@ pub fn main() {
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    let mut i = 0;
-    loop {
+    for i in 0..5000 {
         println!("iteration {i}...");
-        let (new_weights, new_err) = train_step(&input_sets, &weights, learn_rate, nthreads);
-        if new_err > err {
-            break;
-        }
+        let (new_weights, _) = train_step(
+            &input_sets,
+            &weights,
+            value_learn_rate,
+            cutoff_learn_rate,
+            nthreads,
+        );
         weights = new_weights;
-        err = new_err;
-        i += 1;
     }
 
     print_weights(&weights);
@@ -154,7 +155,8 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
 fn train_step(
     inputs: &[(BoardFeatures, f32)],
     weights: &Weights,
-    learn_rate: f32,
+    value_learn_rate: f32,
+    cutoff_learn_rate: f32,
     nthreads: usize,
 ) -> (Weights, f32) {
     let tic = Instant::now();
@@ -171,7 +173,10 @@ fn train_step(
         for grad_handle in grads {
             let (mut sub_grad, se) = grad_handle.join().unwrap();
             sum_se += se;
-            sub_grad *= learn_rate / inputs.len() as f32;
+            sub_grad.scale_by(
+                value_learn_rate / inputs.len() as f32,
+                cutoff_learn_rate / inputs.len() as f32,
+            );
             new_weights -= sub_grad;
         }
     });
@@ -532,6 +537,17 @@ fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
 }
 
 impl Weights {
+    /// Scale a `Weights` by a scaling value on the values and on the cutoffs.
+    fn scale_by(&mut self, value_scale: f32, cutoff_scale: f32) {
+        for v in &mut self.rule_values {
+            v.0 *= value_scale;
+            v.1 *= value_scale;
+        }
+
+        self.phase_cutoffs.0 *= cutoff_scale;
+        self.phase_cutoffs.1 *= cutoff_scale;
+    }
+
     /// Construct a new zero weights with the same dimension for rules as `w`.
     fn zero(w: &Weights) -> Weights {
         Weights {
@@ -624,17 +640,6 @@ impl SubAssign for Weights {
         for (a, b) in self.rule_values.iter_mut().zip(rhs.rule_values) {
             a.0 -= b.0;
             a.1 -= b.1;
-        }
-    }
-}
-
-impl MulAssign<f32> for Weights {
-    fn mul_assign(&mut self, rhs: f32) {
-        self.phase_cutoffs.0 *= rhs;
-        self.phase_cutoffs.1 *= rhs;
-        for v in &mut self.rule_values {
-            v.0 *= rhs;
-            v.1 *= rhs;
         }
     }
 }

@@ -164,7 +164,9 @@ fn main() {
                     stop(&searcher, search_handle, debug);
                     search_handle = None;
                 }
-                Command::PonderHit => todo!(),
+                Command::PonderHit => {
+                    // mark that the timer has now begun
+                }
                 Command::Quit => {
                     // stop the ongoing search
                     stop(&searcher, search_handle, debug);
