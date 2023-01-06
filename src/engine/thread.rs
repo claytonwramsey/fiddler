@@ -150,6 +150,7 @@ impl MainSearch {
                                 "{}",
                                 Message::Info(&[
                                     EngineInfo::Depth(best_info.depth),
+                                    EngineInfo::SelDepth(best_info.selective_depth),
                                     EngineInfo::Score {
                                         eval: best_info.eval,
                                         is_lower_bound: false,
@@ -161,9 +162,8 @@ impl MainSearch {
                                             / (elapsed.as_millis() + 1) as u64
                                     ),
                                     EngineInfo::Time(elapsed),
-                                    EngineInfo::Pv(&best_info.pv),
                                     EngineInfo::HashFull(self.ttable.fill_rate_permill()),
-                                    EngineInfo::SelDepth(best_info.selective_depth),
+                                    EngineInfo::Pv(&best_info.pv),
                                 ])
                             );
                         }

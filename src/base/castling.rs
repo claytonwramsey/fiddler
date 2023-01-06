@@ -116,7 +116,6 @@ impl Not for CastleRights {
 }
 
 impl BitXorAssign for CastleRights {
-
     fn bitxor_assign(&mut self, rhs: CastleRights) {
         self.0 ^= rhs.0;
     }

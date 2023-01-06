@@ -19,7 +19,7 @@ name = "fiddler"
 version = "0.1.0"
 edition = "2021"
 authors = ["Clayton Ramsey"]
-default-run = "fiddler"
+default-run = "main"
 
 [dependencies]
 # Random number generator for creating magic bitboards.
@@ -38,11 +38,3 @@ opt-level = 3
 [profile.release]
 opt-level = 3
 lto = true
-
-[[bin]]
-name = "fiddler"
-path = "src/engine/main.rs"
-
-[[bin]]
-name = "tune"
-path = "src/engine/tune.rs"
