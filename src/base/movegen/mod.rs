@@ -23,11 +23,7 @@ mod tests;
 
 use std::{convert::TryFrom, mem::transmute, time::Instant};
 
-use super::{
-    bitboard::Bitboard,
-    game::{NoTag, Tagger},
-    Board, Color, Direction, Move, Piece, Square, MAGIC,
-};
+use super::{bitboard::Bitboard, Board, Color, Direction, Move, Piece, Square, MAGIC};
 
 /// A lookup table for the legal squares a knight to move to from a given square.
 ///
@@ -186,9 +182,9 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
         }
         if m.is_castle() {
             // just generate moves, since castle is quite rare
-            let mut move_buf = Vec::with_capacity(2);
-            castles::<NoTag>(b, &(), &mut move_buf);
-            return move_buf.contains(&(m, ()));
+            let mut valid = false;
+            castles(b, &mut |m2| valid |= m == m2);
+            return valid;
         }
 
         if !KING_MOVES[from_sq as usize].contains(to_sq) {
@@ -300,7 +296,6 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 }
 
 #[inline(always)]
-#[must_use]
 /// Get the legal moves in a board.
 ///
 /// `M` is the generation mode of move generation: it specifies which subset of all legal moves to
@@ -311,38 +306,35 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// * `GenMode::Captures` will generate all captures, including en passant.
 /// * `GenMode::Quiets` will generate all quiet (i.e. non-capture) moves.
 ///
-/// `T` is a tagger for moves: it contains a callback function to tag moves as
-/// they are generated so that the user can save on total heap allocations.
-/// If no tag is needed, you can use `fiddler::base::game::NoTag` to avoid
-/// wasting effort tagging each move.
+/// `callback` is the callback function which will handle moves as they are created.
 ///
 /// `get_moves()` will make no regard to whether the position is drawn by
 /// repetition, 50-move-rule, or by insufficient material.
+/// No guarantees are made as to the ordering of moves generated.
 ///
 /// # Examples
 ///
 /// Generate all legal moves:
 /// ```
-/// use fiddler::base::{Board, game::NoTag, movegen::{GenMode, is_legal, get_moves}};
+/// use fiddler::base::{Board, movegen::{GenMode, is_legal, get_moves}};
 ///
 /// let b = Board::new();
-/// for (m, _) in get_moves::<{GenMode::All}, NoTag>(&b, &()) {
+/// get_moves::<{ GenMode::All }>(&b, |m| {
 ///     assert!(is_legal(m, &b));
-/// }
+/// });
 /// ```
 ///
 /// Generate captures:
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>>{
-/// use fiddler::base::{Board, game::NoTag, Move, movegen::{GenMode, is_legal, get_moves}, Square};
+/// use fiddler::base::{Board, Move, movegen::{GenMode, is_legal, get_moves}, Square};
 ///
 /// // Scandinavian defense. The only legal capture is exd5.
 /// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
 ///
-/// assert_eq!(
-///     get_moves::<{GenMode::Captures}, NoTag>(&b, &()),
-///     vec![(Move::normal(Square::E4, Square::D5), ())],
-/// );
+/// get_moves::<{ GenMode::Captures }>(&b, |m| {
+///     assert_eq!(m, Move::normal(Square::E4, Square::D5));
+/// });
 /// # Ok(())
 /// # }
 /// ```
@@ -350,38 +342,47 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate quiet moves:
 ///
 /// ```
-/// use fiddler::base::{Board, game::NoTag, movegen::{GenMode, is_legal, get_moves}};
+/// use fiddler::base::{Board, movegen::{GenMode, is_legal, get_moves}};
 ///
 /// let b = Board::new();
-/// for (m, _) in get_moves::<{GenMode::Quiets}, NoTag>(&b, &()) {
+/// get_moves::<{ GenMode::Quiets }>(&b, |m| {
 ///     assert!(is_legal(m, &b));
 ///     assert!(!b.is_move_capture(m));
+/// });
+/// ```
+pub fn get_moves<const M: GenMode>(b: &Board, callback: impl FnMut(Move)) {
+    if b.checkers.is_empty() {
+        non_evasions::<M>(b, callback);
+    } else {
+        evasions::<M>(b, callback);
+    };
+}
+
+#[must_use]
+/// A convenient helper function to get a vector of legal moves on the board.
+///
+/// Working with [`get_moves`] is not particularly ergonomic under many circumstances, especially
+/// when you don't care about performance.
+/// This function simply creates a list of moves created from [`get_moves`].
+///
+/// `M` is the generation mode for the set of moves to create.
+/// For more details, refer to [`get_moves`].
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{Board, movegen::{make_move_vec, get_moves, is_legal, GenMode}};
+///
+///
+/// let b = Board::default();
+/// let moves = make_move_vec::<{ GenMode::All }>(&b);
+/// for m in moves {
+///     assert!(is_legal(m, &b))
 /// }
 /// ```
-pub fn get_moves<const M: GenMode, T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-) -> Vec<(Move, T::Tag)> {
-    let mut moves;
-    let in_check = !b.checkers.is_empty();
-
-    if in_check {
-        // in the overwhelming majority of cases, there are 8 or fewer
-        // legal evasions if the king is in check
-        moves = Vec::with_capacity(8);
-        evasions::<M, T>(b, cookie, &mut moves);
-    } else {
-        // in the overwhelming majority of cases, there are fewer than 50
-        // legal moves total
-        let capacity = match M {
-            GenMode::All => 50,
-            GenMode::Captures => 8,
-            GenMode::Quiets => 40,
-        };
-        moves = Vec::with_capacity(capacity);
-        non_evasions::<M, T>(b, cookie, &mut moves);
-    };
-
+pub fn make_move_vec<const M: GenMode>(b: &Board) -> Vec<Move> {
+    let mut moves = Vec::new();
+    get_moves::<M>(b, |m| moves.push(m));
     moves
 }
 
@@ -558,11 +559,7 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 /// turn to move, assuming the player's king is not in check.
 ///
 /// Requires that the player to move's king is not in check.
-fn non_evasions<const M: GenMode, T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
+fn non_evasions<const M: GenMode>(b: &Board, mut callback: impl FnMut(Move)) {
     let target_sqs = match M {
         GenMode::All => !b[b.player],
         GenMode::Captures => !b[b.player] & b[!b.player],
@@ -575,26 +572,22 @@ fn non_evasions<const M: GenMode, T: Tagger>(
             pawn_targets.insert(ep_sq);
         }
     }
-    pawn_assistant::<M, T>(b, cookie, moves, pawn_targets);
+    pawn_assistant::<M>(b, &mut callback, pawn_targets);
 
-    normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
+    normal_piece_assistant(b, &mut callback, target_sqs);
 
     // generate king moves
     if M != GenMode::Captures {
-        castles::<T>(b, cookie, moves);
+        castles(b, &mut callback);
     }
-    king_move_non_castle::<T>(b, cookie, moves, target_sqs);
+    king_move_non_castle(b, &mut callback, target_sqs);
 }
 
 /// Enumerate the legal moves a player of the given color would be able to make if it were their
 /// turn to move, assuming the player's king is in check.
 ///
 /// Requires that the player to move's king is in check.
-fn evasions<const M: GenMode, T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-) {
+fn evasions<const M: GenMode>(b: &Board, mut callback: impl FnMut(Move)) {
     let player = b.player;
     let king_sq = b.king_sqs[player as usize];
 
@@ -621,8 +614,8 @@ fn evasions<const M: GenMode, T: Tagger>(
             }
         }
 
-        pawn_assistant::<M, T>(b, cookie, moves, pawn_targets);
-        normal_piece_assistant::<T>(b, cookie, moves, target_sqs);
+        pawn_assistant::<M>(b, &mut callback, pawn_targets);
+        normal_piece_assistant(b, &mut callback, target_sqs);
     }
 
     let king_targets = match M {
@@ -630,7 +623,7 @@ fn evasions<const M: GenMode, T: Tagger>(
         GenMode::Captures => !b[b.player] & b[!player],
         GenMode::Quiets => !b.occupancy(),
     };
-    king_move_non_castle::<T>(b, cookie, moves, king_targets);
+    king_move_non_castle(b, &mut callback, king_targets);
 }
 
 #[inline(always)]
@@ -696,12 +689,7 @@ fn square_attackers_occupancy(
 ///
 /// Moves which capture allies will also be generated.
 /// To prevent this, ensure all squares containing allies are excluded from `target`.
-fn pawn_assistant<const M: GenMode, T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-    target: Bitboard,
-) {
+fn pawn_assistant<const M: GenMode>(b: &Board, callback: &mut impl FnMut(Move), target: Bitboard) {
     let board = &b;
     let player = b.player;
     let allies = board[player];
@@ -764,7 +752,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
             let from_sq = to_sq - east_direction;
             for pt in Piece::PROMOTING {
                 let m = Move::promoting(from_sq, to_sq, pt);
-                moves.push((m, T::tag_move(m, b, cookie)));
+                callback(m);
             }
         }
 
@@ -772,7 +760,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
             let from_sq = to_sq - west_direction;
             for pt in Piece::PROMOTING {
                 let m = Move::promoting(from_sq, to_sq, pt);
-                moves.push((m, T::tag_move(m, b, cookie)));
+                callback(m);
             }
         }
 
@@ -780,12 +768,12 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
         for to_sq in east_targets & not_rank8 {
             let from_sq = to_sq - east_direction;
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
         for to_sq in west_targets & not_rank8 {
             let from_sq = to_sq - west_direction;
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
 
         // en passant
@@ -812,7 +800,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
                             .is_empty()
                     {
                         let m = Move::en_passant(from_sq, ep_square);
-                        moves.push((m, T::tag_move(m, b, cookie)));
+                        callback(m);
                     }
                 }
             }
@@ -841,20 +829,20 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
             let from_sq = to_sq - direction;
             for pt in Piece::PROMOTING {
                 let m = Move::promoting(from_sq, to_sq, pt);
-                moves.push((m, T::tag_move(m, b, cookie)));
+                callback(m);
             }
         }
 
         // doublemoves
         for to_sq in doubles {
             let m = Move::normal(to_sq - doubledir, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
 
         // normal single-moves
         for to_sq in singles & not_rank8 {
             let m = Move::normal(to_sq - direction, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
     }
 }
@@ -863,12 +851,7 @@ fn pawn_assistant<const M: GenMode, T: Tagger>(
 ///
 /// Moves which capture allies will also be generated.
 /// To prevent this, ensure all squares containing allies are excluded from `target`.
-fn normal_piece_assistant<T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-    target: Bitboard,
-) {
+fn normal_piece_assistant(b: &Board, callback: &mut impl FnMut(Move), target: Bitboard) {
     let board = &b;
     let player = b.player;
     let allies = board[player];
@@ -885,7 +868,7 @@ fn normal_piece_assistant<T: Tagger>(
     for from_sq in board[Piece::Knight] & allies & unpinned {
         for to_sq in KNIGHT_MOVES[from_sq as usize] & target {
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
     }
 
@@ -893,7 +876,7 @@ fn normal_piece_assistant<T: Tagger>(
     for from_sq in bishop_movers & board.pinned & king_diags {
         for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target & king_diags {
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
     }
 
@@ -901,7 +884,7 @@ fn normal_piece_assistant<T: Tagger>(
     for from_sq in bishop_movers & unpinned {
         for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target {
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
     }
 
@@ -909,7 +892,7 @@ fn normal_piece_assistant<T: Tagger>(
     for from_sq in rook_movers & board.pinned & king_hv {
         for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & target & king_hv {
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
     }
 
@@ -917,24 +900,18 @@ fn normal_piece_assistant<T: Tagger>(
     for from_sq in rook_movers & unpinned {
         for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & target {
             let m = Move::normal(from_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(m);
         }
     }
 }
 
 #[inline(always)]
-/// Get the moves that a king could make in a position that are not castles, and append them onto
-/// `moves`.
+/// Get the moves that a king could make in a position that are not castles.
 ///
 /// Only moves which result in a king landing on a square contained by `target` will be generated.
 /// If `target` contains a square occupied by an ally, it can generate a move with the ally as the
 /// target square.
-fn king_move_non_castle<T: Tagger>(
-    b: &Board,
-    cookie: &T::Cookie,
-    moves: &mut Vec<(Move, T::Tag)>,
-    target: Bitboard,
-) {
+fn king_move_non_castle(b: &Board, callback: &mut impl FnMut(Move), target: Bitboard) {
     let king_sq = b.king_sqs[b.player as usize];
     let allies = b[b.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
@@ -943,17 +920,17 @@ fn king_move_non_castle<T: Tagger>(
     for to_sq in to_bb {
         let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(to_sq);
         if square_attackers_occupancy(b, to_sq, !b.player, new_occupancy).is_empty() {
-            let m = Move::normal(king_sq, to_sq);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(Move::normal(king_sq, to_sq));
         }
     }
 }
 
 #[inline(always)]
-/// Get the castling moves that the king could make in this position, and append them onto `moves`.
+/// Get the castling moves that the king could make in this position and hand them off to
+/// `callback`.
 ///
 /// Will not generate valid moves if the king is in check.
-fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::Tag)>) {
+fn castles(b: &Board, callback: &mut impl FnMut(Move)) {
     let player = b.player;
     let occ = b.occupancy();
     let king_sq = b.king_sqs[player as usize];
@@ -977,8 +954,7 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
             .iter()
             .any(|&sq| is_square_attacked_by(b, sq, !player))
         {
-            let m = Move::castling(king_sq, passthrough_squares[1]);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(Move::castling(king_sq, passthrough_squares[1]));
         }
     }
 
@@ -1002,8 +978,7 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
             .iter()
             .any(|&sq| is_square_attacked_by(b, sq, !player))
         {
-            let m = Move::castling(king_sq, passthrough_squares[1]);
-            moves.push((m, T::tag_move(m, b, cookie)));
+            callback(Move::castling(king_sq, passthrough_squares[1]));
         }
     }
 }
@@ -1038,21 +1013,20 @@ fn castles<T: Tagger>(b: &Board, cookie: &T::Cookie, moves: &mut Vec<(Move, T::T
 pub fn perft(fen: &str, depth: u8) -> u64 {
     /// The core search algorithm for perft.
     fn helper<const DIVIDE: bool>(b: &Board, depth: u8) -> u64 {
-        let moves = get_moves::<{ GenMode::All }, NoTag>(b, &());
-        if depth == 1 {
-            return moves.len() as u64;
-        }
         let mut total = 0;
-        let mut bcopy;
-        for (m, _) in moves {
-            bcopy = *b;
-            bcopy.make_move(m);
-            let perft_count = helper::<false>(&bcopy, depth - 1);
-            if DIVIDE {
-                println!("{m}, {perft_count}");
-            }
-            total += perft_count;
-        }
+        if depth == 1 {
+            get_moves::<{ GenMode::All }>(b, |_| total += 1);
+        } else {
+            get_moves::<{ GenMode::All }>(b, |m| {
+                let mut bcopy = *b;
+                bcopy.make_move(m);
+                let count = helper::<false>(&bcopy, depth - 1);
+                if DIVIDE {
+                    println!("{m:?}: {count}");
+                }
+                total += count;
+            });
+        };
 
         total
     }

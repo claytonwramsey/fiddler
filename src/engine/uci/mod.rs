@@ -55,10 +55,12 @@ pub enum Command {
     /// When it is ready, the engine must reply with `UciMessage::ReadyOk`.
     IsReady,
     /// Set a parameter of the engine, or send a custom command.
-    ///
-    /// `name` is the name of the key for the option, and `value` is an optional parameter for the
-    /// given value to set.
-    SetOption { name: String, value: Option<String> },
+    SetOption {
+        /// The name of the option to be set.
+        name: String,
+        /// The value of the option to be set.
+        value: Option<String>,
+    },
     /// Inform the engine that the next position it will be requested to evaluate will be from a
     /// new game.
     ///

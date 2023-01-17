@@ -32,12 +32,18 @@ use std::{
     time::Duration,
 };
 
-use fiddler::base::{game::Tagger, Color};
-use fiddler::engine::{
-    evaluate::{ScoreTag, ScoredGame},
-    thread::MainSearch,
-    time::get_search_time,
-    uci::{Command, EngineInfo, GoOption, Message, OptionType},
+use fiddler::{
+    base::Board,
+    engine::{
+        evaluate::{next_cookie, tag_move, ScoredGame},
+        thread::MainSearch,
+        time::get_search_time,
+        uci::{Command, EngineInfo, GoOption, Message, OptionType},
+    },
+};
+use fiddler::{
+    base::{game::CookieGame, Color},
+    engine::evaluate::init_cookie,
 };
 
 /// The default size of the transposition table.
@@ -48,7 +54,8 @@ fn main() {
     // whether we are in debug mode
     let mut debug = false;
     let searcher = RwLock::new(MainSearch::new());
-    let mut game = ScoredGame::new();
+    let b = Board::default();
+    let mut game = CookieGame::new(b, init_cookie(&b));
     searcher.write().unwrap().config.n_helpers = 0;
     searcher
         .write()
@@ -135,7 +142,8 @@ fn main() {
                     _ => debug_info(&format!("error: unknown option key `{name}`"), debug),
                 },
                 Command::NewGame => {
-                    game = ScoredGame::new();
+                    let b = Board::default();
+                    game = CookieGame::new(b, init_cookie(&b));
                     // stop previous search
                     stop(&searcher, search_handle, debug);
                     search_handle = None;
@@ -144,13 +152,22 @@ fn main() {
                     searcher_guard.ttable.clear();
                 }
                 Command::Position { fen, moves } => {
-                    game = match fen {
-                        None => ScoredGame::new(),
-                        Some(fen) => ScoredGame::from_fen(&fen).unwrap(),
+                    let board = match fen {
+                        None => Board::default(),
+                        Some(fen) => Board::from_fen(&fen).unwrap(),
                     };
+                    game = CookieGame::new(board, init_cookie(&board));
                     for m in moves {
-                        game.try_move(m, &ScoreTag::tag_move(m, game.board(), game.cookie()))
-                            .unwrap();
+                        game.try_move(
+                            m,
+                            next_cookie(
+                                m,
+                                tag_move(m, game.board(), game.cookie()),
+                                game.board(),
+                                game.cookie(),
+                            ),
+                        )
+                        .unwrap();
                     }
 
                     debug_info(&format!("current game: {}", game.board()), debug);

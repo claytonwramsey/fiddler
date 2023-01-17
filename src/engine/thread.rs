@@ -55,6 +55,7 @@ pub struct SearchConfig {
 
 impl SearchConfig {
     #[must_use]
+    /// Construct a new search configuration with some common default values.
     pub fn new() -> SearchConfig {
         SearchConfig {
             depth: 10,
@@ -246,12 +247,16 @@ impl Default for MainSearch {
 #[cfg(any(test, bench))]
 mod tests {
 
-    use crate::{base::movegen::is_legal, engine::evaluate::Score};
+    use crate::{
+        base::{game::CookieGame, movegen::is_legal, Board},
+        engine::evaluate::{init_cookie, next_cookie, tag_move},
+    };
 
     use super::*;
 
     fn search_helper(fen: &str, depth: u8) {
-        let mut g = ScoredGame::from_fen(fen).unwrap();
+        let b = Board::from_fen(fen).unwrap();
+        let mut g = CookieGame::new(b, init_cookie(&b));
         let mut main = MainSearch::new();
         main.config.n_helpers = 0;
         main.config.depth = depth;
@@ -259,7 +264,10 @@ mod tests {
         let info = main.evaluate(&g).unwrap();
         for m in info.pv {
             assert!(is_legal(m, g.board()));
-            g.make_move(m, &(Score::DRAW, Eval::DRAW));
+            g.make_move(
+                m,
+                next_cookie(m, tag_move(m, g.board(), g.cookie()), g.board(), g.cookie()),
+            );
         }
     }
 

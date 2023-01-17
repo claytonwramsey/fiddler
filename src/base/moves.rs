@@ -19,8 +19,7 @@
 //! Definitions of moves, which can describe any legal playable move.
 
 use super::{
-    game::NoTag,
-    movegen::{get_moves, is_legal, is_square_attacked_by, GenMode},
+    movegen::{get_moves, has_moves, is_legal, is_square_attacked_by, GenMode},
     Board,
 };
 
@@ -189,8 +188,8 @@ impl Move {
     }
 
     #[allow(clippy::missing_panics_doc)]
-    /// Given a `Move` and the `Board` it was played on, construct the  algebraic-notation version
-    /// of the move.
+    /// Given a [`Move`] and the [`Board`] it was played on, construct the algebraic-notation
+    /// version of the move.
     ///
     /// # Errors
     ///
@@ -228,9 +227,6 @@ impl Move {
         } else {
             let mover_type = b.type_at_square(self.from_square()).unwrap();
             let is_move_capture = b.is_move_capture(self);
-            let other_moves = get_moves::<{ GenMode::All }, NoTag>(b, &())
-                .into_iter()
-                .map(|x| x.0);
             let from_sq = self.from_square();
 
             // Resolution of un-clarity on mover location
@@ -246,7 +242,7 @@ impl Move {
                 is_unclear_file = true;
             }
 
-            for other_move in other_moves {
+            get_moves::<{ GenMode::All }>(b, |other_move| {
                 if self != other_move
                     && other_move.to_square() == self.to_square()
                     && other_move.from_square() != self.from_square()
@@ -260,7 +256,7 @@ impl Move {
                         is_unclear_rank = true;
                     }
                 }
-            }
+            });
 
             if is_unclear {
                 if !is_unclear_rank {
@@ -293,10 +289,10 @@ impl Move {
         let enemy_king_sq = b.king_sqs[!b.player as usize];
         bcopy.make_move(self);
         if is_square_attacked_by(&bcopy, enemy_king_sq, b.player) {
-            if get_moves::<{ GenMode::All }, NoTag>(&bcopy, &()).is_empty() && !bcopy.is_drawn() {
-                s += "#";
-            } else {
+            if has_moves(&bcopy) {
                 s += "+";
+            } else {
+                s += "#";
             }
         }
 
@@ -311,11 +307,13 @@ impl Move {
     /// This function will return an `Err` if `s` is not a valid algebraically-represented move in
     /// `b`.
     pub fn from_algebraic(s: &str, b: &Board) -> Result<Move, &'static str> {
-        get_moves::<{ GenMode::All }, NoTag>(b, &())
-            .into_iter()
-            .map(|x| x.0)
-            .find(|m| m.to_algebraic(b).unwrap().as_str() == s)
-            .ok_or("not a legal algebraic move")
+        let mut result = Err("not a legal algebraic move");
+        get_moves::<{ GenMode::All }>(b, |m| {
+            if m.to_algebraic(b).unwrap() == s {
+                result = Ok(m);
+            }
+        });
+        result
     }
 
     #[inline(always)]

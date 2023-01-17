@@ -29,6 +29,7 @@ use std::{
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(missing_docs)]
 /// A square: one of 64 spots on a `Board` that a `Piece` can occupy.
 ///
 /// Internally, `Square`s are represented as a single integer to maintain a small size.

@@ -32,11 +32,17 @@ use std::fmt::{Display, Formatter, Result};
 /// Having the  well-behaved types as the lower integers allows them to be more efficiently packed
 /// as promotion types and generally reduces hassle.
 pub enum Piece {
+    /// A knight, which can move in an L-shape (two squares out, then one square sideways).
     Knight = 0,
+    /// A bishop, which can move arbitrarily far diagonally.
     Bishop,
+    /// A rook, which can move arbitrarily far horizontally or vertically.
     Rook,
+    /// A queen, which can move like both a rook and a bishop.
     Queen,
+    /// A pawn, which is an especially cheap piece with limited movement.
     Pawn,
+    /// A king, which is the most valuable piece.
     King,
 }
 

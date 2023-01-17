@@ -28,13 +28,16 @@
 //! search is performed to exhaust all captures in the position, preventing the
 //! mis-evaluation of positions with hanging pieces.
 
-use crate::base::{
-    movegen::{has_moves, is_legal, GenMode},
-    Move,
+use crate::{
+    base::{
+        movegen::{has_moves, is_legal, GenMode},
+        Move,
+    },
+    engine::evaluate::next_cookie,
 };
 
 use super::{
-    evaluate::{Eval, ScoredGame},
+    evaluate::{tag_move, Eval, ScoredGame},
     transposition::{TTEntry, TTEntryGuard},
 };
 
@@ -344,7 +347,10 @@ impl<'a> PVSearch<'a> {
         let mut child_line = Vec::new();
         for (m, tag) in moves_iter {
             move_count += 1;
-            self.game.make_move(m, &tag);
+            self.game.make_move(
+                m,
+                next_cookie(m, tag, self.game.board(), self.game.cookie()),
+            );
             // Prefetch the next transposition table entry as early as possible
             // (~12 Elo)
             self.ttable.prefetch(self.game.board().hash);
@@ -549,12 +555,18 @@ impl<'a> PVSearch<'a> {
         }
 
         let mut best_score = score;
-        let mut moves = self.game.get_moves::<{ GenMode::Captures }>();
+        let mut moves = Vec::with_capacity(10);
+        self.game.get_moves::<{ GenMode::Captures }>(|m| {
+            moves.push((m, tag_move(m, self.game.board(), self.game.cookie())));
+        });
         moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
         let mut child_line = Vec::new();
 
         for (m, tag) in moves {
-            self.game.make_move(m, &tag);
+            self.game.make_move(
+                m,
+                next_cookie(m, tag, self.game.board(), self.game.cookie()),
+            );
             // Prefetch the next transposition table entry as early as possible
             // (~12 Elo)
             self.ttable.prefetch(self.game.board().hash);
@@ -657,8 +669,9 @@ fn ttable_store(
 pub mod tests {
 
     use super::*;
-    use crate::base::{game::Tagger, Move, Square};
-    use crate::engine::evaluate::ScoreTag;
+    use crate::base::game::CookieGame;
+    use crate::base::{Board, Move, Square};
+    use crate::engine::evaluate::init_cookie;
 
     /// Helper function to search a position at a given depth.
     ///
@@ -666,7 +679,8 @@ pub mod tests {
     ///
     /// This function will panic if searching the position fails or the game is invalid.
     fn search_helper(fen: &str, depth: u8) -> SearchInfo {
-        let mut g = ScoredGame::from_fen(fen).unwrap();
+        let b = Board::from_fen(fen).unwrap();
+        let mut g = CookieGame::new(b, init_cookie(&b));
         let config = SearchConfig {
             depth,
             ..Default::default()
@@ -687,7 +701,10 @@ pub mod tests {
         for &m in &info.pv {
             println!("{m}");
             assert!(is_legal(m, g.board()));
-            g.make_move(m, &ScoreTag::tag_move(m, g.board(), g.cookie()));
+            g.make_move(
+                m,
+                next_cookie(m, tag_move(m, g.board(), g.cookie()), g.board(), g.cookie()),
+            );
         }
 
         info
@@ -762,7 +779,8 @@ pub mod tests {
     /// Test that the transposition table contains an entry for the root node of the search.
     fn ttable_populated() {
         let ttable = TTable::with_size(1);
-        let g = ScoredGame::new();
+        let b = Board::default();
+        let g = CookieGame::new(b, init_cookie(&b));
         let depth = 5;
 
         let search_info = search(

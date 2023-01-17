@@ -220,9 +220,8 @@ impl Bitboard {
     /// assert!(!bb.has_single_bit());
     /// ```
     pub const fn has_single_bit(self) -> bool {
-        // 5 arithmetic operations,
-        // faster than the 13 required for `count_ones() == 1`
-        self.0 != 0 && (self.0 & self.0.overflowing_sub(1).0) == 0
+        // use bitwise and to make it branchless
+        (self.0 != 0) & ((self.0 & self.0.overflowing_sub(1).0) == 0)
     }
 
     #[must_use]

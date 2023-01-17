@@ -186,21 +186,25 @@ pub const PST: Pst = unsafe { transmute([
 mod tests {
 
     use super::*;
-    use crate::base::{game::Game, movegen::GenMode};
+    use crate::base::movegen::{get_moves, GenMode};
 
+    /// Helper function to verify that the implementation of [`delta`] is correct.
+    /// For each move reachable from a board with start position `fen`, this will assert that the
+    /// result of [`evaluate`] is equal to the sum of the original evaluation and the computed
+    /// delta for the move.
     fn delta_helper(fen: &str) {
-        let mut g = Game::from_fen(fen).unwrap();
-        let orig_eval = evaluate(g.board());
-        for (m, _) in g.get_moves::<{ GenMode::All }>() {
-            let new_eval = match g.board().player {
-                Color::White => orig_eval + delta(g.board(), m),
-                Color::Black => orig_eval - delta(g.board(), m),
+        let b = Board::from_fen(fen).unwrap();
+        let orig_eval = evaluate(&b);
+        get_moves::<{ GenMode::All }>(&b, |m| {
+            let d = delta(&b, m);
+            let new_eval = match b.player {
+                Color::White => orig_eval + d,
+                Color::Black => orig_eval - d,
             };
-            g.make_move(m, &());
-            // println!("{g}");
-            assert_eq!(new_eval, evaluate(g.board()));
-            g.undo().unwrap();
-        }
+            let mut bcopy = b;
+            bcopy.make_move(m);
+            assert_eq!(evaluate(&bcopy), new_eval);
+        });
     }
 
     #[test]

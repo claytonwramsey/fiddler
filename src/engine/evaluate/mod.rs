@@ -44,10 +44,7 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-use crate::base::{
-    game::{TaggedGame, Tagger},
-    Bitboard, Board, Color, Move, Piece,
-};
+use crate::base::{game::CookieGame, Bitboard, Board, Color, Move, Piece};
 
 use super::pick::candidacy;
 
@@ -82,7 +79,7 @@ pub struct Eval(i16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
-/// A `Score` is a pair of two `Evals` - one for the midgame and one for the endgame.
+/// A `Score` is a pair of two [`Eval`]s - one for the midgame and one for the endgame.
 /// The values inside of a `Score` should never be mate values.
 pub struct Score {
     /// The midgame-only evaluation of a position.
@@ -91,14 +88,12 @@ pub struct Score {
     pub eg: Eval,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ScoreTag;
-
-pub type ScoredGame = TaggedGame<ScoreTag>;
+/// A game which has been annotated with a score on its cumulative evaluation.
+pub type ScoredGame = CookieGame<EvalCookie>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-/// A piece of metadata which tags along with each board.
-/// In the Fiddler engine, every board gets tagged with an `EvalCookie` which is used to quickly
+/// A piece of metadata which tags along with each board in a [`CookieGame`]'s history..
+/// In the Fiddler engine, every board gets tagged with an [`EvalCookie`] which is used to quickly
 /// evaluate positions.
 pub struct EvalCookie {
     /// The score of the position.
@@ -109,64 +104,57 @@ pub struct EvalCookie {
     phase: f32,
 }
 
-impl Tagger for ScoreTag {
-    type Tag = (Score, Eval);
-    type Cookie = EvalCookie;
-
-    /// Compute the change in scoring that a move made on a board will cause.
-    fn tag_move(m: Move, b: &Board, cookie: &Self::Cookie) -> Self::Tag {
-        let delta = pst::delta(b, m) + material::delta(b, m);
-        (delta, candidacy(b, m, delta, cookie.phase))
-    }
-
-    fn update_cookie(
-        m: Move,
-        tag: &Self::Tag,
-        b: &Board,
-        _b_after: &Board,
-        prev_cookie: &Self::Cookie,
-    ) -> Self::Cookie {
-        let score = match b.player {
-            Color::White => prev_cookie.score + tag.0,
-            Color::Black => prev_cookie.score - tag.0,
-        };
-        let mut mg_npm_delta = match m.promote_type() {
-            None => Eval::DRAW,
+#[must_use]
+/// Compute the next [`EvalCookie`] for a position after a move is played.
+pub fn next_cookie(m: Move, tag: (Score, Eval), b: &Board, prev_cookie: &EvalCookie) -> EvalCookie {
+    let score = match b.player {
+        Color::White => prev_cookie.score + tag.0,
+        Color::Black => prev_cookie.score - tag.0,
+    };
+    let mut mg_npm_delta = match m.promote_type() {
+        None => Eval::DRAW,
+        Some(pt) => material::value(pt).mg,
+    };
+    if b.is_move_capture(m) {
+        mg_npm_delta -= match b.type_at_square(m.to_square()) {
+            None | Some(Piece::Pawn) => Eval::DRAW,
             Some(pt) => material::value(pt).mg,
-        };
-        if b.is_move_capture(m) {
-            mg_npm_delta -= match b.type_at_square(m.to_square()) {
-                None | Some(Piece::Pawn) => Eval::DRAW,
-                Some(pt) => material::value(pt).mg,
-            }
-        };
-        let new_mg_npm = prev_cookie.mg_non_pawn_material + mg_npm_delta;
-        EvalCookie {
-            score,
-            mg_non_pawn_material: new_mg_npm,
-            phase: calculate_phase(new_mg_npm),
         }
+    };
+    let new_mg_npm = prev_cookie.mg_non_pawn_material + mg_npm_delta;
+    EvalCookie {
+        score,
+        mg_non_pawn_material: new_mg_npm,
+        phase: calculate_phase(new_mg_npm),
     }
+}
 
-    /// Compute a static, cumulative-invariant evaluation of a position.
-    /// It is much faster in search to use cumulative evaluation, but this should be used when
-    /// importing positions.
-    /// Static evaluation will not include the leaf rules (such as number of doubled pawns), as this
-    /// will be handled by `leaf_evaluate` at the end of the search tree.
-    fn init_cookie(b: &Board) -> Self::Cookie {
-        let mg_npm = {
-            let mut total = Eval::DRAW;
-            for pt in Piece::NON_PAWNS {
-                total += material::value(pt).mg * b[pt].len();
-            }
-            total
-        };
-        EvalCookie {
-            score: material::evaluate(b) + pst::evaluate(b),
-            mg_non_pawn_material: mg_npm,
-            phase: calculate_phase(mg_npm),
+#[must_use]
+/// Compute a static, cumulative-invariant evaluation of a position.
+/// It is much faster in search to use cumulative evaluation, but this should be used when
+/// importing positions.
+/// Static evaluation will not include the leaf rules (such as number of doubled pawns), as this
+/// will be handled by `leaf_evaluate` at the end of the search tree.
+pub fn init_cookie(b: &Board) -> EvalCookie {
+    let mg_npm = {
+        let mut total = Eval::DRAW;
+        for pt in Piece::NON_PAWNS {
+            total += material::value(pt).mg * b[pt].len();
         }
+        total
+    };
+    EvalCookie {
+        score: material::evaluate(b) + pst::evaluate(b),
+        mg_non_pawn_material: mg_npm,
+        phase: calculate_phase(mg_npm),
     }
+}
+
+#[must_use]
+/// Compute the change in scoring and candidacy that a move made on a board will cause.
+pub fn tag_move(m: Move, b: &Board, cookie: &EvalCookie) -> (Score, Eval) {
+    let delta = pst::delta(b, m) + material::delta(b, m);
+    (delta, candidacy(b, m, delta, cookie.phase))
 }
 
 /// The cutoff for pure midgame material.
@@ -734,14 +722,24 @@ mod tests {
 
     use super::*;
 
+    /// Helper function to verify that the implementation of [`delta`] is correct.
+    ///
+    /// For each move reachable from a board with start position `fen`, this will assert that the
+    /// result of [`evaluate`] is equal to the sum of the original evaluation and the computed
+    /// delta for the move.
     fn delta_helper(fen: &str) {
-        let mut g = ScoredGame::from_fen(fen).unwrap();
-        for (m, tag) in g.get_moves::<{ GenMode::All }>() {
-            g.make_move(m, &tag);
+        let b = Board::from_fen(fen).unwrap();
+        let g = CookieGame::new(b, init_cookie(&b));
+        let mut gcopy = g.clone();
+        g.get_moves::<{ GenMode::All }>(|m| {
+            gcopy.make_move(
+                m,
+                next_cookie(m, tag_move(m, g.board(), g.cookie()), &b, g.cookie()),
+            );
             // println!("{g}");
-            assert_eq!(ScoreTag::init_cookie(g.board()), *g.cookie());
-            g.undo().unwrap();
-        }
+            assert_eq!(init_cookie(g.board()), *g.cookie());
+            gcopy.undo().unwrap();
+        });
     }
 
     #[test]

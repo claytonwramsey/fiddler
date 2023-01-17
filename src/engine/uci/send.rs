@@ -47,15 +47,23 @@ pub enum Message<'a> {
     /// Typically only for commands that take some time, but can actually be sent at any time.
     ReadyOk,
     /// Request that the GUI display an option to the user.
-    /// Not to be confused with the standard `Option`.
-    Option { name: &'a str, opt: OptionType<'a> },
+    /// Not to be confused with the standard [`Option`].
+    Option {
+        /// The name of the option.
+        name: &'a str,
+        /// The type of optoin that is associated with this name.
+        opt: OptionType<'a>,
+    },
     /// Inform the GUI that the engine has found a move.
     ///
-    /// `m` is the best move that it found, and `ponder` may optionally be the opponent's reply to
-    /// the best move that the engine would like to think about.
     /// Directly before a `BestMove`, the engine should send an `Info` message with the final search
     /// information.
-    BestMove { m: Move, ponder: Option<Move> },
+    BestMove {
+        /// The best move that was found.
+        m: Move,
+        /// The move that the engine believes is the best reply to `m`.
+        ponder: Option<Move>,
+    },
     /// Give the GUI some information about what the engine is thinking.
     Info(&'a [EngineInfo<'a>]),
 }
@@ -105,7 +113,14 @@ pub enum EngineInfo<'a> {
 /// Not to be confused with `std::option::Option`.
 pub enum OptionType<'a> {
     /// A spin box which takes an integer.
-    Spin { default: i64, min: i64, max: i64 },
+    Spin {
+        /// The default or initial value of the spinbox.
+        default: i64,
+        /// The minimum legal value of the spinbox.
+        min: i64,
+        /// The maximum legal value of the spinbox.
+        max: i64,
+    },
     /// A string which the user can input. The default is the given value.
     String(Option<&'a str>),
     /// A checkbox which will either be true (checked) or false (unchecked).

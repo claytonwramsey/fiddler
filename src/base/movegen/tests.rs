@@ -6,10 +6,10 @@ fn best_queen_fried_liver() {
     let m = Move::normal(Square::D1, Square::F3);
     // the fried liver position, before Qf3+
     let b = Board::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap();
-    let moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
-    assert!(moves.contains(&(m, ())));
+    let moves = make_move_vec::<{ GenMode::All }>(&b);
+    assert!(moves.contains(&m));
     for m in moves {
-        assert!(is_legal(m.0, &b));
+        assert!(is_legal(m, &b));
     }
 }
 
@@ -20,12 +20,12 @@ fn pawn_capture_generated() {
     let b =
         Board::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2").unwrap();
     let m = Move::normal(Square::E4, Square::F5);
-    for (m, _) in get_moves::<{ GenMode::All }, NoTag>(&b, &()) {
+    for m in make_move_vec::<{ GenMode::All }>(&b) {
         println!("{m}");
         assert!(is_legal(m, &b));
     }
-    assert!(get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
-    assert!(get_moves::<{ GenMode::Captures }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(make_move_vec::<{ GenMode::All }>(&b).contains(&m));
+    assert!(make_move_vec::<{ GenMode::Captures }>(&b).contains(&m));
 }
 
 #[test]
@@ -33,11 +33,7 @@ fn pawn_capture_generated() {
 fn enumerate_pawn_checking_king() {
     let b = Board::from_fen("r1bq1b1r/ppp2kpp/2n5/3n4/2B5/8/PPP1pPPP/RN1Q1K1R w - - 0 10").unwrap();
 
-    let moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
-
-    for m2 in &moves {
-        assert!(is_legal(m2.0, &b));
-    }
+    get_moves::<{ GenMode::All }>(&b, |m| assert!(is_legal(m, &b)));
 }
 
 #[test]
@@ -45,7 +41,7 @@ fn enumerate_pawn_checking_king() {
 fn king_has_only_one_move() {
     let b = Board::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2").unwrap();
     assert!(has_moves(&b));
-    assert!(get_moves::<{ GenMode::All }, NoTag>(&b, &()).len() == 1);
+    assert!(make_move_vec::<{ GenMode::All }>(&b).len() == 1);
     assert!(is_legal(Move::normal(Square::C8, Square::B8), &b));
 }
 
@@ -55,7 +51,7 @@ fn queenside_castle() {
     let b = Board::from_fen("r3kb1r/ppp1p1pp/2nq1n2/1B1p4/3P4/2N2Q2/PPP2PPP/R1B1K2R b KQkq - 0 8")
         .unwrap();
     let m = Move::castling(Square::E8, Square::C8);
-    assert!(get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(make_move_vec::<{ GenMode::All }>(&b).contains(&m));
     assert!(is_legal(m, &b));
 }
 
@@ -65,7 +61,7 @@ fn no_queenside_castle_through_knight() {
     let b =
         Board::from_fen("rn2kbnr/ppp1pppp/3q4/3p4/6b1/8/PPPPPPPP/RNBQKBNR b KQkq - 5 4").unwrap();
     let m = Move::castling(Square::E8, Square::C8);
-    assert!(!get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(!make_move_vec::<{ GenMode::All }>(&b).contains(&m));
 
     assert!(!is_legal(m, &b));
 }
@@ -75,7 +71,7 @@ fn no_queenside_castle_through_knight() {
 fn king_escape_without_capture() {
     let b =
         Board::from_fen("r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10").unwrap();
-    let moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
+    let moves = make_move_vec::<{ GenMode::All }>(&b);
     let expected_moves = vec![
         Move::normal(Square::E6, Square::D6),
         Move::normal(Square::E6, Square::F7),
@@ -83,11 +79,11 @@ fn king_escape_without_capture() {
         Move::normal(Square::F6, Square::G4),
     ];
     for m in &moves {
-        assert!(expected_moves.contains(&m.0));
-        assert!(is_legal(m.0, &b));
+        assert!(expected_moves.contains(m));
+        assert!(is_legal(*m, &b));
     }
     for em in &expected_moves {
-        assert!(moves.contains(&(*em, ())));
+        assert!(moves.contains(em));
         assert!(is_legal(*em, &b));
     }
 }
@@ -96,11 +92,11 @@ fn king_escape_without_capture() {
 /// Test that Black can promote a piece (on e1).
 fn black_can_promote() {
     let b = Board::from_fen("8/8/5k2/3K4/8/8/4p3/8 b - - 0 1").unwrap();
-    let moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
+    let moves = make_move_vec::<{ GenMode::All }>(&b);
     for m in &moves {
-        assert!(is_legal(m.0, &b));
+        assert!(is_legal(*m, &b));
     }
-    assert!(moves.contains(&(Move::promoting(Square::E2, Square::E1, Piece::Queen), ())));
+    assert!(moves.contains(&Move::promoting(Square::E2, Square::E1, Piece::Queen)));
 }
 
 #[test]
@@ -109,9 +105,9 @@ fn no_wraparound() {
     let b =
         Board::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBPPP3/q4N2/Pp4PP/R2Q1RK1 b kq - 0 1").unwrap();
 
-    let moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
+    let moves = make_move_vec::<{ GenMode::All }>(&b);
     let m = Move::normal(Square::H7, Square::A7);
-    assert!(!(moves.contains(&(m, ()))));
+    assert!(!(moves.contains(&m)));
     assert!(!is_legal(m, &b));
 }
 
@@ -124,17 +120,17 @@ fn en_passant_illegal() {
     let m = Move::en_passant(Square::C4, Square::B3);
 
     assert!(!is_legal(m, &b));
-    assert!(!get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
-    assert!(!get_moves::<{ GenMode::Captures }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(!make_move_vec::<{ GenMode::All }>(&b).contains(&m));
+    assert!(!make_move_vec::<{ GenMode::Captures }>(&b).contains(&m));
 }
 
 #[test]
 /// Test that a pawn cannot capture by en passant if doing so would put the king in check.
 fn en_passant_pinned() {
     let b = Board::from_fen("8/2p5/3p4/KPr5/2R1Pp1k/8/6P1/8 b - e3 0 2").unwrap();
-    let moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
+    let moves = make_move_vec::<{ GenMode::All }>(&b);
     let m = Move::en_passant(Square::F4, Square::E3);
-    assert!(!moves.contains(&(m, ())));
+    assert!(!moves.contains(&m));
     assert!(!is_legal(m, &b));
 }
 
@@ -145,7 +141,7 @@ fn en_passant_tagged() {
 
     let m = Move::normal(Square::B5, Square::C6);
     assert!(!is_legal(m, &b));
-    assert!(!get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(!make_move_vec::<{ GenMode::All }>(&b).contains(&m));
 }
 #[test]
 /// Test that a pinned piece cannot make a capture if it does not defend against the pin.
@@ -154,8 +150,8 @@ fn pinned_knight_capture() {
         Board::from_fen("r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8").unwrap();
     let illegal_move = Move::normal(Square::D5, Square::C3);
 
-    assert!(!get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(illegal_move, ())));
-    assert!(!get_moves::<{ GenMode::Captures }, NoTag>(&b, &()).contains(&(illegal_move, ())));
+    assert!(!make_move_vec::<{ GenMode::All }>(&b).contains(&illegal_move));
+    assert!(!make_move_vec::<{ GenMode::Captures }>(&b).contains(&illegal_move));
     assert!(!is_legal(illegal_move, &b));
 }
 
@@ -168,8 +164,8 @@ fn en_passant_generated() {
 
     let m = Move::en_passant(Square::E5, Square::F6);
 
-    assert!(get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
-    assert!(get_moves::<{ GenMode::Captures }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(make_move_vec::<{ GenMode::All }>(&b).contains(&m));
+    assert!(make_move_vec::<{ GenMode::Captures }>(&b).contains(&m));
     assert!(is_legal(m, &b));
 }
 
@@ -181,7 +177,7 @@ fn en_passant_out_of_check() {
 
     let m = Move::en_passant(Square::B5, Square::C6);
 
-    assert!(get_moves::<{ GenMode::All }, NoTag>(&b, &()).contains(&(m, ())));
+    assert!(make_move_vec::<{ GenMode::All }>(&b).contains(&m));
     assert!(is_legal(m, &b));
     assert!(has_moves(&b));
 }
@@ -191,9 +187,9 @@ fn en_passant_out_of_check() {
 fn king_can_move() {
     let b = Board::from_fen("3k4/3R4/1R6/5K2/8/8/8/8 b - - 1 1").unwrap();
 
-    assert!(!get_moves::<{ GenMode::All }, NoTag>(&b, &()).is_empty());
-    assert!(!get_moves::<{ GenMode::Captures }, NoTag>(&b, &()).is_empty());
-    assert!(!get_moves::<{ GenMode::Quiets }, NoTag>(&b, &()).is_empty());
+    assert!(!make_move_vec::<{ GenMode::All }>(&b).is_empty());
+    assert!(!make_move_vec::<{ GenMode::Captures }>(&b).is_empty());
+    assert!(!make_move_vec::<{ GenMode::Quiets }>(&b).is_empty());
     assert!(has_moves(&b));
 }
 
@@ -213,9 +209,9 @@ mod mates {
         let b = Board::from_fen(fen).unwrap();
 
         assert!(!has_moves(&b));
-        assert!(get_moves::<{ GenMode::All }, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<{ GenMode::Captures }, NoTag>(&b, &()).is_empty());
-        assert!(get_moves::<{ GenMode::Quiets }, NoTag>(&b, &()).is_empty());
+        assert!(make_move_vec::<{ GenMode::All }>(&b).is_empty());
+        assert!(make_move_vec::<{ GenMode::Captures }>(&b).is_empty());
+        assert!(make_move_vec::<{ GenMode::Quiets }>(&b).is_empty());
         assert!(!b.checkers.is_empty());
     }
 

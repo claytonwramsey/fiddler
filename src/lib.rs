@@ -1,3 +1,12 @@
+//! # Fiddler: Clayton's little chess engine.
+//!
+//! Fiddler is a hobby chess engine created by Clayton Ramsey.
+//! This code is not meant to be used as a library; however, I have tried very hard to make sure it
+//! is well documented.
+//!
+//! For more details, refer to the README.
+
+#![warn(missing_docs)]
 #![feature(core_intrinsics)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]

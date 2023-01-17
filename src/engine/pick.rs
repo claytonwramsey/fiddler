@@ -38,12 +38,11 @@
 use std::mem::swap;
 
 use crate::base::{
-    game::Tagger,
     movegen::{get_moves, is_legal, GenMode},
     Board, Move,
 };
 
-use super::evaluate::{material, Eval, Score, ScoreTag};
+use super::evaluate::{material, tag_move, Eval, EvalCookie, Score};
 
 /// Create an estimate for how good a move is.
 /// `delta` is the PST difference created by this move.
@@ -83,7 +82,7 @@ pub struct MovePicker {
     board: Board,
     /// The tagging cookie for `board`.
     /// Like `board`, this would ideally be an `&'a Cookie`.
-    cookie: <ScoreTag as Tagger>::Cookie,
+    cookie: EvalCookie,
     /// The upcoming phase of move generation.
     phase: PickPhase,
     /// The move retreived from the transposition table.
@@ -119,7 +118,7 @@ impl MovePicker {
     /// The transposition move must be legal, and should be checked as such prior to instantiation.
     pub fn new(
         b: Board,
-        cookie: &<ScoreTag as Tagger>::Cookie,
+        cookie: &EvalCookie,
         transposition_move: Option<Move>,
         killer_move: Option<Move>,
     ) -> MovePicker {
@@ -178,15 +177,17 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         // we assume that m was checked for legality before
                         self.ignore(m);
-                        Some((m, ScoreTag::tag_move(m, &self.board, &self.cookie)))
+                        Some((m, tag_move(m, &self.board, &self.cookie)))
                     }
                 }
             }
             PickPhase::PreGoodCapture => {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
-                self.capture_buffer =
-                    get_moves::<{ GenMode::Captures }, ScoreTag>(&self.board, &self.cookie);
+                get_moves::<{ GenMode::Captures }>(&self.board, |m| {
+                    self.capture_buffer
+                        .push((m, tag_move(m, &self.board, &self.cookie)));
+                });
                 self.next()
             }
             PickPhase::GoodCapture => {
@@ -223,7 +224,7 @@ impl Iterator for MovePicker {
                     Some(m) => {
                         if is_legal(m, &self.board) {
                             self.ignore(m);
-                            Some((m, ScoreTag::tag_move(m, &self.board, &self.cookie)))
+                            Some((m, tag_move(m, &self.board, &self.cookie)))
                         } else {
                             self.next()
                         }
@@ -233,8 +234,10 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                self.quiet_buffer =
-                    get_moves::<{ GenMode::Quiets }, ScoreTag>(&self.board, &self.cookie);
+                get_moves::<{ GenMode::Quiets }>(&self.board, |m| {
+                    self.quiet_buffer
+                        .push((m, tag_move(m, &self.board, &self.cookie)));
+                });
                 self.next()
             }
             PickPhase::Quiet => {
@@ -297,7 +300,8 @@ impl Iterator for MovePicker {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::game::NoTag;
+
+    use crate::{base::movegen::make_move_vec, engine::evaluate::init_cookie};
 
     use super::*;
 
@@ -306,16 +310,16 @@ mod tests {
     fn generation_correctness() {
         let b = Board::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
             .unwrap();
-        let mp = MovePicker::new(b, &ScoreTag::init_cookie(&b), None, None);
+        let mp = MovePicker::new(b, &init_cookie(&b), None, None);
 
         let picker_moves = mp.map(|(m, _)| m);
-        let gen_moves = get_moves::<{ GenMode::All }, NoTag>(&b, &());
+        let gen_moves = make_move_vec::<{ GenMode::All }>(&b);
         for m in picker_moves.clone() {
-            assert!(gen_moves.contains(&(m, ())));
+            assert!(gen_moves.contains(&m));
             println!("{}", m.to_algebraic(&b).unwrap());
         }
 
-        for (m, _) in gen_moves {
+        for m in gen_moves {
             println!("looking for {m} in movepicker moves");
             assert!(picker_moves.clone().any(|m2| m2 == m));
         }
