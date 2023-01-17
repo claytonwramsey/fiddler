@@ -22,18 +22,12 @@ use super::{Bitboard, Direction, Square};
 
 use once_cell::sync::Lazy;
 
-use std::{
-    convert::TryFrom,
-    mem::{transmute, MaybeUninit},
-};
+use std::mem::{transmute, MaybeUninit};
 
 /// A master copy of a magic move-generation table.
 ///
 /// No other magic tables should be generated, as they will be identical to this one.
 pub static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
-
-/// The number of times to try generating magics.
-const NUM_MAGIC_TRIES: u64 = 10_000_000;
 
 /// A saved list of magics for rooks created using the generator.
 /// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
@@ -244,19 +238,6 @@ impl AttacksTable {
         table
     }
 
-    #[allow(dead_code)]
-    /// Create a `AttacksTable` from scratch, generating new magics.
-    ///
-    /// This function is no longer used, but is left as an example of how magic numbers are
-    /// generated.
-    fn make() -> AttacksTable {
-        let mut table = AttacksTable::new();
-        make_magic_helper(&mut table.rook_table, true);
-        make_magic_helper(&mut table.bishop_table, false);
-
-        table
-    }
-
     #[inline(always)]
     /// Get the attacks that a rook on `sq` could make with the reference table `table`.
     ///
@@ -373,89 +354,6 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[SquareAttacks; 64]) -> 
 /// Use magic hashing to get the index to look up attacks in a bitboad.
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
     usize::from((occupancy.wrapping_mul(magic)) >> shift)
-}
-
-/// Populate a magic table.
-/// If `is_rook` is true, it will make magics for rook moves; otherwise, it will make magics for
-/// bishops.
-///
-/// # Panics
-///
-/// Will panic if this helper function is unable to compute each magic value in the specified number
-/// of tries.
-fn make_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
-    #[allow(clippy::cast_possible_truncation)]
-    for i in 0..64 {
-        // square of the piece making attacks
-        let sq = Square::try_from(i as u8).unwrap();
-        if is_rook {
-            table[i].mask = get_rook_mask(sq);
-            table[i].shift = 64 - ROOK_BITS[i];
-        } else {
-            table[i].mask = get_bishop_mask(sq);
-            table[i].shift = 64 - BISHOP_BITS[i];
-        }
-        // number of squares where occupancy matters
-        let num_points = table[i].mask.len();
-
-        // we know that there are at most 12 pieces that will matter when it comes to attack lookups
-        let mut occupancies = vec![Bitboard::EMPTY; 1 << num_points];
-        let mut attacks = vec![Bitboard::EMPTY; 1 << num_points];
-
-        // compute every possible occupancy arrangement for attacking
-        for j in 0..(1 << num_points) {
-            occupancies[j] = index_to_occupancy(j, table[i].mask);
-            // compute attacks
-            attacks[j] = if is_rook {
-                directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancies[j])
-            } else {
-                directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancies[j])
-            };
-        }
-        // try random magics until one works
-        let mut found_magic = false;
-        let mut used;
-        for _ in 0..NUM_MAGIC_TRIES {
-            let magic = random_sparse_bitboard();
-
-            // repopulate the usage table with zeros
-            used = [Bitboard::EMPTY; 1 << 12];
-            found_magic = true;
-            for j in 0..(1 << num_points) {
-                let key = compute_magic_key(occupancies[j], magic, table[i].shift);
-                if used[key].is_empty() {
-                    used[key] = attacks[j];
-                } else if used[key] != attacks[j] {
-                    found_magic = false;
-                    break;
-                }
-            }
-
-            // found a working magic, we're done here
-            if found_magic {
-                //u se this print to generate a list of magics
-                println!("\t{magic}, //{sq}");
-                table[i].magic = magic;
-                break;
-            }
-        }
-        if found_magic {
-            // found a magic, populate the attack vector
-            table[i]
-                .attacks
-                .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
-            for j in 0..(1 << num_points) {
-                let key = compute_magic_key(occupancies[j], table[i].magic, table[i].shift);
-                table[i].attacks[key] = attacks[j];
-            }
-        } else {
-            println!(
-                "failed to find {} magic for square {sq}",
-                if is_rook { "rook" } else { "bishop" }
-            );
-            panic!();
-        }
-    }
 }
 
 /// Create the mask for the relevant bits in magic of a rook.
@@ -586,17 +484,6 @@ pub(crate) const fn directional_attacks(
             loop_idx += 1;
         }
         dir_idx += 1;
-    }
-
-    result
-}
-
-#[inline(always)]
-/// Generate a random, mostly-empty bitboard.
-fn random_sparse_bitboard() -> Bitboard {
-    let mut result = Bitboard::new(fastrand::u64(..));
-    for _ in 0..2 {
-        result &= Bitboard::new(fastrand::u64(..));
     }
 
     result
