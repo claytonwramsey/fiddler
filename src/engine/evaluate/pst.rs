@@ -189,6 +189,7 @@ mod tests {
     use crate::base::movegen::{get_moves, GenMode};
 
     /// Helper function to verify that the implementation of [`delta`] is correct.
+    /// 
     /// For each move reachable from a board with start position `fen`, this will assert that the
     /// result of [`evaluate`] is equal to the sum of the original evaluation and the computed
     /// delta for the move.

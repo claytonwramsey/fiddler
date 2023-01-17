@@ -434,9 +434,9 @@ pub fn has_moves(b: &Board) -> bool {
 
     // king is either single-checked or not at all
     if !b.checkers.is_empty() {
-        // SAFETY: We checked that the square is nonzero.
+        // SAFETY: We checked that the set of checkers is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(b.checkers) };
-        // Look for blocks or captures
+        // Restrict move search to things that can block the check
         legal_targets &= Bitboard::between(king_sq, checker_sq) | b.checkers;
     }
     // save the (expensive) king move generation/validation for later
@@ -531,6 +531,8 @@ pub fn has_moves(b: &Board) -> bool {
             return true;
         }
     }
+    // if a king cannot do any "normal" moves, it also cannot castle, so we don't need to check for
+    // those moves
 
     false
 }
