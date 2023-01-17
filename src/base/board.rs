@@ -19,10 +19,7 @@
 //! State representations of boards, which contain board state (such as piece
 //! positions), but neither history nor meta-information about a game.
 
-use super::{
-    movegen::{square_attackers, PAWN_ATTACKS},
-    MAGIC,
-};
+use super::movegen::{square_attackers, MAGIC, PAWN_ATTACKS};
 
 use super::{zobrist, Bitboard, CastleRights, Color, Move, Piece, Square};
 

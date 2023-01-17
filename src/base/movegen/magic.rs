@@ -20,14 +20,7 @@
 
 use super::{Bitboard, Direction, Square};
 
-use once_cell::sync::Lazy;
-
 use std::mem::{transmute, MaybeUninit};
-
-/// A master copy of a magic move-generation table.
-///
-/// No other magic tables should be generated, as they will be identical to this one.
-pub static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
 
 /// A saved list of magics for rooks created using the generator.
 /// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
@@ -230,7 +223,7 @@ impl AttacksTable {
     }
 
     /// Create a pre-loaded `AttacksTable`.
-    fn load() -> AttacksTable {
+    pub(super) fn load() -> AttacksTable {
         let mut table = AttacksTable::new();
         load_magic_helper(&mut table.rook_table, true);
         load_magic_helper(&mut table.bishop_table, false);
@@ -244,7 +237,7 @@ impl AttacksTable {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{Bitboard, Square, MAGIC};
+    /// use fiddler::base::{Bitboard, Square, movegen::MAGIC};
     ///
     /// assert_eq!(MAGIC.rook_attacks(Bitboard::EMPTY, Square::A1), Bitboard::hv(Square::A1));
     /// ```
@@ -258,7 +251,7 @@ impl AttacksTable {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{Bitboard, Square, MAGIC};
+    /// use fiddler::base::{Bitboard, Square, movegen::MAGIC};
     ///
     /// assert_eq!(MAGIC.bishop_attacks(Bitboard::EMPTY, Square::E4), Bitboard::diags(Square::E4));
     /// ```

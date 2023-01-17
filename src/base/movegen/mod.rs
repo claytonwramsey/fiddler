@@ -18,12 +18,31 @@
 
 //! Generation and verification of legal moves in a position.
 
+pub(crate) mod magic;
 #[cfg(test)]
 mod tests;
 
 use std::{convert::TryFrom, mem::transmute, time::Instant};
 
-use super::{bitboard::Bitboard, Board, Color, Direction, Move, Piece, Square, MAGIC};
+use once_cell::sync::Lazy;
+
+use self::magic::AttacksTable;
+
+use super::{bitboard::Bitboard, Board, Color, Direction, Move, Piece, Square};
+
+/// A master copy of a magic move-generation table.
+///
+/// This table can be used to generate moves for rooks and bishops in constant time.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{movegen::MAGIC, Square, Bitboard};
+///
+/// let rook_attacks_e3 = MAGIC.rook_attacks(Bitboard::EMPTY, Square::E3);
+/// assert_eq!(rook_attacks_e3, Bitboard::hv(Square::E3));
+/// ```
+pub static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
 
 /// A lookup table for the legal squares a knight to move to from a given square.
 ///

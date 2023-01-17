@@ -44,8 +44,8 @@ use fiddler::engine::evaluate::{
 };
 use fiddler::{
     base::{
-        movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
-        Board, Color, Piece, Square, MAGIC,
+        movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
+        Board, Color, Piece, Square,
     },
     engine::evaluate::{EG_LIMIT, MG_LIMIT},
 };

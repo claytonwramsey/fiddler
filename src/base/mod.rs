@@ -39,9 +39,6 @@ pub use direction::Direction;
 
 pub mod game;
 
-mod magic;
-pub use magic::MAGIC;
-
 pub mod movegen;
 
 mod moves;

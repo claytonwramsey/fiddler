@@ -11,8 +11,8 @@
 use std::mem::transmute;
 
 use crate::base::{
-    movegen::{KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
-    Bitboard, Board, Color, Piece, MAGIC,
+    movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
+    Bitboard, Board, Color, Piece,
 };
 
 use super::Score;

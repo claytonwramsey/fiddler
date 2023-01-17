@@ -27,7 +27,7 @@ use std::{
     },
 };
 
-use super::{magic::directional_attacks, Direction, Square};
+use super::{movegen::magic::directional_attacks, Direction, Square};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
