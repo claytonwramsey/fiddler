@@ -121,11 +121,11 @@ const fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64]
             let dir = dirs[j];
             let target_sq_disc = sq as i8 + dir.0;
             if target_sq_disc < 0 || 64 <= target_sq_disc {
-                // square is out of bounds
+                // square is out of bounds. prevent UB in transmutation
                 j += 1;
                 continue;
             }
-            let target_sq: Square = unsafe { transmute((sq as i8 + dir.0) as u8) };
+            let target_sq: Square = unsafe { transmute(target_sq_disc as u8) };
             if target_sq.chebyshev_to(sq) <= max_dist {
                 attacks[i] = attacks[i].with_square(target_sq);
             }
@@ -141,13 +141,13 @@ const fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64]
 
 #[derive(PartialEq, Eq, Debug)]
 /// The possible modes for move generation.
-/// They are inteded for use as const-generic parameters for `get_moves()`.
+/// They are inteded for use as const-generic parameters for [`get_moves()`].
 pub enum GenMode {
-    /// The mode identifier for `get_moves()` to generate all legal moves.
+    /// The mode identifier for [`get_moves()`] to generate all legal moves.
     All,
-    /// The mode identifier for `get_moves()` to generate captures only.
+    /// The mode identifier for [`get_moves()`] to generate captures only.
     Captures,
-    /// The mode identifier for `get_moves()` to generate non-captures only.
+    /// The mode identifier for [`get_moves()`] to generate non-captures only.
     Quiets,
 }
 
@@ -411,7 +411,7 @@ pub fn make_move_vec<const M: GenMode>(b: &Board) -> Vec<Move> {
 /// Returns `true` if there are any legal moves, and `false` if there are none.
 /// Requires that the board is legal (i.e. has one of each king) to be correct.
 ///
-/// Note that since a `Board` does not contain historical information, it will still return `true`
+/// Note that since a [`Board`] does not contain historical information, it will still return `true`
 /// on positions with repetition.
 ///
 /// # Examples
@@ -1022,7 +1022,6 @@ fn castles(b: &Board, callback: &mut impl FnMut(Move)) {
 ///
 /// // There are 20 legal moves in the starting board position.
 /// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 1), 20);
-///
 ///
 /// // There are 400 legal openings at depth 2.
 /// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 2), 400);

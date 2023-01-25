@@ -136,10 +136,7 @@ impl Board {
         let mut r = 7; // current row parsed
         let mut c = 0; // current col parsed
 
-        loop {
-            if r == 0 && c >= 8 {
-                break;
-            }
+        while r != 0 || c < 8 {
             let chr = fen_chrs
                 .next()
                 .ok_or("reached end of FEN before board was fully parsed")?;
@@ -588,14 +585,16 @@ impl Board {
     /// Remove the given `CastleRights` from this board's castling rights, and
     /// update the internal hash of the board to match.
     fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
-        let rights_actually_removed = rights_to_remove & self.castle_rights;
+        let mut rights_actually_removed = rights_to_remove & self.castle_rights;
 
         self.castle_rights ^= rights_actually_removed;
 
-        for i in 0..4 {
-            if 1 << i & rights_actually_removed.0 != 0 {
-                self.hash ^= zobrist::castle_key(i);
+        while rights_actually_removed.0 != 0 {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                self.hash ^= zobrist::castle_key(rights_actually_removed.0.trailing_zeros() as u8);
             }
+            rights_actually_removed &= CastleRights(rights_actually_removed.0 - 1);
         }
     }
 
