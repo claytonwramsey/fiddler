@@ -573,7 +573,7 @@ impl Board {
     /// at the square below. Otherwise it will break the internal board
     /// representation.
     fn add_piece(&mut self, sq: Square, pt: Piece, color: Color) {
-        //R emove the hash from the piece that was there before (no-op if it was
+        // Remove the hash from the piece that was there before (no-op if it was
         // empty)
         let mask = Bitboard::from(sq);
         self.pieces[pt as usize] |= mask;

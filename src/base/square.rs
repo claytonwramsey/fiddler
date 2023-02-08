@@ -31,12 +31,11 @@ use std::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(missing_docs)]
 /// A square: one of 64 spots on a `Board` that a `Piece` can occupy.
-///
-/// Internally, `Square`s are represented as a single integer to maintain a small size.
-/// From MSB to LSB, each square is composed of:
-/// * 2 unused bits
-/// * 3 bits for the rank
-/// * 3 bits for the file
+//  Internally, `Square`s are represented as a single integer to maintain a small size.
+//  From MSB to LSB, each square is composed of:
+//  * 2 unused bits
+//  * 3 bits for the rank
+//  * 3 bits for the file
 pub enum Square {
     A1 = 0,
     B1 = 1,

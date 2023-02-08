@@ -406,6 +406,8 @@ impl TTable {
 enum Liveness {
     #[allow(unused)]
     /// An empty entry, with no occupied or deleted entries following it.
+    // this is never directly constructed but zeroed memory from `alloc_zeroed` causes it to contain
+    // this, so we cannot remove this variant.
     Empty = 0,
     /// An occupied entry, with data inside.
     Occupied = 1 << 6,

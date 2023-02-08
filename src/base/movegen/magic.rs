@@ -23,6 +23,7 @@ use super::{Bitboard, Direction, Square};
 use std::mem::{transmute, MaybeUninit};
 
 /// A saved list of magics for rooks created using the generator.
+///
 /// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
 /// Wiki.
 const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
@@ -93,6 +94,7 @@ const SAVED_ROOK_MAGICS: [Bitboard; 64] = [
 ];
 
 /// A saved list of magics for bishops created using the generator.
+///
 /// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
 /// Wiki.
 const SAVED_BISHOP_MAGICS: [Bitboard; 64] = [
@@ -194,9 +196,9 @@ pub struct AttacksTable {
 }
 
 impl AttacksTable {
-    /// Create an empty `AttacksTable`.
-    fn new() -> AttacksTable {
-        let rook_table = {
+    /// Create an [`AttacksTable`] by loading saved, precompiled magic numbers.
+    pub(super) fn load() -> AttacksTable {
+        let mut rook_table = {
             // SAFETY: We will immediately overwrite this.
             let mut data: [MaybeUninit<SquareAttacks>; 64] =
                 unsafe { MaybeUninit::uninit().assume_init() };
@@ -206,7 +208,7 @@ impl AttacksTable {
             // SAFETY: The entire block was overwritten with correct data.
             unsafe { transmute(data) }
         };
-        let bishop_table = {
+        let mut bishop_table = {
             // SAFETY: We will immediately overwrite this.
             let mut data: [MaybeUninit<SquareAttacks>; 64] =
                 unsafe { MaybeUninit::uninit().assume_init() };
@@ -216,19 +218,14 @@ impl AttacksTable {
             // SAFETY: The entire block was overwritten with correct data.
             unsafe { transmute(data) }
         };
+
+        load_magic_helper(&mut rook_table, true);
+        load_magic_helper(&mut bishop_table, false);
+
         AttacksTable {
             rook_table,
             bishop_table,
         }
-    }
-
-    /// Create a pre-loaded `AttacksTable`.
-    pub(super) fn load() -> AttacksTable {
-        let mut table = AttacksTable::new();
-        load_magic_helper(&mut table.rook_table, true);
-        load_magic_helper(&mut table.bishop_table, false);
-
-        table
     }
 
     #[inline(always)]
@@ -261,7 +258,7 @@ impl AttacksTable {
 }
 
 /// A structure containing all the information needed to generate moves for a rook or bishop from
-/// one square.
+/// one [`Square`].
 #[derive(Clone, Debug)]
 struct SquareAttacks {
     /// A mask which when &ed with the occupancy bitboard will give only the bits that matter when
@@ -276,7 +273,7 @@ struct SquareAttacks {
 }
 
 impl SquareAttacks {
-    /// Create an empty `SquareAttacks`.
+    /// Create an empty [`SquareAttacks`].
     fn new() -> SquareAttacks {
         SquareAttacks {
             mask: Bitboard::EMPTY,
@@ -287,7 +284,7 @@ impl SquareAttacks {
     }
 }
 
-/// A helper function to load data into a `AttacksTable`.
+/// A helper function to load data into an [`AttacksTable`].
 ///
 /// `is_rook` is `true` if you are loading data for a rook, and `false` for a bishop.
 fn load_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
@@ -303,9 +300,7 @@ fn load_magic_helper(table: &mut [SquareAttacks; 64], is_rook: bool) {
             table[i].magic = SAVED_BISHOP_MAGICS[i];
             table[i].shift = 64 - BISHOP_BITS[i];
         }
-        table[i]
-            .attacks
-            .resize(1 << (64 - table[i].shift), Bitboard::EMPTY);
+        table[i].attacks = vec![Bitboard::EMPTY; 1 << (64 - table[i].shift)];
         let num_points = table[i].mask.len();
         for j in 0..(1 << num_points) {
             let occupancy = index_to_occupancy(j, table[i].mask);
@@ -375,7 +370,7 @@ fn get_bishop_mask(sq: Square) -> Bitboard {
     (Bitboard::diagonal(sq) ^ Bitboard::anti_diagonal(sq)) & !RING_MASK
 }
 
-/// Given some mask, create the occupancy bitboard according to this index.
+/// Given some mask, create the occupancy [`Bitboard`] according to this index.
 ///
 /// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
 /// This is equivalent to the parallel-bits-extract (PEXT) instruction on x86 architectures.
