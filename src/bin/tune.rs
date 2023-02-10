@@ -24,7 +24,6 @@
 //! given position.
 
 #![warn(clippy::pedantic)]
-#![allow(clippy::inline_always)]
 
 use std::{
     env,

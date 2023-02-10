@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #![warn(clippy::pedantic)]
-#![allow(clippy::inline_always, clippy::too_many_lines)]
+#![allow(clippy::too_many_lines)]
 
 //! Shared data types and useful basic definitions found across the entire Fiddler engine.
 
