@@ -273,7 +273,6 @@ impl Board {
         Ok(board)
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the squares occupied by the pieces of each type (i.e. Black or
     /// White).
@@ -290,7 +289,6 @@ impl Board {
         self[Color::White] | self[Color::Black]
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the type of the piece occupying a given square.
     /// Returns `None` if there are no pieces occupying the square.
@@ -308,7 +306,6 @@ impl Board {
         Piece::ALL.into_iter().find(|&pt| self[pt].contains(sq))
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the color of a piece occupying a current square.
     /// Returns `None` if there are no pieces occupying the square.
@@ -333,7 +330,6 @@ impl Board {
         None
     }
 
-    #[inline(always)]
     #[must_use]
     /// Is the given move a capture in the current state of the board? Requires
     /// that `m` is a legal move. En passant qualifies as a capture.
@@ -555,7 +551,6 @@ impl Board {
         self.recompute_pinned();
     }
 
-    #[inline(always)]
     /// Remove a piece of a known type at a square.
     /// Will break the validity of the board if there is no piece of type `pt`
     /// and color `color` at `sq`.
@@ -567,7 +562,6 @@ impl Board {
         self.sides[color as usize] &= removal_mask;
     }
 
-    #[inline(always)]
     /// Add a piece to the square at a given place on the board.
     /// This should only be called if you believe that the board as-is is empty
     /// at the square below. Otherwise it will break the internal board
@@ -598,7 +592,6 @@ impl Board {
         }
     }
 
-    #[inline(always)]
     /// Recompute the Zobrist hash of this board and set it to the saved hash
     /// value.
     fn recompute_hash(&mut self) {
@@ -744,7 +737,6 @@ impl PartialEq for Board {
 impl Index<Piece> for Board {
     type Output = Bitboard;
 
-    #[inline(always)]
     /// Get the squares occupied by the given piece.
     fn index(&self, index: Piece) -> &Self::Output {
         // SAFETY: This will not fail because there are the same number of
@@ -756,7 +748,6 @@ impl Index<Piece> for Board {
 impl Index<Color> for Board {
     type Output = Bitboard;
 
-    #[inline(always)]
     /// Get the squares occupied by the given piece.
     fn index(&self, index: Color) -> &Self::Output {
         // SAFETY: This will not fail because there are the same number of

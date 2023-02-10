@@ -155,7 +155,6 @@ impl TTable {
         }
     }
 
-    #[inline(always)]
     /// Compute the index for an entry with a given key.
     fn index_for(&self, hash_key: u64) -> usize {
         ((hash_key >> 16) & self.mask) as usize

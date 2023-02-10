@@ -32,7 +32,6 @@ pub enum Color {
 }
 
 impl Color {
-    #[inline(always)]
     #[must_use]
     /// Get the direction that a pawn of the given color normally moves.
     ///
@@ -48,7 +47,6 @@ impl Color {
         DIRS[self as usize]
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the promotion rank of a given color.
     ///
@@ -65,7 +63,6 @@ impl Color {
         PROMOTE_RANKS[self as usize]
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get a `Bitboard` with 1's on the start rank of the pawn of the given color.
     ///
@@ -87,7 +84,6 @@ impl Color {
 
 impl Not for Color {
     type Output = Self;
-    #[inline(always)]
     fn not(self) -> Color {
         // SAFETY: `self` will always be equal to 0 or 1, so the xor operation will still return a
         // valid color.

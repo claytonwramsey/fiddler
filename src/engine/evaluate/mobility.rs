@@ -212,7 +212,6 @@ pub const ATTACKS_VALUE: [[Score; MAX_MOBILITY]; Piece::NUM] = unsafe {
     ])
 };
 
-#[inline(always)]
 #[must_use]
 /// Helper function for computing mobility scores of a piece.
 ///

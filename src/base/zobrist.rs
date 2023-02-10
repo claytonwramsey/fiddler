@@ -20,7 +20,6 @@
 
 use super::{Color, Piece, Square};
 
-#[inline(always)]
 /// Get the Zobrist key for a given key, type, and square.
 pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     match pt {
@@ -36,7 +35,6 @@ pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
     }
 }
 
-#[inline(always)]
 /// Get the Zobrist key for a castling right.
 /// 0 is for white king castle, 1 is for white queen castle, 2 is for black king castle, and 3 is
 /// for black queen castle.
@@ -44,7 +42,6 @@ pub fn castle_key(right: u8) -> u64 {
     unsafe { *CASTLE_KEYS.get_unchecked(right as usize) }
 }
 
-#[inline(always)]
 /// Get the Zobrist key of an en passant square.
 pub fn ep_key(sq: Square) -> u64 {
     unsafe { *EP_KEYS.get_unchecked(sq.file() as usize) }

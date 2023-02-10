@@ -414,7 +414,6 @@ impl Eval {
     const PAWN_VALUE: i16 = 100;
 
     #[must_use]
-    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     /// Get an evaluation equivalent to the given pawn value.
     /// Will round down by the centipawn.
@@ -423,14 +422,12 @@ impl Eval {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Construct an `Eval` with the given value in centipawns.
     pub const fn centipawns(x: i16) -> Eval {
         Eval(x)
     }
 
     #[must_use]
-    #[inline(always)]
     /// Create an `Eval` based on the number of half-moves required for White to mate.
     /// `-Eval::mate_in(n)` will give Black to mate in the number of plies.
     pub const fn mate_in(nplies: u8) -> Eval {
@@ -438,7 +435,6 @@ impl Eval {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Step this evaluation back in time by `n` moves.
     /// If the evaluation is within `n` steps of the mate cutoff, this will result in weird
     /// behavior.
@@ -462,7 +458,6 @@ impl Eval {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Step this evaluation forward by a given number of steps.
     /// If the evaluation is within `n` steps of the mate cutoff, this will result in weird
     /// behavior.
@@ -477,7 +472,6 @@ impl Eval {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Is this evaluation a mate (i.e. a non-normal evaluation)?
     pub const fn is_mate(self) -> bool {
         self.0 > Eval::MATE_CUTOFF || self.0 < -Eval::MATE_CUTOFF
@@ -506,7 +500,6 @@ impl Eval {
         })
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the value in centipawns of this evaluation.
     /// Will return a number with magnitude greater than 29000 for mates.
@@ -514,14 +507,12 @@ impl Eval {
         self.0
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the value in floating-point pawns of this evaluation.
     pub fn float_val(self) -> f32 {
         f32::from(self.0) / 100.
     }
 
-    #[inline(always)]
     #[must_use]
     /// Put this evaluation into the perspective of the given player.
     /// In essence, if the player is Black, the evaluation will be inverted, but if the player is
@@ -594,7 +585,6 @@ impl Display for Score {
 
 impl Mul<u8> for Eval {
     type Output = Self;
-    #[inline(always)]
     fn mul(self, rhs: u8) -> Self::Output {
         Eval(self.0 * i16::from(rhs))
     }
@@ -602,7 +592,6 @@ impl Mul<u8> for Eval {
 
 impl Mul<i16> for Eval {
     type Output = Self;
-    #[inline(always)]
     fn mul(self, rhs: i16) -> Self::Output {
         Eval(self.0 * rhs)
     }
@@ -610,7 +599,6 @@ impl Mul<i16> for Eval {
 
 impl Mul<i8> for Eval {
     type Output = Self;
-    #[inline(always)]
     fn mul(self, rhs: i8) -> Self::Output {
         Eval(self.0 * i16::from(rhs))
     }
@@ -618,7 +606,6 @@ impl Mul<i8> for Eval {
 
 impl Mul<f32> for Eval {
     type Output = Self;
-    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     fn mul(self, rhs: f32) -> Self::Output {
         Eval((f32::from(self.0) * rhs) as i16)
@@ -626,21 +613,18 @@ impl Mul<f32> for Eval {
 }
 
 impl MulAssign<i16> for Eval {
-    #[inline(always)]
     fn mul_assign(&mut self, rhs: i16) {
         self.0 *= rhs;
     }
 }
 
 impl AddAssign<Eval> for Eval {
-    #[inline(always)]
     fn add_assign(&mut self, rhs: Eval) {
         self.0 += rhs.0;
     }
 }
 
 impl SubAssign<Eval> for Eval {
-    #[inline(always)]
     fn sub_assign(&mut self, rhs: Eval) {
         self.0 -= rhs.0;
     }
@@ -648,7 +632,6 @@ impl SubAssign<Eval> for Eval {
 
 impl Add<Eval> for Eval {
     type Output = Self;
-    #[inline(always)]
     fn add(self, rhs: Eval) -> Eval {
         Eval(self.0 + rhs.0)
     }
@@ -656,7 +639,6 @@ impl Add<Eval> for Eval {
 
 impl Sub<Eval> for Eval {
     type Output = Self;
-    #[inline(always)]
     fn sub(self, rhs: Eval) -> Eval {
         Eval(self.0 - rhs.0)
     }
@@ -664,7 +646,6 @@ impl Sub<Eval> for Eval {
 
 impl Neg for Eval {
     type Output = Self;
-    #[inline(always)]
     fn neg(self) -> Eval {
         Eval(-self.0)
     }

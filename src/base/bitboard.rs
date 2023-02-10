@@ -77,7 +77,6 @@ impl Bitboard {
     /// ```
     pub const ALL: Bitboard = Bitboard::new(!0);
 
-    #[inline(always)]
     #[must_use]
     /// Construct a new Bitboard from a numeric literal.
     ///
@@ -97,7 +96,6 @@ impl Bitboard {
         Bitboard(x)
     }
 
-    #[inline(always)]
     #[must_use]
     /// Determine whether this bitboard contains a given square.
     ///
@@ -113,7 +111,6 @@ impl Bitboard {
         self.0 & (1 << square as u8) != 0
     }
 
-    #[inline(always)]
     /// Add a square to the set of squares contained in this `Bitboard`.
     ///
     /// # Examples
@@ -128,7 +125,6 @@ impl Bitboard {
         self.0 |= 1 << sq as u8;
     }
 
-    #[inline(always)]
     #[must_use]
     /// Create a new `Bitboard` which is the same as this one, but with the square `sq` inserted.
     /// Returns a copy if `sq` was alreay contained by this bitboard.
@@ -148,7 +144,6 @@ impl Bitboard {
         Bitboard(self.0 | (1 << sq as u8))
     }
 
-    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     #[must_use]
     /// Compute the number of squares contained in this `Bitboard`.
@@ -167,7 +162,6 @@ impl Bitboard {
         self.0.count_ones() as u8
     }
 
-    #[inline(always)]
     #[must_use]
     /// Count the number of trailing zeros (i.e. empty squares between A1 and
     /// the first non-empty square) in this bitboard. Alternately, this can be
@@ -185,7 +179,6 @@ impl Bitboard {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Determine whether this bitboard is empty.
     ///
     /// # Examples
@@ -203,7 +196,6 @@ impl Bitboard {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Determine whether this bitboard has exactly one bit.
     /// This function is equivalent to `Bitboard.len() == 1`, but it is slightly faster.
     ///
@@ -243,7 +235,6 @@ impl Bitboard {
         (self.0 & self.0.overflowing_sub(1).0) != 0
     }
 
-    #[inline(always)]
     #[must_use]
     /// Perform a wrapping multiply on this bitboard.
     ///
@@ -253,7 +244,6 @@ impl Bitboard {
         Bitboard(self.0.wrapping_mul(rhs.0))
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get a bitboard of all the squares between the two given squares, along the moves of a
     /// bishop or rook.
@@ -334,7 +324,6 @@ impl Bitboard {
         }
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get a `Bitboard` containing all squares along the line between `sq1` and `sq2`.
     ///
@@ -383,7 +372,6 @@ impl Bitboard {
         }
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the primary diagonal running through a square, parallel to the diagonal from A1 through
     /// H8.
@@ -425,7 +413,6 @@ impl Bitboard {
         DIAGONAL[sq as usize]
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the anti-diagonal running through a square, parallel to the diagonal from A8 through H1.
     ///
@@ -467,7 +454,6 @@ impl Bitboard {
         ANTI_DIAGONAL[sq as usize]
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the set of all squares in the same file as a given square.
     ///
@@ -494,7 +480,6 @@ impl Bitboard {
         Bitboard(COL_A.0 << sq.file())
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the set of all squares in the same rank as a given square.
     ///
@@ -522,7 +507,6 @@ impl Bitboard {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Get a `Bitboard` containing all squares in the same rank or file as `sq`, but not including
     /// `sq`.
     ///
@@ -554,7 +538,6 @@ impl Bitboard {
     }
 
     #[must_use]
-    #[inline(always)]
     /// Get a `Bitboard` containing all squares in the same diagonal or anti-diagonal as `sq`, but
     /// not including `sq`.
     ///
@@ -592,8 +575,7 @@ macro_rules! bb_binop_define {
         impl $trait for Bitboard {
             type Output = Self;
 
-            #[inline(always)]
-            fn $fn_name(self, rhs: Self) -> Self::Output {
+                        fn $fn_name(self, rhs: Self) -> Self::Output {
                 Bitboard(self.0 $op rhs.0)
             }
         }
@@ -608,8 +590,7 @@ bb_binop_define!(BitXor, bitxor, ^);
 macro_rules! bb_binassign_define {
     ($trait: ident, $fn_name: ident, $op: tt) => {
         impl $trait for Bitboard {
-            #[inline(always)]
-            fn $fn_name(&mut self, rhs: Self) {
+                        fn $fn_name(&mut self, rhs: Self) {
                 self.0 $op rhs.0;
             }
         }
@@ -623,7 +604,6 @@ bb_binassign_define!(BitXorAssign, bitxor_assign, ^=);
 impl Shl<u8> for Bitboard {
     type Output = Self;
 
-    #[inline(always)]
     fn shl(self, rhs: u8) -> Self::Output {
         Bitboard(self.0 << rhs)
     }
@@ -632,14 +612,12 @@ impl Shl<u8> for Bitboard {
 impl Shr<u8> for Bitboard {
     type Output = Self;
 
-    #[inline(always)]
     fn shr(self, rhs: u8) -> Self::Output {
         Bitboard(self.0 >> rhs)
     }
 }
 
 impl ShlAssign<u8> for Bitboard {
-    #[inline(always)]
     fn shl_assign(&mut self, rhs: u8) {
         self.0 <<= rhs;
     }
@@ -648,14 +626,12 @@ impl ShlAssign<u8> for Bitboard {
 impl Not for Bitboard {
     type Output = Self;
 
-    #[inline(always)]
     fn not(self) -> Self::Output {
         Bitboard(!self.0)
     }
 }
 
 impl From<Square> for Bitboard {
-    #[inline(always)]
     fn from(sq: Square) -> Bitboard {
         Bitboard(1 << sq as u8)
     }
@@ -692,7 +668,6 @@ impl Display for Bitboard {
 impl Iterator for Bitboard {
     type Item = Square;
 
-    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_empty() {

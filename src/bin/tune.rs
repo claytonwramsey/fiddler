@@ -142,7 +142,6 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
 }
 
 #[allow(clippy::similar_names, clippy::cast_precision_loss)]
-#[inline(never)]
 /// Perform one epoch of gradient descent training.
 ///
 /// Inputs:
@@ -210,7 +209,6 @@ fn train_thread(input: &[(BoardFeatures, f32)], weights: &Weights) -> (Weights, 
     (grad, sum_se)
 }
 
-#[inline(always)]
 /// Compute the  sigmoid function of a variable.
 /// `beta` is the horizontal scaling of the sigmoid.
 ///

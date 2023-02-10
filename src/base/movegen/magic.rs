@@ -228,7 +228,6 @@ impl AttacksTable {
         }
     }
 
-    #[inline(always)]
     /// Get the attacks that a rook on `sq` could make with the reference table `table`.
     ///
     /// # Examples
@@ -242,7 +241,6 @@ impl AttacksTable {
         get_attacks(occupancy, sq, &self.rook_table)
     }
 
-    #[inline(always)]
     /// Get the attacks that a bishop on `sq` could make with the reference table `table`.
     ///
     /// # Examples
@@ -338,7 +336,6 @@ fn get_attacks(occupancy: Bitboard, sq: Square, table: &[SquareAttacks; 64]) -> 
     unsafe { *magic_data.attacks.get_unchecked(key) }
 }
 
-#[inline(always)]
 /// Use magic hashing to get the index to look up attacks in a bitboad.
 fn compute_magic_key(occupancy: Bitboard, magic: Bitboard, shift: u8) -> usize {
     usize::from((occupancy.wrapping_mul(magic)) >> shift)

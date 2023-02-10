@@ -58,7 +58,6 @@ impl CastleRights {
     /// A `CastleRights` where the only right is Black's queenside castle.
     pub const BLACK_QUEENSIDE: CastleRights = CastleRights(1 << 3);
 
-    #[inline(always)]
     /// Can the given color legally castle kingside?
     pub fn kingside(self, color: Color) -> bool {
         self & match color {
@@ -67,7 +66,6 @@ impl CastleRights {
         } != CastleRights::NONE
     }
 
-    #[inline(always)]
     /// Can the given color legally castle kingside?
     pub fn queenside(self, color: Color) -> bool {
         self & match color {
@@ -79,14 +77,12 @@ impl CastleRights {
 
 impl BitOr<CastleRights> for CastleRights {
     type Output = CastleRights;
-    #[inline(always)]
     fn bitor(self, other: CastleRights) -> CastleRights {
         CastleRights(self.0 | other.0)
     }
 }
 
 impl BitOrAssign<CastleRights> for CastleRights {
-    #[inline(always)]
     fn bitor_assign(&mut self, other: CastleRights) {
         self.0 |= other.0;
     }
@@ -94,14 +90,12 @@ impl BitOrAssign<CastleRights> for CastleRights {
 
 impl BitAnd<CastleRights> for CastleRights {
     type Output = CastleRights;
-    #[inline(always)]
     fn bitand(self, other: CastleRights) -> CastleRights {
         CastleRights(self.0 & other.0)
     }
 }
 
 impl BitAndAssign<CastleRights> for CastleRights {
-    #[inline(always)]
     fn bitand_assign(&mut self, other: CastleRights) {
         self.0 &= other.0;
     }
@@ -109,7 +103,6 @@ impl BitAndAssign<CastleRights> for CastleRights {
 
 impl Not for CastleRights {
     type Output = CastleRights;
-    #[inline(always)]
     fn not(self) -> CastleRights {
         CastleRights(self.0 ^ 15)
     }

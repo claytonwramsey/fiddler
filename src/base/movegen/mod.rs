@@ -314,7 +314,6 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
     !b.pinned.contains(from_sq) || Square::aligned(from_sq, to_sq, b.king_sqs[player as usize])
 }
 
-#[inline(always)]
 /// Get the legal moves in a board.
 ///
 /// `M` is the generation mode of move generation: it specifies which subset of all legal moves to
@@ -556,7 +555,6 @@ pub fn has_moves(b: &Board) -> bool {
     false
 }
 
-#[inline(always)]
 #[must_use]
 /// Determine whether a square is attacked by the pieces of a given color in a position.
 /// Squares which are threatened by only non-capture moves (i.e. pawn-pushes) will not qualify as
@@ -575,7 +573,6 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
     !square_attackers(board, sq, color).is_empty()
 }
 
-#[inline(always)]
 /// Enumerate the legal moves a player of the given color would be able to make if it were their
 /// turn to move, assuming the player's king is not in check.
 ///
@@ -647,7 +644,6 @@ fn evasions<const M: GenMode>(b: &Board, mut callback: impl FnMut(Move)) {
     king_move_non_castle(b, &mut callback, king_targets);
 }
 
-#[inline(always)]
 #[must_use]
 /// Get the attackers of a given color on a square as a `Bitboard` representing the squares of the
 /// attackers.
@@ -926,7 +922,6 @@ fn normal_piece_assistant(b: &Board, callback: &mut impl FnMut(Move), target: Bi
     }
 }
 
-#[inline(always)]
 /// Get the moves that a king could make in a position that are not castles.
 ///
 /// Only moves which result in a king landing on a square contained by `target` will be generated.
@@ -946,7 +941,6 @@ fn king_move_non_castle(b: &Board, callback: &mut impl FnMut(Move), target: Bitb
     }
 }
 
-#[inline(always)]
 /// Get the castling moves that the king could make in this position and hand them off to
 /// `callback`.
 ///

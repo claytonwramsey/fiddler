@@ -162,7 +162,6 @@ impl<Cookie: Sized> CookieGame<Cookie> {
         Ok(m_removed)
     }
 
-    #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     /// Get the position representing the current state of the game.
@@ -170,7 +169,6 @@ impl<Cookie: Sized> CookieGame<Cookie> {
         &self.history.last().unwrap().0
     }
 
-    #[inline(always)]
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     /// Get the cookie of the current state of the game.

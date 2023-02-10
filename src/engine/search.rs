@@ -61,7 +61,6 @@ pub enum SearchError {
 }
 
 impl<T> From<PoisonError<T>> for SearchError {
-    #[inline(always)]
     fn from(_: PoisonError<T>) -> Self {
         SearchError::Poison
     }
@@ -618,7 +617,6 @@ impl<'a> PVSearch<'a> {
         Ok(best_score)
     }
 
-    #[inline(always)]
     /// Increment the number of nodes searched, copying over the value into the search limit if it
     /// is too high.
     fn increment_nodes(&mut self) -> Result<(), SearchError> {
@@ -630,7 +628,6 @@ impl<'a> PVSearch<'a> {
         Ok(())
     }
 
-    #[inline(always)]
     /// Copy over the number of nodes evaluated by this search into the limit structure, and zero
     /// out our number.
     fn update_node_limits(&mut self) -> Result<(), SearchError> {

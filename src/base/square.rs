@@ -104,7 +104,6 @@ pub enum Square {
 }
 
 impl Square {
-    #[inline(always)]
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     /// Create a Square from the given rank and file.
@@ -114,21 +113,18 @@ impl Square {
         Square::try_from((rank << 3) | file).ok()
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
     pub const fn rank(self) -> u8 {
         self as u8 >> 3u8
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the integer representing the file (0 -> A, ...) of this square.
     pub const fn file(self) -> u8 {
         self as u8 & 7u8
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the Chebyshev distance to another square.
     pub const fn chebyshev_to(self, rhs: Square) -> u8 {
@@ -145,7 +141,6 @@ impl Square {
         }
     }
 
-    #[inline(always)]
     #[must_use]
     #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
     /// Get the distance between two `Square`s by traveling along files.
@@ -164,7 +159,6 @@ impl Square {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
     }
 
-    #[inline(always)]
     #[must_use]
     #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
     /// Get the distance between two `Square`s by traveling along ranks.
@@ -183,7 +177,6 @@ impl Square {
         ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs()
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get what this square would appear to be from the point of view of the opposing player.
     ///
@@ -261,7 +254,6 @@ impl Square {
         char::from(self.file() + b'a')
     }
 
-    #[inline(always)]
     #[must_use]
     /// Determine whether three squares are aligned according to rook or bishop directions.
     pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
@@ -280,7 +272,6 @@ impl Square {
 
 impl Add<Direction> for Square {
     type Output = Square;
-    #[inline(always)]
     #[allow(clippy::cast_sign_loss)]
     fn add(self, rhs: Direction) -> Self::Output {
         // Apply the modulo to prevent UB.
@@ -289,14 +280,12 @@ impl Add<Direction> for Square {
 }
 
 impl AddAssign<Direction> for Square {
-    #[inline(always)]
     fn add_assign(&mut self, rhs: Direction) {
         *self = *self + rhs;
     }
 }
 
 impl Display for Square {
-    #[inline(always)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", self.file_name(), self.rank() + 1)
     }
@@ -304,7 +293,6 @@ impl Display for Square {
 
 impl Sub<Square> for Square {
     type Output = Direction;
-    #[inline(always)]
     fn sub(self, rhs: Square) -> Self::Output {
         Direction((self as i8) - (rhs as i8))
     }
@@ -312,7 +300,6 @@ impl Sub<Square> for Square {
 
 impl Sub<Direction> for Square {
     type Output = Square;
-    #[inline(always)]
     #[allow(clippy::cast_sign_loss)]
     fn sub(self, rhs: Direction) -> Self::Output {
         Square::try_from(((self as i8) - (rhs.0)) as u8 & 63u8).unwrap()
@@ -323,7 +310,6 @@ impl TryFrom<Bitboard> for Square {
     type Error = &'static str;
 
     /// Create the square closest to A1 (prioritizing rank) on the given bitboard.
-    #[inline(always)]
     #[allow(clippy::cast_possible_truncation)]
     fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
         Square::try_from(bb.trailing_zeros() as u8)
@@ -332,7 +318,6 @@ impl TryFrom<Bitboard> for Square {
 
 impl TryFrom<u8> for Square {
     type Error = &'static str;
-    #[inline(always)]
     fn try_from(x: u8) -> Result<Square, Self::Error> {
         Square::const_try_from(x)
     }

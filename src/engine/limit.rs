@@ -95,13 +95,11 @@ impl SearchLimit {
         self.over.store(true, Ordering::Relaxed);
     }
 
-    #[inline(always)]
     /// Poll whether the search is over.
     pub fn is_over(&self) -> bool {
         self.over.load(Ordering::Relaxed)
     }
 
-    #[inline(always)]
     /// Check the elapsed time to see if this search is over and if so update
     /// accordingly.
     ///
@@ -119,7 +117,6 @@ impl SearchLimit {
         Ok(false)
     }
 
-    #[inline(always)]
     /// Increment the total number of nodes searched.
     ///
     /// # Errors
@@ -135,7 +132,6 @@ impl SearchLimit {
         Ok(())
     }
 
-    #[inline(always)]
     /// Get the cumulative number of nodes searched.
     pub fn num_nodes(&self) -> u64 {
         self.num_nodes.load(Ordering::Relaxed)

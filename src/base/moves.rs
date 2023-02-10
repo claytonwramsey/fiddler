@@ -61,7 +61,6 @@ impl Move {
     /// The flag bits representing a move which is en passant.
     const EN_PASSANT_FLAG: u16 = 0xC000;
 
-    #[inline(always)]
     #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having any extra special
     /// flags.
@@ -69,7 +68,6 @@ impl Move {
         Move(((to_square as u16) << 6) | from_square as u16)
     }
 
-    #[inline(always)]
     #[must_use]
     /// Create a `Move` with the given promotion type.
     /// The promote type must not be a pawn or a king.
@@ -81,21 +79,18 @@ impl Move {
         )
     }
 
-    #[inline(always)]
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub const fn castling(from_square: Square, to_square: Square) -> Move {
         Move(Move::normal(from_square, to_square).0 | Move::CASTLE_FLAG)
     }
 
-    #[inline(always)]
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub const fn en_passant(from_square: Square, to_square: Square) -> Move {
         Move(Move::normal(from_square, to_square).0 | Move::EN_PASSANT_FLAG)
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the target square of this move.
     pub const fn to_square(self) -> Square {
@@ -103,7 +98,6 @@ impl Move {
         unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the square that a piece moves from to execute this move.
     pub const fn from_square(self) -> Square {
@@ -111,28 +105,24 @@ impl Move {
         unsafe { transmute((self.0 & 63u16) as u8) }
     }
 
-    #[inline(always)]
     #[must_use]
     /// Determine whether this move is marked as a promotion.
     pub const fn is_promotion(self) -> bool {
         self.0 & Move::FLAG_MASK == Move::PROMOTE_FLAG
     }
 
-    #[inline(always)]
     #[must_use]
     /// Determine whether this move is marked as a castle.
     pub const fn is_castle(self) -> bool {
         self.0 & Move::FLAG_MASK == Move::CASTLE_FLAG
     }
 
-    #[inline(always)]
     #[must_use]
     /// Determine whether this move is marked as an en passant capture.
     pub const fn is_en_passant(self) -> bool {
         self.0 & Move::FLAG_MASK == Move::EN_PASSANT_FLAG
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get the promotion type of this move.
     /// The resulting type will never be a pawn or a king.
@@ -316,7 +306,6 @@ impl Move {
         result
     }
 
-    #[inline(always)]
     #[must_use]
     /// Get a number representing this move uniquely.
     /// The value returned may change from version to version.
@@ -324,7 +313,6 @@ impl Move {
         self.0
     }
 
-    #[inline(always)]
     #[must_use]
     /// Reconstruct a move based on its `value`.
     /// Should only be used with values returned from `Move::value()`.
