@@ -16,10 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        with:
-          toolchain: nightly
-        run: cargo build --verbose
+        run: cargo +nightly build --verbose
       - name: Run tests
-        with:
-          toolchain: nightly
-        run: cargo test --verbose
+        run: cargo +nightly test --verbose
