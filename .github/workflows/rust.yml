@@ -14,8 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
       - name: Build
-        run: cargo +nightly build --verbose
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --test
       - name: Run tests
-        run: cargo +nightly test --verbose
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
