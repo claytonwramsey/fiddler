@@ -22,8 +22,6 @@
 //! Included below are tools for evaluating positions, searching trees, storing
 //! data, configuring engines, and more.
 
-use search::SearchError;
-
 pub mod evaluate;
 pub mod limit;
 mod pick;

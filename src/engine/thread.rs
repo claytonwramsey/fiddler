@@ -27,15 +27,11 @@ use std::{thread::scope, time::Instant};
 
 use super::{
     evaluate::{Eval, ScoredGame},
+    search::SearchInfo,
     uci::{EngineInfo, Message},
 };
 
-use super::{
-    limit::SearchLimit,
-    search::{search, SearchResult},
-    transposition::TTable,
-    SearchError,
-};
+use super::{limit::SearchLimit, search::search, transposition::TTable};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Configuration options for a search.
@@ -94,19 +90,20 @@ impl MainSearch {
         }
     }
 
+    #[allow(clippy::result_unit_err)]
     /// Evaluate a position.
     /// The searcher will continue searching until its field `limit` marks itself as over.
     ///
     /// # Errors
     ///
-    /// An error will be returned according to the cases outlined in `SearchError`.
-    /// Such errors are rare, and are generally either the result of an internal bug or a critical
-    /// OS interrupt.
-    /// However, a timeout error is most likely if the search times out before it can do any
-    /// computation.
-    pub fn evaluate(&self, g: &ScoredGame) -> SearchResult {
+    /// This function will return an `Err` if no search is completed in the allocated time.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if any of the search threads panic.
+    pub fn evaluate(&self, g: &ScoredGame) -> Result<SearchInfo, ()> {
         let tic = Instant::now();
-        let mut best_result = Err(SearchError::Timeout);
+        let mut best_result = Err(());
 
         // The previous iteration's evaluation, used for windowing
         let mut prev_eval = None;
@@ -125,7 +122,7 @@ impl MainSearch {
                 let mut sub_result = self.aspiration_search(g, depth, true, prev_eval);
 
                 for handle in handles {
-                    let eval_result = handle.join().map_err(|_| SearchError::Join)?;
+                    let eval_result = handle.join().unwrap();
 
                     match (&mut sub_result, &eval_result) {
                         // if this is our first successful thread, use its result
@@ -186,7 +183,7 @@ impl MainSearch {
         depth: u8,
         main: bool,
         prev_eval: Option<Eval>,
-    ) -> SearchResult {
+    ) -> Result<SearchInfo, ()> {
         if let Some(ev) = prev_eval {
             // we have a previous score we can use to window this search
             let (alpha, beta) = if ev.is_mate() {

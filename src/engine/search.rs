@@ -48,28 +48,13 @@ use super::{
 
 use std::cmp::max;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(clippy::module_name_repetitions)]
-/// The types of errors which can occur during a search.
-pub enum SearchError {
-    /// This search failed due to timeout.
-    Timeout,
-    /// This searched failed because a thread failed to join.
-    Join,
-}
-
-#[allow(clippy::module_name_repetitions)]
-/// The result of performing a search.
-/// The `Ok` version contains data on the search, while the `Err` version
-/// contains a reason why the search failed.
-pub type SearchResult = Result<SearchInfo, SearchError>;
-
 #[allow(clippy::too_many_arguments, clippy::cast_possible_wrap)]
 /// Evaluate the given game.
 /// The evaluation will be from the player's perspective, i.e. inverted if the
 /// player to move is Black.
 ///
-/// Inputs:
+/// # Inputs
+///
 /// * `g`: the game which will be evaluated.
 /// * `ttable`: a reference to the shared transposition table.
 /// * `config`: the configuration of this search.
@@ -83,6 +68,10 @@ pub type SearchResult = Result<SearchInfo, SearchError>;
 /// * `beta`: is an upper bound on the evaluation.
 ///     This is primarily intended to be used for aspiration windowing, and in
 ///     most cases will be set to `Eval::MAX`.
+///
+/// # Errors
+///
+/// This function will return an `Err` if the search times out.
 pub fn search(
     mut g: ScoredGame,
     depth: u8,
@@ -92,7 +81,7 @@ pub fn search(
     is_main: bool,
     alpha: Eval,
     beta: Eval,
-) -> SearchResult {
+) -> Result<SearchInfo, ()> {
     g.start_search();
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
@@ -239,7 +228,7 @@ impl<'a> PVSearch<'a> {
         mut alpha: Eval,
         mut beta: Eval,
         line: &mut Vec<Move>,
-    ) -> Result<Eval, SearchError> {
+    ) -> Result<Eval, ()> {
         // verify that ROOT implies PV
         debug_assert!(if ROOT { PV } else { true });
 
@@ -248,7 +237,7 @@ impl<'a> PVSearch<'a> {
         }
 
         if self.limit.is_over() {
-            return Err(SearchError::Timeout);
+            return Err(());
         }
 
         if depth_to_go <= 0 {
@@ -462,7 +451,7 @@ impl<'a> PVSearch<'a> {
         mut alpha: Eval,
         beta: Eval,
         line: &mut Vec<Move>,
-    ) -> Result<Eval, SearchError> {
+    ) -> Result<Eval, ()> {
         if !self.game.board().checkers.is_empty() {
             // don't allow settling if we are in check (~48 Elo)
             return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, line);
