@@ -289,7 +289,7 @@ fn go<'a>(
     debug_info(&format!("search time: {:?}", *search_duration_guard), debug);
     drop(search_duration_guard); // prevent deadlock when starting the limit
 
-    searcher_guard.limit.start().unwrap();
+    searcher_guard.limit.start();
 
     let cloned_game = game.clone();
 

@@ -34,8 +34,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::SearchError;
-
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
 /// A limit to how long an engine should search for.
@@ -73,21 +71,17 @@ impl SearchLimit {
 
     /// Start the search limit by setting its start time to now.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// This function will return an error if a lock was poisoned.
-    pub fn start(&self) -> Result<(), SearchError> {
+    /// This function will panic if a lock is poisoned.
+    pub fn start(&self) {
         self.num_nodes.store(0, Ordering::Relaxed);
         self.over.store(false, Ordering::Relaxed);
-        *self.start_time.lock().map_err(|_| SearchError::Poison)? = Instant::now();
-        let opt_duration = self
-            .search_duration
-            .lock()
-            .map_err(|_| SearchError::Poison)?;
+        *self.start_time.lock().unwrap() = Instant::now();
+        let opt_duration = self.search_duration.lock().unwrap();
         if let Some(dur) = *opt_duration {
-            *self.end_time.write().map_err(|_| SearchError::Poison)? = Some(Instant::now() + dur);
+            *self.end_time.write().unwrap() = Some(Instant::now() + dur);
         };
-        Ok(())
     }
 
     /// Immediately halt the search, and mark this current search as over.
@@ -103,33 +97,29 @@ impl SearchLimit {
     /// Check the elapsed time to see if this search is over and if so update
     /// accordingly.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// This function will return an error if a lock was poisoned.
-    pub fn update_time(&self) -> Result<bool, SearchError> {
-        if let Some(end) = *self.end_time.read().map_err(|_| SearchError::Poison)? {
+    /// This function will panic if a lock was poisoned.
+    pub fn update_time(&self) {
+        if let Some(end) = *self.end_time.read().unwrap() {
             if Instant::now() > end {
                 self.over.store(true, Ordering::Relaxed);
-                return Ok(true);
             }
         }
-
-        Ok(false)
     }
 
     /// Increment the total number of nodes searched.
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// This function will return an error if a lock was poisoned.
-    pub fn add_nodes(&self, nodes: u64) -> Result<(), SearchError> {
+    /// This function will panic if a lock was poisoned.
+    pub fn add_nodes(&self, nodes: u64) {
         self.num_nodes.fetch_add(nodes, Ordering::Relaxed);
-        if let Some(max_nodes) = *self.nodes_cap.read()? {
+        if let Some(max_nodes) = *self.nodes_cap.read().unwrap() {
             if self.num_nodes.load(Ordering::Relaxed) > max_nodes {
                 self.over.store(true, Ordering::Relaxed);
             }
         }
-        Ok(())
     }
 
     /// Get the cumulative number of nodes searched.

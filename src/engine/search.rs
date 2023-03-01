@@ -46,7 +46,7 @@ use super::{
     transposition::TTable,
 };
 
-use std::{cmp::max, sync::PoisonError};
+use std::cmp::max;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[allow(clippy::module_name_repetitions)]
@@ -54,16 +54,8 @@ use std::{cmp::max, sync::PoisonError};
 pub enum SearchError {
     /// This search failed due to timeout.
     Timeout,
-    /// This search failed because a lock was poisoned.
-    Poison,
     /// This searched failed because a thread failed to join.
     Join,
-}
-
-impl<T> From<PoisonError<T>> for SearchError {
-    fn from(_: PoisonError<T>) -> Self {
-        SearchError::Poison
-    }
 }
 
 #[allow(clippy::module_name_repetitions)]
@@ -252,7 +244,7 @@ impl<'a> PVSearch<'a> {
         debug_assert!(if ROOT { PV } else { true });
 
         if self.is_main {
-            self.limit.update_time()?;
+            self.limit.update_time();
         }
 
         if self.limit.is_over() {
@@ -263,7 +255,7 @@ impl<'a> PVSearch<'a> {
             return self.quiesce::<PV>(depth_so_far, alpha, beta, line);
         }
 
-        self.increment_nodes()?;
+        self.increment_nodes();
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
         // mate distance pruning
@@ -476,7 +468,7 @@ impl<'a> PVSearch<'a> {
             return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, line);
         }
 
-        self.increment_nodes()?;
+        self.increment_nodes();
         self.selective_depth = max(self.selective_depth, depth_so_far);
 
         // check if the game is over before doing anything
@@ -619,22 +611,14 @@ impl<'a> PVSearch<'a> {
 
     /// Increment the number of nodes searched, copying over the value into the search limit if it
     /// is too high.
-    fn increment_nodes(&mut self) -> Result<(), SearchError> {
+    fn increment_nodes(&mut self) {
         self.num_nodes_evaluated += 1;
         self.nodes_since_limit_update += 1;
         if u64::from(self.nodes_since_limit_update) > self.config.limit_update_increment {
-            self.update_node_limits()?;
+            self.limit
+                .add_nodes(u64::from(self.nodes_since_limit_update));
+            self.nodes_since_limit_update = 0;
         }
-        Ok(())
-    }
-
-    /// Copy over the number of nodes evaluated by this search into the limit structure, and zero
-    /// out our number.
-    fn update_node_limits(&mut self) -> Result<(), SearchError> {
-        self.limit
-            .add_nodes(u64::from(self.nodes_since_limit_update))?;
-        self.nodes_since_limit_update = 0;
-        Ok(())
     }
 }
 
