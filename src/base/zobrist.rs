@@ -21,17 +21,14 @@
 use super::{Color, Piece, Square};
 
 /// Get the Zobrist key for a given key, type, and square.
-pub fn square_key(sq: Square, pt: Option<Piece>, color: Color) -> u64 {
-    match pt {
-        None => 0,
-        // Because sq, p, and color are all enums with fixed ranges, we can perform an unchecked
-        // get on these indices.
-        Some(p) => unsafe {
-            *SQUARE_KEYS
-                .get_unchecked(sq as usize)
-                .get_unchecked(p as usize)
-                .get_unchecked(color as usize)
-        },
+pub fn square_key(sq: Square, pt: Piece, color: Color) -> u64 {
+    // Because sq, p, and color are all enums with fixed ranges, we can perform an unchecked
+    // get on these indices.
+    unsafe {
+        *SQUARE_KEYS
+            .get_unchecked(sq as usize)
+            .get_unchecked(pt as usize)
+            .get_unchecked(color as usize)
     }
 }
 

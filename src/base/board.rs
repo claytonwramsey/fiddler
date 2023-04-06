@@ -34,11 +34,17 @@ use std::{
 #[derive(Copy, Clone, Debug, Eq)]
 /// A representation of a position. Does not handle repetition of moves.
 pub struct Board {
+    /// A mailbox representation of the state of the board.
+    /// Each index corresponds to a square, starting with square A1 at index 0.
+    mailbox: [Option<(Piece, Color)>; 64],
     /// The squares ocupied by White and Black, respectively.
     sides: [Bitboard; 2],
     /// The squares occupied by (in order) knights, bishops, rooks,
     /// queens, pawns, and kings.
     pieces: [Bitboard; Piece::NUM],
+}
+
+pub struct BoardMeta {
     /// The color of the player to move.
     pub player: Color,
     /// The square which can be moved to by a pawn in en passant.
@@ -48,15 +54,13 @@ pub struct Board {
     /// The rights of this piece for castling.
     pub castle_rights: CastleRights,
     /// The number of plies that have passed since a capture or pawn push has been made.
-    rule50: u8,
+    pub rule50: u8,
 
     /*
         Below: metadata which is not critical for board representation, but
         which is useful for performance.
     */
     /// A saved internal hash.
-    /// If the board is valid, the this value must ALWAYS be equal to the output
-    /// of `Board.get_fresh_hash()`.
     pub hash: u64,
     /// The set of squares which is occupied by pieces which are checking the
     /// king.
@@ -73,7 +77,7 @@ pub struct Board {
 impl Board {
     #[must_use]
     /// Construct a `Board` from the standard chess starting position.
-    pub fn new() -> Board {
+    pub fn new() -> (Board, BoardMeta) {
         let mut board = Board {
             sides: [
                 Bitboard::new(0x0000_0000_0000_FFFF), //white
@@ -87,17 +91,92 @@ impl Board {
                 Bitboard::new(0x00FF_0000_0000_FF00), //pawn
                 Bitboard::new(0x1000_0000_0000_0010), //king
             ],
+            mailbox: [
+                Some((Piece::Rook, Color::White)), // a1
+                Some((Piece::Knight, Color::White)),
+                Some((Piece::Bishop, Color::White)),
+                Some((Piece::Queen, Color::White)),
+                Some((Piece::King, Color::White)),
+                Some((Piece::Bishop, Color::White)),
+                Some((Piece::Knight, Color::White)),
+                Some((Piece::Rook, Color::White)),
+                Some((Piece::Pawn, Color::White)), // a2
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                None, // a3
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None, // a4
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None, // a5
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None, // a6
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some((Piece::Pawn, Color::Black)), // a7
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Rook, Color::Black)), // a8
+                Some((Piece::Knight, Color::Black)),
+                Some((Piece::Bishop, Color::Black)),
+                Some((Piece::Queen, Color::Black)),
+                Some((Piece::King, Color::Black)),
+                Some((Piece::Bishop, Color::Black)),
+                Some((Piece::Knight, Color::Black)),
+                Some((Piece::Rook, Color::Black)),
+            ],
+        };
+
+        let mut meta = BoardMeta {
             en_passant_square: None,
             player: Color::White,
             castle_rights: CastleRights::ALL,
             rule50: 0,
-            hash: 0,
+            hash: Bitboard::ALL
+                .into_iter()
+                .flat_map(|sq| {
+                    board.mailbox[sq as usize].map(|(pt, color)| zobrist::square_key(sq, pt, color))
+                })
+                .chain((0..4).into_iter().map(zobrist::castle_key))
+                .fold(0, |a, b| a ^ b),
             king_sqs: [Square::E1, Square::E8],
             checkers: Bitboard::EMPTY,
             pinned: Bitboard::EMPTY,
         };
-        board.recompute_hash();
-        board
+
+        (board, meta)
     }
 
     /// Create a Board populated from some FEN and load it.
@@ -119,10 +198,14 @@ impl Board {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_fen(fen: &str) -> Result<Board, &str> {
+    pub fn from_fen(fen: &str) -> Result<(Board, BoardMeta), &str> {
         let mut board = Board {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],
+            mailbox: [None; 64],
+        };
+
+        let mut meta = BoardMeta {
             en_passant_square: None,
             player: Color::White,
             castle_rights: CastleRights::NONE,
@@ -175,7 +258,7 @@ impl Board {
         };
 
         // now compute player to move
-        board.player = {
+        meta.player = {
             let player_chr = fen_chrs
                 .next()
                 .ok_or("reached end of string while parsing for player to move")?;
@@ -185,6 +268,10 @@ impl Board {
                 _ => return Err("unrecognized player to move"),
             }
         };
+
+        if meta.player == Color::Black {
+            meta.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+        }
 
         // now a space
         if fen_chrs.next() != Some(' ') {
@@ -197,14 +284,16 @@ impl Board {
             .ok_or("reached end of string while parsing castle rights")?;
         while castle_chr != ' ' {
             // this may accept some technically illegal FENS, but that's ok
-            board.castle_rights |= match castle_chr {
-                'K' => CastleRights::WHITE_KINGSIDE,
-                'Q' => CastleRights::WHITE_QUEENSIDE,
-                'k' => CastleRights::BLACK_KINGSIDE,
-                'q' => CastleRights::BLACK_QUEENSIDE,
-                '-' => CastleRights::NONE,
+            let (rights_to_add, key_to_add) = match castle_chr {
+                'K' => (CastleRights::WHITE_KINGSIDE, zobrist::castle_key(0)),
+                'Q' => (CastleRights::WHITE_QUEENSIDE, zobrist::castle_key(1)),
+                'k' => (CastleRights::BLACK_KINGSIDE, zobrist::castle_key(2)),
+                'q' => (CastleRights::BLACK_QUEENSIDE, zobrist::castle_key(3)),
+                '-' => (CastleRights::NONE, 0),
                 _ => return Err("unrecognized castle rights character"),
             };
+            meta.castle_rights |= rights_to_add;
+            meta.hash ^= key_to_add;
             castle_chr = fen_chrs
                 .next()
                 .ok_or("reached end of string while parsing castle rights")?;
@@ -213,7 +302,7 @@ impl Board {
         // castle rights searching ate the space, so no need to check for it
 
         // en passant square
-        board.en_passant_square = {
+        meta.en_passant_square = {
             let ep_file_chr = fen_chrs
                 .next()
                 .ok_or("reached EOF while parsing en passant characters")?;
@@ -223,9 +312,9 @@ impl Board {
                 let ep_rank_chr = fen_chrs
                     .next()
                     .ok_or("reached end of string while parsing en passant rank")?;
-                Some(Square::from_algebraic(&format!(
-                    "{ep_file_chr}{ep_rank_chr}"
-                ))?)
+                let ep_sq = Square::from_algebraic(&format!("{ep_file_chr}{ep_rank_chr}"))?;
+                meta.hash ^= zobrist::ep_key(ep_sq);
+                Some(ep_sq)
             }
         };
 
@@ -235,7 +324,7 @@ impl Board {
         }
 
         // 50 move timer
-        board.rule50 = {
+        meta.rule50 = {
             let mut rule50_buf = String::new();
             // there may be more digits
             loop {
@@ -258,19 +347,17 @@ impl Board {
         };
 
         // updating metadata
-        board.recompute_hash();
-        board.king_sqs = [
+        meta.king_sqs = [
             Square::try_from(board[Piece::King] & board[Color::White])?,
             Square::try_from(board[Piece::King] & board[Color::Black])?,
         ];
-        board.checkers =
-            square_attackers(&board, board.king_sqs[board.player as usize], !board.player);
+        meta.checkers = square_attackers(&board, meta.king_sqs[meta.player as usize], !meta.player);
         board.recompute_pinned();
         if !(board.is_valid()) {
             return Err("board state after loading was illegal");
         }
 
-        Ok(board)
+        Ok((board, meta))
     }
 
     #[must_use]
@@ -287,47 +374,6 @@ impl Board {
     /// ```
     pub fn occupancy(&self) -> Bitboard {
         self[Color::White] | self[Color::Black]
-    }
-
-    #[must_use]
-    /// Get the type of the piece occupying a given square.
-    /// Returns `None` if there are no pieces occupying the square.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::{Board, Piece, Square};
-    ///
-    /// let board = Board::new();
-    /// assert_eq!(board.type_at_square(Square::E1), Some(Piece::King));
-    /// assert_eq!(board.type_at_square(Square::E4), None)
-    /// ```
-    pub fn type_at_square(&self, sq: Square) -> Option<Piece> {
-        Piece::ALL.into_iter().find(|&pt| self[pt].contains(sq))
-    }
-
-    #[must_use]
-    /// Get the color of a piece occupying a current square.
-    /// Returns `None` if there are no pieces occupying the square.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::{Board, Color, Square};
-    ///
-    /// let board = Board::new();
-    /// assert_eq!(board.color_at_square(Square::E1), Some(Color::White));
-    /// assert_eq!(board.color_at_square(Square::E4), None)
-    /// ```
-    pub fn color_at_square(&self, sq: Square) -> Option<Color> {
-        let bb = Bitboard::from(sq);
-        if !(self[Color::Black] & bb).is_empty() {
-            return Some(Color::Black);
-        }
-        if !(self[Color::White] & bb).is_empty() {
-            return Some(Color::White);
-        }
-        None
     }
 
     #[must_use]
@@ -351,55 +397,29 @@ impl Board {
     /// # }
     /// ```
     pub fn is_move_capture(&self, m: Move) -> bool {
-        self.occupancy().contains(m.to_square()) || m.is_en_passant()
+        m.is_en_passant() || self[m.to_square()].is_some()
     }
 
     /// Check if the state of this board is valid.
+    ///
     /// Returns false if the board is invalid.
     fn is_valid(&self) -> bool {
-        let mut all_pieces = Bitboard::EMPTY;
-        for pt in Piece::ALL {
-            if !(all_pieces & self[pt]).is_empty() {
-                // piece overlap
-                return false;
-            }
-            all_pieces |= self[pt];
-        }
-
-        if !(self[Color::White] & self[Color::Black]).is_empty() {
-            // colors overlap
-            return false;
-        }
-        let all_colors = self[Color::White] | self[Color::Black];
-
-        if all_pieces != all_colors {
-            // there are pieces which do not have a color
-            return false;
-        }
-
-        if self.hash != self.get_fresh_hash() {
-            return false;
-        }
-
-        let w_king_bb = self[Piece::King] & self[Color::White];
-        let b_king_bb = self[Piece::King] & self[Color::Black];
-
-        if w_king_bb != Bitboard::from(self.king_sqs[Color::White as usize]) {
-            return false;
-        }
-
-        if b_king_bb != Bitboard::from(self.king_sqs[Color::Black as usize]) {
-            return false;
-        }
-
-        if self.checkers
-            != square_attackers(self, self.king_sqs[self.player as usize], !self.player)
-        {
-            return false;
-        }
-
-        // TODO validate pinners
-        true
+        Bitboard::ALL
+            .into_iter()
+            .all(|sq| match self.mailbox[sq as usize] {
+                Some((pt, color)) => {
+                    self.sides[color as usize].contains(sq)
+                        && !self.sides[!color as usize].contains(sq)
+                        && Piece::ALL
+                            .into_iter()
+                            .all(|pt2| (pt2 == pt) == self.pieces[pt2 as usize].contains(sq))
+                }
+                None => self
+                    .sides
+                    .iter()
+                    .chain(self.pieces.iter())
+                    .all(|bb| !bb.contains(sq)),
+            })
     }
 
     /// Apply the given move to the board.
@@ -407,6 +427,7 @@ impl Board {
     /// Requires that this board is currently valid.
     ///
     /// # Panics
+    ///
     /// This function may or may not panic if `m` is not a legal move.
     /// However, you can trust that it will never panic if `m` is legal.
     ///
@@ -425,66 +446,72 @@ impl Board {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn make_move(&mut self, m: Move) {
+    pub fn make_move(&mut self, m: Move, meta: &BoardMeta) -> BoardMeta {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
 
-        let player = self.player;
-        let opponent = !player;
-        let mover_type = self.type_at_square(from_sq).unwrap();
+        let mover_type = self[from_sq].unwrap().0;
         let is_pawn_move = mover_type == Piece::Pawn;
         let is_king_move = mover_type == Piece::King;
+        let capturee = self[to_sq];
 
-        /* Core move functionality */
-        let capturee = self.type_at_square(to_sq);
-        if let Some(c) = capturee {
-            self.remove_known_piece(to_sq, c, opponent);
+        let mut new_meta = BoardMeta {
+            player: !meta.player,
+            rule50: if is_pawn_move || capturee.is_some() {
+                0
+            } else {
+                meta.rule50 + 1
+            },
+            hash: meta.hash ^ zobrist::BLACK_TO_MOVE_KEY,
+            ..*meta
+        };
+
+        /* -------- Core move functionality -------- */
+        if let Some((capturee_type, _)) = capturee {
+            self.remove_known_piece(to_sq, capturee_type, !meta.player);
         }
         /* Promotion and normal piece movement */
-        if let Some(p) = m.promote_type() {
-            self.add_piece(to_sq, p, self.player);
-        } else {
-            self.add_piece(to_sq, mover_type, self.player);
-        }
-        self.remove_known_piece(from_sq, mover_type, player);
+        self.add_piece(to_sq, m.promote_type().unwrap_or(mover_type), meta.player);
+        self.remove_known_piece(from_sq, mover_type, meta.player);
 
-        /* En passant handling */
+        /* -------- En passant handling -------- */
         // perform an en passant capture
         if m.is_en_passant() {
             let capturee_sq =
-                Square::new(from_sq.rank(), self.en_passant_square.unwrap().file()).unwrap();
-            self.remove_known_piece(capturee_sq, Piece::Pawn, opponent);
+                Square::new(from_sq.rank(), meta.en_passant_square.unwrap().file()).unwrap();
+            self.remove_known_piece(capturee_sq, Piece::Pawn, !meta.player);
         }
+
         // remove previous EP square from hash
-        if let Some(ep_sq) = self.en_passant_square {
-            self.hash ^= zobrist::ep_key(ep_sq);
+        if let Some(ep_sq) = meta.en_passant_square {
+            new_meta.hash ^= zobrist::ep_key(ep_sq);
         }
+
         // update EP square
         if is_pawn_move && from_sq.rank_distance(to_sq) > 1 {
             let ep_candidate =
                 Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
-            if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
+            if (PAWN_ATTACKS[meta.player as usize][ep_candidate as usize]
                 & self[Piece::Pawn]
-                & self[opponent])
+                & self[!meta.player])
                 .is_empty()
             {
-                self.en_passant_square = None;
+                meta.en_passant_square = None;
             } else {
-                self.en_passant_square = Some(ep_candidate);
-                self.hash ^= zobrist::ep_key(ep_candidate);
+                meta.en_passant_square = Some(ep_candidate);
+                meta.hash ^= zobrist::ep_key(ep_candidate);
             }
         } else {
-            self.en_passant_square = None;
+            meta.en_passant_square = None;
         };
-        // insert new EP key into hash
 
-        /* Handling castling and castle rights */
-        // in normal castling, we describe it with a `Move` as a king move which
-        // jumps two or three squares.
+        /* -------- Handling castling and castle rights -------- */
+        // in normal castling, we describe it with a `Move` as a king move which jumps two or three
+        // squares.
 
         let mut rights_to_remove;
         if is_king_move {
-            rights_to_remove = match player {
+            rights_to_remove = match meta.player {
                 Color::White => CastleRights::WHITE,
                 Color::Black => CastleRights::BLACK,
             };
@@ -499,8 +526,8 @@ impl Board {
                 };
                 let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
                 let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
-                self.remove_known_piece(rook_from_sq, Piece::Rook, player);
-                self.add_piece(rook_to_sq, Piece::Rook, self.player);
+                self.remove_known_piece(rook_from_sq, Piece::Rook, meta.player);
+                self.add_piece(rook_to_sq, Piece::Rook, meta.player);
             }
         } else {
             // don't need to check if it's a rook because moving from this square
@@ -522,33 +549,34 @@ impl Board {
                 _ => CastleRights::NONE,
             }
         }
-        self.remove_castle_rights(rights_to_remove);
 
-        /* Updating player to move */
-        self.player = !self.player;
-        self.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+        let mut rights_actually_removed = rights_to_remove & meta.castle_rights;
 
-        /* Updating 50-move-rule */
-        if is_pawn_move || capturee.is_some() {
-            self.rule50 = 0;
-        } else {
-            self.rule50 += 1;
+        meta.castle_rights ^= rights_actually_removed;
+
+        while rights_actually_removed.0 != 0 {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                meta.hash ^= zobrist::castle_key(rights_actually_removed.0.trailing_zeros() as u8);
+            }
+            rights_actually_removed &= CastleRights(rights_actually_removed.0 - 1);
         }
 
-        /* Non-meta fields of the board are now in their final state. */
+        /* -------- Non-meta fields of the board are now in their final state. -------- */
 
-        /* Update metadata */
-        // king squares
-        if is_king_move {
-            // update king locations
-            self.king_sqs[!self.player as usize] = m.to_square();
-        }
+        /* -------- Update other metadata -------- */
 
         // checkers
-        self.checkers = square_attackers(self, self.king_sqs[self.player as usize], !self.player);
+        new_meta.checkers = square_attackers(
+            self,
+            new_meta.king_sqs[new_meta.player as usize],
+            meta.player,
+        );
 
         // pinned pieces
         self.recompute_pinned();
+
+        new_meta
     }
 
     /// Remove a piece of a known type at a square.
@@ -578,25 +606,7 @@ impl Board {
 
     /// Remove the given `CastleRights` from this board's castling rights, and
     /// update the internal hash of the board to match.
-    fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {
-        let mut rights_actually_removed = rights_to_remove & self.castle_rights;
-
-        self.castle_rights ^= rights_actually_removed;
-
-        while rights_actually_removed.0 != 0 {
-            #[allow(clippy::cast_possible_truncation)]
-            {
-                self.hash ^= zobrist::castle_key(rights_actually_removed.0.trailing_zeros() as u8);
-            }
-            rights_actually_removed &= CastleRights(rights_actually_removed.0 - 1);
-        }
-    }
-
-    /// Recompute the Zobrist hash of this board and set it to the saved hash
-    /// value.
-    fn recompute_hash(&mut self) {
-        self.hash = self.get_fresh_hash();
-    }
+    fn remove_castle_rights(&mut self, rights_to_remove: CastleRights) {}
 
     /// Recompute the `pinned` metadata of this board.
     fn recompute_pinned(&mut self) {
@@ -663,32 +673,6 @@ impl Board {
             _ => false,
         }
     }
-
-    /// Compute the hash value of this board from scratch. This should
-    /// generally only be used for debug purposes, as in most cases iteratively
-    /// updating the hashes as moves are made is enough.
-    fn get_fresh_hash(&self) -> u64 {
-        let mut hash = 0;
-        for i in 0..64 {
-            let sq = Square::try_from(i).unwrap();
-            hash ^= match self.color_at_square(sq) {
-                Some(c) => zobrist::square_key(sq, self.type_at_square(sq), c),
-                None => 0,
-            };
-        }
-        for i in 0..4 {
-            if 1 << i & self.castle_rights.0 != 0 {
-                hash ^= zobrist::castle_key(i);
-            }
-        }
-        if let Some(ep_sq) = self.en_passant_square {
-            hash ^= zobrist::ep_key(ep_sq);
-        }
-        if self.player == Color::Black {
-            hash ^= zobrist::BLACK_TO_MOVE_KEY;
-        }
-        hash
-    }
 }
 
 impl Display for Board {
@@ -718,29 +702,20 @@ impl Display for Board {
     }
 }
 
-impl Hash for Board {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
-    }
-}
-
 impl PartialEq for Board {
     fn eq(&self, other: &Board) -> bool {
-        self.sides == other.sides
-            && self.pieces == other.pieces
-            && self.en_passant_square == other.en_passant_square
-            && self.player == other.player
-            && self.castle_rights == other.castle_rights
+        // We assume the board is valid, so we don't need to check the mailbox.
+        self.sides == other.sides && self.pieces == other.pieces
     }
 }
 
 impl Index<Piece> for Board {
     type Output = Bitboard;
 
-    /// Get the squares occupied by the given piece.
+    /// Get the squares occupied by pieces of the given type.
     fn index(&self, index: Piece) -> &Self::Output {
-        // SAFETY: This will not fail because there are the same number of
-        // pieces as legal indices on `pieces`.
+        // SAFETY: This will not fail because there are the same number of pieces as legal indices
+        // on `pieces`.
         unsafe { self.pieces.get_unchecked(index as usize) }
     }
 }
@@ -748,11 +723,22 @@ impl Index<Piece> for Board {
 impl Index<Color> for Board {
     type Output = Bitboard;
 
-    /// Get the squares occupied by the given piece.
+    /// Get the squares occupied by pieces of the given color.
     fn index(&self, index: Color) -> &Self::Output {
-        // SAFETY: This will not fail because there are the same number of
-        // colors as indices on `sides`.
+        // SAFETY: This will not fail because there are the same number of colors as indices on
+        // `sides`.
         unsafe { self.sides.get_unchecked(index as usize) }
+    }
+}
+
+impl Index<Square> for Board {
+    type Output = Option<(Piece, Color)>;
+
+    /// Get the type and color of a piece occupying a given square, if it exists.
+    fn index(&self, index: Square) -> &Self::Output {
+        // SAFETY: This will not fail because there are the same number of squares as there are
+        // indices on `mailbox`.
+        unsafe { self.mailbox.get_unchecked(index as usize) }
     }
 }
 
