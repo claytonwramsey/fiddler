@@ -33,17 +33,13 @@ use std::{
 };
 
 use fiddler::{
-    base::Board,
+    base::{game::CookieGame, Board, Color},
     engine::{
-        evaluate::{next_cookie, tag_move, ScoredGame},
+        evaluate::{init_cookie, next_cookie, tag_move, ScoredGame},
         thread::MainSearch,
         time::get_search_time,
         uci::{Command, EngineInfo, GoOption, Message, OptionType},
     },
-};
-use fiddler::{
-    base::{game::CookieGame, Color},
-    engine::evaluate::init_cookie,
 };
 
 /// The default size of the transposition table.

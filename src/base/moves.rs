@@ -19,8 +19,8 @@
 //! Definitions of moves, which can describe any legal playable move.
 
 use super::{
+    game::{Board, Game},
     movegen::{get_moves, has_moves, is_legal, is_square_attacked_by, GenMode},
-    Board,
 };
 
 use super::{Piece, Square};
@@ -135,12 +135,12 @@ impl Move {
     }
 
     /// Convert a move from its UCI representation.
-    /// Requires the board the move was played on to determine extra flags about the move.
+    /// Requires the game the move was played on to determine extra flags about the move.
     ///
     /// # Errors
     ///
     /// This function will return an `Err` if `s` describes an illegal UCI move.
-    pub fn from_uci(s: &str, board: &Board) -> Result<Move, &'static str> {
+    pub fn from_uci(s: &str, game: &Game) -> Result<Move, &'static str> {
         if !(s.len() == 4 || s.len() == 5) {
             return Err("string was neither a normal move or a promotion");
         }
@@ -152,11 +152,13 @@ impl Move {
             return Ok(Move::promoting(from_sq, to_sq, pt));
         }
 
-        if board[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
+        if game.board()[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
             return Ok(Move::castling(from_sq, to_sq));
         }
 
-        if board[Piece::Pawn].contains(from_sq) && board.en_passant_square == Some(to_sq) {
+        if game.board()[Piece::Pawn].contains(from_sq)
+            && game.meta().en_passant_square == Some(to_sq)
+        {
             return Ok(Move::en_passant(from_sq, to_sq));
         }
 
@@ -178,7 +180,7 @@ impl Move {
     }
 
     #[allow(clippy::missing_panics_doc)]
-    /// Given a [`Move`] and the [`Board`] it was played on, construct the algebraic-notation
+    /// Given a [`Move`] and the [`Game`] it was played on, construct the algebraic-notation
     /// version of the move.
     ///
     /// # Errors
@@ -190,7 +192,7 @@ impl Move {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler::base::{Move, Board, Square};
+    /// use fiddler::base::{Board, Move, Square};
     ///
     /// let b = Board::default();
     /// let m = Move::normal(Square::E2, Square::E4);
@@ -198,7 +200,7 @@ impl Move {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn to_algebraic(self, b: &Board) -> Result<String, &'static str> {
+    pub fn to_algebraic(self, g: &Game) -> Result<String, &'static str> {
         // longest possible algebraic string would be something along the lines of Qe4xd4#, exd8=Q#,
         // and O-O-O+
         let mut s = String::with_capacity(7);
@@ -215,7 +217,7 @@ impl Move {
                 s += "O-O-O";
             }
         } else {
-            let mover_type = b.type_at_square(self.from_square()).unwrap();
+            let mover_type = b.(self.from_square()).unwrap();
             let is_move_capture = b.is_move_capture(self);
             let from_sq = self.from_square();
 

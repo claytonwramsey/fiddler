@@ -18,63 +18,600 @@
 
 //! Full chess games, including history and metadata.
 
-use super::movegen::is_legal;
-
 use super::{
-    movegen::{get_moves, has_moves, GenMode},
-    Board, Move,
+    castling::CastleRights,
+    movegen::{is_legal, square_attackers, MAGIC, PAWN_ATTACKS},
+    zobrist, Bitboard, Color, Move, Piece, Square,
 };
-
-use nohash_hasher::IntMap;
 
 use std::{
     default::Default,
     fmt::{Display, Formatter},
+    ops::Index,
 };
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// A struct containing game information, which unlike a [`Board`], knows about its history and can
 /// do things like repetition detection.
-///
-/// `C` is a *cookie*: it is a set of data which is useless for the internal behavior of a game,
-/// but which the consumer of a [`CookieGame`] may use to their benefit.
-/// For each board state in the history of this game, a cookie is stored which is associated with
-/// that board.
-pub struct CookieGame<C: Sized> {
-    /// The last element in `history` is the current state of the board.
-    /// The first element should be the starting position of the game, and in between are sequential
-    /// board states from the entire game.
-    history: Vec<(Board, C)>,
+pub struct Game {
+    /// The current state of the board.
+    board: Board,
+    /// The list, in order, of all board metadata made in the game.
+    history: Vec<BoardMeta>,
     /// The list, in order, of all moves made in the game.
     /// They should all be valid moves.
     /// The length of `moves` should always be one less than the length of `history`.
     moves: Vec<Move>,
-    /// Stores the number of times a position has been reached in the course of this game.
-    /// It is used for three-move-rule draws.
-    /// The keys are the Zobrist hashes of the boards previously visited.
-    ///
-    /// The values are a tuple of two integers: the first is the total number of repetitions, and
-    /// the second is the number of repetitions since the last search start.
-    repetitions: IntMap<u64, (u8, u8)>,
-    /// Whether this game is currently part of a search.
-    /// If it is, then the search-level repetitions will be incremented and result in draws.
-    searching: bool,
+}
+#[derive(Clone, Copy, Debug, Eq)]
+/// A representation of a position. Does not handle repetition of moves.
+pub struct Board {
+    /// A mailbox representation of the state of the board.
+    /// Each index corresponds to a square, starting with square A1 at index 0.
+    mailbox: [Option<(Piece, Color)>; 64],
+    /// The squares ocupied by White and Black, respectively.
+    sides: [Bitboard; 2],
+    /// The squares occupied by (in order) knights, bishops, rooks,
+    /// queens, pawns, and kings.
+    pieces: [Bitboard; Piece::NUM],
 }
 
-/// A useful type alias for a game which does not store any cookie information on its history.
-pub type Game = CookieGame<()>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The metadata for a board state, containing extra information beyond the locations of pieces.
+pub struct BoardMeta {
+    /// The color of the player to move.
+    pub player: Color,
+    /// The square which can be moved to by a pawn in en passant.
+    /// Will be `None` when a pawn has not moved two squares in the previous
+    /// move.
+    pub en_passant_square: Option<Square>,
+    /// The rights of this piece for castling.
+    pub castle_rights: CastleRights,
+    /// The number of plies that have passed since a capture or pawn push has been made.
+    pub rule50: u8,
 
-impl<Cookie: Sized> CookieGame<Cookie> {
+    /*
+        Below: metadata which is not critical for board representation, but
+        which is useful for performance.
+    */
+    /// A saved internal hash.
+    pub hash: u64,
+    /// The set of squares which is occupied by pieces which are checking the
+    /// king.
+    pub checkers: Bitboard,
+    /// The squares that the kings are living on.
+    /// `king_sqs[0]` is the location of the white king, and
+    /// `king_sqs[1]` is the location of the black king.
+    pub king_sqs: [Square; 2],
+    /// The set of squares containing pieces which are pinned, i.e. which are
+    /// blocking some sort of attack on `player`'s king.
+    pub pinned: Bitboard,
+}
+
+impl Game {
     #[must_use]
     /// Construct a new [`Game`] in the conventional chess starting position.
-    pub fn new(b: Board, c: Cookie) -> CookieGame<Cookie> {
-        CookieGame {
-            history: vec![(b, c)],
-            moves: Vec::new(),
-            repetitions: IntMap::from_iter([(b.hash, (1, 0))]),
-            searching: false,
+    pub fn new() -> Game {
+        let board = Board {
+            sides: [
+                Bitboard::new(0x0000_0000_0000_FFFF), // white
+                Bitboard::new(0xFFFF_0000_0000_0000), // black
+            ],
+            pieces: [
+                Bitboard::new(0x4200_0000_0000_0042), // knight
+                Bitboard::new(0x2400_0000_0000_0024), // bishop
+                Bitboard::new(0x8100_0000_0000_0081), // rook
+                Bitboard::new(0x0800_0000_0000_0008), // queen
+                Bitboard::new(0x00FF_0000_0000_FF00), // pawn
+                Bitboard::new(0x1000_0000_0000_0010), // king
+            ],
+            mailbox: [
+                Some((Piece::Rook, Color::White)), // a1
+                Some((Piece::Knight, Color::White)),
+                Some((Piece::Bishop, Color::White)),
+                Some((Piece::Queen, Color::White)),
+                Some((Piece::King, Color::White)),
+                Some((Piece::Bishop, Color::White)),
+                Some((Piece::Knight, Color::White)),
+                Some((Piece::Rook, Color::White)),
+                Some((Piece::Pawn, Color::White)), // a2
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                Some((Piece::Pawn, Color::White)),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None, // rank 3
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None, // rank 4
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None, // rank 5
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,                              // rank 6
+                Some((Piece::Pawn, Color::Black)), // a7
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Pawn, Color::Black)),
+                Some((Piece::Rook, Color::Black)), // a8
+                Some((Piece::Knight, Color::Black)),
+                Some((Piece::Bishop, Color::Black)),
+                Some((Piece::Queen, Color::Black)),
+                Some((Piece::King, Color::Black)),
+                Some((Piece::Bishop, Color::Black)),
+                Some((Piece::Knight, Color::Black)),
+                Some((Piece::Rook, Color::Black)),
+            ],
+        };
+        Game {
+            board,
+            history: vec![BoardMeta {
+                en_passant_square: None,
+                player: Color::White,
+                castle_rights: CastleRights::ALL,
+                rule50: 0,
+                hash: Bitboard::ALL
+                    .into_iter()
+                    .flat_map(|sq| {
+                        board.mailbox[sq as usize]
+                            .map(|(pt, color)| zobrist::square_key(sq, pt, color))
+                    })
+                    .chain((0..4).into_iter().map(zobrist::castle_key))
+                    .fold(0, |a, b| a ^ b),
+                king_sqs: [Square::E1, Square::E8],
+                checkers: Bitboard::EMPTY,
+                pinned: Bitboard::EMPTY,
+            }],
+            moves: vec![],
         }
+    }
+
+    /// Create a Board populated from some FEN and load it.
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the FEN is invalid with a string describing why it
+    /// failed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler::base::Board;
+    ///
+    /// let default_board = Board::new();
+    /// let fen_board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")?;
+    /// assert_eq!(default_board, fen_board);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn from_fen(fen: &str) -> Result<Game, &str> {
+        let mut game = Game {
+            board: Board {
+                sides: [Bitboard::EMPTY; 2],
+                pieces: [Bitboard::EMPTY; 6],
+                mailbox: [None; 64],
+            },
+            history: vec![BoardMeta {
+                en_passant_square: None,
+                player: Color::White,
+                castle_rights: CastleRights::NONE,
+                rule50: 0,
+                hash: 0,
+                checkers: Bitboard::EMPTY,
+                king_sqs: [Square::A1; 2],
+                pinned: Bitboard::EMPTY,
+            }],
+            moves: Vec::new(),
+        };
+
+        let mut fen_chrs = fen.chars();
+        let mut r = 7; // current row parsed
+        let mut c = 0; // current col parsed
+
+        while r != 0 || c < 8 {
+            let chr = fen_chrs
+                .next()
+                .ok_or("reached end of FEN before board was fully parsed")?;
+            let color = if chr.is_uppercase() {
+                Color::White
+            } else {
+                Color::Black
+            };
+            let pt = chr.to_uppercase().next().and_then(Piece::from_code);
+            if let Some(p) = pt {
+                //character is a piece type
+                game.add_piece(
+                    Square::new(r, c).ok_or("invalid structure of FEN")?,
+                    p,
+                    color,
+                );
+                c += 1;
+            } else if chr == '/' {
+                //row divider
+                r -= 1;
+                c = 0;
+            } else {
+                // number stating number of blank spaces in this row
+                let num_blanks = chr.to_digit(10).ok_or("expected number of blanks")?;
+                // advance the square under review by the number of blanks
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    c += num_blanks as u8;
+                }
+            }
+        }
+
+        // now a space
+        if fen_chrs.next() != Some(' ') {
+            return Err("expected space after board array section of FEN");
+        };
+
+        let meta = game.history.last_mut().unwrap();
+
+        // now compute player to move
+        meta.player = {
+            let player_chr = fen_chrs
+                .next()
+                .ok_or("reached end of string while parsing for player to move")?;
+            match player_chr {
+                'w' => Color::White,
+                'b' => Color::Black,
+                _ => return Err("unrecognized player to move"),
+            }
+        };
+
+        if meta.player == Color::Black {
+            meta.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+        }
+
+        // now a space
+        if fen_chrs.next() != Some(' ') {
+            return Err("expected space after player to move section of FEN");
+        }
+
+        // determine castle rights
+        let mut castle_chr = fen_chrs
+            .next()
+            .ok_or("reached end of string while parsing castle rights")?;
+        while castle_chr != ' ' {
+            // this may accept some technically illegal FENS, but that's ok
+            let (rights_to_add, key_to_add) = match castle_chr {
+                'K' => (CastleRights::WHITE_KINGSIDE, zobrist::castle_key(0)),
+                'Q' => (CastleRights::WHITE_QUEENSIDE, zobrist::castle_key(1)),
+                'k' => (CastleRights::BLACK_KINGSIDE, zobrist::castle_key(2)),
+                'q' => (CastleRights::BLACK_QUEENSIDE, zobrist::castle_key(3)),
+                '-' => (CastleRights::NONE, 0),
+                _ => return Err("unrecognized castle rights character"),
+            };
+            meta.castle_rights |= rights_to_add;
+            meta.hash ^= key_to_add;
+            castle_chr = fen_chrs
+                .next()
+                .ok_or("reached end of string while parsing castle rights")?;
+        }
+
+        // castle rights searching ate the space, so no need to check for it
+
+        // en passant square
+        meta.en_passant_square = {
+            let ep_file_chr = fen_chrs
+                .next()
+                .ok_or("reached EOF while parsing en passant characters")?;
+            if ep_file_chr == '-' {
+                None
+            } else {
+                let ep_rank_chr = fen_chrs
+                    .next()
+                    .ok_or("reached end of string while parsing en passant rank")?;
+                let ep_sq = Square::from_algebraic(&format!("{ep_file_chr}{ep_rank_chr}"))?;
+                meta.hash ^= zobrist::ep_key(ep_sq);
+                Some(ep_sq)
+            }
+        };
+
+        // now a space
+        if fen_chrs.next() != Some(' ') {
+            return Err("expected space after en passant square section of FEN");
+        }
+
+        // 50 move timer
+        meta.rule50 = {
+            let mut rule50_buf = String::new();
+            // there may be more digits
+            loop {
+                match fen_chrs.next() {
+                    Some(' ') => break,
+                    Some(c) if c.is_ascii_digit() => rule50_buf.push(c),
+                    Some(_) => return Err("illegal character for rule50 counter"),
+                    None => return Err("reached end of string while parsing rule 50"),
+                };
+            }
+
+            let rule50_num = rule50_buf
+                .parse::<u8>()
+                .map_err(|_| "could not parse rule50 counter")?;
+            if rule50_num > 100 {
+                return Err("rule 50 number is too high");
+            }
+
+            rule50_num
+        };
+
+        // updating metadata
+        meta.king_sqs = [
+            Square::try_from(game.board[Piece::King] & game.board[Color::White])?,
+            Square::try_from(game.board[Piece::King] & game.board[Color::Black])?,
+        ];
+        game.history[0].checkers = square_attackers(
+            &game.board,
+            meta.king_sqs[meta.player as usize],
+            !meta.player,
+        );
+        game.history[0].pinned = game.compute_pinned();
+        if !game.board.is_valid() {
+            return Err("board state after loading was illegal");
+        }
+
+        Ok(game)
+    }
+
+    #[must_use]
+    /// Get the position representing the current state of the game.
+    pub fn board(&self) -> &Board {
+        &self.board
+    }
+
+    #[must_use]
+    /// Get the metadata associated with the current board state.
+    pub fn meta(&self) -> &BoardMeta {
+        self.history.last().unwrap()
+    }
+
+    /// Apply the given move to the board.
+    /// Will assume the move is legal.
+    /// Requires that this board is currently valid.
+    ///
+    /// # Panics
+    ///
+    /// This function may or may not panic if `m` is not a legal move.
+    /// However, you can trust that it will never panic if `m` is legal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler::base::{Board, Move, Square};
+    ///
+    /// let mut board = Board::new();
+    /// // board after 1. e4 is played
+    /// let board_after_e4 =
+    ///     Board::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")?;
+    ///
+    /// board.make_move(Move::normal(Square::E2, Square::E4));
+    /// assert_eq!(board, board_after_e4);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn make_move(&mut self, m: Move) {
+        /* -------- Check move legality in debug builds --------- */
+        #[cfg(debug_assertions)]
+        if !is_legal(m, self) {
+            println!("an illegal move {m} is being attempted. History: {self}");
+            panic!("Illegal move attempted on `Game::make_move`");
+        }
+        let from_sq = m.from_square();
+        let to_sq = m.to_square();
+
+        let mover_type = self.board[from_sq].unwrap().0;
+        let player = self.meta().player;
+        let ep_sq = self.meta().en_passant_square;
+        let old_castle_rights = self.meta().castle_rights;
+        let is_pawn_move = mover_type == Piece::Pawn;
+        let is_king_move = mover_type == Piece::King;
+        let capturee = self.board[to_sq];
+
+        self.history.push(BoardMeta {
+            player: !self.meta().player,
+            rule50: if is_pawn_move || capturee.is_some() {
+                0
+            } else {
+                self.meta().rule50 + 1
+            },
+            hash: self.meta().hash ^ zobrist::BLACK_TO_MOVE_KEY,
+            ..*self.meta()
+        });
+        self.moves.push(m);
+
+        /* -------- Core move functionality -------- */
+        if let Some((capturee_type, _)) = capturee {
+            self.remove_known_piece(to_sq, capturee_type, !player);
+        }
+        /* Promotion and normal piece movement */
+        self.add_piece(to_sq, m.promote_type().unwrap_or(mover_type), player);
+        self.remove_known_piece(from_sq, mover_type, player);
+
+        /* -------- En passant handling -------- */
+        // perform an en passant capture
+        if m.is_en_passant() {
+            let capturee_sq = Square::new(from_sq.rank(), ep_sq.unwrap().file()).unwrap();
+            self.remove_known_piece(capturee_sq, Piece::Pawn, !player);
+        }
+
+        let new_meta = self.history.last_mut().unwrap();
+
+        // remove previous EP square from hash
+        if let Some(sq) = ep_sq {
+            self.history.last_mut().unwrap().hash ^= zobrist::ep_key(sq);
+        }
+
+        // update EP square
+        if is_pawn_move && from_sq.rank_distance(to_sq) > 1 {
+            let ep_candidate =
+                Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
+            if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
+                & self.board[Piece::Pawn]
+                & self.board[!player])
+                .is_empty()
+            {
+                new_meta.en_passant_square = None;
+            } else {
+                new_meta.en_passant_square = Some(ep_candidate);
+                new_meta.hash ^= zobrist::ep_key(ep_candidate);
+            }
+        } else {
+            new_meta.en_passant_square = None;
+        };
+
+        /* -------- Handling castling and castle rights -------- */
+        // in normal castling, we describe it with a `Move` as a king move which jumps two or three
+        // squares.
+
+        let mut rights_to_remove;
+        if is_king_move {
+            rights_to_remove = match player {
+                Color::White => CastleRights::WHITE,
+                Color::Black => CastleRights::BLACK,
+            };
+            if from_sq.file_distance(to_sq) > 1 {
+                // a long move from a king means this must be a castle
+                // G file is file 6
+                let is_kingside_castle = to_sq.file() == 6;
+                let (rook_from_file, rook_to_file) = if is_kingside_castle {
+                    (7, 5) // rook moves from H file for kingside castling
+                } else {
+                    (0, 3) // rook moves from A to D for queenside caslting
+                };
+                let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
+                let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
+                self.remove_known_piece(rook_from_sq, Piece::Rook, player);
+                self.add_piece(rook_to_sq, Piece::Rook, player);
+            }
+        } else {
+            // don't need to check if it's a rook because moving from this square
+            // would mean you didn't have the right anyway
+            rights_to_remove = match from_sq {
+                Square::A1 => CastleRights::WHITE_QUEENSIDE,
+                Square::H1 => CastleRights::WHITE_KINGSIDE,
+                Square::A8 => CastleRights::BLACK_QUEENSIDE,
+                Square::H8 => CastleRights::BLACK_KINGSIDE,
+                _ => CastleRights::NONE,
+            };
+
+            // capturing a rook also removes rights
+            rights_to_remove |= match to_sq {
+                Square::A1 => CastleRights::WHITE_QUEENSIDE,
+                Square::H1 => CastleRights::WHITE_KINGSIDE,
+                Square::A8 => CastleRights::BLACK_QUEENSIDE,
+                Square::H8 => CastleRights::BLACK_KINGSIDE,
+                _ => CastleRights::NONE,
+            }
+        }
+
+        let mut rights_actually_removed = rights_to_remove & old_castle_rights;
+
+        new_meta.castle_rights ^= rights_actually_removed;
+
+        #[allow(clippy::cast_possible_truncation)]
+        while rights_actually_removed.0 != 0 {
+            new_meta.hash ^= zobrist::castle_key(rights_actually_removed.0.trailing_zeros() as u8);
+            rights_actually_removed &= CastleRights(rights_actually_removed.0 - 1);
+        }
+
+        /* -------- Non-meta fields of the board are now in their final state. -------- */
+
+        /* -------- Update other metadata -------- */
+
+        // checkers
+        new_meta.checkers = square_attackers(
+            &self.board,
+            new_meta.king_sqs[new_meta.player as usize],
+            player,
+        );
+
+        // pinned pieces
+        new_meta.pinned = self.compute_pinned();
+    }
+
+    /// Remove a piece of a known type at a square.
+    /// Will break the validity of the board if there is no piece of type `pt`
+    /// and color `color` at `sq`.
+    fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
+        let mask = Bitboard::from(sq);
+        self.history.last_mut().unwrap().hash ^= zobrist::square_key(sq, pt, color);
+        let removal_mask = !mask;
+        self.board.pieces[pt as usize] &= removal_mask;
+        self.board.sides[color as usize] &= removal_mask;
+        self.board.mailbox[sq as usize] = None;
+    }
+
+    /// Add a piece to the square at a given place on the board.
+    /// This should only be called if you believe that the board as-is is empty
+    /// at the square below. Otherwise it will break the internal board
+    /// representation.
+    fn add_piece(&mut self, sq: Square, pt: Piece, color: Color) {
+        // Remove the hash from the piece that was there before (no-op if it was
+        // empty)
+        let mask = Bitboard::from(sq);
+        self.board.pieces[pt as usize] |= mask;
+        self.board.sides[color as usize] |= mask;
+        self.board.mailbox[sq as usize] = Some((pt, color));
+        // Update the hash with the result of our addition
+        self.history.last_mut().unwrap().hash ^= zobrist::square_key(sq, pt, color);
+    }
+
+    /// Compute a bitboard of all pieces pinned to the player to move.
+    fn compute_pinned(&self) -> Bitboard {
+        let meta = self.meta();
+        let mut pinned = Bitboard::EMPTY;
+        let king_sq = meta.king_sqs[meta.player as usize];
+        let rook_mask = MAGIC.rook_attacks(Bitboard::EMPTY, king_sq);
+        let bishop_mask = MAGIC.bishop_attacks(Bitboard::EMPTY, king_sq);
+        let occupancy = self.board.occupancy();
+        let queens = self.board[Piece::Queen];
+
+        let snipers = self.board[!meta.player]
+            & ((rook_mask & (queens | self.board[Piece::Rook]))
+                | (bishop_mask & (queens | self.board[Piece::Bishop])));
+
+        for sniper_sq in snipers {
+            let between_bb = Bitboard::between(king_sq, sniper_sq);
+            if (between_bb & occupancy).has_single_bit() {
+                pinned |= between_bb;
+            }
+        }
+
+        pinned
     }
 
     /// Empty out the history of this game completely, but leave the original start state of the
@@ -82,42 +619,8 @@ impl<Cookie: Sized> CookieGame<Cookie> {
     /// Will also end the searching period for the game.
     pub fn clear(&mut self) {
         self.history.truncate(1);
-        let start_board = self.history[0].0;
+        let start_meta = self.history[0];
         self.moves.clear();
-        self.repetitions.clear();
-        // since we cleared this, or_insert will always be called
-        self.repetitions.insert(start_board.hash, (1, 0));
-        self.searching = false;
-    }
-
-    /// Make a move, assuming said move is legal.
-    ///
-    /// `tag` should have been generated by `T::tag_move(m)`.
-    ///
-    /// # Panics
-    ///
-    /// This function may panic if `m` is not a legal move.
-    /// However, it is not guaranteed to.
-    /// It is recommended to only call `make_move` with moves that were already validated.
-    pub fn make_move(&mut self, m: Move, cookie: Cookie) {
-        /*
-        #[cfg(debug_assertions)]
-        if !is_legal(m, self.board()) {
-            println!("an illegal move {m} is being attempted. History: {self}");
-            panic!();
-        }
-        */
-        let previous_state = self.history.last().unwrap();
-        let mut new_board = previous_state.0;
-
-        new_board.make_move(m);
-        let num_reps = self.repetitions.entry(new_board.hash).or_insert((0, 0));
-        num_reps.0 += 1;
-        if self.searching {
-            num_reps.1 += 1;
-        }
-        self.history.push((new_board, cookie));
-        self.moves.push(m);
     }
 
     #[allow(clippy::result_unit_err)]
@@ -127,9 +630,9 @@ impl<Cookie: Sized> CookieGame<Cookie> {
     /// # Errors
     ///
     /// This function will return an `Err(())` if the move is illegal.
-    pub fn try_move(&mut self, m: Move, cookie: Cookie) -> Result<(), ()> {
-        if is_legal(m, self.board()) {
-            self.make_move(m, cookie);
+    pub fn try_move(&mut self, m: Move) -> Result<(), ()> {
+        if is_legal(m, self) {
+            self.make_move(m);
             Ok(())
         } else {
             Err(())
@@ -138,83 +641,30 @@ impl<Cookie: Sized> CookieGame<Cookie> {
 
     /// Undo the most recent move.
     /// This function will return `Ok()` if there was history to undo.
-    /// The move inside the `Ok` variant will be the most recent move played.
     ///
     /// # Errors
     ///
     /// This function will return an `Err` if the history of this game has no more positions left
     /// to undo.
-    pub fn undo(&mut self) -> Result<Move, &'static str> {
-        let m_removed = self.moves.pop().ok_or("no moves to remove")?;
-        let b_removed = self.history.pop().ok_or("no boards in history")?.0;
-        let num_reps = self
-            .repetitions
-            .entry(b_removed.hash)
-            .or_insert((1, u8::from(self.searching)));
-        num_reps.0 -= 1;
-        if self.searching && num_reps.1 > 0 {
-            num_reps.1 -= 1;
-        }
-        if num_reps.0 == 0 {
-            self.repetitions.remove(&b_removed.hash);
-        }
-
-        Ok(m_removed)
+    pub fn undo(&mut self) -> Result<(), &'static str> {
+        self.moves.pop().ok_or("no history to undo")?;
+        self.history.pop().unwrap();
+        Ok(())
     }
 
-    #[must_use]
-    #[allow(clippy::missing_panics_doc)]
-    /// Get the position representing the current state of the game.
-    pub fn board(&self) -> &Board {
-        &self.history.last().unwrap().0
-    }
-
-    #[must_use]
-    #[allow(clippy::missing_panics_doc)]
-    /// Get the cookie of the current state of the game.
-    pub fn cookie(&self) -> &Cookie {
-        &self.history.last().unwrap().1
-    }
-
-    #[must_use]
-    /// Detect how the game has ended.
-    ///
-    /// There are three possible return values:
-    /// * `None`: the game is not over.
-    /// * `Some(false)`: the game is over and is drawn.
-    /// * `Some(true)`: the game is over by checkmate.
-    pub fn end_state(&self) -> Option<bool> {
-        let b = self.board();
-        if self.drawn_by_repetition() || b.is_drawn() {
-            return Some(false);
+    /// Determine whether there has been a repetition in the last `moves_since_start` moves, or
+    /// until the most recent pawn move or capture, whichever comes first.
+    pub fn repetition_since(&self, moves_since_start: usize) -> bool {
+        let mut hist_iter = self.history.iter().rev().take(moves_since_start + 1);
+        let latest_hash = hist_iter.next().unwrap().hash;
+        for meta in hist_iter {
+            if latest_hash == meta.hash {
+                return true;
+            } else if meta.rule50 == 0 {
+                return false;
+            }
         }
-
-        if has_moves(b) {
-            return None;
-        }
-
-        Some(!b.checkers.is_empty())
-    }
-
-    #[must_use]
-    /// Determine whether this game been drawn due to history (i.e. repetition or the 50 move rule).
-    pub fn drawn_by_repetition(&self) -> bool {
-        let num_reps = self.repetitions.get(&self.board().hash).unwrap_or(&(0, 0));
-        if num_reps.0 >= 3 || num_reps.1 >= 2 {
-            // draw by repetition
-            return true;
-        }
-
         false
-    }
-
-    /// Get the legal moves in this position.
-    ///
-    /// Will return an empty vector if there are no legal moves.
-    pub fn get_moves<const M: GenMode>(&self, callback: impl FnMut(Move)) {
-        if !self.drawn_by_repetition() {
-            get_moves::<M>(self.board(), callback);
-        }
     }
 
     #[allow(clippy::len_without_is_empty)]
@@ -223,195 +673,188 @@ impl<Cookie: Sized> CookieGame<Cookie> {
     pub fn len(&self) -> usize {
         self.history.len()
     }
+}
 
-    /// Begin searching.
-    /// During a search, repetitions of positions that were seen as the search went on will be
-    /// immediately marked as draws.
-    /// The current position of the board will also be marked as a possible repetition.
+impl Board {
+    #[must_use]
+    /// Get the squares occupied by the pieces of each type (i.e. Black or
+    /// White).
     ///
     /// # Examples
     ///
-    /// In the following example, `g1` is not over because a position must be reached 3 times to
-    /// reach a draw.
-    /// However, `g2` is over because it repeated the same position twice in a search.
+    /// ```
+    /// use fiddler::base::{Bitboard, Board};
+    ///
+    /// let board = Board::new();
+    /// assert_eq!(board.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
+    /// ```
+    pub fn occupancy(&self) -> Bitboard {
+        self[Color::White] | self[Color::Black]
+    }
+
+    #[must_use]
+    /// Is the given move a capture in the current state of the board? Requires
+    /// that `m` is a legal move. En passant qualifies as a capture.
+    ///
+    /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{game::Game, Move, Square};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler::base::{Board, Move, Square};
     ///
-    /// let mut g1 = Game::default();
-    /// let mut g2 = Game::default();
-    /// g2.start_search();
-    ///
-    /// let moves = [
-    ///     Move::normal(Square::B1, Square::C3),
-    ///     Move::normal(Square::B8, Square::C6),
-    ///     Move::normal(Square::C3, Square::B1),
-    ///     Move::normal(Square::C6, Square::B8),
-    /// ];
-    ///
-    /// for m in moves {
-    ///     g1.make_move(m, ());
-    ///     g2.make_move(m, ());
-    /// }
-    ///
-    /// assert!(!g1.end_state().is_some());
-    /// assert!(g2.end_state().is_some());
+    /// // Scandinavian defense. White can play exd5 to capture Black's pawn or
+    /// // play e5 (among other moves).
+    /// let board = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
+    /// // exd5
+    /// assert!(board.is_move_capture(Move::normal(Square::E4, Square::D5)));
+    /// // e5
+    /// assert!(!board.is_move_capture(Move::normal(Square::E4, Square::E5)));
+    /// # Ok(())
+    /// # }
     /// ```
-    pub fn start_search(&mut self) {
-        self.searching = true;
-        for val in self.repetitions.values_mut() {
-            val.1 = 0;
+    pub fn is_move_capture(&self, m: Move) -> bool {
+        m.is_en_passant() || self[m.to_square()].is_some()
+    }
+
+    /// Check if the state of this board is valid.
+    ///
+    /// Returns false if the board is invalid.
+    pub fn is_valid(&self) -> bool {
+        Bitboard::ALL
+            .into_iter()
+            .all(|sq| match self.mailbox[sq as usize] {
+                Some((pt, color)) => {
+                    self.sides[color as usize].contains(sq)
+                        && !self.sides[!color as usize].contains(sq)
+                        && Piece::ALL
+                            .into_iter()
+                            .all(|pt2| (pt2 == pt) == self.pieces[pt2 as usize].contains(sq))
+                }
+                None => self
+                    .sides
+                    .iter()
+                    .chain(self.pieces.iter())
+                    .all(|bb| !bb.contains(sq)),
+            })
+    }
+
+    /// Determine whether this `Board`'s position is drawn by insufficient material.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler::base::Board;
+    ///
+    /// // Start position of the game is not a draw.
+    /// let (board0, _) = Board::new();
+    /// assert!(!board0.insufficient_material());
+    ///
+    /// // Same-color bishops on a KBKB endgame is a draw by insufficient material in FIDE rules.
+    /// let (board1, _) = Board::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
+    /// assert!(board1.insufficient_material());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn insufficient_material(&self) -> bool {
+        /// The set of dark squares, i.e. A1 and those on its diagonal.
+        const DARK_SQUARES: Bitboard = Bitboard::new(0xAA55_AA55_AA55_AA55);
+        match self.occupancy().len() {
+            0 | 1 => unreachable!(), // a king is missing
+            2 => true,               // only two kings
+            3 => !(self[Piece::Knight] | self[Piece::Bishop]).is_empty(), // KNK or KBK
+            // same colored bishops
+            4 => {
+                self[Piece::Bishop].more_than_one()
+                    && !(self[Piece::Bishop] & DARK_SQUARES).has_single_bit()
+            }
+            _ => false,
         }
-        // mark the current position as visited during search
-        self.repetitions
-            .entry(self.board().hash)
-            .and_modify(|v| v.1 = 1);
-    }
-
-    /// Stop performing a search.
-    ///
-    /// This will result in repetitions being counted at 3 once more.
-    pub fn stop_search(&mut self) {
-        self.searching = false;
     }
 }
 
-impl<Cookie: Sized + Default> Default for CookieGame<Cookie> {
-    fn default() -> Self {
-        CookieGame::new(Board::default(), Cookie::default())
+impl BoardMeta {
+    /// Determine whether this board meta-state is drawn by the 50-move rule.
+    pub fn drawn_50(&self) -> bool {
+        self.rule50 >= 100
     }
 }
 
-impl<C: Sized> Display for CookieGame<C> {
+impl Display for Board {
+    /// Display this board in a console-ready format.
+    /// Expresses as a series of 8 lines, where the topmost line is the 8th rank and the bottommost
+    /// is the 1st.
+    /// White pieces are represented with capital letters, while black pieces are represented in
+    /// lowercase.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for i in 0..self.moves.len() {
-            let board = &self.history[i].0;
-            let m = self.moves[i];
-            write!(f, "{} ", m.to_algebraic(board).unwrap())?;
+        for r in 0..8 {
+            for c in 0..8 {
+                let i = 64 - (r + 1) * 8 + c;
+                let current_square = Square::try_from(i).unwrap();
+                match self[current_square] {
+                    Some((p, Color::White)) => write!(f, "{p} ")?,
+                    Some((p, Color::Black)) => write!(f, "{} ", p.code().to_lowercase())?,
+                    None => write!(f, ". ")?,
+                };
+            }
+            writeln!(f)?;
         }
-
         Ok(())
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::base::{Board, Move, Square};
-
-    #[test]
-    /// Test that we can play a simple move on a [`Game`] and have the board  states update
-    /// accordingly.
-    fn play_e4() {
-        let mut g = Game::default();
-        let m = Move::normal(Square::E2, Square::E4);
-        let mut old_board = *g.board();
-        g.make_move(m, ());
-        let new_board = g.board();
-
-        old_board.make_move(m);
-        assert_eq!(old_board, *new_board);
+impl PartialEq for Board {
+    fn eq(&self, other: &Board) -> bool {
+        // We assume the board is valid, so we don't need to check the mailbox.
+        self.sides == other.sides && self.pieces == other.pieces
     }
+}
 
-    #[test]
-    /// Test that a single move can be undone correctly.
-    fn undo_move() {
-        let mut g = Game::default();
-        let m = Move::normal(Square::E2, Square::E4);
-        g.make_move(m, ());
-        assert_eq!(g.undo(), Ok(m));
-        assert_eq!(*g.board(), Board::default());
+impl Index<Piece> for Board {
+    type Output = Bitboard;
+
+    /// Get the squares occupied by pieces of the given type.
+    fn index(&self, index: Piece) -> &Self::Output {
+        // SAFETY: This will not fail because there are the same number of pieces as legal indices
+        // on `pieces`.
+        unsafe { self.pieces.get_unchecked(index as usize) }
     }
+}
 
-    #[test]
-    /// Test that an undo will fail if there is no history to undo.
-    fn illegal_undo() {
-        let mut g = Game::default();
-        assert!(g.undo().is_err());
-        assert_eq!(*g.board(), Board::default());
+impl Index<Color> for Board {
+    type Output = Bitboard;
+
+    /// Get the squares occupied by pieces of the given color.
+    fn index(&self, index: Color) -> &Self::Output {
+        // SAFETY: This will not fail because there are the same number of colors as indices on
+        // `sides`.
+        unsafe { self.sides.get_unchecked(index as usize) }
     }
+}
 
-    #[test]
-    /// Test that we can undo multiple moves in a row.
-    fn undo_multiple_moves() {
-        let mut g = Game::default();
-        let m0 = Move::normal(Square::E2, Square::E4);
-        let m1 = Move::normal(Square::E7, Square::E5);
-        g.make_move(m0, ());
-        g.make_move(m1, ());
-        g.undo().unwrap();
-        g.undo().unwrap();
-        assert_eq!(*g.board(), Board::default());
+impl Index<Square> for Board {
+    type Output = Option<(Piece, Color)>;
+
+    /// Get the type and color of a piece occupying a given square, if it exists.
+    fn index(&self, index: Square) -> &Self::Output {
+        // SAFETY: This will not fail because there are the same number of squares as there are
+        // indices on `mailbox`.
+        unsafe { self.mailbox.get_unchecked(index as usize) }
     }
+}
 
-    #[test]
-    /// Test that a [`Game`] becomes exactly the same as what it started as if a move is undone.
-    fn undo_equality() {
-        let mut g = Game::default();
-        g.make_move(Move::normal(Square::E2, Square::E4), ());
-        assert!(g.undo().is_ok());
-        assert_eq!(g, Game::default());
+impl Default for Game {
+    fn default() -> Self {
+        Game::default()
     }
+}
 
-    #[test]
-    /// Test that undoing a move results in the previous position.
-    fn undo_fried_liver() {
-        // the fried liver FEN
-        let fen = "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7";
-        let mut g = Game::new(Board::from_fen(fen).unwrap(), ());
-        let m = Move::normal(Square::D1, Square::F3);
-        g.make_move(m, ());
-        assert_eq!(g.undo(), Ok(m));
-        assert_eq!(g, Game::new(Board::from_fen(fen).unwrap(), ()));
-        assert_eq!(g.board(), &Board::from_fen(fen).unwrap());
-    }
+impl Display for Game {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for m in &self.moves {
+            write!(f, "{:?} ", m)?;
+        }
 
-    #[test]
-    /// Test that undoing with no history results in an error.
-    fn undo_fail() {
-        let mut g = Game::default();
-        assert!(g.undo().is_err());
-    }
-
-    #[test]
-    /// Test that a mated position is in fact over.
-    fn is_mate_over() {
-        // the position from the end of Scholar's mate
-        let g = Game::new(
-            Board::from_fen("rnbqk2r/pppp1Qpp/5n2/2b1p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
-                .unwrap(),
-            (),
-        );
-
-        g.get_moves::<{ GenMode::All }>(|m| panic!("{m:?}"));
-        assert!(!has_moves(g.board()));
-        assert_eq!(g.end_state(), Some(true));
-    }
-
-    #[test]
-    fn is_mate_over_2() {
-        let g = Game::new(
-            Board::from_fen("r1b2b1r/ppp2kpp/8/4p3/3n4/2Q5/PP1PqPPP/RNB1K2R w KQ - 4 11").unwrap(),
-            (),
-        );
-
-        g.get_moves::<{ GenMode::All }>(|m| panic!("{m:?}"));
-        assert!(!has_moves(g.board()));
-        assert_eq!(g.end_state(), Some(true));
-    }
-
-    #[test]
-    fn startpos_not_over() {
-        assert!(Game::default().end_state().is_none());
-    }
-
-    #[test]
-    /// Test that clearing a board has the same effect of replacing it with a default board if the
-    /// initial state was the initial board state.
-    fn clear_board() {
-        let mut g = Game::default();
-        g.make_move(Move::normal(Square::E2, Square::E4), ());
-        g.clear();
-        assert_eq!(g, Game::default());
+        Ok(())
     }
 }

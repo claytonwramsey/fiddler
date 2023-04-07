@@ -107,7 +107,7 @@ pub struct TTEntry {
     /// The lower bound on the evaluation of the position.
     pub lower_bound: Eval, // 2 bytes
     /// The upper bound on the evaluation of the position.
-    pub upper_bound: Eval, // 2 bytes
+    pub upper_bound: Eval, /* 2 bytes */
 
                            /* total size: 10 bytes */
 }
@@ -405,8 +405,8 @@ impl TTable {
 enum Liveness {
     #[allow(unused)]
     /// An empty entry, with no occupied or deleted entries following it.
-    // this is never directly constructed but zeroed memory from `alloc_zeroed` causes it to contain
-    // this, so we cannot remove this variant.
+    // this is never directly constructed but zeroed memory from `alloc_zeroed` causes it to
+    // contain this, so we cannot remove this variant.
     Empty = 0,
     /// An occupied entry, with data inside.
     Occupied = 1 << 6,

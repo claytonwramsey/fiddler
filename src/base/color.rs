@@ -51,7 +51,7 @@ impl Color {
     /// Get the promotion rank of a given color.
     ///
     /// ```
-    /// use fiddler::base::{Color, Bitboard};
+    /// use fiddler::base::{Bitboard, Color};
     ///
     /// assert_eq!(Color::Black.pawn_promote_rank(), Bitboard::new(0xFF));
     /// ```
@@ -69,7 +69,7 @@ impl Color {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{Color, Bitboard};
+    /// use fiddler::base::{Bitboard, Color};
     ///
     /// assert_eq!(Color::White.pawn_start_rank(), Bitboard::new(0xFF00));
     /// ```

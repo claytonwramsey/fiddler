@@ -25,11 +25,7 @@
 mod bitboard;
 pub use bitboard::Bitboard;
 
-mod board;
-pub use board::Board;
-
 mod castling;
-use castling::CastleRights;
 
 mod color;
 pub use color::Color;

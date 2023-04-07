@@ -58,16 +58,13 @@ use std::cmp::max;
 /// * `g`: the game which will be evaluated.
 /// * `ttable`: a reference to the shared transposition table.
 /// * `config`: the configuration of this search.
-/// * `limit`:the search limiter, which will be interiorly mutated by this
-///     function.
-/// * `is_main`: whether or not this search is the "main" search or a subjugate
-///     thread, and determines responsibilities as such.
-/// * `alpha`: a lower bound on the evaluation.
-///     This is primarily intended to be used for aspiration windowing, and in
-///     most cases will be set to `Eval::MIN`.
-/// * `beta`: is an upper bound on the evaluation.
-///     This is primarily intended to be used for aspiration windowing, and in
-///     most cases will be set to `Eval::MAX`.
+/// * `limit`:the search limiter, which will be interiorly mutated by this function.
+/// * `is_main`: whether or not this search is the "main" search or a subjugate thread, and
+///   determines responsibilities as such.
+/// * `alpha`: a lower bound on the evaluation. This is primarily intended to be used for aspiration
+///   windowing, and in most cases will be set to `Eval::MIN`.
+/// * `beta`: is an upper bound on the evaluation. This is primarily intended to be used for
+///   aspiration windowing, and in most cases will be set to `Eval::MAX`.
 ///
 /// # Errors
 ///
@@ -192,28 +189,24 @@ impl<'a> PVSearch<'a> {
     ///
     /// # Inputs
     ///
-    /// * `PV`: Whether this node is a principal variation node.
-    ///     At the root, this should be `true`.
-    /// * `ROOT`: Whether this is the root node of the search.
-    ///     External callers of this function should always set `ROOT` to `true`.
+    /// * `PV`: Whether this node is a principal variation node. At the root, this should be `true`.
+    /// * `ROOT`: Whether this is the root node of the search. External callers of this function
+    ///   should always set `ROOT` to `true`.
     /// * `REDUCE`: Whether heuristic depth reduction should be performed.
     /// * `depth_to_go`: The depth to search the position.
-    /// * `depth_so_far`: The depth of the recursive stack when this function was called.
-    ///     At the start of the search, `depth_so_far` is 0.
-    /// * `alpha`: A lower bound on the evaluation of a parent node, in perspective of the player
-    ///     to move.
-    ///     One way of thinking of `alpha` is that it is the best score that the player to move
-    ///     could get if they made a move which did *not* cause `pvs()` to be called in this
-    ///     position.
-    ///     When called externally, `alpha` should be equal to `Eval::MIN`.
+    /// * `depth_so_far`: The depth of the recursive stack when this function was called. At the
+    ///   start of the search, `depth_so_far` is 0.
+    /// * `alpha`: A lower bound on the evaluation of a parent node, in perspective of the player to
+    ///   move. One way of thinking of `alpha` is that it is the best score that the player to move
+    ///   could get if they made a move which did *not* cause `pvs()` to be called in this position.
+    ///   When called externally, `alpha` should be equal to `Eval::MIN`.
     /// * `beta`: An upper bound on the evaluation of a parent node, in perspective of the player to
-    ///     move.
-    ///     `beta` can be thought of as the worst score that the opponent of the current player to
-    ///     move could get if they decided not to allow the current player to make a move.
-    ///     When called externally, `beta` should be equal to `Eval::MAX`.
-    /// * `parent_line`: The principal variation line of the parent position.
-    ///     `parent_line` will be overwritten with the best line found by this search, so long as it
-    ///     achieves an alpha cutoff at some point.
+    ///   move. `beta` can be thought of as the worst score that the opponent of the current player
+    ///   to move could get if they decided not to allow the current player to make a move. When
+    ///   called externally, `beta` should be equal to `Eval::MAX`.
+    /// * `parent_line`: The principal variation line of the parent position. `parent_line` will be
+    ///   overwritten with the best line found by this search, so long as it achieves an alpha
+    ///   cutoff at some point.
     ///
     /// # Errors
     ///
@@ -639,9 +632,10 @@ fn ttable_store(
 pub mod tests {
 
     use super::*;
-    use crate::base::game::CookieGame;
-    use crate::base::{Board, Move, Square};
-    use crate::engine::evaluate::init_cookie;
+    use crate::{
+        base::{game::CookieGame, Board, Move, Square},
+        engine::evaluate::init_cookie,
+    };
 
     /// Helper function to search a position at a given depth.
     ///

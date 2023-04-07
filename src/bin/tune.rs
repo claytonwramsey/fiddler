@@ -34,19 +34,19 @@ use std::{
     time::Instant,
 };
 
-use fiddler::engine::evaluate::{
-    material,
-    mobility::{ATTACKS_VALUE, MAX_MOBILITY},
-    net_doubled_pawns, net_open_rooks,
-    pst::PST,
-    DOUBLED_PAWN_VALUE, KINGSIDE_CASTLE_VALUE, OPEN_ROOK_VALUE, QUEENSIDE_CASTLE_VALUE,
-};
 use fiddler::{
     base::{
         movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
         Board, Color, Piece, Square,
     },
-    engine::evaluate::{EG_LIMIT, MG_LIMIT},
+    engine::evaluate::{
+        material,
+        mobility::{ATTACKS_VALUE, MAX_MOBILITY},
+        net_doubled_pawns, net_open_rooks,
+        pst::PST,
+        DOUBLED_PAWN_VALUE, EG_LIMIT, KINGSIDE_CASTLE_VALUE, MG_LIMIT, OPEN_ROOK_VALUE,
+        QUEENSIDE_CASTLE_VALUE,
+    },
 };
 
 #[allow(clippy::similar_names)]

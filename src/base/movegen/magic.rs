@@ -233,9 +233,12 @@ impl AttacksTable {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{Bitboard, Square, movegen::MAGIC};
+    /// use fiddler::base::{movegen::MAGIC, Bitboard, Square};
     ///
-    /// assert_eq!(MAGIC.rook_attacks(Bitboard::EMPTY, Square::A1), Bitboard::hv(Square::A1));
+    /// assert_eq!(
+    ///     MAGIC.rook_attacks(Bitboard::EMPTY, Square::A1),
+    ///     Bitboard::hv(Square::A1)
+    /// );
     /// ```
     pub fn rook_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
         get_attacks(occupancy, sq, &self.rook_table)
@@ -246,9 +249,12 @@ impl AttacksTable {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{Bitboard, Square, movegen::MAGIC};
+    /// use fiddler::base::{movegen::MAGIC, Bitboard, Square};
     ///
-    /// assert_eq!(MAGIC.bishop_attacks(Bitboard::EMPTY, Square::E4), Bitboard::diags(Square::E4));
+    /// assert_eq!(
+    ///     MAGIC.bishop_attacks(Bitboard::EMPTY, Square::E4),
+    ///     Bitboard::diags(Square::E4)
+    /// );
     /// ```
     pub fn bishop_attacks(&self, occupancy: Bitboard, sq: Square) -> Bitboard {
         get_attacks(occupancy, sq, &self.bishop_table)

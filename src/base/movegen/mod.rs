@@ -28,7 +28,11 @@ use once_cell::sync::Lazy;
 
 use self::magic::AttacksTable;
 
-use super::{bitboard::Bitboard, Board, Color, Direction, Move, Piece, Square};
+use super::{
+    bitboard::Bitboard,
+    game::{Board, Game},
+    Color, Direction, Move, Piece, Square,
+};
 
 /// A master copy of a magic move-generation table.
 ///
@@ -37,7 +41,7 @@ use super::{bitboard::Bitboard, Board, Color, Direction, Move, Piece, Square};
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::MAGIC, Square, Bitboard};
+/// use fiddler::base::{movegen::MAGIC, Bitboard, Square};
 ///
 /// let rook_attacks_e3 = MAGIC.rook_attacks(Bitboard::EMPTY, Square::E3);
 /// assert_eq!(rook_attacks_e3, Bitboard::hv(Square::E3));
@@ -49,7 +53,7 @@ pub static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::KNIGHT_MOVES, Square, Bitboard};
+/// use fiddler::base::{movegen::KNIGHT_MOVES, Bitboard, Square};
 ///
 /// let mut knight_attacks_a1 = Bitboard::EMPTY
 ///     .with_square(Square::C2)
@@ -65,7 +69,7 @@ pub const KNIGHT_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KNIGHT_
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::KING_MOVES, Square, Bitboard};
+/// use fiddler::base::{movegen::KING_MOVES, Bitboard, Square};
 ///
 /// let mut king_attacks_a1 = Bitboard::EMPTY
 ///     .with_square(Square::A2)
@@ -87,16 +91,22 @@ pub const KING_MOVES: [Bitboard; 64] = create_step_attacks(&Direction::KING_STEP
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::PAWN_ATTACKS, Color, Square, Bitboard};
+/// use fiddler::base::{movegen::PAWN_ATTACKS, Bitboard, Color, Square};
 ///
 /// let mut attacked_squares = Bitboard::EMPTY
 ///     .with_square(Square::A4)
 ///     .with_square(Square::C4);
 ///
 /// // A white pawn on B3 can attack squares A4 and C4.
-/// assert_eq!(PAWN_ATTACKS[Color::White as usize][Square::B3 as usize], attacked_squares);
+/// assert_eq!(
+///     PAWN_ATTACKS[Color::White as usize][Square::B3 as usize],
+///     attacked_squares
+/// );
 /// // A black pawn on B5 can attack squares A4 and C4.
-/// assert_eq!(PAWN_ATTACKS[Color::Black as usize][Square::B5 as usize], attacked_squares);
+/// assert_eq!(
+///     PAWN_ATTACKS[Color::Black as usize][Square::B5 as usize],
+///     attacked_squares
+/// );
 /// ```
 pub const PAWN_ATTACKS: [[Bitboard; 64]; 2] = [
     create_step_attacks(&[Direction::NORTHEAST, Direction::NORTHWEST], 1),
@@ -161,13 +171,13 @@ pub enum GenMode {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{Board, Move, movegen::is_legal, Square};
+/// use fiddler::base::{movegen::is_legal, Board, Move, Square};
 ///
 /// let board = Board::new();
 /// assert!(is_legal(Move::normal(Square::E2, Square::E4), &board));
 /// assert!(!is_legal(Move::normal(Square::E2, Square::D4), &board));
 /// ```
-pub fn is_legal(m: Move, b: &Board) -> bool {
+pub fn is_legal(m: Move, g: &Game) -> bool {
     let from_sq = m.from_square();
     let to_sq = m.to_square();
     let from_bb = Bitboard::from(from_sq);
@@ -334,7 +344,10 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 ///
 /// Generate all legal moves:
 /// ```
-/// use fiddler::base::{Board, movegen::{GenMode, is_legal, get_moves}};
+/// use fiddler::base::{
+///     movegen::{get_moves, is_legal, GenMode},
+///     Board,
+/// };
 ///
 /// let b = Board::new();
 /// get_moves::<{ GenMode::All }>(&b, |m| {
@@ -345,7 +358,10 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate captures:
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>>{
-/// use fiddler::base::{Board, Move, movegen::{GenMode, is_legal, get_moves}, Square};
+/// use fiddler::base::{
+///     movegen::{get_moves, is_legal, GenMode},
+///     Board, Move, Square,
+/// };
 ///
 /// // Scandinavian defense. The only legal capture is exd5.
 /// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
@@ -360,7 +376,10 @@ pub fn is_legal(m: Move, b: &Board) -> bool {
 /// Generate quiet moves:
 ///
 /// ```
-/// use fiddler::base::{Board, movegen::{GenMode, is_legal, get_moves}};
+/// use fiddler::base::{
+///     movegen::{get_moves, is_legal, GenMode},
+///     Board,
+/// };
 ///
 /// let b = Board::new();
 /// get_moves::<{ GenMode::Quiets }>(&b, |m| {
@@ -389,8 +408,10 @@ pub fn get_moves<const M: GenMode>(b: &Board, callback: impl FnMut(Move)) {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{Board, movegen::{make_move_vec, get_moves, is_legal, GenMode}};
-///
+/// use fiddler::base::{
+///     movegen::{get_moves, is_legal, make_move_vec, GenMode},
+///     Board,
+/// };
 ///
 /// let b = Board::default();
 /// let moves = make_move_vec::<{ GenMode::All }>(&b);
@@ -416,7 +437,7 @@ pub fn make_move_vec<const M: GenMode>(b: &Board) -> Vec<Move> {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{Board, movegen::has_moves};
+/// use fiddler::base::{movegen::has_moves, Board};
 ///
 /// let b = Board::new();
 /// assert!(has_moves(&b));
@@ -563,7 +584,7 @@ pub fn has_moves(b: &Board) -> bool {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{Board, Square, Color, movegen::is_square_attacked_by};
+/// use fiddler::base::{movegen::is_square_attacked_by, Board, Color, Square};
 ///
 /// let b = Board::new();
 /// assert!(is_square_attacked_by(&b, Square::E2, Color::White));
@@ -651,7 +672,7 @@ fn evasions<const M: GenMode>(b: &Board, mut callback: impl FnMut(Move)) {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{Bitboard, Board, Square, Color, movegen::square_attackers};
+/// use fiddler::base::{movegen::square_attackers, Bitboard, Board, Color, Square};
 ///
 /// let b = Board::new();
 /// let attackers = Bitboard::EMPTY
@@ -1012,13 +1033,31 @@ fn castles(b: &Board, callback: &mut impl FnMut(Move)) {
 /// // Use the starting position FEN and calculate the number of legal moves.
 ///
 /// // There is only ever one position reachable in zero moves.
-/// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0), 1);
+/// assert_eq!(
+///     perft(
+///         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+///         0
+///     ),
+///     1
+/// );
 ///
 /// // There are 20 legal moves in the starting board position.
-/// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 1), 20);
+/// assert_eq!(
+///     perft(
+///         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+///         1
+///     ),
+///     20
+/// );
 ///
 /// // There are 400 legal openings at depth 2.
-/// assert_eq!(perft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 2), 400);
+/// assert_eq!(
+///     perft(
+///         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+///         2
+///     ),
+///     400
+/// );
 /// ```
 ///
 /// # Panics

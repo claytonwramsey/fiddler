@@ -326,8 +326,7 @@ impl TryFrom<u8> for Square {
 #[cfg(test)]
 mod tests {
 
-    use super::Direction;
-    use super::*;
+    use super::{Direction, *};
 
     #[test]
     fn add_square_and_direction() {

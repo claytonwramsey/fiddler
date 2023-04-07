@@ -69,7 +69,7 @@ impl Bitboard {
     ///
     /// Use as an iterator over all squares:
     /// ```
-    /// use fiddler::base::{Bitboard};
+    /// use fiddler::base::Bitboard;
     ///
     /// for sq in Bitboard::ALL {
     ///     println!("Now visiting square {sq}!");

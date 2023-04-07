@@ -219,11 +219,13 @@ fn leaf_rules(b: &Board) -> Score {
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use fiddler::base::Board;
-/// use fiddler::engine::evaluate::net_open_rooks;
+/// use fiddler::{base::Board, engine::evaluate::net_open_rooks};
 ///
 /// assert_eq!(net_open_rooks(&Board::new()), 0);
-/// assert_eq!(net_open_rooks(&Board::from_fen("5r2/4r3/2k5/8/3K4/8/4p3/4R3 w - - 0 1")?), -1);
+/// assert_eq!(
+///     net_open_rooks(&Board::from_fen("5r2/4r3/2k5/8/3K4/8/4p3/4R3 w - - 0 1")?),
+///     -1
+/// );
 /// # Ok(())
 /// # }
 /// ```
@@ -278,8 +280,7 @@ pub fn net_open_rooks(b: &Board) -> i8 {
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use fiddler::base::Board;
-/// use fiddler::engine::evaluate::net_doubled_pawns;
+/// use fiddler::{base::Board, engine::evaluate::net_doubled_pawns};
 ///
 /// assert_eq!(net_doubled_pawns(&Board::new()), 0);
 /// # Ok(())
@@ -316,8 +317,7 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::Board;
-/// use fiddler::engine::evaluate::phase_of;
+/// use fiddler::{base::Board, engine::evaluate::phase_of};
 ///
 /// assert!(phase_of(&Board::new()).eq(&1.0));
 /// ```

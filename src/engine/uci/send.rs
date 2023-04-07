@@ -56,8 +56,8 @@ pub enum Message<'a> {
     },
     /// Inform the GUI that the engine has found a move.
     ///
-    /// Directly before a `BestMove`, the engine should send an `Info` message with the final search
-    /// information.
+    /// Directly before a `BestMove`, the engine should send an `Info` message with the final
+    /// search information.
     BestMove {
         /// The best move that was found.
         m: Move,
