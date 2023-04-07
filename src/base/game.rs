@@ -182,11 +182,11 @@ impl Game {
                 rule50: 0,
                 hash: Bitboard::ALL
                     .into_iter()
-                    .flat_map(|sq| {
+                    .filter_map(|sq| {
                         board.mailbox[sq as usize]
                             .map(|(pt, color)| zobrist::square_key(sq, pt, color))
                     })
-                    .chain((0..4).into_iter().map(zobrist::castle_key))
+                    .chain((0..4).map(zobrist::castle_key))
                     .fold(0, |a, b| a ^ b),
                 king_sqs: [Square::E1, Square::E8],
                 checkers: Bitboard::EMPTY,
@@ -196,6 +196,7 @@ impl Game {
         }
     }
 
+    #[allow(clippy::missing_panics_doc)]
     /// Create a Board populated from some FEN and load it.
     ///
     /// # Errors
@@ -393,6 +394,7 @@ impl Game {
     }
 
     #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     /// Get the metadata associated with the current board state.
     pub fn meta(&self) -> &BoardMeta {
         self.history.last().unwrap()
@@ -472,7 +474,7 @@ impl Game {
 
         // remove previous EP square from hash
         if let Some(sq) = ep_sq {
-            self.history.last_mut().unwrap().hash ^= zobrist::ep_key(sq);
+            new_meta.hash ^= zobrist::ep_key(sq);
         }
 
         // update EP square
@@ -540,6 +542,8 @@ impl Game {
 
         let mut rights_actually_removed = rights_to_remove & old_castle_rights;
 
+        let new_meta = self.history.last_mut().unwrap();
+
         new_meta.castle_rights ^= rights_actually_removed;
 
         #[allow(clippy::cast_possible_truncation)]
@@ -560,7 +564,7 @@ impl Game {
         );
 
         // pinned pieces
-        new_meta.pinned = self.compute_pinned();
+        self.history.last_mut().unwrap().pinned = self.compute_pinned();
     }
 
     /// Remove a piece of a known type at a square.
@@ -618,9 +622,9 @@ impl Game {
     /// board.
     /// Will also end the searching period for the game.
     pub fn clear(&mut self) {
-        self.history.truncate(1);
-        let start_meta = self.history[0];
-        self.moves.clear();
+        for _ in 0..self.moves.len() {
+            let _ = self.undo();
+        }
     }
 
     #[allow(clippy::result_unit_err)]
@@ -639,6 +643,7 @@ impl Game {
         }
     }
 
+    #[allow(clippy::missing_panics_doc)]
     /// Undo the most recent move.
     /// This function will return `Ok()` if there was history to undo.
     ///
@@ -652,6 +657,8 @@ impl Game {
         Ok(())
     }
 
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     /// Determine whether there has been a repetition in the last `moves_since_start` moves, or
     /// until the most recent pawn move or capture, whichever comes first.
     pub fn repetition_since(&self, moves_since_start: usize) -> bool {
@@ -716,6 +723,7 @@ impl Board {
         m.is_en_passant() || self[m.to_square()].is_some()
     }
 
+    #[must_use]
     /// Check if the state of this board is valid.
     ///
     /// Returns false if the board is invalid.
@@ -738,6 +746,7 @@ impl Board {
             })
     }
 
+    #[must_use]
     /// Determine whether this `Board`'s position is drawn by insufficient material.
     ///
     /// # Examples
@@ -774,6 +783,7 @@ impl Board {
 }
 
 impl BoardMeta {
+    #[must_use]
     /// Determine whether this board meta-state is drawn by the 50-move rule.
     pub fn drawn_50(&self) -> bool {
         self.rule50 >= 100
@@ -845,14 +855,14 @@ impl Index<Square> for Board {
 
 impl Default for Game {
     fn default() -> Self {
-        Game::default()
+        Game::new()
     }
 }
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for m in &self.moves {
-            write!(f, "{:?} ", m)?;
+            write!(f, "{m:?} ")?;
         }
 
         Ok(())
