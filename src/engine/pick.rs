@@ -316,7 +316,7 @@ mod tests {
         let gen_moves = make_move_vec::<{ GenMode::All }>(&b);
         for m in picker_moves.clone() {
             assert!(gen_moves.contains(&m));
-            println!("{}", m.to_algebraic(&b).unwrap());
+            println!("{:?}", m);
         }
 
         for m in gen_moves {
