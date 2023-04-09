@@ -39,10 +39,12 @@ pub struct Game {
     board: Board,
     /// The list, in order, of all board metadata made in the game.
     history: Vec<BoardMeta>,
-    /// The list, in order, of all moves made in the game.
+    /// The list, in order, of all moves made in the game and the pieces that they captured.
     /// They should all be valid moves.
+    /// If the move played is en passant, the capturee type is still `None` because the piece that
+    /// is replaced on undo is not on the move's from-square.
     /// The length of `moves` should always be one less than the length of `history`.
-    moves: Vec<Move>,
+    moves: Vec<(Move, Option<Piece>)>,
 }
 #[derive(Clone, Copy, Debug, Eq)]
 /// A representation of a position. Does not handle repetition of moves.
@@ -379,7 +381,10 @@ impl Game {
             meta.king_sqs[meta.player as usize],
             !meta.player,
         );
-        game.history[0].pinned = game.compute_pinned();
+        game.history[0].pinned = game.compute_pinned(
+            game.history[0].king_sqs[game.history[0].player as usize],
+            !game.history[0].player,
+        );
         if !game.board.is_valid() {
             return Err("board state after loading was illegal");
         }
@@ -442,35 +447,39 @@ impl Game {
         let is_pawn_move = mover_type == Piece::Pawn;
         let is_king_move = mover_type == Piece::King;
         let capturee = self.board[to_sq];
+        // hash key of new position
 
-        self.history.push(BoardMeta {
+        let mut new_meta = BoardMeta {
             player: !self.meta().player,
             rule50: if is_pawn_move || capturee.is_some() {
                 0
             } else {
                 self.meta().rule50 + 1
             },
-            hash: self.meta().hash ^ zobrist::BLACK_TO_MOVE_KEY,
+            hash: self.meta().hash
+                ^ zobrist::BLACK_TO_MOVE_KEY
+                ^ zobrist::square_key(from_sq, mover_type, player),
             ..*self.meta()
-        });
-        self.moves.push(m);
+        };
 
         /* -------- Core move functionality -------- */
-        if let Some((capturee_type, _)) = capturee {
-            self.remove_known_piece(to_sq, capturee_type, !player);
-        }
         /* Promotion and normal piece movement */
         self.add_piece(to_sq, m.promote_type().unwrap_or(mover_type), player);
-        self.remove_known_piece(from_sq, mover_type, player);
+        self.remove_piece(from_sq);
+
+        if let Some((capturee_type, _)) = capturee {
+            self.remove_piece(to_sq);
+            new_meta.hash ^= zobrist::square_key(to_sq, capturee_type, !player);
+        }
 
         /* -------- En passant handling -------- */
         // perform an en passant capture
+
         if m.is_en_passant() {
             let capturee_sq = Square::new(from_sq.rank(), ep_sq.unwrap().file()).unwrap();
-            self.remove_known_piece(capturee_sq, Piece::Pawn, !player);
+            self.remove_piece(capturee_sq);
+            new_meta.hash ^= zobrist::square_key(capturee_sq, Piece::Pawn, !player);
         }
-
-        let new_meta = self.history.last_mut().unwrap();
 
         // remove previous EP square from hash
         if let Some(sq) = ep_sq {
@@ -516,7 +525,8 @@ impl Game {
                 };
                 let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
                 let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
-                self.remove_known_piece(rook_from_sq, Piece::Rook, player);
+                self.remove_piece(rook_from_sq);
+                new_meta.hash ^= zobrist::square_key(rook_from_sq, Piece::Rook, player);
                 self.add_piece(rook_to_sq, Piece::Rook, player);
             }
         } else {
@@ -541,9 +551,6 @@ impl Game {
         }
 
         let mut rights_actually_removed = rights_to_remove & old_castle_rights;
-
-        let new_meta = self.history.last_mut().unwrap();
-
         new_meta.castle_rights ^= rights_actually_removed;
 
         #[allow(clippy::cast_possible_truncation)]
@@ -557,32 +564,29 @@ impl Game {
         /* -------- Update other metadata -------- */
 
         // checkers
-        new_meta.checkers = square_attackers(
-            &self.board,
-            new_meta.king_sqs[new_meta.player as usize],
-            player,
-        );
+        new_meta.checkers =
+            square_attackers(&self.board, new_meta.king_sqs[!player as usize], player);
 
         // pinned pieces
-        self.history.last_mut().unwrap().pinned = self.compute_pinned();
+        new_meta.pinned = self.compute_pinned(new_meta.king_sqs[!player as usize], player);
+        self.history.push(new_meta);
+        self.moves.push((m, capturee.map(|c| c.0)));
     }
 
-    /// Remove a piece of a known type at a square.
-    /// Will break the validity of the board if there is no piece of type `pt`
-    /// and color `color` at `sq`.
-    fn remove_known_piece(&mut self, sq: Square, pt: Piece, color: Color) {
-        let mask = Bitboard::from(sq);
-        self.history.last_mut().unwrap().hash ^= zobrist::square_key(sq, pt, color);
-        let removal_mask = !mask;
-        self.board.pieces[pt as usize] &= removal_mask;
-        self.board.sides[color as usize] &= removal_mask;
+    /// Remove a piece from a square, assuming that `sq` is occupied.
+    ///
+    /// # Panics
+    ///
+    /// This operation will panic if `sq` is empty.
+    fn remove_piece(&mut self, sq: Square) {
+        let mask = !Bitboard::from(sq);
+        let (pt, color) = self.board.mailbox[sq as usize].unwrap();
+        self.board.pieces[pt as usize] &= mask;
+        self.board.sides[color as usize] &= mask;
         self.board.mailbox[sq as usize] = None;
     }
 
     /// Add a piece to the square at a given place on the board.
-    /// This should only be called if you believe that the board as-is is empty
-    /// at the square below. Otherwise it will break the internal board
-    /// representation.
     fn add_piece(&mut self, sq: Square, pt: Piece, color: Color) {
         // Remove the hash from the piece that was there before (no-op if it was
         // empty)
@@ -594,22 +598,20 @@ impl Game {
         self.history.last_mut().unwrap().hash ^= zobrist::square_key(sq, pt, color);
     }
 
-    /// Compute a bitboard of all pieces pinned to the player to move.
-    fn compute_pinned(&self) -> Bitboard {
-        let meta = self.meta();
+    /// Compute a bitboard of all pieces pinned to square `pin_sq` by attacks from color `enemy`.
+    fn compute_pinned(&self, pin_sq: Square, enemy: Color) -> Bitboard {
         let mut pinned = Bitboard::EMPTY;
-        let king_sq = meta.king_sqs[meta.player as usize];
-        let rook_mask = MAGIC.rook_attacks(Bitboard::EMPTY, king_sq);
-        let bishop_mask = MAGIC.bishop_attacks(Bitboard::EMPTY, king_sq);
+        let rook_mask = MAGIC.rook_attacks(Bitboard::EMPTY, pin_sq);
+        let bishop_mask = MAGIC.bishop_attacks(Bitboard::EMPTY, pin_sq);
         let occupancy = self.board.occupancy();
         let queens = self.board[Piece::Queen];
 
-        let snipers = self.board[!meta.player]
+        let snipers = self.board[enemy]
             & ((rook_mask & (queens | self.board[Piece::Rook]))
                 | (bishop_mask & (queens | self.board[Piece::Bishop])));
 
         for sniper_sq in snipers {
-            let between_bb = Bitboard::between(king_sq, sniper_sq);
+            let between_bb = Bitboard::between(pin_sq, sniper_sq);
             if (between_bb & occupancy).has_single_bit() {
                 pinned |= between_bb;
             }
@@ -652,8 +654,45 @@ impl Game {
     /// This function will return an `Err` if the history of this game has no more positions left
     /// to undo.
     pub fn undo(&mut self) -> Result<(), &'static str> {
-        self.moves.pop().ok_or("no history to undo")?;
+        let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?;
         self.history.pop().unwrap();
+
+        let from_sq = m.from_square();
+        let to_sq = m.to_square();
+
+        let (pt, color) = self.board[to_sq].unwrap();
+
+        // note: we don't need to update hashes here because that was saved in the history
+
+        // return the original piece to its from-square
+        self.add_piece(from_sq, pt, color);
+
+        if let Some(c_pt) = capturee_type {
+            // undo capture by putting the capturee back
+            self.add_piece(to_sq, c_pt, !color);
+        } else {
+            self.remove_piece(to_sq);
+
+            if m.is_castle() {
+                // replace rook
+                let replacement_rook_sq = match (color, to_sq.file()) {
+                    (Color::White, 2) => Square::A1,
+                    (Color::White, 6) => Square::H1,
+                    (Color::Black, 2) => Square::A8,
+                    (Color::Black, 6) => Square::H8,
+                    _ => unreachable!("undo castle to bad square"),
+                };
+                self.add_piece(replacement_rook_sq, Piece::Rook, color);
+            } else if m.is_en_passant() {
+                // replace captured pawn by en passant
+                self.add_piece(
+                    self.history.last().unwrap().en_passant_square.unwrap(),
+                    Piece::Pawn,
+                    !color,
+                );
+            }
+        }
+
         Ok(())
     }
 
