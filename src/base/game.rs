@@ -568,6 +568,10 @@ impl Game {
 
         /* -------- Update other metadata -------- */
 
+        if is_king_move {
+            new_meta.king_sqs[player as usize] = to_sq;
+        }
+
         // checkers
         new_meta.checkers =
             square_attackers(&self.board, new_meta.king_sqs[!player as usize], player);
@@ -670,7 +674,11 @@ impl Game {
         // note: we don't need to update hashes here because that was saved in the history
 
         // return the original piece to its from-square
-        self.add_piece(from_sq, pt, color);
+        self.add_piece(
+            from_sq,
+            if m.is_promotion() { Piece::Pawn } else { pt },
+            color,
+        );
         self.remove_piece(to_sq);
 
         if let Some(c_pt) = capturee_type {
@@ -750,6 +758,7 @@ impl Game {
                     .any(|bb| bb.contains(sq)),
             })
         {
+            println!("mismatched board representations");
             return false;
         }
 
@@ -757,12 +766,18 @@ impl Game {
         if self.board[Piece::King] & self.board[Color::White]
             != Bitboard::from(self.meta().king_sqs[Color::White as usize])
         {
+            println!(
+                "bad white king square: {} vs {}",
+                self.board[Piece::King] & self.board[Color::White],
+                self.meta().king_sqs[Color::White as usize]
+            );
             return false;
         }
 
         if self.board[Piece::King] & self.board[Color::Black]
             != Bitboard::from(self.meta().king_sqs[Color::Black as usize])
         {
+            println!("bad black king square");
             return false;
         }
 
@@ -784,6 +799,7 @@ impl Game {
         new_hash ^= self.meta().en_passant_square.map_or(0, zobrist::ep_key);
 
         if self.meta().hash != new_hash {
+            println!("bad hash");
             return false;
         }
 
@@ -791,11 +807,13 @@ impl Game {
 
         // Validate checkers
         if self.meta().checkers != square_attackers(&self.board, king_sq, !self.meta().player) {
+            println!("bad checkers");
             return false;
         }
 
         // Validate pinned
         if self.meta().pinned != self.compute_pinned(king_sq, !self.meta().player) {
+            println!("bad pinned");
             return false;
         }
 
