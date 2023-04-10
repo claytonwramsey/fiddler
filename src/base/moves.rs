@@ -147,13 +147,11 @@ impl Move {
             return Ok(Move::promoting(from_sq, to_sq, pt));
         }
 
-        if game.board()[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
+        if game[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
             return Ok(Move::castling(from_sq, to_sq));
         }
 
-        if game.board()[Piece::Pawn].contains(from_sq)
-            && game.meta().en_passant_square == Some(to_sq)
-        {
+        if game[Piece::Pawn].contains(from_sq) && game.meta().en_passant_square == Some(to_sq) {
             return Ok(Move::en_passant(from_sq, to_sq));
         }
 

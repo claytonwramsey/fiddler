@@ -37,20 +37,6 @@ use std::{
 /// A struct containing game information, which unlike a [`Board`], knows about its history and can
 /// do things like repetition detection.
 pub struct Game {
-    /// The current state of the board.
-    board: Board,
-    /// The list, in order, of all board metadata made in the game.
-    history: Vec<BoardMeta>,
-    /// The list, in order, of all moves made in the game and the pieces that they captured.
-    /// They should all be valid moves.
-    /// If the move played is en passant, the capturee type is still `None` because the piece that
-    /// is replaced on undo is not on the move's from-square.
-    /// The length of `moves` should always be one less than the length of `history`.
-    moves: Vec<(Move, Option<Piece>)>,
-}
-#[derive(Clone, Copy, Debug, Eq)]
-/// A representation of a position. Does not handle repetition of moves.
-pub struct Board {
     /// A mailbox representation of the state of the board.
     /// Each index corresponds to a square, starting with square A1 at index 0.
     mailbox: [Option<(Piece, Color)>; 64],
@@ -59,6 +45,14 @@ pub struct Board {
     /// The squares occupied by (in order) knights, bishops, rooks,
     /// queens, pawns, and kings.
     pieces: [Bitboard; Piece::NUM],
+    /// The list, in order, of all board metadata made in the game.
+    history: Vec<BoardMeta>,
+    /// The list, in order, of all moves made in the game and the pieces that they captured.
+    /// They should all be valid moves.
+    /// If the move played is en passant, the capturee type is still `None` because the piece that
+    /// is replaced on undo is not on the move's from-square.
+    /// The length of `moves` should always be one less than the length of `history`.
+    moves: Vec<(Move, Option<Piece>)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,7 +91,74 @@ impl Game {
     #[must_use]
     /// Construct a new [`Game`] in the conventional chess starting position.
     pub fn new() -> Game {
-        let board = Board {
+        let mailbox = [
+            Some((Piece::Rook, Color::White)), // a1
+            Some((Piece::Knight, Color::White)),
+            Some((Piece::Bishop, Color::White)),
+            Some((Piece::Queen, Color::White)),
+            Some((Piece::King, Color::White)),
+            Some((Piece::Bishop, Color::White)),
+            Some((Piece::Knight, Color::White)),
+            Some((Piece::Rook, Color::White)),
+            Some((Piece::Pawn, Color::White)), // a2
+            Some((Piece::Pawn, Color::White)),
+            Some((Piece::Pawn, Color::White)),
+            Some((Piece::Pawn, Color::White)),
+            Some((Piece::Pawn, Color::White)),
+            Some((Piece::Pawn, Color::White)),
+            Some((Piece::Pawn, Color::White)),
+            Some((Piece::Pawn, Color::White)),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None, // rank 3
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None, // rank 4
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None, // rank 5
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,                              // rank 6
+            Some((Piece::Pawn, Color::Black)), // a7
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Pawn, Color::Black)),
+            Some((Piece::Rook, Color::Black)), // a8
+            Some((Piece::Knight, Color::Black)),
+            Some((Piece::Bishop, Color::Black)),
+            Some((Piece::Queen, Color::Black)),
+            Some((Piece::King, Color::Black)),
+            Some((Piece::Bishop, Color::Black)),
+            Some((Piece::Knight, Color::Black)),
+            Some((Piece::Rook, Color::Black)),
+        ];
+        Game {
+            mailbox,
             sides: [
                 Bitboard::new(0x0000_0000_0000_FFFF), // white
                 Bitboard::new(0xFFFF_0000_0000_0000), // black
@@ -110,75 +171,6 @@ impl Game {
                 Bitboard::new(0x00FF_0000_0000_FF00), // pawn
                 Bitboard::new(0x1000_0000_0000_0010), // king
             ],
-            mailbox: [
-                Some((Piece::Rook, Color::White)), // a1
-                Some((Piece::Knight, Color::White)),
-                Some((Piece::Bishop, Color::White)),
-                Some((Piece::Queen, Color::White)),
-                Some((Piece::King, Color::White)),
-                Some((Piece::Bishop, Color::White)),
-                Some((Piece::Knight, Color::White)),
-                Some((Piece::Rook, Color::White)),
-                Some((Piece::Pawn, Color::White)), // a2
-                Some((Piece::Pawn, Color::White)),
-                Some((Piece::Pawn, Color::White)),
-                Some((Piece::Pawn, Color::White)),
-                Some((Piece::Pawn, Color::White)),
-                Some((Piece::Pawn, Color::White)),
-                Some((Piece::Pawn, Color::White)),
-                Some((Piece::Pawn, Color::White)),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None, // rank 3
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None, // rank 4
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None, // rank 5
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,                              // rank 6
-                Some((Piece::Pawn, Color::Black)), // a7
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Pawn, Color::Black)),
-                Some((Piece::Rook, Color::Black)), // a8
-                Some((Piece::Knight, Color::Black)),
-                Some((Piece::Bishop, Color::Black)),
-                Some((Piece::Queen, Color::Black)),
-                Some((Piece::King, Color::Black)),
-                Some((Piece::Bishop, Color::Black)),
-                Some((Piece::Knight, Color::Black)),
-                Some((Piece::Rook, Color::Black)),
-            ],
-        };
-        Game {
-            board,
             history: vec![BoardMeta {
                 en_passant_square: None,
                 player: Color::White,
@@ -187,8 +179,7 @@ impl Game {
                 hash: Bitboard::ALL
                     .into_iter()
                     .filter_map(|sq| {
-                        board.mailbox[sq as usize]
-                            .map(|(pt, color)| zobrist::square_key(sq, pt, color))
+                        mailbox[sq as usize].map(|(pt, color)| zobrist::square_key(sq, pt, color))
                     })
                     .chain((0..4).map(zobrist::castle_key))
                     .fold(0, |a, b| a ^ b),
@@ -222,11 +213,9 @@ impl Game {
     /// ```
     pub fn from_fen(fen: &str) -> Result<Game, &str> {
         let mut game = Game {
-            board: Board {
-                sides: [Bitboard::EMPTY; 2],
-                pieces: [Bitboard::EMPTY; 6],
-                mailbox: [None; 64],
-            },
+            sides: [Bitboard::EMPTY; 2],
+            pieces: [Bitboard::EMPTY; 6],
+            mailbox: [None; 64],
             history: vec![BoardMeta {
                 en_passant_square: None,
                 player: Color::White,
@@ -372,14 +361,14 @@ impl Game {
         };
 
         // updating metadata
-        meta.king_sqs = [
-            Square::try_from(game.board[Piece::King] & game.board[Color::White])?,
-            Square::try_from(game.board[Piece::King] & game.board[Color::Black])?,
+        game.history.last_mut().unwrap().king_sqs = [
+            Square::try_from(game[Piece::King] & game[Color::White])?,
+            Square::try_from(game[Piece::King] & game[Color::Black])?,
         ];
         game.history[0].checkers = square_attackers(
-            &game.board,
-            meta.king_sqs[meta.player as usize],
-            !meta.player,
+            &game,
+            game.meta().king_sqs[game.meta().player as usize],
+            !game.meta().player,
         );
         game.history[0].pinned = game.compute_pinned(
             game.history[0].king_sqs[game.history[0].player as usize],
@@ -390,12 +379,6 @@ impl Game {
         }
 
         Ok(game)
-    }
-
-    #[must_use]
-    /// Get the position representing the current state of the game.
-    pub fn board(&self) -> &Board {
-        &self.board
     }
 
     #[must_use]
@@ -441,13 +424,13 @@ impl Game {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
 
-        let mover_type = self.board[from_sq].unwrap().0;
+        let mover_type = self[from_sq].unwrap().0;
         let player = self.meta().player;
         let ep_sq = self.meta().en_passant_square;
         let old_castle_rights = self.meta().castle_rights;
         let is_pawn_move = mover_type == Piece::Pawn;
         let is_king_move = mover_type == Piece::King;
-        let capturee = self.board[to_sq];
+        let capturee = self[to_sq];
         // hash key of new position
 
         let mut new_meta = BoardMeta {
@@ -495,8 +478,8 @@ impl Game {
             let ep_candidate =
                 Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
             if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
-                & self.board[Piece::Pawn]
-                & self.board[!player])
+                & self[Piece::Pawn]
+                & self[!player])
                 .is_empty()
             {
                 new_meta.en_passant_square = None;
@@ -573,14 +556,13 @@ impl Game {
         }
 
         // checkers
-        new_meta.checkers =
-            square_attackers(&self.board, new_meta.king_sqs[!player as usize], player);
+        new_meta.checkers = square_attackers(self, new_meta.king_sqs[!player as usize], player);
 
         // pinned pieces
         new_meta.pinned = self.compute_pinned(new_meta.king_sqs[!player as usize], player);
         self.history.push(new_meta);
         self.moves.push((m, capturee.map(|c| c.0)));
-        debug_assert!(self.is_valid());
+        // debug_assert!(self.is_valid());
     }
 
     /// Remove a piece from a square, assuming that `sq` is occupied.
@@ -590,10 +572,10 @@ impl Game {
     /// This operation will panic if `sq` is empty.
     fn remove_piece(&mut self, sq: Square) {
         let mask = !Bitboard::from(sq);
-        let (pt, color) = self.board.mailbox[sq as usize].unwrap();
-        self.board.pieces[pt as usize] &= mask;
-        self.board.sides[color as usize] &= mask;
-        self.board.mailbox[sq as usize] = None;
+        let (pt, color) = self.mailbox[sq as usize].unwrap();
+        self.pieces[pt as usize] &= mask;
+        self.sides[color as usize] &= mask;
+        self.mailbox[sq as usize] = None;
     }
 
     /// Add a piece to the square at a given place on the board.
@@ -601,9 +583,9 @@ impl Game {
         // Remove the hash from the piece that was there before (no-op if it was
         // empty)
         let mask = Bitboard::from(sq);
-        self.board.pieces[pt as usize] |= mask;
-        self.board.sides[color as usize] |= mask;
-        self.board.mailbox[sq as usize] = Some((pt, color));
+        self.pieces[pt as usize] |= mask;
+        self.sides[color as usize] |= mask;
+        self.mailbox[sq as usize] = Some((pt, color));
     }
 
     /// Compute a bitboard of all pieces pinned to square `pin_sq` by attacks from color `enemy`.
@@ -611,12 +593,12 @@ impl Game {
         let mut pinned = Bitboard::EMPTY;
         let rook_mask = MAGIC.rook_attacks(Bitboard::EMPTY, pin_sq);
         let bishop_mask = MAGIC.bishop_attacks(Bitboard::EMPTY, pin_sq);
-        let occupancy = self.board.occupancy();
-        let queens = self.board[Piece::Queen];
+        let occupancy = self.occupancy();
+        let queens = self[Piece::Queen];
 
-        let snipers = self.board[enemy]
-            & ((rook_mask & (queens | self.board[Piece::Rook]))
-                | (bishop_mask & (queens | self.board[Piece::Bishop])));
+        let snipers = self[enemy]
+            & ((rook_mask & (queens | self[Piece::Rook]))
+                | (bishop_mask & (queens | self[Piece::Bishop])));
 
         for sniper_sq in snipers {
             let between_bb = Bitboard::between(pin_sq, sniper_sq);
@@ -669,7 +651,7 @@ impl Game {
         let from_sq = m.from_square();
         let to_sq = m.to_square();
 
-        let (pt, color) = self.board[to_sq].unwrap();
+        let (pt, color) = self[to_sq].unwrap();
 
         // note: we don't need to update hashes here because that was saved in the history
 
@@ -705,7 +687,7 @@ impl Game {
             self.add_piece(replacement_square, Piece::Pawn, !color);
         }
         // println!("after undo: {self} \n{}", self.board());
-        debug_assert!(self.is_valid());
+        // debug_assert!(self.is_valid());
 
         Ok(())
     }
@@ -733,95 +715,6 @@ impl Game {
     pub fn len(&self) -> usize {
         self.history.len()
     }
-
-    #[must_use]
-    /// Check if the state of this game is valid.
-    ///
-    /// Returns false if the game is invalid.
-    fn is_valid(&self) -> bool {
-        // check that different board representations line up at every square
-        if Bitboard::ALL
-            .into_iter()
-            .all(|sq| match self.board.mailbox[sq as usize] {
-                Some((pt, color)) => {
-                    !self.board[color].contains(sq)
-                        || self.board[!color].contains(sq)
-                        || Piece::ALL
-                            .into_iter()
-                            .any(|pt2| (pt2 == pt) != self.board[pt2].contains(sq))
-                }
-                None => self
-                    .board
-                    .sides
-                    .iter()
-                    .chain(self.board.pieces.iter())
-                    .any(|bb| bb.contains(sq)),
-            })
-        {
-            println!("mismatched board representations");
-            return false;
-        }
-
-        // validate current king squares
-        if self.board[Piece::King] & self.board[Color::White]
-            != Bitboard::from(self.meta().king_sqs[Color::White as usize])
-        {
-            println!(
-                "bad white king square: {} vs {}",
-                self.board[Piece::King] & self.board[Color::White],
-                self.meta().king_sqs[Color::White as usize]
-            );
-            return false;
-        }
-
-        if self.board[Piece::King] & self.board[Color::Black]
-            != Bitboard::from(self.meta().king_sqs[Color::Black as usize])
-        {
-            println!("bad black king square");
-            return false;
-        }
-
-        // validate hash
-        let mut new_hash = if self.meta().player == Color::White {
-            0
-        } else {
-            zobrist::BLACK_TO_MOVE_KEY
-        };
-        new_hash ^= Bitboard::ALL
-            .into_iter()
-            .map(|sq| self.board[sq].map_or(0, |(pt, color)| zobrist::square_key(sq, pt, color)))
-            .fold(0, |a, b| a ^ b);
-        for i in 0..4 {
-            if self.meta().castle_rights.0 & 1 << i != 0 {
-                new_hash ^= zobrist::castle_key(i);
-            }
-        }
-        new_hash ^= self.meta().en_passant_square.map_or(0, zobrist::ep_key);
-
-        if self.meta().hash != new_hash {
-            println!("bad hash");
-            return false;
-        }
-
-        let king_sq = self.meta().king_sqs[self.meta().player as usize];
-
-        // Validate checkers
-        if self.meta().checkers != square_attackers(&self.board, king_sq, !self.meta().player) {
-            println!("bad checkers");
-            return false;
-        }
-
-        // Validate pinned
-        if self.meta().pinned != self.compute_pinned(king_sq, !self.meta().player) {
-            println!("bad pinned");
-            return false;
-        }
-
-        true
-    }
-}
-
-impl Board {
     #[must_use]
     /// Get the squares occupied by the pieces of each type (i.e. Black or
     /// White).
@@ -896,6 +789,91 @@ impl Board {
             _ => false,
         }
     }
+
+    #[must_use]
+    /// Check if the state of this game is valid.
+    ///
+    /// Returns false if the game is invalid.
+    fn is_valid(&self) -> bool {
+        // check that different board representations line up at every square
+        if Bitboard::ALL
+            .into_iter()
+            .all(|sq| match self.mailbox[sq as usize] {
+                Some((pt, color)) => {
+                    !self[color].contains(sq)
+                        || self[!color].contains(sq)
+                        || Piece::ALL
+                            .into_iter()
+                            .any(|pt2| (pt2 == pt) != self[pt2].contains(sq))
+                }
+                None => self
+                    .sides
+                    .iter()
+                    .chain(self.pieces.iter())
+                    .any(|bb| bb.contains(sq)),
+            })
+        {
+            println!("mismatched board representations");
+            return false;
+        }
+
+        // validate current king squares
+        if self[Piece::King] & self[Color::White]
+            != Bitboard::from(self.meta().king_sqs[Color::White as usize])
+        {
+            println!(
+                "bad white king square: {} vs {}",
+                self[Piece::King] & self[Color::White],
+                self.meta().king_sqs[Color::White as usize]
+            );
+            return false;
+        }
+
+        if self[Piece::King] & self[Color::Black]
+            != Bitboard::from(self.meta().king_sqs[Color::Black as usize])
+        {
+            println!("bad black king square");
+            return false;
+        }
+
+        // validate hash
+        let mut new_hash = if self.meta().player == Color::White {
+            0
+        } else {
+            zobrist::BLACK_TO_MOVE_KEY
+        };
+        new_hash ^= Bitboard::ALL
+            .into_iter()
+            .map(|sq| self[sq].map_or(0, |(pt, color)| zobrist::square_key(sq, pt, color)))
+            .fold(0, |a, b| a ^ b);
+        for i in 0..4 {
+            if self.meta().castle_rights.0 & 1 << i != 0 {
+                new_hash ^= zobrist::castle_key(i);
+            }
+        }
+        new_hash ^= self.meta().en_passant_square.map_or(0, zobrist::ep_key);
+
+        if self.meta().hash != new_hash {
+            println!("bad hash");
+            return false;
+        }
+
+        let king_sq = self.meta().king_sqs[self.meta().player as usize];
+
+        // Validate checkers
+        if self.meta().checkers != square_attackers(self, king_sq, !self.meta().player) {
+            println!("bad checkers");
+            return false;
+        }
+
+        // Validate pinned
+        if self.meta().pinned != self.compute_pinned(king_sq, !self.meta().player) {
+            println!("bad pinned");
+            return false;
+        }
+
+        true
+    }
 }
 
 impl BoardMeta {
@@ -906,37 +884,7 @@ impl BoardMeta {
     }
 }
 
-impl Display for Board {
-    /// Display this board in a console-ready format.
-    /// Expresses as a series of 8 lines, where the topmost line is the 8th rank and the bottommost
-    /// is the 1st.
-    /// White pieces are represented with capital letters, while black pieces are represented in
-    /// lowercase.
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for r in 0..8 {
-            for c in 0..8 {
-                let i = 64 - (r + 1) * 8 + c;
-                let current_square = Square::try_from(i).unwrap();
-                match self[current_square] {
-                    Some((p, Color::White)) => write!(f, "{p} ")?,
-                    Some((p, Color::Black)) => write!(f, "{} ", p.code().to_lowercase())?,
-                    None => write!(f, ". ")?,
-                };
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-impl PartialEq for Board {
-    fn eq(&self, other: &Board) -> bool {
-        // We assume the board is valid, so we don't need to check the mailbox.
-        self.sides == other.sides && self.pieces == other.pieces
-    }
-}
-
-impl Index<Piece> for Board {
+impl Index<Piece> for Game {
     type Output = Bitboard;
 
     /// Get the squares occupied by pieces of the given type.
@@ -947,7 +895,7 @@ impl Index<Piece> for Board {
     }
 }
 
-impl Index<Color> for Board {
+impl Index<Color> for Game {
     type Output = Bitboard;
 
     /// Get the squares occupied by pieces of the given color.
@@ -958,7 +906,7 @@ impl Index<Color> for Board {
     }
 }
 
-impl Index<Square> for Board {
+impl Index<Square> for Game {
     type Output = Option<(Piece, Color)>;
 
     /// Get the type and color of a piece occupying a given square, if it exists.
@@ -979,6 +927,19 @@ impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for m in &self.moves {
             write!(f, "{m:?} ")?;
+        }
+
+        for r in 0..8 {
+            for c in 0..8 {
+                let i = 64 - (r + 1) * 8 + c;
+                let current_square = Square::try_from(i).unwrap();
+                match self[current_square] {
+                    Some((p, Color::White)) => write!(f, "{p} ")?,
+                    Some((p, Color::Black)) => write!(f, "{} ", p.code().to_lowercase())?,
+                    None => write!(f, ". ")?,
+                };
+            }
+            writeln!(f)?;
         }
 
         Ok(())

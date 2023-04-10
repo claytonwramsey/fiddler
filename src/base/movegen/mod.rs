@@ -28,11 +28,7 @@ use once_cell::sync::Lazy;
 
 use self::magic::AttacksTable;
 
-use super::{
-    bitboard::Bitboard,
-    game::{Board, Game},
-    Color, Direction, Move, Piece, Square,
-};
+use super::{bitboard::Bitboard, game::Game, Color, Direction, Move, Piece, Square};
 
 /// A master copy of a magic move-generation table.
 ///
@@ -178,15 +174,14 @@ pub enum GenMode {
 /// assert!(!is_legal(Move::normal(Square::E2, Square::D4), &board));
 /// ```
 pub fn is_legal(m: Move, g: &Game) -> bool {
-    let b = g.board();
     let meta = g.meta();
     let from_sq = m.from_square();
     let to_sq = m.to_square();
     let from_bb = Bitboard::from(from_sq);
     let to_bb = Bitboard::from(to_sq);
     let player = meta.player;
-    let allies = b[player];
-    let enemies = b[!player];
+    let allies = g[player];
+    let enemies = g[!player];
     let occupancy = allies | enemies;
     if allies.contains(to_sq) {
         // cannot move to square occupied by our piece
@@ -196,7 +191,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
         return false;
     }
 
-    let Some((pt, _)) = b[from_sq] else {
+    let Some((pt, _)) = g[from_sq] else {
         return false;
     };
 
@@ -223,8 +218,8 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
         }
 
         // normal king moves can't step into check
-        let new_occupancy = (b.occupancy() ^ from_bb) | to_bb;
-        return square_attackers_occupancy(b, to_sq, !meta.player, new_occupancy).is_empty();
+        let new_occupancy = (g.occupancy() ^ from_bb) | to_bb;
+        return square_attackers_occupancy(g, to_sq, !meta.player, new_occupancy).is_empty();
     }
 
     // normal piece
@@ -311,14 +306,14 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
             Color::Black => to_bb << 8,
         };
 
-        let new_occupancy = b.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
+        let new_occupancy = g.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
 
         return (MAGIC.rook_attacks(new_occupancy, king_sq)
-            & (b[Piece::Rook] | b[Piece::Queen])
+            & (g[Piece::Rook] | g[Piece::Queen])
             & enemies)
             .is_empty()
             && (MAGIC.bishop_attacks(new_occupancy, king_sq)
-                & (b[Piece::Bishop] | b[Piece::Queen])
+                & (g[Piece::Bishop] | g[Piece::Queen])
                 & enemies)
                 .is_empty();
     }
@@ -423,7 +418,12 @@ pub fn get_moves<const M: GenMode>(g: &Game, callback: impl FnMut(Move)) {
 /// }
 /// ```
 pub fn make_move_vec<const M: GenMode>(g: &Game) -> Vec<Move> {
-    let mut moves = Vec::new();
+    // initialize capacity to make vector push faster
+    let mut moves = Vec::with_capacity(match M {
+        GenMode::All => 40,
+        GenMode::Captures => 30,
+        GenMode::Quiets => 10,
+    });
     get_moves::<M>(g, |m| moves.push(m));
     moves
 }
@@ -445,12 +445,11 @@ pub fn make_move_vec<const M: GenMode>(g: &Game) -> Vec<Move> {
 /// assert!(has_moves(&b));
 /// ```
 pub fn has_moves(g: &Game) -> bool {
-    let b = g.board();
     let meta = g.meta();
 
     let player = meta.player;
-    let allies = b[player];
-    let enemies = b[!player];
+    let allies = g[player];
+    let enemies = g[!player];
     let opponent = !player;
     let occupancy = allies | enemies;
     let mut legal_targets = !allies;
@@ -458,13 +457,13 @@ pub fn has_moves(g: &Game) -> bool {
     // king does not have to block its checks
     let king_to_sqs = KING_MOVES[king_sq as usize] & legal_targets;
     let unpinned = !meta.pinned;
-    let queens = b[Piece::Queen];
+    let queens = g[Piece::Queen];
 
     if meta.checkers.more_than_one() {
         // in double check, only consider king moves
         let new_occupancy = occupancy ^ Bitboard::from(king_sq);
         for to_sq in king_to_sqs {
-            if square_attackers_occupancy(b, to_sq, opponent, new_occupancy).is_empty() {
+            if square_attackers_occupancy(g, to_sq, opponent, new_occupancy).is_empty() {
                 return true;
             }
         }
@@ -483,14 +482,14 @@ pub fn has_moves(g: &Game) -> bool {
 
     // pinned knights can never move, but an unpinned knight does whatever it
     // wants
-    for sq in b[Piece::Knight] & allies & unpinned {
+    for sq in g[Piece::Knight] & allies & unpinned {
         if !(KNIGHT_MOVES[sq as usize] & legal_targets).is_empty() {
             return true;
         }
     }
 
     // unpinned bishops/diagonal queens
-    let bishop_movers = (b[Piece::Bishop] | queens) & allies;
+    let bishop_movers = (g[Piece::Bishop] | queens) & allies;
     for sq in bishop_movers & unpinned {
         if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets).is_empty() {
             return true;
@@ -505,7 +504,7 @@ pub fn has_moves(g: &Game) -> bool {
         }
     }
 
-    let rook_movers = (b[Piece::Rook] | queens) & allies;
+    let rook_movers = (g[Piece::Rook] | queens) & allies;
     // unpinned rooks/horizontal queens
     for sq in rook_movers & unpinned {
         if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets).is_empty() {
@@ -522,7 +521,7 @@ pub fn has_moves(g: &Game) -> bool {
     }
 
     // "normal" pawn moves
-    let our_pawns = b[Piece::Pawn] & allies;
+    let our_pawns = g[Piece::Pawn] & allies;
     for sq in our_pawns {
         let singlemove_sq = sq + player.pawn_direction();
         let mut to_bb = Bitboard::from(singlemove_sq);
@@ -550,11 +549,11 @@ pub fn has_moves(g: &Game) -> bool {
             if PAWN_ATTACKS[player as usize][sq as usize].contains(ep_sq) {
                 let new_occupancy = ep_less_occupancy ^ Bitboard::from(sq);
                 if (MAGIC.rook_attacks(new_occupancy, king_sq)
-                    & (b[Piece::Rook] | b[Piece::Queen])
+                    & (g[Piece::Rook] | g[Piece::Queen])
                     & enemies)
                     .is_empty()
                     && (MAGIC.bishop_attacks(new_occupancy, king_sq)
-                        & (b[Piece::Bishop] | b[Piece::Queen])
+                        & (g[Piece::Bishop] | g[Piece::Queen])
                         & enemies)
                         .is_empty()
                 {
@@ -567,7 +566,7 @@ pub fn has_moves(g: &Game) -> bool {
     // king moves are expensive to validate
     let new_occupancy = occupancy ^ Bitboard::from(king_sq);
     for to_sq in king_to_sqs {
-        if square_attackers_occupancy(b, to_sq, opponent, new_occupancy).is_empty() {
+        if square_attackers_occupancy(g, to_sq, opponent, new_occupancy).is_empty() {
             return true;
         }
     }
@@ -591,8 +590,8 @@ pub fn has_moves(g: &Game) -> bool {
 /// assert!(is_square_attacked_by(&b, Square::E2, Color::White));
 /// assert!(!is_square_attacked_by(&b, Square::E4, Color::White));
 /// ```
-pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
-    !square_attackers(board, sq, color).is_empty()
+pub fn is_square_attacked_by(game: &Game, sq: Square, color: Color) -> bool {
+    !square_attackers(game, sq, color).is_empty()
 }
 
 /// Enumerate the legal moves a player of the given color would be able to make if it were their
@@ -600,12 +599,11 @@ pub fn is_square_attacked_by(board: &Board, sq: Square, color: Color) -> bool {
 ///
 /// Requires that the player to move's king is not in check.
 fn non_evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
-    let b = g.board();
     let meta = g.meta();
     let target_sqs = match M {
-        GenMode::All => !b[meta.player],
-        GenMode::Captures => b[!meta.player],
-        GenMode::Quiets => !b.occupancy(),
+        GenMode::All => !g[meta.player],
+        GenMode::Captures => g[!meta.player],
+        GenMode::Quiets => !g.occupancy(),
     };
 
     let mut pawn_targets = target_sqs;
@@ -630,7 +628,6 @@ fn non_evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
 ///
 /// Requires that the player to move's king is in check.
 fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
-    let b = g.board();
     let meta = g.meta();
     let player = meta.player;
     let king_sq = meta.king_sqs[player as usize];
@@ -640,11 +637,11 @@ fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
         // SAFETY: We checked that the set of checkers is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(meta.checkers) };
         // Look for blocks or captures
-        let mut target_sqs = !b[player] & Bitboard::between(king_sq, checker_sq) | meta.checkers;
+        let mut target_sqs = !g[player] & Bitboard::between(king_sq, checker_sq) | meta.checkers;
         match M {
             GenMode::All => (),
-            GenMode::Captures => target_sqs &= b[!player],
-            GenMode::Quiets => target_sqs &= !b[!player],
+            GenMode::Captures => target_sqs &= g[!player],
+            GenMode::Quiets => target_sqs &= !g[!player],
         }
 
         let mut pawn_targets = target_sqs;
@@ -663,9 +660,9 @@ fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
     }
 
     let king_targets = match M {
-        GenMode::All => !b[player],
-        GenMode::Captures => b[!player],
-        GenMode::Quiets => !b.occupancy(),
+        GenMode::All => !g[player],
+        GenMode::Captures => g[!player],
+        GenMode::Quiets => !g.occupancy(),
     };
     king_move_non_castle(g, &mut callback, king_targets);
 }
@@ -688,41 +685,41 @@ fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
 ///
 /// assert_eq!(square_attackers(&b, Square::E2, Color::White), attackers);
 /// ```
-pub fn square_attackers(board: &Board, sq: Square, color: Color) -> Bitboard {
-    square_attackers_occupancy(board, sq, color, board.occupancy())
+pub fn square_attackers(game: &Game, sq: Square, color: Color) -> Bitboard {
+    square_attackers_occupancy(game, sq, color, game.occupancy())
 }
 
 /// Same functionality as `square_attackers`, but uses the provided `occupancy` bitboard (as
 /// opposed to the board's occupancy.)
 fn square_attackers_occupancy(
-    board: &Board,
+    game: &Game,
     sq: Square,
     color: Color,
     occupancy: Bitboard,
 ) -> Bitboard {
     let mut attackers = Bitboard::EMPTY;
-    let color_bb = board[color];
+    let color_bb = game[color];
     // Check for pawn attacks
     let pawn_vision = PAWN_ATTACKS[!color as usize][sq as usize];
-    attackers |= pawn_vision & board[Piece::Pawn];
+    attackers |= pawn_vision & game[Piece::Pawn];
 
     // Check for knight attacks
     let knight_vision = KNIGHT_MOVES[sq as usize];
-    attackers |= knight_vision & board[Piece::Knight];
+    attackers |= knight_vision & game[Piece::Knight];
 
-    let queens_bb = board[Piece::Queen];
+    let queens_bb = game[Piece::Queen];
 
     // Check for rook/horizontal queen attacks
     let rook_vision = MAGIC.rook_attacks(occupancy, sq);
-    attackers |= rook_vision & (queens_bb | board[Piece::Rook]);
+    attackers |= rook_vision & (queens_bb | game[Piece::Rook]);
 
     // Check for bishop/diagonal queen attacks
     let bishop_vision = MAGIC.bishop_attacks(occupancy, sq);
-    attackers |= bishop_vision & (queens_bb | board[Piece::Bishop]);
+    attackers |= bishop_vision & (queens_bb | game[Piece::Bishop]);
 
     // Check for king attacks
     let king_vision = KING_MOVES[sq as usize];
-    attackers |= king_vision & board[Piece::King];
+    attackers |= king_vision & game[Piece::King];
 
     attackers & color_bb
 }
@@ -733,14 +730,13 @@ fn square_attackers_occupancy(
 /// Moves which capture allies will also be generated.
 /// To prevent this, ensure all squares containing allies are excluded from `target`.
 fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), target: Bitboard) {
-    let b = g.board();
     let meta = g.meta();
     let player = meta.player;
-    let allies = b[player];
-    let opponents = b[!player];
+    let allies = g[player];
+    let opponents = g[!player];
     let occupancy = allies | opponents;
     let unoccupied = !occupancy;
-    let pawns = b[Piece::Pawn] & allies;
+    let pawns = g[Piece::Pawn] & allies;
     let rank8 = player.pawn_promote_rank();
     let not_rank8 = !rank8;
     let rank3 = match player {
@@ -824,7 +820,7 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
         if let Some(ep_square) = meta.en_passant_square {
             if target.contains(ep_square) {
                 let king_sq = meta.king_sqs[player as usize];
-                let enemy = b[!player];
+                let enemy = g[!player];
                 let to_bb = Bitboard::from(ep_square);
                 let capture_bb = match player {
                     Color::White => to_bb >> 8,
@@ -833,13 +829,13 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
                 let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
                 for from_sq in from_sqs {
                     let new_occupancy =
-                        b.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
+                        g.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
                     if (MAGIC.rook_attacks(new_occupancy, king_sq)
-                        & (b[Piece::Rook] | b[Piece::Queen])
+                        & (g[Piece::Rook] | g[Piece::Queen])
                         & enemy)
                         .is_empty()
                         && (MAGIC.bishop_attacks(new_occupancy, king_sq)
-                            & (b[Piece::Bishop] | b[Piece::Queen])
+                            & (g[Piece::Bishop] | g[Piece::Queen])
                             & enemy)
                             .is_empty()
                     {
@@ -896,22 +892,21 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
 /// Moves which capture allies will also be generated.
 /// To prevent this, ensure all squares containing allies are excluded from `target`.
 fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bitboard) {
-    let board = g.board();
     let meta = g.meta();
 
     let player = meta.player;
-    let allies = board[player];
-    let occupancy = allies | board[!player];
-    let queens = board[Piece::Queen];
-    let rook_movers = (board[Piece::Rook] | queens) & allies;
-    let bishop_movers = (board[Piece::Bishop] | queens) & allies;
+    let allies = g[player];
+    let occupancy = allies | g[!player];
+    let queens = g[Piece::Queen];
+    let rook_movers = (g[Piece::Rook] | queens) & allies;
+    let bishop_movers = (g[Piece::Bishop] | queens) & allies;
     let king_sq = meta.king_sqs[player as usize];
     let unpinned = !meta.pinned;
     let king_hv = Bitboard::hv(king_sq);
     let king_diags = Bitboard::diags(king_sq);
 
     // only unpinned knights can move
-    for from_sq in board[Piece::Knight] & allies & unpinned {
+    for from_sq in g[Piece::Knight] & allies & unpinned {
         for to_sq in KNIGHT_MOVES[from_sq as usize] & target {
             callback(Move::normal(from_sq, to_sq));
         }
@@ -952,16 +947,15 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
 /// If `target` contains a square occupied by an ally, it can generate a move with the ally as the
 /// target square.
 fn king_move_non_castle(g: &Game, callback: &mut impl FnMut(Move), target: Bitboard) {
-    let b = g.board();
     let meta = g.meta();
     let king_sq = meta.king_sqs[meta.player as usize];
-    let allies = b[meta.player];
+    let allies = g[meta.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
-    let king_bb = b[Piece::King] & b[meta.player];
-    let old_occupancy = b.occupancy();
+    let king_bb = g[Piece::King] & g[meta.player];
+    let old_occupancy = g.occupancy();
     for to_sq in to_bb {
         let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(to_sq);
-        if square_attackers_occupancy(b, to_sq, !meta.player, new_occupancy).is_empty() {
+        if square_attackers_occupancy(g, to_sq, !meta.player, new_occupancy).is_empty() {
             callback(Move::normal(king_sq, to_sq));
         }
     }
@@ -972,11 +966,10 @@ fn king_move_non_castle(g: &Game, callback: &mut impl FnMut(Move), target: Bitbo
 ///
 /// Will not generate valid moves if the king is in check.
 fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
-    let b = g.board();
     let meta = g.meta();
 
     let player = meta.player;
-    let occ = b.occupancy();
+    let occ = g.occupancy();
     let king_sq = meta.king_sqs[player as usize];
 
     // the squares the king must pass through to reach the castled position
@@ -996,7 +989,7 @@ fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
         };
         if !passthrough_squares
             .iter()
-            .any(|&sq| is_square_attacked_by(b, sq, !player))
+            .any(|&sq| is_square_attacked_by(g, sq, !player))
         {
             callback(Move::castling(king_sq, passthrough_squares[1]));
         }
@@ -1020,7 +1013,7 @@ fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
         };
         if !passthrough_squares
             .iter()
-            .any(|&sq| is_square_attacked_by(b, sq, !player))
+            .any(|&sq| is_square_attacked_by(g, sq, !player))
         {
             callback(Move::castling(king_sq, passthrough_squares[1]));
         }
