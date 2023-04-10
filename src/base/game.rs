@@ -203,10 +203,10 @@ impl Game {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler::base::Board;
+    /// use fiddler::base::game::Game;
     ///
-    /// let default_board = Board::new();
-    /// let fen_board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")?;
+    /// let default_board = Game::new();
+    /// let fen_board = Game::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")?;
     /// assert_eq!(default_board, fen_board);
     /// # Ok(())
     /// # }
@@ -401,15 +401,12 @@ impl Game {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler::base::{Board, Move, Square};
+    /// use fiddler::base::{game::Game, Color, Move, Piece, Square};
     ///
-    /// let mut board = Board::new();
-    /// // board after 1. e4 is played
-    /// let board_after_e4 =
-    ///     Board::from_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")?;
+    /// let mut game = Game::new();
     ///
-    /// board.make_move(Move::normal(Square::E2, Square::E4));
-    /// assert_eq!(board, board_after_e4);
+    /// game.make_move(Move::normal(Square::E2, Square::E4));
+    /// assert_eq!(game[Square::E4], Some((Piece::Pawn, Color::White)));
     /// # Ok(())
     /// # }
     /// ```
@@ -715,6 +712,7 @@ impl Game {
     pub fn len(&self) -> usize {
         self.history.len()
     }
+
     #[must_use]
     /// Get the squares occupied by the pieces of each type (i.e. Black or
     /// White).
@@ -722,10 +720,10 @@ impl Game {
     /// # Examples
     ///
     /// ```
-    /// use fiddler::base::{Bitboard, Board};
+    /// use fiddler::base::{game::Game, Bitboard};
     ///
-    /// let board = Board::new();
-    /// assert_eq!(board.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
+    /// let game = Game::new();
+    /// assert_eq!(game.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
     /// ```
     pub fn occupancy(&self) -> Bitboard {
         self[Color::White] | self[Color::Black]
@@ -739,15 +737,15 @@ impl Game {
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler::base::{Board, Move, Square};
+    /// use fiddler::base::{game::Game, Move, Square};
     ///
     /// // Scandinavian defense. White can play exd5 to capture Black's pawn or
     /// // play e5 (among other moves).
-    /// let board = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
+    /// let game = Game::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
     /// // exd5
-    /// assert!(board.is_move_capture(Move::normal(Square::E4, Square::D5)));
+    /// assert!(game.is_move_capture(Move::normal(Square::E4, Square::D5)));
     /// // e5
-    /// assert!(!board.is_move_capture(Move::normal(Square::E4, Square::E5)));
+    /// assert!(!game.is_move_capture(Move::normal(Square::E4, Square::E5)));
     /// # Ok(())
     /// # }
     /// ```
@@ -756,21 +754,21 @@ impl Game {
     }
 
     #[must_use]
-    /// Determine whether this `Board`'s position is drawn by insufficient material.
+    /// Determine whether this position is drawn by insufficient material.
     ///
     /// # Examples
     ///
     /// ```
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use fiddler::base::Board;
+    /// use fiddler::base::game::Game;
     ///
     /// // Start position of the game is not a draw.
-    /// let (board0, _) = Board::new();
-    /// assert!(!board0.insufficient_material());
+    /// let game0 = Game::new();
+    /// assert!(!game0.insufficient_material());
     ///
     /// // Same-color bishops on a KBKB endgame is a draw by insufficient material in FIDE rules.
-    /// let (board1, _) = Board::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
-    /// assert!(board1.insufficient_material());
+    /// let game1 = Game::from_fen("8/8/3k4/8/4b3/2KB4/8/8 w - - 0 1")?;
+    /// assert!(game1.insufficient_material());
     /// # Ok(())
     /// # }
     /// ```

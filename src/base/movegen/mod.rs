@@ -160,6 +160,7 @@ pub enum GenMode {
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
 /// Determine whether any given move is legal, given a position in which it could be played.
+///
 /// Requires that the move must have been legal on *some* board, but not necessarily the given one.
 /// `is_legal` will make no regard to whether a position is drawn by repetition, 50-move-rule, or
 /// insufficient material.
@@ -167,11 +168,11 @@ pub enum GenMode {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::is_legal, Board, Move, Square};
+/// use fiddler::base::{game::Game, movegen::is_legal, Move, Square};
 ///
-/// let board = Board::new();
-/// assert!(is_legal(Move::normal(Square::E2, Square::E4), &board));
-/// assert!(!is_legal(Move::normal(Square::E2, Square::D4), &board));
+/// let game = Game::new();
+/// assert!(is_legal(Move::normal(Square::E2, Square::E4), &game));
+/// assert!(!is_legal(Move::normal(Square::E2, Square::D4), &game));
 /// ```
 pub fn is_legal(m: Move, g: &Game) -> bool {
     let meta = g.meta();
@@ -343,13 +344,13 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 /// Generate all legal moves:
 /// ```
 /// use fiddler::base::{
+///     game::Game,
 ///     movegen::{get_moves, is_legal, GenMode},
-///     Board,
 /// };
 ///
-/// let b = Board::new();
-/// get_moves::<{ GenMode::All }>(&b, |m| {
-///     assert!(is_legal(m, &b));
+/// let g = Game::new();
+/// get_moves::<{ GenMode::All }>(&g, |m| {
+///     assert!(is_legal(m, &g));
 /// });
 /// ```
 ///
@@ -357,14 +358,15 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>>{
 /// use fiddler::base::{
+///     game::Game,
 ///     movegen::{get_moves, is_legal, GenMode},
-///     Board, Move, Square,
+///     Move, Square,
 /// };
 ///
 /// // Scandinavian defense. The only legal capture is exd5.
-/// let b = Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
+/// let g = Game::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
 ///
-/// get_moves::<{ GenMode::Captures }>(&b, |m| {
+/// get_moves::<{ GenMode::Captures }>(&g, |m| {
 ///     assert_eq!(m, Move::normal(Square::E4, Square::D5));
 /// });
 /// # Ok(())
@@ -375,14 +377,14 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 ///
 /// ```
 /// use fiddler::base::{
+///     game::Game,
 ///     movegen::{get_moves, is_legal, GenMode},
-///     Board,
 /// };
 ///
-/// let b = Board::new();
-/// get_moves::<{ GenMode::Quiets }>(&b, |m| {
-///     assert!(is_legal(m, &b));
-///     assert!(!b.is_move_capture(m));
+/// let g = Game::new();
+/// get_moves::<{ GenMode::Quiets }>(&g, |m| {
+///     assert!(is_legal(m, &g));
+///     assert!(!g.is_move_capture(m));
 /// });
 /// ```
 pub fn get_moves<const M: GenMode>(g: &Game, callback: impl FnMut(Move)) {
@@ -407,14 +409,14 @@ pub fn get_moves<const M: GenMode>(g: &Game, callback: impl FnMut(Move)) {
 ///
 /// ```
 /// use fiddler::base::{
+///     game::Game,
 ///     movegen::{get_moves, is_legal, make_move_vec, GenMode},
-///     Board,
 /// };
 ///
-/// let b = Board::default();
-/// let moves = make_move_vec::<{ GenMode::All }>(&b);
+/// let g = Game::default();
+/// let moves = make_move_vec::<{ GenMode::All }>(&g);
 /// for m in moves {
-///     assert!(is_legal(m, &b))
+///     assert!(is_legal(m, &g))
 /// }
 /// ```
 pub fn make_move_vec<const M: GenMode>(g: &Game) -> Vec<Move> {
@@ -439,10 +441,10 @@ pub fn make_move_vec<const M: GenMode>(g: &Game) -> Vec<Move> {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::has_moves, Board};
+/// use fiddler::base::{game::Game, movegen::has_moves};
 ///
-/// let b = Board::new();
-/// assert!(has_moves(&b));
+/// let g = Game::new();
+/// assert!(has_moves(&g));
 /// ```
 pub fn has_moves(g: &Game) -> bool {
     let meta = g.meta();
@@ -584,11 +586,11 @@ pub fn has_moves(g: &Game) -> bool {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::is_square_attacked_by, Board, Color, Square};
+/// use fiddler::base::{game::Game, movegen::is_square_attacked_by, Color, Square};
 ///
-/// let b = Board::new();
-/// assert!(is_square_attacked_by(&b, Square::E2, Color::White));
-/// assert!(!is_square_attacked_by(&b, Square::E4, Color::White));
+/// let g = Game::new();
+/// assert!(is_square_attacked_by(&g, Square::E2, Color::White));
+/// assert!(!is_square_attacked_by(&g, Square::E4, Color::White));
 /// ```
 pub fn is_square_attacked_by(game: &Game, sq: Square, color: Color) -> bool {
     !square_attackers(game, sq, color).is_empty()
@@ -674,16 +676,16 @@ fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::square_attackers, Bitboard, Board, Color, Square};
+/// use fiddler::base::{game::Game, movegen::square_attackers, Bitboard, Color, Square};
 ///
-/// let b = Board::new();
+/// let g = Game::new();
 /// let attackers = Bitboard::EMPTY
 ///     .with_square(Square::E1)
 ///     .with_square(Square::D1)
 ///     .with_square(Square::F1)
 ///     .with_square(Square::G1);
 ///
-/// assert_eq!(square_attackers(&b, Square::E2, Color::White), attackers);
+/// assert_eq!(square_attackers(&g, Square::E2, Color::White), attackers);
 /// ```
 pub fn square_attackers(game: &Game, sq: Square, color: Color) -> Bitboard {
     square_attackers_occupancy(game, sq, color, game.occupancy())
