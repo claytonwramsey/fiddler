@@ -27,6 +27,7 @@ use super::{
 };
 
 use std::{
+    cmp::max,
     default::Default,
     fmt::{Display, Formatter},
     ops::Index,
@@ -85,6 +86,9 @@ pub struct BoardMeta {
     /// The set of squares containing pieces which are pinned, i.e. which are
     /// blocking some sort of attack on `player`'s king.
     pub pinned: Bitboard,
+    /// An number representing the number of plies since this position was most recently repeated.
+    /// If this position has not been repeated before, the value of this index is 0.
+    repeated: u16,
 }
 
 impl Game {
@@ -186,6 +190,7 @@ impl Game {
                 king_sqs: [Square::E1, Square::E8],
                 checkers: Bitboard::EMPTY,
                 pinned: Bitboard::EMPTY,
+                repeated: 0,
             }],
             moves: vec![],
         }
@@ -225,6 +230,7 @@ impl Game {
                 checkers: Bitboard::EMPTY,
                 king_sqs: [Square::A1; 2],
                 pinned: Bitboard::EMPTY,
+                repeated: 0,
             }],
             moves: Vec::new(),
         };
@@ -557,8 +563,29 @@ impl Game {
 
         // pinned pieces
         new_meta.pinned = self.compute_pinned(new_meta.king_sqs[!player as usize], player);
+
+        // go figure out whether this position is a repetition
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_possible_wrap
+        )]
+        {
+            new_meta.repeated = 'a: {
+                let end_idx = max(0, self.history.len() as i16 - i16::from(new_meta.rule50));
+                let mut i = self.history.len() as i16 - 4;
+                while end_idx <= i {
+                    if self.history[i as usize].hash == new_meta.hash {
+                        break 'a (self.history.len() as i16 - i) as u16;
+                    }
+                    i -= 2;
+                }
+                0
+            };
+        }
         self.history.push(new_meta);
         self.moves.push((m, capturee.map(|c| c.0)));
+
         // debug_assert!(self.is_valid());
     }
 
@@ -691,19 +718,13 @@ impl Game {
 
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
-    /// Determine whether there has been a repetition in the last `moves_since_start` moves, or
-    /// until the most recent pawn move or capture, whichever comes first.
-    pub fn repetition_since(&self, moves_since_start: usize) -> bool {
-        let mut hist_iter = self.history.iter().rev().take(moves_since_start + 1);
-        let latest_hash = hist_iter.next().unwrap().hash;
-        for meta in hist_iter {
-            if latest_hash == meta.hash {
-                return true;
-            } else if meta.rule50 == 0 {
-                return false;
-            }
-        }
-        false
+    /// Determine whether this game is drawn by repetition - either by two repetitions overall or
+    /// if there is one repetition since `moves_since_root`.
+    pub fn drawn_by_repetition(&self, moves_since_root: u16) -> bool {
+        let meta = self.meta();
+        meta.repeated != 0
+            && (usize::from(meta.repeated) <= usize::from(moves_since_root)
+                || self.history[self.history.len() - usize::from(meta.repeated)].repeated != 0)
     }
 
     #[allow(clippy::len_without_is_empty)]
@@ -941,5 +962,39 @@ impl Display for Game {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    /// Test that [`Game::drawn_by_repetition`] correctly handles a few off-by-one cases.
+    fn repetition_off_by_one() {
+        let mut g = Game::new();
+
+        // check that the game isn't drawn by
+        assert!(!g.drawn_by_repetition(0));
+        assert!(!g.drawn_by_repetition(999_999));
+
+        g.make_move(Move::normal(Square::G1, Square::F3));
+        g.make_move(Move::normal(Square::G8, Square::F6));
+        g.make_move(Move::normal(Square::F3, Square::G1));
+        g.make_move(Move::normal(Square::F6, Square::G8));
+
+        // single repetition - should be caught in searches but not normal play
+        assert!(g.drawn_by_repetition(4));
+        assert!(!g.drawn_by_repetition(3));
+
+        g.make_move(Move::normal(Square::G1, Square::F3));
+        g.make_move(Move::normal(Square::G8, Square::F6));
+        g.make_move(Move::normal(Square::F3, Square::G1));
+        g.make_move(Move::normal(Square::F6, Square::G8));
+
+        // double repetition - should be caught by both
+        assert!(g.drawn_by_repetition(4));
+        assert!(g.drawn_by_repetition(3));
+        assert!(g.drawn_by_repetition(0));
     }
 }
