@@ -36,8 +36,9 @@ use std::{
 
 use fiddler::{
     base::{
+        game::Game,
         movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
-        Board, Color, Piece, Square,
+        Color, Piece, Square,
     },
     engine::evaluate::{
         material,
@@ -125,8 +126,8 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
         let mut split_line = line.split('"');
         // first part of the split is the FEN, second is the score, last is just a semicolon
         let fen = split_line.next().ok_or("no FEN given")?;
-        let b = Board::from_fen(fen)?;
-        let features = extract(&b);
+        let g = Game::from_fen(fen)?;
+        let features = extract(&g);
         let score_str = split_line.next().ok_or("no result given")?;
         let score = match score_str {
             "1/2-1/2" => 0.5,
@@ -369,16 +370,16 @@ fn print_weights(weights: &Weights) {
     clippy::similar_names
 )]
 /// Extract a feature vector from a board.
-fn extract(b: &Board) -> BoardFeatures {
-    let bocc = b[Color::Black];
-    let wocc = b[Color::White];
+fn extract(g: &Game) -> BoardFeatures {
+    let bocc = g[Color::Black];
+    let wocc = g[Color::White];
 
     let mut piece_counts = [0.0; Piece::NUM - 1];
     let mut rules = Vec::new();
     // Indices 0..8: non-king piece values
     for pt in Piece::NON_KING {
-        let n_white = (b[pt] & wocc).len() as i8;
-        let n_black = (b[pt] & bocc).len() as i8;
+        let n_white = (g[pt] & wocc).len() as i8;
+        let n_black = (g[pt] & bocc).len() as i8;
         piece_counts[pt as usize] = f32::from(n_white + n_black);
         let net = n_white - n_black;
         if net != 0 {
@@ -389,7 +390,7 @@ fn extract(b: &Board) -> BoardFeatures {
 
     // Get piece-square quantities
     for pt in Piece::ALL {
-        for sq in b[pt] {
+        for sq in g[pt] {
             let alt_sq = sq.opposite();
             let increment = match (wocc.contains(sq), bocc.contains(alt_sq)) {
                 (true, false) => 1.,
@@ -403,34 +404,34 @@ fn extract(b: &Board) -> BoardFeatures {
 
     // New offset after everything in the PST.
     offset += 384;
-    extract_mobility(b, &mut rules, offset);
+    extract_mobility(g, &mut rules, offset);
 
     // Offset after mobility.
     offset += 168;
 
     // Doubled pawns
-    let doubled_count = net_doubled_pawns(b);
+    let doubled_count = net_doubled_pawns(g);
     if doubled_count != 0 {
         rules.push((offset, f32::from(doubled_count)));
     }
     offset += 1;
 
     // Open rooks
-    let open_rook_count = net_open_rooks(b);
+    let open_rook_count = net_open_rooks(g);
     if open_rook_count != 0 {
         rules.push((offset, f32::from(open_rook_count)));
     }
     offset += 1;
 
     // Add gains from castling rights
-    let kingside_net = i8::from(b.castle_rights.kingside(b.player))
-        - i8::from(b.castle_rights.kingside(!b.player));
+    let kingside_net = i8::from(g.meta().castle_rights.kingside(g.meta().player))
+        - i8::from(g.meta().castle_rights.kingside(!g.meta().player));
     if kingside_net != 0 {
         rules.push((offset, f32::from(kingside_net)));
     }
     offset += 1;
 
-    let queenside_net = i8::from(b.castle_rights.queenside(b.player));
+    let queenside_net = i8::from(g.meta().castle_rights.queenside(g.meta().player));
     if queenside_net != 0 {
         rules.push((offset, f32::from(queenside_net)));
     }
@@ -444,16 +445,16 @@ fn extract(b: &Board) -> BoardFeatures {
 
 /// Helper function to extract mobility information into the sparse feature vector.
 /// Adds 168 new features.
-fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
-    let white = b[Color::White];
-    let black = b[Color::Black];
+fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
+    let white = g[Color::White];
+    let black = g[Color::Black];
     let not_white = !white;
     let not_black = !black;
     let occupancy = white | black;
     let mut count = [[0i8; MAX_MOBILITY]; Piece::NUM];
 
     // count knight moves
-    let knights = b[Piece::Knight];
+    let knights = g[Piece::Knight];
     for sq in knights & white {
         let idx = usize::from((KNIGHT_MOVES[sq as usize] & not_white).len());
         count[Piece::Knight as usize][idx] += 1;
@@ -464,7 +465,7 @@ fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // count bishop moves
-    let bishops = b[Piece::Bishop];
+    let bishops = g[Piece::Bishop];
     for sq in bishops & white {
         let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_white).len());
         count[Piece::Bishop as usize][idx] += 1;
@@ -475,7 +476,7 @@ fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // count rook moves
-    let rooks = b[Piece::Rook];
+    let rooks = g[Piece::Rook];
     for sq in rooks & white {
         let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_white).len());
         count[Piece::Rook as usize][idx] += 1;
@@ -486,7 +487,7 @@ fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // count queen moves
-    let queens = b[Piece::Queen];
+    let queens = g[Piece::Queen];
     for sq in queens & white {
         let idx = usize::from(
             ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_white)
@@ -504,7 +505,7 @@ fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
 
     // count net pawn moves
     // pawns can't capture by pushing, so we only examine their capture squares
-    let pawns = b[Piece::Pawn];
+    let pawns = g[Piece::Pawn];
     for sq in pawns & white {
         let idx = usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white).len());
         count[Piece::Pawn as usize][idx] += 1;
@@ -515,11 +516,13 @@ fn extract_mobility(b: &Board, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // king
-    let white_king_idx =
-        usize::from((KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white).len());
+    let white_king_idx = usize::from(
+        (KING_MOVES[g.meta().king_sqs[Color::White as usize] as usize] & not_white).len(),
+    );
     count[Piece::King as usize][white_king_idx] += 1;
-    let black_king_idx =
-        usize::from((KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black).len());
+    let black_king_idx = usize::from(
+        (KING_MOVES[g.meta().king_sqs[Color::Black as usize] as usize] & not_black).len(),
+    );
     count[Piece::King as usize][black_king_idx] -= 1;
 
     for pt in Piece::ALL {

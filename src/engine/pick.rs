@@ -38,11 +38,14 @@
 use std::mem::swap;
 
 use crate::base::{
+    game::Game,
     movegen::{get_moves, is_legal, GenMode},
-    Board, Move,
+    Move,
 };
 
-use super::evaluate::{material, tag_move, Eval, EvalCookie, Score};
+use super::evaluate::{
+    calculate_phase, cumulative_score_delta, material, mg_npm_delta, Eval, Score,
+};
 
 /// Create an estimate for how good a move is.
 /// `delta` is the PST difference created by this move.
@@ -51,14 +54,24 @@ use super::evaluate::{material, tag_move, Eval, EvalCookie, Score};
 /// # Panics
 ///
 /// This function may panic if the given move is illegal.
-pub fn candidacy(b: &Board, m: Move, delta: Score, phase: f32) -> Eval {
-    let mover_type = b.type_at_square(m.from_square()).unwrap();
+pub fn candidacy(g: &Game, m: Move, delta: Score, phase: f32) -> Eval {
+    // Worst case, we don't keep the piece we captured. Subtract off the value of the mover from
+    // the difference in cumulative evaluation.
+    (delta - material::value(g[m.from_square()].unwrap().0)).blend(phase)
+}
 
-    // Worst case, we don't keep the piece we captured
-    let mut worst_case_delta = delta;
-    let mover_value = material::value(mover_type);
-    worst_case_delta -= mover_value;
-    worst_case_delta.blend(phase)
+#[derive(Clone, Debug, PartialEq)]
+/// A move which has been tagged with its effects on a game.
+pub struct TaggedMove {
+    /// The move which is tagged.
+    pub m: Move,
+    /// The new quantity of mid-game non-pawn material in the game after this move is played.
+    pub new_mg_npm: Eval,
+    /// The phase of the position being evaluated after this move is played.
+    pub phase: f32,
+    /// The heuristic quality of this move.
+    /// Will be higher for better moves.
+    pub quality: Eval,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -66,23 +79,16 @@ pub fn candidacy(b: &Board, m: Move, delta: Score, phase: f32) -> Eval {
 pub struct MovePicker {
     /// The buffer of captures to select from, paired with their PST deltas and then their final
     /// candidacies.
-    capture_buffer: Vec<(Move, (Score, Eval))>,
+    capture_buffer: Vec<TaggedMove>,
     /// The buffer of quiet moves to select from, paired with their PST deltas and then their final
     /// candidacies.
-    quiet_buffer: Vec<(Move, (Score, Eval))>,
+    quiet_buffer: Vec<TaggedMove>,
     /// The index in the move buffer of the capture to give (initialized to 0).
     capture_index: usize,
     /// The index in the move buffer of the quiet move to give (initialized to 0).
     quiet_index: usize,
     /// The set of moves to ignore.
     ignored: Vec<Move>,
-    /// The board for which moves are being generated.
-    /// In the ideal world, this would instead be an `&'a Board`, pointing to a board in game's
-    /// history, but borrow checker rules prevent us from making this optimization.
-    board: Board,
-    /// The tagging cookie for `board`.
-    /// Like `board`, this would ideally be an `&'a Cookie`.
-    cookie: EvalCookie,
     /// The upcoming phase of move generation.
     phase: PickPhase,
     /// The move retreived from the transposition table.
@@ -116,20 +122,13 @@ impl MovePicker {
     /// be generated.
     ///
     /// The transposition move must be legal, and should be checked as such prior to instantiation.
-    pub fn new(
-        b: Board,
-        cookie: &EvalCookie,
-        transposition_move: Option<Move>,
-        killer_move: Option<Move>,
-    ) -> MovePicker {
+    pub fn new(transposition_move: Option<Move>, killer_move: Option<Move>) -> MovePicker {
         MovePicker {
             capture_buffer: Vec::new(),
             quiet_buffer: Vec::new(),
             capture_index: 0,
             quiet_index: 0,
             ignored: Vec::new(),
-            board: b,
-            cookie: *cookie,
             phase: PickPhase::Transposition,
             transposition_move,
             killer_move,
@@ -143,52 +142,46 @@ impl MovePicker {
             self.ignored.push(m);
         }
     }
-}
 
-/// Search through `moves` until we find the best move, sorting as we go.
-/// After this function terminates, `moves[idx]` will contain the best-rated move of the input moves
-/// from idx to the end.
-/// Requires that `0 <= idx < moves.len()`.
-fn select_best(moves: &mut [(Move, (Score, Eval))], idx: usize) -> (Move, (Score, Eval)) {
-    let mut best_entry = moves[idx];
-    for entry in moves.iter_mut().skip(idx + 1) {
-        // insertion sort to get the best move.
-        // insertion sort is slower if we need to see every move,
-        // but often we don't due to beta cutoff
-        if entry.1 .1 > best_entry.1 .1 {
-            // swap out the next-best move
-            swap(entry, &mut best_entry);
-        }
-    }
-
-    best_entry
-}
-
-impl Iterator for MovePicker {
-    type Item = (Move, (Score, Eval));
-
-    /// Get the next move which the move picker wants.
-    fn next(&mut self) -> Option<Self::Item> {
+    /// Get the next move which the move picker believes is worth playing.
+    ///
+    /// # Inputs
+    ///
+    /// - `g`: The game that moves should be generated on. This game must always be in the same
+    ///   state that `next` on this move generator was first called with.
+    /// - `phase`: The current calculated phase of `g`. This must be the return value of
+    ///   [`fiddler::engine::evaluate::phase_of`].
+    ///
+    /// # Returns
+    ///
+    /// This function will return `Some` if there is another move to be evaluated, and `None` if no
+    /// such moves exist.
+    /// Inside of the `Some` variant, there are 2 elements:
+    ///
+    /// 1. The next move to be played.
+    /// 2. A structure containing extrThe new cumulative evaluation of the position after the move
+    /// is played. 3. The quantity of mid-
+    pub fn next(&mut self, g: &Game, current_mg_npm: Eval) -> Option<TaggedMove> {
         match self.phase {
             PickPhase::Transposition => {
                 self.phase = PickPhase::PreGoodCapture;
                 match self.transposition_move {
-                    None => self.next(),
+                    None => self.next(g, current_mg_npm),
                     Some(m) => {
                         // we assume that m was checked for legality before
                         self.ignore(m);
-                        Some((m, tag_move(m, &self.board, &self.cookie)))
+                        Some(TaggedMove::new(g, m, current_mg_npm))
                     }
                 }
             }
             PickPhase::PreGoodCapture => {
                 // generate moves, and then move along
                 self.phase = PickPhase::GoodCapture;
-                get_moves::<{ GenMode::Captures }>(&self.board, |m| {
+                get_moves::<{ GenMode::Captures }>(g, |m| {
                     self.capture_buffer
-                        .push((m, tag_move(m, &self.board, &self.cookie)));
+                        .push(TaggedMove::new(g, m, current_mg_npm));
                 });
-                self.next()
+                self.next(g, current_mg_npm)
             }
             PickPhase::GoodCapture => {
                 /// The cutoff for good captures.
@@ -199,34 +192,34 @@ impl Iterator for MovePicker {
                 if self.capture_index >= self.capture_buffer.len() {
                     // out of captures
                     self.phase = PickPhase::Killer;
-                    return self.next();
+                    return self.next(g, current_mg_npm);
                 }
                 let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
-                if capture_entry.1 .1 < GOOD_CAPTURE_CUTOFF {
+                if capture_entry.quality < GOOD_CAPTURE_CUTOFF {
                     // we are now in bad captures, move on
                     self.phase = PickPhase::Killer;
                     // make sure to leave this move in place
                     self.capture_buffer[self.capture_index] = capture_entry;
-                    return self.next();
+                    return self.next(g, current_mg_npm);
                 }
                 // make sure to get a new capture next time
                 self.capture_index += 1;
-                if self.ignored.contains(&capture_entry.0) {
+                if self.ignored.contains(&capture_entry.m) {
                     // don't bother with ignored moves
-                    return self.next();
+                    return self.next(g, current_mg_npm);
                 }
                 Some(capture_entry)
             }
             PickPhase::Killer => {
                 self.phase = PickPhase::PreQuiet;
                 match self.killer_move {
-                    None => self.next(),
+                    None => self.next(g, current_mg_npm),
                     Some(m) => {
-                        if is_legal(m, &self.board) {
+                        if is_legal(m, g) {
                             self.ignore(m);
-                            Some((m, tag_move(m, &self.board, &self.cookie)))
+                            Some(TaggedMove::new(g, m, current_mg_npm))
                         } else {
-                            self.next()
+                            self.next(g, current_mg_npm)
                         }
                     }
                 }
@@ -234,23 +227,23 @@ impl Iterator for MovePicker {
             PickPhase::PreQuiet => {
                 // generate quiet moves
                 self.phase = PickPhase::Quiet;
-                get_moves::<{ GenMode::Quiets }>(&self.board, |m| {
+                get_moves::<{ GenMode::Quiets }>(g, |m| {
                     self.quiet_buffer
-                        .push((m, tag_move(m, &self.board, &self.cookie)));
+                        .push(TaggedMove::new(g, m, current_mg_npm));
                 });
-                self.next()
+                self.next(g, current_mg_npm)
             }
             PickPhase::Quiet => {
                 if self.quiet_index >= self.quiet_buffer.len() {
                     // out of quiets
                     self.phase = PickPhase::BadCaptures;
-                    return self.next();
+                    return self.next(g, current_mg_npm);
                 }
                 let quiet_entry = select_best(&mut self.quiet_buffer, self.quiet_index);
                 self.quiet_index += 1;
-                if self.ignored.contains(&quiet_entry.0) {
+                if self.ignored.contains(&quiet_entry.m) {
                     // don't bother with ignored moves
-                    return self.next();
+                    return self.next(g, current_mg_npm);
                 }
                 Some(quiet_entry)
             }
@@ -261,72 +254,94 @@ impl Iterator for MovePicker {
                 }
                 let capture_entry = select_best(&mut self.capture_buffer, self.capture_index);
                 self.capture_index += 1;
-                if self.ignored.contains(&capture_entry.0) {
+                if self.ignored.contains(&capture_entry.m) {
                     // don't bother with ignored moves
-                    return self.next();
+                    return self.next(g, current_mg_npm);
                 }
                 Some(capture_entry)
             }
         }
     }
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.phase {
-            // check the size of the moves buffer
-            PickPhase::GoodCapture | PickPhase::PreQuiet => {
-                let n = self.capture_buffer.len() - self.capture_index;
-                let n_ignored = self.ignored.len();
-                if n_ignored >= n {
-                    (0, None)
-                } else {
-                    (n - n_ignored, None)
-                }
-            }
-            PickPhase::Quiet | PickPhase::BadCaptures => {
-                // need to get through both the quiets and the bad captures
-                let n = self.capture_buffer.len() - self.capture_index + self.quiet_buffer.len()
-                    - self.quiet_index;
-                let n_ignored = self.ignored.len();
-                if n_ignored >= n {
-                    (0, Some(n))
-                } else {
-                    (n - n_ignored, Some(n))
-                }
-            }
-            _ => (0, None),
+impl TaggedMove {
+    /// Construct a new [`TaggedMove`] by tagging `m`, which is about to be played on `g`, while
+    /// the current quantity of midgame non-pawn material is `current_mg_npm`.
+    pub fn new(g: &Game, m: Move, current_mg_npm: Eval) -> TaggedMove {
+        let new_mg_npm = current_mg_npm + mg_npm_delta(m, g);
+        let phase = calculate_phase(new_mg_npm);
+        TaggedMove {
+            m,
+            new_mg_npm,
+            phase,
+            quality: candidacy(g, m, cumulative_score_delta(m, g), phase),
         }
     }
+}
+
+/// Search through `moves` until we find the best move, sorting as we go.
+/// After this function terminates, `moves[idx]` will contain the best-rated move of the input moves
+/// from idx to the end.
+/// Requires that `0 <= idx < moves.len()`.
+fn select_best(moves: &mut [TaggedMove], idx: usize) -> TaggedMove {
+    let mut best_entry = moves[idx].clone();
+    for entry in moves.iter_mut().skip(idx + 1) {
+        // insertion sort to get the best move.
+        // insertion sort is slower if we need to see every move,
+        // but often we don't due to beta cutoff
+        if entry.quality > best_entry.quality {
+            // swap out the next-best move
+            swap(entry, &mut best_entry);
+        }
+    }
+
+    best_entry
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::{base::movegen::make_move_vec, engine::evaluate::init_cookie};
+    use crate::base::{game::Game, movegen::make_move_vec};
 
     use super::*;
 
     #[test]
     /// Test that all moves are generated in the move picker and that there are no duplicates.
     fn generation_correctness() {
-        let b = Board::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
+        let g = Game::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
             .unwrap();
-        let mp = MovePicker::new(b, &init_cookie(&b), None, None);
+        let mut mp = MovePicker::new(None, None);
 
-        let picker_moves = mp.map(|(m, _)| m);
-        let gen_moves = make_move_vec::<{ GenMode::All }>(&b);
-        for m in picker_moves.clone() {
-            assert!(gen_moves.contains(&m));
-            println!("{:?}", m);
+        let gen_moves = make_move_vec::<{ GenMode::All }>(&g);
+
+        {
+            let mut z = mp.clone();
+            while let Some(tm) = z.next(&g, Eval::DRAW) {
+                let m = tm.m;
+                assert!(gen_moves.contains(&m));
+                println!("{m:?}");
+            }
         }
 
-        for m in gen_moves {
-            println!("looking for {m} in movepicker moves");
-            assert!(picker_moves.clone().any(|m2| m2 == m));
+        for &m in &gen_moves {
+            let mut z = mp.clone();
+
+            'found: {
+                while let Some(tm) = z.next(&g, Eval::DRAW) {
+                    if tm.m == m {
+                        break 'found;
+                    }
+                }
+
+                panic!("did not find move {m}");
+            }
         }
 
-        for m in picker_moves.clone() {
-            println!("counting {m}");
-            assert_eq!(picker_moves.clone().filter(|&m2| m2 == m).count(), 1);
+        // check that the count is equal to make sure there are no repetitions
+        let mut total = 0;
+        while mp.next(&g, Eval::DRAW).is_some() {
+            total += 1;
         }
+        assert_eq!(total, gen_moves.len());
     }
 }

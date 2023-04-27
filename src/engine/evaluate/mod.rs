@@ -44,9 +44,7 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-use crate::base::{game::CookieGame, Bitboard, Board, Color, Move, Piece};
-
-use super::pick::candidacy;
+use crate::base::{game::Game, Bitboard, Color, Move, Piece};
 
 pub mod material;
 pub mod mobility;
@@ -88,73 +86,47 @@ pub struct Score {
     pub eg: Eval,
 }
 
-/// A game which has been annotated with a score on its cumulative evaluation.
-pub type ScoredGame = CookieGame<EvalCookie>;
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-/// A piece of metadata which tags along with each board in a [`CookieGame`]'s history..
-/// In the Fiddler engine, every board gets tagged with an [`EvalCookie`] which is used to quickly
-/// evaluate positions.
-pub struct EvalCookie {
-    /// The score of the position.
-    score: Score,
-    /// The quantity of non-pawn material on the board, measured in midgame centipawns.
-    mg_non_pawn_material: Eval,
-    /// The phase of the position.
-    phase: f32,
-}
-
 #[must_use]
-/// Compute the next [`EvalCookie`] for a position after a move is played.
-pub fn next_cookie(m: Move, tag: (Score, Eval), b: &Board, prev_cookie: &EvalCookie) -> EvalCookie {
-    let score = match b.player {
-        Color::White => prev_cookie.score + tag.0,
-        Color::Black => prev_cookie.score - tag.0,
-    };
+/// Get the change in the quantity of mid-game non-pawn material that a move `m` would cause on a
+/// game `g`.
+pub fn mg_npm_delta(m: Move, g: &Game) -> Eval {
     let mut mg_npm_delta = match m.promote_type() {
         None => Eval::DRAW,
         Some(pt) => material::value(pt).mg,
     };
-    if b.is_move_capture(m) {
-        mg_npm_delta -= match b.type_at_square(m.to_square()) {
-            None | Some(Piece::Pawn) => Eval::DRAW,
-            Some(pt) => material::value(pt).mg,
+    if g.is_move_capture(m) {
+        mg_npm_delta -= match g[m.to_square()] {
+            None | Some((Piece::Pawn, _)) => Eval::DRAW,
+            Some((pt, _)) => material::value(pt).mg,
         }
     };
-    let new_mg_npm = prev_cookie.mg_non_pawn_material + mg_npm_delta;
-    EvalCookie {
-        score,
-        mg_non_pawn_material: new_mg_npm,
-        phase: calculate_phase(new_mg_npm),
+    mg_npm_delta
+}
+
+#[must_use]
+/// Compute the quantity of mid-game non-pawn material on a game.
+pub fn mg_npm(g: &Game) -> Eval {
+    let mut total = Eval::DRAW;
+    for pt in Piece::PROMOTING {
+        total += material::value(pt).mg * g[pt].len();
+    }
+    total
+}
+
+#[must_use]
+/// Get the change in the cumulative evaluation which will occur from playing move `m` on game `g`.
+pub fn cumulative_score_delta(m: Move, g: &Game) -> Score {
+    let delta = material::delta(g, m) + pst::delta(g, m);
+    match g.meta().player {
+        Color::White => delta,
+        Color::Black => -delta,
     }
 }
 
 #[must_use]
-/// Compute a static, cumulative-invariant evaluation of a position.
-/// It is much faster in search to use cumulative evaluation, but this should be used when
-/// importing positions.
-/// Static evaluation will not include the leaf rules (such as number of doubled pawns), as this
-/// will be handled by `leaf_evaluate` at the end of the search tree.
-pub fn init_cookie(b: &Board) -> EvalCookie {
-    let mg_npm = {
-        let mut total = Eval::DRAW;
-        for pt in Piece::NON_PAWNS {
-            total += material::value(pt).mg * b[pt].len();
-        }
-        total
-    };
-    EvalCookie {
-        score: material::evaluate(b) + pst::evaluate(b),
-        mg_non_pawn_material: mg_npm,
-        phase: calculate_phase(mg_npm),
-    }
-}
-
-#[must_use]
-/// Compute the change in scoring and candidacy that a move made on a board will cause.
-pub fn tag_move(m: Move, b: &Board, cookie: &EvalCookie) -> (Score, Eval) {
-    let delta = pst::delta(b, m) + material::delta(b, m);
-    (delta, candidacy(b, m, delta, cookie.phase))
+/// Initialize the cumulatively-evaluated score for a position.
+pub fn cumulative_init(g: &Game) -> Score {
+    material::evaluate(g) + pst::evaluate(g)
 }
 
 /// The cutoff for pure midgame material.
@@ -182,30 +154,30 @@ pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(1, 1);
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
 /// Evaluate a leaf position on a game whose cumulative values have been computed correctly.
-pub fn leaf_evaluate(g: &ScoredGame) -> Eval {
-    let b = g.board();
-    (leaf_rules(b) + g.cookie().score).blend(g.cookie().phase)
+pub fn leaf_evaluate(g: &Game, cumulative_score: Score, phase: f32) -> Eval {
+    (leaf_rules(g) + cumulative_score).blend(phase)
 }
 
 /// Get the score gained from evaluations that are only performed at the leaf.
-fn leaf_rules(b: &Board) -> Score {
+fn leaf_rules(g: &Game) -> Score {
     let mut score = Score::DRAW;
+    let meta = g.meta();
 
     // Add gains from castling rights
-    let kingside_net = i8::from(b.castle_rights.kingside(b.player))
-        - i8::from(b.castle_rights.kingside(!b.player));
+    let kingside_net = i8::from(meta.castle_rights.kingside(meta.player))
+        - i8::from(meta.castle_rights.kingside(!meta.player));
     score += KINGSIDE_CASTLE_VALUE * kingside_net;
 
-    let queenside_net = i8::from(b.castle_rights.queenside(b.player))
-        - i8::from(b.castle_rights.queenside(!b.player));
+    let queenside_net = i8::from(meta.castle_rights.queenside(meta.player))
+        - i8::from(meta.castle_rights.queenside(!meta.player));
     score -= QUEENSIDE_CASTLE_VALUE * queenside_net;
 
     // Add losses due to doubled pawns
-    score += DOUBLED_PAWN_VALUE * net_doubled_pawns(b);
+    score += DOUBLED_PAWN_VALUE * net_doubled_pawns(g);
 
     // Add gains from open rooks
-    score += OPEN_ROOK_VALUE * net_open_rooks(b);
-    score += mobility::evaluate(b);
+    score += OPEN_ROOK_VALUE * net_open_rooks(g);
+    score += mobility::evaluate(g);
 
     score
 }
@@ -219,26 +191,26 @@ fn leaf_rules(b: &Board) -> Score {
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use fiddler::{base::Board, engine::evaluate::net_open_rooks};
+/// use fiddler::{base::game::Game, engine::evaluate::net_open_rooks};
 ///
-/// assert_eq!(net_open_rooks(&Board::new()), 0);
+/// assert_eq!(net_open_rooks(&Game::new()), 0);
 /// assert_eq!(
-///     net_open_rooks(&Board::from_fen("5r2/4r3/2k5/8/3K4/8/4p3/4R3 w - - 0 1")?),
+///     net_open_rooks(&Game::from_fen("5r2/4r3/2k5/8/3K4/8/4p3/4R3 w - - 0 1")?),
 ///     -1
 /// );
 /// # Ok(())
 /// # }
 /// ```
-pub fn net_open_rooks(b: &Board) -> i8 {
+pub fn net_open_rooks(g: &Game) -> i8 {
     // Mask for pawns which are below rank 3 (i.e. on the white half of the board).
     const WHITE_HALF: Bitboard = Bitboard::new(0x0000_0000_FFFF_FFFF);
     // Mask for pawns which are on the black half of the board
     const BLACK_HALF: Bitboard = Bitboard::new(0xFFFF_FFFF_0000_0000);
     let mut net_open_rooks = 0i8;
-    let rooks = b[Piece::Rook];
-    let pawns = b[Piece::Pawn];
-    let white = b[Color::White];
-    let black = b[Color::Black];
+    let rooks = g[Piece::Rook];
+    let pawns = g[Piece::Pawn];
+    let white = g[Color::White];
+    let black = g[Color::Black];
 
     // count white rooks
     for wrook_sq in rooks & white {
@@ -280,14 +252,14 @@ pub fn net_open_rooks(b: &Board) -> i8 {
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use fiddler::{base::Board, engine::evaluate::net_doubled_pawns};
+/// use fiddler::{base::game::Game, engine::evaluate::net_doubled_pawns};
 ///
-/// assert_eq!(net_doubled_pawns(&Board::new()), 0);
+/// assert_eq!(net_doubled_pawns(&Game::new()), 0);
 /// # Ok(())
 /// # }
 /// ```
-pub fn net_doubled_pawns(b: &Board) -> i8 {
-    let pawns = b[Piece::Pawn];
+pub fn net_doubled_pawns(g: &Game) -> i8 {
+    let pawns = g[Piece::Pawn];
     let mut net_doubled: i8 = 0;
     // all ones on the A column, shifted left by the col
     let mut col_mask = Bitboard::new(0x0101_0101_0101_0101);
@@ -295,11 +267,11 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
 
-        net_doubled -= match (b[Color::Black] & col_pawns).len() {
+        net_doubled -= match (g[Color::Black] & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
-        net_doubled += match (b[Color::White] & col_pawns).len() {
+        net_doubled += match (g[Color::White] & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
@@ -317,21 +289,13 @@ pub fn net_doubled_pawns(b: &Board) -> i8 {
 /// # Examples
 ///
 /// ```
-/// use fiddler::{base::Board, engine::evaluate::phase_of};
+/// use fiddler::{base::game::Game, engine::evaluate::phase_of};
 ///
-/// assert!(phase_of(&Board::new()).eq(&1.0));
+/// assert!(phase_of(&Game::new()).eq(&1.0));
 /// ```
-pub fn phase_of(b: &Board) -> f32 {
+pub fn phase_of(g: &Game) -> f32 {
     // amount of non-pawn material in the board, under midgame values
-    let mg_npm = {
-        let mut total = Eval::DRAW;
-        for pt in Piece::NON_PAWNS {
-            total += material::value(pt).mg * b[pt].len();
-        }
-        total
-    };
-
-    calculate_phase(mg_npm)
+    calculate_phase(mg_npm(g))
 }
 #[must_use]
 /// Get a blending float describing the current phase of the game.
@@ -630,14 +594,14 @@ impl SubAssign<Eval> for Eval {
     }
 }
 
-impl Add<Eval> for Eval {
+impl Add for Eval {
     type Output = Self;
     fn add(self, rhs: Eval) -> Eval {
         Eval(self.0 + rhs.0)
     }
 }
 
-impl Sub<Eval> for Eval {
+impl Sub for Eval {
     type Output = Self;
     fn sub(self, rhs: Eval) -> Eval {
         Eval(self.0 - rhs.0)
@@ -651,7 +615,7 @@ impl Neg for Eval {
     }
 }
 
-impl AddAssign<Score> for Score {
+impl AddAssign for Score {
     fn add_assign(&mut self, rhs: Score) {
         self.mg += rhs.mg;
         self.eg += rhs.eg;
@@ -665,7 +629,7 @@ impl SubAssign<Score> for Score {
     }
 }
 
-impl Add<Score> for Score {
+impl Add for Score {
     type Output = Self;
 
     fn add(self, rhs: Score) -> Self::Output {
@@ -678,6 +642,16 @@ impl Sub<Score> for Score {
 
     fn sub(self, rhs: Score) -> Self::Output {
         Score::new(self.mg - rhs.mg, self.eg - rhs.eg)
+    }
+}
+
+impl Neg for Score {
+    type Output = Self;
+    fn neg(self) -> Score {
+        Score {
+            mg: -self.mg,
+            eg: -self.eg,
+        }
     }
 }
 
@@ -699,46 +673,38 @@ impl Mul<u8> for Score {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::movegen::GenMode;
+    use crate::base::movegen::{make_move_vec, GenMode};
 
     use super::*;
 
-    /// Helper function to verify that the implementation of [`delta`] is correct.
-    ///
-    /// For each move reachable from a board with start position `fen`, this will assert that the
-    /// result of [`evaluate`] is equal to the sum of the original evaluation and the computed
-    /// delta for the move.
-    fn delta_helper(fen: &str) {
-        let b = Board::from_fen(fen).unwrap();
-        let g = CookieGame::new(b, init_cookie(&b));
-        let mut gcopy = g.clone();
-        g.get_moves::<{ GenMode::All }>(|m| {
-            gcopy.make_move(
-                m,
-                next_cookie(m, tag_move(m, g.board(), g.cookie()), &b, g.cookie()),
-            );
-            // println!("{g}");
-            assert_eq!(init_cookie(g.board()), *g.cookie());
-            gcopy.undo().unwrap();
-        });
+    /// Helper function to verify that cumulative evaluation is correct.
+    fn cumulative_helper(fen: &str) {
+        let mut game = Game::from_fen(fen).unwrap();
+        let orig_cumulative = cumulative_init(&game);
+        for m in make_move_vec::<{ GenMode::All }>(&game) {
+            let leaf_cumulative = cumulative_score_delta(m, &game) + orig_cumulative;
+            game.make_move(m);
+            assert_eq!(cumulative_init(&game), leaf_cumulative);
+            game.undo().unwrap();
+        }
     }
 
     #[test]
-    fn delta_captures() {
-        delta_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
+    fn cumulative_captures() {
+        cumulative_helper("r1bq1b1r/ppp2kpp/2n5/3n4/2BPp3/2P5/PP3PPP/RNBQK2R b KQ d3 0 8");
     }
 
     #[test]
-    fn delta_promotion() {
+    fn cumulative_promotion() {
         // undoubling capture promotion is possible
-        delta_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
+        cumulative_helper("r4bkr/pPpq2pp/2n1b3/3n4/2BPp3/2P5/1P3PPP/RNBQK2R w KQ - 1 13");
     }
 
     #[test]
     #[allow(clippy::float_cmp)]
     fn certainly_endgame() {
         assert_eq!(
-            phase_of(&Board::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()),
+            phase_of(&Game::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()),
             0.0
         );
     }
@@ -746,7 +712,7 @@ mod tests {
     #[test]
     #[allow(clippy::float_cmp)]
     fn certainly_midgame() {
-        assert_eq!(phase_of(&Board::default()), 1.0);
+        assert_eq!(phase_of(&Game::default()), 1.0);
     }
 
     #[test]

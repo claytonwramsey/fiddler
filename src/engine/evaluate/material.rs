@@ -29,7 +29,7 @@
 //! Empirically, the engine agrees.
 
 use crate::{
-    base::{Board, Color, Move, Piece},
+    base::{game::Game, Color, Move, Piece},
     engine::evaluate::Score,
 };
 
@@ -49,14 +49,13 @@ pub const fn value(pt: Piece) -> Score {
 #[must_use]
 /// Compute the effect that a move will have on the total material evaluation of the board it will
 /// be played on.
-pub fn delta(b: &Board, m: Move) -> Score {
+pub fn delta(g: &Game, m: Move) -> Score {
     // material only ever changes value based on captures and promotions, so this is easy
-    let capturee_type = if m.is_en_passant() {
-        Some(Piece::Pawn)
+    let mut gain = if m.is_en_passant() {
+        value(Piece::Pawn)
     } else {
-        b.type_at_square(m.to_square())
+        g[m.to_square()].map_or(Score::DRAW, |(pt, _)| value(pt))
     };
-    let mut gain = capturee_type.map_or_else(|| Score::centipawns(0, 0), value);
 
     if let Some(promote_type) = m.promote_type() {
         // we already checked that m is a promotion, so we can trust that it has a promotion
@@ -71,16 +70,16 @@ pub fn delta(b: &Board, m: Move) -> Score {
 #[must_use]
 #[allow(clippy::cast_possible_wrap)]
 /// Evaluate a position solely by the amount of material available.
-pub fn evaluate(b: &Board) -> Score {
+pub fn evaluate(g: &Game) -> Score {
     let mut score = Score::centipawns(0, 0);
 
-    let white_occupancy = b[Color::White];
-    let black_occupancy = b[Color::Black];
+    let white_occupancy = g[Color::White];
+    let black_occupancy = g[Color::Black];
 
     for pt in Piece::ALL {
         // Total the quantity of white and black pieces of this type, and multiply their individual
         // value to get the net effect on the eval.
-        let pt_squares = b[pt];
+        let pt_squares = g[pt];
         let white_diff =
             (white_occupancy & pt_squares).len() as i8 - (black_occupancy & pt_squares).len() as i8;
         score += value(pt) * white_diff;
@@ -92,7 +91,7 @@ pub fn evaluate(b: &Board) -> Score {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::base::movegen::{get_moves, GenMode};
+    use crate::base::movegen::{make_move_vec, GenMode};
 
     /// Helper function to verify that the implementation of [`delta`] is correct.
     ///
@@ -100,18 +99,18 @@ mod tests {
     /// result of [`evaluate`] is equal to the sum of the original evaluation and the computed
     /// delta for the move.
     fn delta_helper(fen: &str) {
-        let b = Board::from_fen(fen).unwrap();
-        let orig_eval = evaluate(&b);
-        get_moves::<{ GenMode::All }>(&b, |m| {
-            let d = delta(&b, m);
-            let new_eval = match b.player {
+        let mut game = Game::from_fen(fen).unwrap();
+        let orig_eval = evaluate(&game);
+        for m in make_move_vec::<{ GenMode::All }>(&game) {
+            let d = delta(&game, m);
+            let new_eval = match game.meta().player {
                 Color::White => orig_eval + d,
                 Color::Black => orig_eval - d,
             };
-            let mut bcopy = b;
-            bcopy.make_move(m);
-            assert_eq!(evaluate(&bcopy), new_eval);
-        });
+            game.make_move(m);
+            assert_eq!(evaluate(&game), new_eval);
+            game.undo().unwrap();
+        }
     }
 
     #[test]

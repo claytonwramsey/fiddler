@@ -33,9 +33,8 @@ use std::{
 };
 
 use fiddler::{
-    base::{game::CookieGame, Board, Color},
+    base::{game::Game, Color},
     engine::{
-        evaluate::{init_cookie, next_cookie, tag_move, ScoredGame},
         thread::MainSearch,
         time::get_search_time,
         uci::{Command, EngineInfo, GoOption, Message, OptionType},
@@ -50,8 +49,7 @@ fn main() {
     // whether we are in debug mode
     let mut debug = false;
     let searcher = RwLock::new(MainSearch::new());
-    let b = Board::default();
-    let mut game = CookieGame::new(b, init_cookie(&b));
+    let mut game = Game::default();
     searcher.write().unwrap().config.n_helpers = 0;
     searcher
         .write()
@@ -66,7 +64,7 @@ fn main() {
             if stdin().read_line(&mut buf).is_err() {
                 debug_info("failed to read line", debug);
             };
-            let command = match Command::parse_line(&buf, game.board()) {
+            let command = match Command::parse_line(&buf, &game) {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     // print out the error to the frontend and continue on to the
@@ -138,8 +136,7 @@ fn main() {
                     _ => debug_info(&format!("error: unknown option key `{name}`"), debug),
                 },
                 Command::NewGame => {
-                    let b = Board::default();
-                    game = CookieGame::new(b, init_cookie(&b));
+                    game = Game::new();
                     // stop previous search
                     stop(&searcher, search_handle, debug);
                     search_handle = None;
@@ -148,25 +145,15 @@ fn main() {
                     searcher_guard.ttable.clear();
                 }
                 Command::Position { fen, moves } => {
-                    let board = match fen {
-                        None => Board::default(),
-                        Some(fen) => Board::from_fen(&fen).unwrap(),
+                    game = match fen {
+                        None => Game::new(),
+                        Some(fen) => Game::from_fen(&fen).unwrap(),
                     };
-                    game = CookieGame::new(board, init_cookie(&board));
                     for m in moves {
-                        game.try_move(
-                            m,
-                            next_cookie(
-                                m,
-                                tag_move(m, game.board(), game.cookie()),
-                                game.board(),
-                                game.cookie(),
-                            ),
-                        )
-                        .unwrap();
+                        game.try_move(m).unwrap();
                     }
 
-                    debug_info(&format!("current game: {}", game.board()), debug);
+                    debug_info(&format!("current game: {}", game), debug);
                 }
                 Command::Go(opts) => {
                     // spawn a new thread to go search
@@ -196,7 +183,7 @@ fn main() {
 fn go<'a>(
     opts: &[GoOption],
     searcher: &'a RwLock<MainSearch>,
-    game: &ScoredGame,
+    game: &Game,
     thread_scope: &'a Scope<'a, '_>,
     debug: bool,
 ) -> Option<ScopedJoinHandle<'a, ()>> {
@@ -265,7 +252,7 @@ fn go<'a>(
     }
 
     let searcher_guard = searcher.read().unwrap();
-    let (increment, remaining) = match game.board().player {
+    let (increment, remaining) = match game.meta().player {
         Color::White => (winc, wtime),
         Color::Black => (binc, btime),
     };

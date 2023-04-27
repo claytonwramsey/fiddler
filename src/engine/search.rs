@@ -30,14 +30,16 @@
 
 use crate::{
     base::{
-        movegen::{has_moves, is_legal, GenMode},
+        game::Game,
+        movegen::{get_moves, has_moves, is_legal, GenMode},
         Move,
     },
-    engine::evaluate::next_cookie,
+    engine::evaluate::{calculate_phase, cumulative_score_delta},
 };
 
 use super::{
-    evaluate::{tag_move, Eval, ScoredGame},
+    evaluate::{cumulative_init, mg_npm, Eval, Score},
+    pick::TaggedMove,
     transposition::{TTEntry, TTEntryGuard},
 };
 
@@ -70,7 +72,7 @@ use std::cmp::max;
 ///
 /// This function will return an `Err` if the search times out.
 pub fn search(
-    mut g: ScoredGame,
+    g: Game,
     depth: u8,
     ttable: &TTable,
     config: &SearchConfig,
@@ -79,11 +81,18 @@ pub fn search(
     alpha: Eval,
     beta: Eval,
 ) -> Result<SearchInfo, ()> {
-    g.start_search();
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
     let mut pv = Vec::new();
+    let root_mg_npm = mg_npm(&searcher.game);
+    let mut initial_state = NodeState {
+        depth_since_root: 0,
+        cumulative_score: cumulative_init(&searcher.game),
+        mg_npm: root_mg_npm,
+        phase: calculate_phase(root_mg_npm),
+        line: &mut pv,
+    };
 
-    let eval = searcher.pvs::<true, true, true>(depth as i8, 0, alpha, beta, &mut pv)?;
+    let eval = searcher.pvs::<true, true, true>(depth as i8, alpha, beta, &mut initial_state)?;
 
     Ok(SearchInfo {
         pv,
@@ -132,7 +141,7 @@ impl SearchInfo {
 /// search.
 struct PVSearch<'a> {
     /// The game being searched.
-    game: ScoredGame,
+    game: Game,
     /// The transposition table.
     ttable: &'a TTable,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most shallow, etc).
@@ -151,13 +160,31 @@ struct PVSearch<'a> {
     selective_depth: u8,
 }
 
+/// A structure which contains information about a single node in a principal variation search.
+/// This structure exists to make the process of calling functions easier.
+struct NodeState<'a> {
+    /// The depth of this node since the root node.
+    depth_since_root: u8,
+    /// The cumulative evaluation of the current game state.
+    /// This is given as an input to `leaf_evaluate`, among other things.
+    cumulative_score: Score,
+    /// The quantity of midgame non-pawn material in the current state of the game.
+    /// This is used to determine the phase of future stages of the game.
+    mg_npm: Eval,
+    /// The current phase of the game: a number in the rangs [0, 1].
+    phase: f32,
+    /// The line of moves.
+    ///  When this state is passed, the line should be empty.
+    line: &'a mut Vec<Move>,
+}
+
 impl<'a> PVSearch<'a> {
     /// Construct a new `PVSearch` using a given transposition table, configuration, and limit.
     ///
     /// `is_main` is whether the thread is a main search, responsible for certain synchronization
     /// activities.
     pub fn new(
-        game: ScoredGame,
+        game: Game,
         ttable: &'a TTable,
         config: &'a SearchConfig,
         limit: &'a SearchLimit,
@@ -179,10 +206,10 @@ impl<'a> PVSearch<'a> {
     /// Use Principal Variation Search to evaluate the given game to a depth.
     ///
     /// At each node, the search will examine all legal moves and try to find the best line,
-    /// recursively searching to `depth_to_go` moves deep.
+    /// recursively searching to `depth` moves deep.
     /// However, some heuristics will cause certain lines to be examined more deeply than
-    /// `depth_to_go`, and some less so.
-    /// When `depth_to_go` reaches zero, a quiescence search will be performed, preventing the
+    /// `depth`, and some less so.
+    /// When `depth` reaches zero, a quiescence search will be performed, preventing the
     /// evaluation of "loud" positions from giving incorrect results.
     ///
     /// When the search is complete, the `Ok()` variant will contain the evaluation of the position.
@@ -193,7 +220,7 @@ impl<'a> PVSearch<'a> {
     /// * `ROOT`: Whether this is the root node of the search. External callers of this function
     ///   should always set `ROOT` to `true`.
     /// * `REDUCE`: Whether heuristic depth reduction should be performed.
-    /// * `depth_to_go`: The depth to search the position.
+    /// * `depth`: The depth to search the position.
     /// * `depth_so_far`: The depth of the recursive stack when this function was called. At the
     ///   start of the search, `depth_so_far` is 0.
     /// * `alpha`: A lower bound on the evaluation of a parent node, in perspective of the player to
@@ -207,6 +234,7 @@ impl<'a> PVSearch<'a> {
     /// * `parent_line`: The principal variation line of the parent position. `parent_line` will be
     ///   overwritten with the best line found by this search, so long as it achieves an alpha
     ///   cutoff at some point.
+    /// * `prev_cumulative_eval`: The cumulative evaluation of the current state of the game.
     ///
     /// # Errors
     ///
@@ -216,11 +244,10 @@ impl<'a> PVSearch<'a> {
     /// limit times out while `pvs()` is runn in `self.game`.
     pub fn pvs<const PV: bool, const ROOT: bool, const REDUCE: bool>(
         &mut self,
-        depth_to_go: i8,
-        depth_so_far: u8,
+        depth: i8,
         mut alpha: Eval,
         mut beta: Eval,
-        line: &mut Vec<Move>,
+        state: &mut NodeState,
     ) -> Result<Eval, ()> {
         // verify that ROOT implies PV
         debug_assert!(if ROOT { PV } else { true });
@@ -233,30 +260,30 @@ impl<'a> PVSearch<'a> {
             return Err(());
         }
 
-        if depth_to_go <= 0 {
-            return self.quiesce::<PV>(depth_so_far, alpha, beta, line);
+        if depth <= 0 {
+            return self.quiesce::<PV>(alpha, beta, state);
         }
 
         self.increment_nodes();
-        self.selective_depth = max(self.selective_depth, depth_so_far);
+        self.selective_depth = max(self.selective_depth, state.depth_since_root);
 
         // mate distance pruning
-        let lower_bound = -Eval::mate_in(depth_so_far);
+        let lower_bound = -Eval::mate_in(state.depth_since_root);
         if alpha < lower_bound {
             if beta <= lower_bound {
                 if PV {
-                    line.clear();
+                    state.line.clear();
                 }
                 return Ok(lower_bound);
             }
             alpha = lower_bound;
         }
 
-        let upper_bound = Eval::mate_in(1 + depth_so_far);
+        let upper_bound = Eval::mate_in(1 + state.depth_since_root);
         if upper_bound < beta {
             if upper_bound <= alpha {
                 if PV {
-                    line.clear();
+                    state.line.clear();
                 }
                 return Ok(upper_bound);
             }
@@ -264,9 +291,13 @@ impl<'a> PVSearch<'a> {
         }
 
         // detect draws.
-        if self.game.drawn_by_repetition() || self.game.board().is_drawn() {
+        if self.game.insufficient_material()
+            || self
+                .game
+                .drawn_by_repetition(u16::from(state.depth_since_root))
+        {
             if PV {
-                line.clear();
+                state.line.clear();
             }
             // required so that movepicker only needs to know about current position, and not about
             // history
@@ -275,26 +306,26 @@ impl<'a> PVSearch<'a> {
 
         // Retrieve transposition data and use it to improve our estimate on the position
         let mut tt_move = None;
-        let mut tt_guard = self.ttable.get(self.game.board().hash);
+        let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
             let m = entry.best_move;
-            if is_legal(m, self.game.board()) {
+            if is_legal(m, &self.game) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
-                if entry.depth >= depth_to_go {
-                    let upper_bound = entry.upper_bound.step_back_by(depth_so_far);
+                if entry.depth >= depth {
+                    let upper_bound = entry.upper_bound.step_back_by(state.depth_since_root);
                     if upper_bound <= alpha {
                         if PV {
-                            line.clear();
-                            line.push(m);
+                            state.line.clear();
+                            state.line.push(m);
                         }
                         return Ok(upper_bound);
                     }
-                    let lower_bound = entry.lower_bound.step_back_by(depth_so_far);
+                    let lower_bound = entry.lower_bound.step_back_by(state.depth_since_root);
                     if beta <= lower_bound {
                         if PV {
-                            line.clear();
-                            line.push(m);
+                            state.line.clear();
+                            state.line.push(m);
                         }
                         return Ok(lower_bound);
                     }
@@ -302,11 +333,11 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        let moves_iter = MovePicker::new(
-            *self.game.board(),
-            self.game.cookie(),
+        let mut moves_iter = MovePicker::new(
             tt_move,
-            self.killer_moves.get(depth_so_far as usize).copied(),
+            self.killer_moves
+                .get(state.depth_since_root as usize)
+                .copied(),
         );
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;
@@ -318,15 +349,22 @@ impl<'a> PVSearch<'a> {
         let mut overwrote_alpha = false;
         // The principal variation line, following the best move.
         let mut child_line = Vec::new();
-        for (m, tag) in moves_iter {
+        while let Some(tm) = moves_iter.next(&self.game, state.mg_npm) {
             move_count += 1;
-            self.game.make_move(
-                m,
-                next_cookie(m, tag, self.game.board(), self.game.cookie()),
-            );
+
+            let mut new_state = NodeState {
+                depth_since_root: state.depth_since_root + 1,
+                cumulative_score: state.cumulative_score + cumulative_score_delta(tm.m, &self.game),
+                mg_npm: tm.new_mg_npm,
+                phase: tm.phase,
+                line: &mut child_line,
+            };
+
+            self.game.make_move(tm.m);
             // Prefetch the next transposition table entry as early as possible
             // (~12 Elo)
-            self.ttable.prefetch(self.game.board().hash);
+            self.ttable.prefetch(self.game.meta().hash);
+
             let mut score = Eval::MIN;
 
             if !PV || move_count > 1 {
@@ -338,28 +376,22 @@ impl<'a> PVSearch<'a> {
                 // ~400 Elo
                 let do_lmr = REDUCE && move_count > 2;
 
-                let depth_to_search = if do_lmr {
-                    depth_to_go - 3
-                } else {
-                    depth_to_go - 1
-                };
+                let depth_to_search = if do_lmr { depth - 3 } else { depth - 1 };
 
                 score = -self.pvs::<false, false, REDUCE>(
                     depth_to_search,
-                    depth_so_far + 1,
                     -alpha - Eval::centipawns(1),
                     -alpha,
-                    &mut child_line,
+                    &mut new_state,
                 )?;
 
                 // if the LMR search causes an alpha cutoff, ZW search again at full depth.
                 if score > alpha && do_lmr {
                     score = -self.pvs::<false, false, REDUCE>(
-                        depth_to_go - 1,
-                        depth_so_far + 1,
+                        depth - 1,
                         -alpha - Eval::centipawns(1),
                         -alpha,
-                        &mut child_line,
+                        &mut new_state,
                     )?;
                 }
             }
@@ -367,13 +399,8 @@ impl<'a> PVSearch<'a> {
             if PV && (move_count == 1 || (alpha < score && score < beta)) {
                 // Either this is the first move on a PV node, or the previous search returned a PV
                 // candidate.
-                score = -self.pvs::<true, false, REDUCE>(
-                    depth_to_go - 1,
-                    depth_so_far + 1,
-                    -beta,
-                    -alpha,
-                    &mut child_line,
-                )?;
+                score =
+                    -self.pvs::<true, false, REDUCE>(depth - 1, -beta, -alpha, &mut new_state)?;
             }
 
             let undo_result = self.game.undo();
@@ -381,13 +408,13 @@ impl<'a> PVSearch<'a> {
 
             if score > best_score {
                 best_score = score;
-                best_move = m;
+                best_move = tm.m;
 
                 if score > alpha {
                     // if this move was better than what we've seen before, write it as the
                     // principal variation
                     if PV {
-                        write_line(line, m, &child_line);
+                        write_line(state.line, tm.m, new_state.line);
                     }
 
                     if beta <= score {
@@ -405,12 +432,12 @@ impl<'a> PVSearch<'a> {
             }
         }
 
-        debug_assert!((move_count == 0) ^ has_moves(self.game.board()));
+        debug_assert!((move_count == 0) ^ has_moves(&self.game));
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a stalemate or a mate.
-            line.clear();
-            best_score = if self.game.board().checkers.is_empty() {
+            state.line.clear();
+            best_score = if self.game.meta().checkers.is_empty() {
                 // stalemated
                 Eval::DRAW
             } else {
@@ -423,8 +450,8 @@ impl<'a> PVSearch<'a> {
 
         ttable_store(
             &mut tt_guard,
-            depth_so_far,
-            depth_to_go,
+            state.depth_since_root,
+            depth,
             if overwrote_alpha { Eval::MIN } else { alpha },
             beta,
             best_score,
@@ -436,65 +463,75 @@ impl<'a> PVSearch<'a> {
 
     /// Use quiescent search (captures only) to evaluate a position as deep as it needs to go until
     /// all loud moves are exhausted.
-    /// The given `depth_to_go` does not alter the power of the search, but  serves as a handy tool
+    /// The given `depth` does not alter the power of the search, but  serves as a handy tool
     /// for the search to understand where it is.
     fn quiesce<const PV: bool>(
         &mut self,
-        depth_so_far: u8,
         mut alpha: Eval,
         beta: Eval,
-        line: &mut Vec<Move>,
+        state: &mut NodeState,
     ) -> Result<Eval, ()> {
-        if !self.game.board().checkers.is_empty() {
+        if !self.game.meta().checkers.is_empty() {
             // don't allow settling if we are in check (~48 Elo)
-            return self.pvs::<PV, false, false>(1, depth_so_far, alpha, beta, line);
+            return self.pvs::<PV, false, false>(1, alpha, beta, state);
         }
 
         self.increment_nodes();
-        self.selective_depth = max(self.selective_depth, depth_so_far);
+        self.selective_depth = max(self.selective_depth, state.depth_since_root);
 
         // check if the game is over before doing anything
-        if let Some(mated) = self.game.end_state() {
-            // game is over, quit out immediately
-            let score = if mated {
-                -Eval::mate_in(depth_so_far)
-            } else {
-                Eval::DRAW
-            };
-
+        if self
+            .game
+            .drawn_by_repetition(u16::from(state.depth_since_root))
+            || self.game.insufficient_material()
+        {
+            // game is drawn
             if PV {
-                line.clear();
+                state.line.clear();
             }
 
-            return Ok(score);
+            return Ok(Eval::DRAW);
         }
 
-        let player = self.game.board().player;
+        if !has_moves(&self.game) {
+            if PV {
+                state.line.clear();
+            }
 
-        let mut tt_guard = self.ttable.get(self.game.board().hash);
+            return Ok(if self.game.meta().checkers.is_empty() {
+                Eval::DRAW
+            } else {
+                Eval::BLACK_MATE
+            });
+        }
+
+        let player = self.game.meta().player;
+
+        let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
             if entry.depth >= TTEntry::DEPTH_CAPTURES {
                 // this was a deeper search, just use it
-                let upper_bound = entry.upper_bound.step_back_by(depth_so_far);
+                let upper_bound = entry.upper_bound.step_back_by(state.depth_since_root);
                 if upper_bound <= alpha {
                     if PV {
-                        line.clear();
-                        line.push(entry.best_move);
+                        state.line.clear();
+                        state.line.push(entry.best_move);
                     }
                     return Ok(upper_bound);
                 }
-                let lower_bound = entry.lower_bound.step_back_by(depth_so_far);
+                let lower_bound = entry.lower_bound.step_back_by(state.depth_since_root);
                 if beta <= lower_bound {
                     if PV {
-                        line.clear();
-                        line.push(entry.best_move);
+                        state.line.clear();
+                        state.line.push(entry.best_move);
                     }
                     return Ok(lower_bound);
                 }
             }
         }
         // capturing is unforced, so we can stop here if the player to move doesn't want to capture.
-        let mut score = leaf_evaluate(&self.game).in_perspective(player);
+        let mut score =
+            leaf_evaluate(&self.game, state.cumulative_score, state.phase).in_perspective(player);
         // println!("{g}: {score}");
 
         // Whether alpha was overwritten by any move at this depth.
@@ -503,7 +540,7 @@ impl<'a> PVSearch<'a> {
         let mut overwrote_alpha = false;
         if alpha < score {
             if PV {
-                line.clear();
+                state.line.clear();
             }
 
             if beta <= score {
@@ -511,7 +548,7 @@ impl<'a> PVSearch<'a> {
                 // end
                 ttable_store(
                     &mut tt_guard,
-                    depth_so_far,
+                    state.depth_since_root,
                     TTEntry::DEPTH_CAPTURES,
                     Eval::MIN,
                     beta,
@@ -528,33 +565,35 @@ impl<'a> PVSearch<'a> {
         }
 
         let mut best_score = score;
+
+        // get captures and sort in descending order of quality
         let mut moves = Vec::with_capacity(10);
-        self.game.get_moves::<{ GenMode::Captures }>(|m| {
-            moves.push((m, tag_move(m, self.game.board(), self.game.cookie())));
+        get_moves::<{ GenMode::Captures }>(&self.game, |m| {
+            moves.push(TaggedMove::new(&self.game, m, state.mg_npm));
         });
-        moves.sort_by_cached_key(|&(_, (_, eval))| -eval);
+        moves.sort_by_cached_key(|tm| -tm.quality);
         let mut child_line = Vec::new();
 
-        for (m, tag) in moves {
-            self.game.make_move(
-                m,
-                next_cookie(m, tag, self.game.board(), self.game.cookie()),
-            );
+        for tm in moves {
+            let mut new_state = NodeState {
+                depth_since_root: state.depth_since_root + 1,
+                cumulative_score: state.cumulative_score + cumulative_score_delta(tm.m, &self.game),
+                mg_npm: tm.new_mg_npm,
+                phase: tm.phase,
+                line: &mut child_line,
+            };
+
+            self.game.make_move(tm.m);
             // Prefetch the next transposition table entry as early as possible
             // (~12 Elo)
-            self.ttable.prefetch(self.game.board().hash);
+            self.ttable.prefetch(self.game.meta().hash);
             // zero-window search
-            score = -self.quiesce::<false>(
-                depth_so_far + 1,
-                -alpha - Eval::centipawns(1),
-                -alpha,
-                &mut child_line,
-            )?;
+            score = -self.quiesce::<false>(-alpha - Eval::centipawns(1), -alpha, &mut new_state)?;
             if PV && alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option in this tree.
                 // we already have a score from before that we can use as a lower bound in this
                 // search.
-                score = -self.quiesce::<PV>(depth_so_far + 1, -beta, -alpha, &mut child_line)?;
+                score = -self.quiesce::<PV>(-beta, -alpha, &mut new_state)?;
             }
 
             let undo_result = self.game.undo();
@@ -565,11 +604,11 @@ impl<'a> PVSearch<'a> {
                 best_score = score;
                 if alpha < score {
                     if PV {
-                        write_line(line, m, &child_line);
+                        write_line(state.line, tm.m, &child_line);
                     }
                     if beta <= score {
                         // Beta cutoff, we have ound a better line somewhere else
-                        self.killer_moves[depth_so_far as usize] = m;
+                        self.killer_moves[state.depth_since_root as usize] = tm.m;
                         break;
                     }
 
@@ -581,7 +620,7 @@ impl<'a> PVSearch<'a> {
 
         ttable_store(
             &mut tt_guard,
-            depth_so_far,
+            state.depth_since_root,
             TTEntry::DEPTH_CAPTURES,
             if overwrote_alpha { Eval::MIN } else { alpha },
             beta,
@@ -617,7 +656,7 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
 fn ttable_store(
     guard: &mut TTEntryGuard,
     depth_so_far: u8,
-    depth_to_go: i8,
+    depth: i8,
     alpha: Eval,
     beta: Eval,
     score: Eval,
@@ -626,16 +665,13 @@ fn ttable_store(
     let true_score = score.step_forward_by(depth_so_far);
     let upper_bound = if score < beta { true_score } else { Eval::MAX };
     let lower_bound = if alpha < score { true_score } else { Eval::MIN };
-    guard.save(depth_to_go, best_move, lower_bound, upper_bound);
+    guard.save(depth, best_move, lower_bound, upper_bound);
 }
 #[cfg(test)]
 pub mod tests {
 
     use super::*;
-    use crate::{
-        base::{game::CookieGame, Board, Move, Square},
-        engine::evaluate::init_cookie,
-    };
+    use crate::base::{game::Game, Move, Square};
 
     /// Helper function to search a position at a given depth.
     ///
@@ -643,8 +679,7 @@ pub mod tests {
     ///
     /// This function will panic if searching the position fails or the game is invalid.
     fn search_helper(fen: &str, depth: u8) -> SearchInfo {
-        let b = Board::from_fen(fen).unwrap();
-        let mut g = CookieGame::new(b, init_cookie(&b));
+        let mut g = Game::from_fen(fen).unwrap();
         let config = SearchConfig {
             depth,
             ..Default::default()
@@ -664,11 +699,8 @@ pub mod tests {
         // validate principal variation
         for &m in &info.pv {
             println!("{m}");
-            assert!(is_legal(m, g.board()));
-            g.make_move(
-                m,
-                next_cookie(m, tag_move(m, g.board(), g.cookie()), g.board(), g.cookie()),
-            );
+            assert!(is_legal(m, &g));
+            g.make_move(m);
         }
 
         info
@@ -743,8 +775,7 @@ pub mod tests {
     /// Test that the transposition table contains an entry for the root node of the search.
     fn ttable_populated() {
         let ttable = TTable::with_size(1);
-        let b = Board::default();
-        let g = CookieGame::new(b, init_cookie(&b));
+        let g = Game::new();
         let depth = 5;
 
         let search_info = search(
@@ -762,7 +793,7 @@ pub mod tests {
         )
         .unwrap();
 
-        let entry = ttable.get(g.board().hash).entry().unwrap();
+        let entry = ttable.get(g.meta().hash).entry().unwrap();
 
         // println!("{entry:?}");
         // println!("{search_info:?}");

@@ -25,8 +25,10 @@
 
 use std::{thread::scope, time::Instant};
 
+use crate::base::game::Game;
+
 use super::{
-    evaluate::{Eval, ScoredGame},
+    evaluate::Eval,
     search::SearchInfo,
     uci::{EngineInfo, Message},
 };
@@ -101,7 +103,7 @@ impl MainSearch {
     /// # Panics
     ///
     /// This function may panic if any of the search threads panic.
-    pub fn evaluate(&self, g: &ScoredGame) -> Result<SearchInfo, ()> {
+    pub fn evaluate(&self, g: &Game) -> Result<SearchInfo, ()> {
         let tic = Instant::now();
         let mut best_result = Err(());
 
@@ -171,7 +173,7 @@ impl MainSearch {
 
             if let Ok(ref mut info) = best_result {
                 // normalize evaluation to be in absolute terms
-                info.eval = info.eval.in_perspective(g.board().player);
+                info.eval = info.eval.in_perspective(g.meta().player);
             }
             best_result
         })
@@ -179,7 +181,7 @@ impl MainSearch {
 
     fn aspiration_search(
         &self,
-        g: &ScoredGame,
+        g: &Game,
         depth: u8,
         main: bool,
         prev_eval: Option<Eval>,
@@ -244,27 +246,20 @@ impl Default for MainSearch {
 #[cfg(any(test, bench))]
 mod tests {
 
-    use crate::{
-        base::{game::CookieGame, movegen::is_legal, Board},
-        engine::evaluate::{init_cookie, next_cookie, tag_move},
-    };
+    use crate::base::movegen::is_legal;
 
     use super::*;
 
     fn search_helper(fen: &str, depth: u8) {
-        let b = Board::from_fen(fen).unwrap();
-        let mut g = CookieGame::new(b, init_cookie(&b));
+        let mut g = Game::from_fen(fen).unwrap();
         let mut main = MainSearch::new();
         main.config.n_helpers = 0;
         main.config.depth = depth;
         main.ttable.resize(1000);
         let info = main.evaluate(&g).unwrap();
         for m in info.pv {
-            assert!(is_legal(m, g.board()));
-            g.make_move(
-                m,
-                next_cookie(m, tag_move(m, g.board(), g.cookie()), g.board(), g.cookie()),
-            );
+            assert!(is_legal(m, &g));
+            g.make_move(m);
         }
     }
 

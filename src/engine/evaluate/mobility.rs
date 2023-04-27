@@ -11,8 +11,9 @@
 use std::mem::transmute;
 
 use crate::base::{
+    game::Game,
     movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
-    Bitboard, Board, Color, Piece,
+    Bitboard, Color, Piece,
 };
 
 use super::Score;
@@ -226,16 +227,16 @@ pub const fn for_piece(pt: Piece, attacks: Bitboard) -> Score {
 
 #[must_use]
 /// Get the mobility evaluation of a board.
-pub fn evaluate(b: &Board) -> Score {
-    let white = b[Color::White];
-    let black = b[Color::Black];
+pub fn evaluate(g: &Game) -> Score {
+    let white = g[Color::White];
+    let black = g[Color::Black];
     let not_white = !white;
     let not_black = !black;
     let occupancy = white | black;
     let mut score = Score::DRAW;
 
     // count knight moves
-    let knights = b[Piece::Knight];
+    let knights = g[Piece::Knight];
     // pinned knights can't move and so we don't bother counting them
     for sq in knights & white {
         score += for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
@@ -245,7 +246,7 @@ pub fn evaluate(b: &Board) -> Score {
     }
 
     // count bishop moves
-    let bishops = b[Piece::Bishop];
+    let bishops = g[Piece::Bishop];
     for sq in bishops & white {
         score += for_piece(
             Piece::Bishop,
@@ -260,7 +261,7 @@ pub fn evaluate(b: &Board) -> Score {
     }
 
     // count rook moves
-    let rooks = b[Piece::Rook];
+    let rooks = g[Piece::Rook];
     for sq in rooks & white {
         score += for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_white);
     }
@@ -269,7 +270,7 @@ pub fn evaluate(b: &Board) -> Score {
     }
 
     // count queen moves
-    let queens = b[Piece::Queen];
+    let queens = g[Piece::Queen];
     for sq in queens & white {
         let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
         score += for_piece(Piece::Queen, attacks & not_white);
@@ -281,7 +282,7 @@ pub fn evaluate(b: &Board) -> Score {
 
     // count net pawn moves
     // pawns can't capture by pushing, so we only examine their capture squares
-    let pawns = b[Piece::Pawn];
+    let pawns = g[Piece::Pawn];
     for sq in pawns & white {
         score += for_piece(
             Piece::Pawn,
@@ -297,11 +298,11 @@ pub fn evaluate(b: &Board) -> Score {
 
     score += for_piece(
         Piece::King,
-        KING_MOVES[b.king_sqs[Color::White as usize] as usize] & not_white,
+        KING_MOVES[g.meta().king_sqs[Color::White as usize] as usize] & not_white,
     );
     score -= for_piece(
         Piece::King,
-        KING_MOVES[b.king_sqs[Color::Black as usize] as usize] & not_black,
+        KING_MOVES[g.meta().king_sqs[Color::Black as usize] as usize] & not_black,
     );
 
     score

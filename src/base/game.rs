@@ -976,7 +976,7 @@ mod tests {
 
         // check that the game isn't drawn by
         assert!(!g.drawn_by_repetition(0));
-        assert!(!g.drawn_by_repetition(999_999));
+        assert!(!g.drawn_by_repetition(10_000));
 
         g.make_move(Move::normal(Square::G1, Square::F3));
         g.make_move(Move::normal(Square::G8, Square::F6));
