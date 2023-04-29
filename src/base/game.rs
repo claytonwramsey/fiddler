@@ -197,6 +197,7 @@ impl Game {
     }
 
     #[allow(clippy::missing_panics_doc)]
+    #[allow(clippy::too_many_lines)]
     /// Create a Board populated from some FEN and load it.
     ///
     /// # Errors
@@ -394,6 +395,7 @@ impl Game {
         self.history.last().unwrap()
     }
 
+    #[allow(clippy::too_many_lines)]
     /// Apply the given move to the board.
     /// Will assume the move is legal.
     /// Requires that this board is currently valid.

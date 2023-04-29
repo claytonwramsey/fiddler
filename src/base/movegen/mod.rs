@@ -159,6 +159,7 @@ pub enum GenMode {
 
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
+#[allow(clippy::too_many_lines)]
 /// Determine whether any given move is legal, given a position in which it could be played.
 ///
 /// Requires that the move must have been legal on *some* board, but not necessarily the given one.
@@ -726,6 +727,7 @@ fn square_attackers_occupancy(
     attackers & color_bb
 }
 
+#[allow(clippy::too_many_lines)]
 /// Generate the moves all pawns can make and populate `moves` with those moves.
 /// Only moves which result in a pawn landing on `target` will be generated.
 ///

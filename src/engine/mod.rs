@@ -15,8 +15,6 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#![warn(clippy::pedantic)]
-#![allow(clippy::too_many_lines)]
 
 //! Code which defines the engine's behavior.
 //! Included below are tools for evaluating positions, searching trees, storing
