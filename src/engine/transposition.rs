@@ -93,8 +93,9 @@ struct Bucket {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// An entry in the transposition table.
 pub struct TTEntry {
-    /// A packed tag containing the age of the entry in the lower 7 bits and a bit to determine
-    /// whether this entry is unused in the highest bit.
+    /// A packed tag, containing the entry type and the age.
+    /// The high three bits contain the type of the entry (expressed as an [`EntryType`]).
+    /// The lower five bits contain the age of the entry.
     tag: u8, // 1 byte
     /// The lower 16 bits hash key of the entry.
     key_low16: u16, // 2 bytes
@@ -104,12 +105,38 @@ pub struct TTEntry {
     /// The best move in the position when this entry was searched.
     /// Will be `Move::BAD_MOVE` when there are no moves or the best move is unknown.
     pub best_move: Move, // 2 bytes
-    /// The lower bound on the evaluation of the position.
-    pub lower_bound: Eval, // 2 bytes
-    /// The upper bound on the evaluation of the position.
-    pub upper_bound: Eval, /* 2 bytes */
+    /// The value of the evaluation of this position.
+    pub value: Eval, // 2 bytes
+} /* total size: 8 bytes */
 
-                           /* total size: 10 bytes */
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// The types of bounds that an entry
+pub enum BoundType {
+    /// A lower bound on the evaluation of the position.
+    Lower = 1 << 5,
+    /// An upper bound on the evaluation of the position.
+    Upper = 2 << 5,
+    /// An exact bound on the evaluation of the position.
+    Exact = 3 << 5,
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// The liveness of a transposition table entry.
+enum EntryType {
+    #[allow(unused)]
+    /// An empty entry, with no occupied or deleted entries following it.
+    // this is never directly constructed but zeroed memory from `alloc_zeroed` causes it to
+    // contain this, so we cannot remove this variant.
+    Empty = 0,
+    /// An extant entry which is a lower bound on a position evaluation.
+    _Lower = BoundType::Lower as u8,
+    /// An extant entry which is an upper bound on a position evaluation.
+    _Upper = BoundType::Upper as u8,
+    /// An extant entry which is an exact bound on a position evaluation.
+    _Exact = BoundType::Exact as u8,
+    /// A deleted entry, which may have extra data inside it.
+    Deleted = 4 << 5,
 }
 
 impl TTable {
@@ -207,7 +234,7 @@ impl TTable {
         for _ in 0..BUCKET_LEN {
             let entry_ref = unsafe { entry_ptr.as_ref().unwrap() };
 
-            if entry_ref.liveness() != Liveness::Occupied {
+            if matches!(entry_ref.classify(), EntryType::Deleted | EntryType::Empty) {
                 // if we encounter an entry which is unused, mark it for replacement if we don't
                 // find a matching entry.
                 if eldest_age < 255 {
@@ -269,7 +296,7 @@ impl TTable {
                 num_full += bucket
                     .entries
                     .iter()
-                    .filter(|e| e.liveness() == Liveness::Occupied)
+                    .filter(|e| !matches!(e.classify(), EntryType::Deleted | EntryType::Empty))
                     .count();
             }
             (num_full / BUCKET_LEN) as u16
@@ -300,10 +327,10 @@ impl TTable {
                         .unwrap()
                 };
                 for entry in &mut bucket.entries {
-                    if entry.liveness() == Liveness::Occupied {
+                    if !matches!(entry.classify(), EntryType::Deleted | EntryType::Empty) {
                         // only age up the occupied entries
                         if max_age <= entry.age() {
-                            entry.tag = Liveness::Deleted as u8;
+                            entry.tag = EntryType::Deleted as u8;
                         } else {
                             entry.tag += 1;
                         }
@@ -399,30 +426,24 @@ impl TTable {
         }
     }
 }
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-/// The liveness of a transposition table entry.
-enum Liveness {
-    #[allow(unused)]
-    /// An empty entry, with no occupied or deleted entries following it.
-    // this is never directly constructed but zeroed memory from `alloc_zeroed` causes it to
-    // contain this, so we cannot remove this variant.
-    Empty = 0,
-    /// An occupied entry, with data inside.
-    Occupied = 1 << 6,
-    /// A deleted entry, which may have extra data inside it.
-    Deleted = 2 << 6,
-}
-
 impl TTEntry {
     /// Get the age of this entry.
-    const fn age(&self) -> u8 {
-        self.tag & 0x3f
+    const fn age(self) -> u8 {
+        self.tag & 0x1F
     }
 
-    /// Get the liveness of this entry.
-    const fn liveness(&self) -> Liveness {
-        unsafe { transmute(self.tag & 0xc0) }
+    /// Get the type of this entry.
+    const fn classify(self) -> EntryType {
+        unsafe { transmute(self.tag & 0xE0) }
+    }
+
+    #[must_use]
+    /// Get the type of the bound on this entry.
+    pub const fn bound_type(&self) -> BoundType {
+        unsafe {
+            // SAFETY: We assume an unoccupied TTEntry will never be exposed through a safe API.
+            transmute(self.tag & 0xE0)
+        }
     }
 }
 
@@ -465,16 +486,15 @@ impl<'a> TTEntryGuard<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     /// Save the value pointed to by this entry guard.
-    pub fn save(&mut self, depth: i8, best_move: Move, lower_bound: Eval, upper_bound: Eval) {
+    pub fn save(&mut self, depth: i8, best_move: Move, value: Eval, kind: BoundType) {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
-                    tag: Liveness::Occupied as u8,
+                    tag: kind as u8,
                     key_low16: self.hash as u16,
                     depth,
                     best_move,
-                    lower_bound,
-                    upper_bound,
+                    value,
                 }
             }
         }
@@ -504,19 +524,14 @@ mod tests {
     fn guaranteed_hit() {
         let tt = TTable::with_capacity(4);
         let entry = TTEntry {
-            tag: Liveness::Occupied as u8,
+            tag: BoundType::Exact as u8,
             key_low16: 12,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::centipawns(100),
+            value: Eval::DRAW,
         };
-        tt.get(12).save(
-            entry.depth,
-            entry.best_move,
-            entry.lower_bound,
-            entry.upper_bound,
-        );
+        tt.get(12)
+            .save(entry.depth, entry.best_move, entry.value, BoundType::Exact);
 
         assert_eq!(tt.get(12).entry(), Some(&entry));
     }
@@ -525,19 +540,11 @@ mod tests {
     /// Test that writing to a zero-size table is a no-op.
     fn attempt_write_nosize_table() {
         let tt = TTable::new();
-        let entry = TTEntry {
-            tag: Liveness::Occupied as u8,
-            key_low16: 12,
-            depth: 5,
-            best_move: Move::normal(Square::E2, Square::E4),
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::centipawns(100),
-        };
         tt.get(12).save(
-            entry.depth,
-            entry.best_move,
-            entry.lower_bound,
-            entry.upper_bound,
+            5,
+            Move::normal(Square::E2, Square::E4),
+            Eval::DRAW,
+            BoundType::Exact,
         );
 
         assert_eq!(tt.get(12).entry(), None);
@@ -547,29 +554,27 @@ mod tests {
     /// Test that an entry with the same hash can overwrite another entry.
     fn overwrite() {
         let e0 = TTEntry {
-            tag: Liveness::Occupied as u8,
+            tag: BoundType::Lower as u8,
             key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::centipawns(100),
+            value: Eval::DRAW,
         };
         let e1 = TTEntry {
-            tag: Liveness::Occupied as u8,
+            tag: BoundType::Upper as u8,
             key_low16: 2022,
             depth: 7,
             best_move: Move::normal(Square::E4, Square::E5),
-            lower_bound: Eval::BLACK_MATE,
-            upper_bound: -Eval::centipawns(100),
+            value: Eval::DRAW,
         };
 
         let tt = TTable::with_capacity(4);
 
         tt.get(2022)
-            .save(e0.depth, e0.best_move, e0.lower_bound, e0.upper_bound);
+            .save(e0.depth, e0.best_move, e0.value, BoundType::Lower);
 
         tt.get(2022)
-            .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
+            .save(e1.depth, e1.best_move, e1.value, BoundType::Upper);
 
         assert_eq!(tt.get(2022).entry(), Some(&e1));
     }
@@ -580,19 +585,14 @@ mod tests {
         let mut tt = TTable::new();
         tt.resize(2000);
         let entry = TTEntry {
-            tag: Liveness::Occupied as u8,
+            tag: BoundType::Exact as u8,
             key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::centipawns(100),
+            value: Eval::DRAW,
         };
-        tt.get(2022).save(
-            entry.depth,
-            entry.best_move,
-            entry.lower_bound,
-            entry.upper_bound,
-        );
+        tt.get(2022)
+            .save(entry.depth, entry.best_move, entry.value, BoundType::Exact);
 
         assert_eq!(tt.get(2022).entry(), Some(&entry));
     }
@@ -611,7 +611,7 @@ mod tests {
             10,
             Move::normal(Square::E2, Square::E4),
             Eval::BLACK_MATE,
-            Eval::DRAW,
+            BoundType::Exact,
         );
 
         tt.age_up(0);
@@ -622,31 +622,29 @@ mod tests {
     /// Test that aging up a transposition table removes old entries but keeps young ones.
     fn age_up_discrimination() {
         let e0 = TTEntry {
-            tag: Liveness::Occupied as u8,
+            tag: BoundType::Exact as u8,
             key_low16: 2022,
             depth: 5,
             best_move: Move::normal(Square::E2, Square::E4),
-            lower_bound: Eval::DRAW,
-            upper_bound: Eval::centipawns(100),
+            value: Eval::DRAW,
         };
         let e1 = TTEntry {
-            tag: Liveness::Occupied as u8,
+            tag: BoundType::Exact as u8,
             key_low16: 2022,
             depth: 7,
             best_move: Move::normal(Square::E4, Square::E5),
-            lower_bound: Eval::BLACK_MATE,
-            upper_bound: -Eval::centipawns(100),
+            value: Eval::DRAW,
         };
 
         let mut tt = TTable::with_capacity(3);
 
         tt.get(1)
-            .save(e0.depth, e0.best_move, e0.lower_bound, e0.upper_bound);
+            .save(e0.depth, e0.best_move, e0.value, BoundType::Exact);
 
         tt.age_up(10);
 
         tt.get(2)
-            .save(e1.depth, e1.best_move, e1.lower_bound, e1.upper_bound);
+            .save(e1.depth, e1.best_move, e1.value, BoundType::Exact);
 
         tt.age_up(1);
 

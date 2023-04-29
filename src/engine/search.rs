@@ -34,7 +34,10 @@ use crate::{
         movegen::{get_moves, has_moves, is_legal, GenMode},
         Move,
     },
-    engine::evaluate::{calculate_phase, eval_nl_delta},
+    engine::{
+        evaluate::{calculate_phase, eval_nl_delta},
+        transposition::BoundType,
+    },
 };
 
 use super::{
@@ -308,23 +311,19 @@ impl<'a> PVSearch<'a> {
             if is_legal(m, &self.game) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
-                if entry.depth >= depth {
-                    let upper_bound = entry.upper_bound.step_back_by(state.depth_since_root);
-                    if upper_bound <= alpha {
-                        if PV {
-                            state.line.clear();
-                            state.line.push(m);
-                        }
-                        return Ok(upper_bound);
+                let cutoff = entry.depth >= depth
+                    && match entry.bound_type() {
+                        BoundType::Exact => true,
+                        BoundType::Lower => beta <= entry.value,
+                        BoundType::Upper => entry.value <= alpha,
+                    };
+
+                if cutoff {
+                    if PV {
+                        state.line.clear();
+                        state.line.push(m);
                     }
-                    let lower_bound = entry.lower_bound.step_back_by(state.depth_since_root);
-                    if beta <= lower_bound {
-                        if PV {
-                            state.line.clear();
-                            state.line.push(m);
-                        }
-                        return Ok(lower_bound);
-                    }
+                    return Ok(entry.value);
                 }
             }
         }
@@ -506,24 +505,19 @@ impl<'a> PVSearch<'a> {
 
         let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
-            if entry.depth >= TTEntry::DEPTH_CAPTURES {
-                // this was a deeper search, just use it
-                let upper_bound = entry.upper_bound.step_back_by(state.depth_since_root);
-                if upper_bound <= alpha {
-                    if PV {
-                        state.line.clear();
-                        state.line.push(entry.best_move);
-                    }
-                    return Ok(upper_bound);
+            let cutoff = entry.depth >= TTEntry::DEPTH_CAPTURES
+                && match entry.bound_type() {
+                    BoundType::Exact => true,
+                    BoundType::Lower => beta <= entry.value,
+                    BoundType::Upper => entry.value <= alpha,
+                };
+
+            if cutoff {
+                if PV {
+                    state.line.clear();
+                    state.line.push(entry.best_move);
                 }
-                let lower_bound = entry.lower_bound.step_back_by(state.depth_since_root);
-                if beta <= lower_bound {
-                    if PV {
-                        state.line.clear();
-                        state.line.push(entry.best_move);
-                    }
-                    return Ok(lower_bound);
-                }
+                return Ok(entry.value);
             }
         }
         // capturing is unforced, so we can stop here if the player to move doesn't want to capture.
@@ -660,9 +654,16 @@ fn ttable_store(
     best_move: Move,
 ) {
     let true_score = score.step_forward_by(depth_so_far);
-    let upper_bound = if score < beta { true_score } else { Eval::MAX };
-    let lower_bound = if alpha < score { true_score } else { Eval::MIN };
-    guard.save(depth, best_move, lower_bound, upper_bound);
+    let bound_type = if alpha < score {
+        if score < beta {
+            BoundType::Exact
+        } else {
+            BoundType::Lower
+        }
+    } else {
+        BoundType::Upper
+    };
+    guard.save(depth, best_move, true_score, bound_type);
 }
 #[cfg(test)]
 pub mod tests {
@@ -842,6 +843,6 @@ pub mod tests {
         // println!("{search_info:?}");
         assert_eq!(entry.depth, i8::try_from(depth).unwrap());
         assert_eq!(entry.best_move, search_info.pv[0]);
-        assert_eq!(entry.lower_bound, entry.upper_bound);
+        assert_eq!(entry.bound_type(), BoundType::Exact);
     }
 }
