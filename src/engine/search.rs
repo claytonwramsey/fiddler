@@ -43,7 +43,7 @@ use crate::{
 use super::{
     evaluate::{cumulative_init, mg_npm, Eval, Score},
     pick::TaggedMove,
-    transposition::{TTEntry, TTEntryGuard},
+    transposition::TTEntry,
 };
 
 use super::{
@@ -311,19 +311,17 @@ impl<'a> PVSearch<'a> {
             if is_legal(m, &self.game) {
                 tt_move = Some(m);
                 // check if we can cutoff due to transposition table
-                let cutoff = entry.depth >= depth
-                    && match entry.bound_type() {
+                if !PV && entry.depth >= depth {
+                    let value = entry.value.step_back_by(state.depth_since_root);
+                    let cutoff = match entry.bound_type() {
                         BoundType::Exact => true,
-                        BoundType::Lower => beta <= entry.value,
-                        BoundType::Upper => entry.value <= alpha,
+                        BoundType::Lower => beta <= value,
+                        BoundType::Upper => value <= alpha,
                     };
 
-                if cutoff {
-                    if PV {
-                        state.line.clear();
-                        state.line.push(m);
+                    if cutoff {
+                        return Ok(value);
                     }
-                    return Ok(entry.value);
                 }
             }
         }
@@ -443,14 +441,17 @@ impl<'a> PVSearch<'a> {
 
         debug_assert!(Eval::MIN < best_score && best_score < Eval::MAX);
 
-        ttable_store(
-            &mut tt_guard,
-            state.depth_since_root,
+        tt_guard.save(
             depth,
-            if overwrote_alpha { Eval::MIN } else { alpha },
-            beta,
-            best_score,
             best_move,
+            best_score.step_forward_by(state.depth_since_root),
+            if best_score >= beta {
+                BoundType::Lower
+            } else if PV && overwrote_alpha {
+                BoundType::Exact
+            } else {
+                BoundType::Upper
+            },
         );
 
         Ok(best_score)
@@ -505,30 +506,25 @@ impl<'a> PVSearch<'a> {
 
         let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
-            let cutoff = entry.depth >= TTEntry::DEPTH_CAPTURES
-                && match entry.bound_type() {
+            if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES && entry.best_move == Move::BAD_MOVE
+                || is_legal(entry.best_move, &self.game)
+            {
+                let value = entry.value.step_back_by(state.depth_since_root);
+                let cutoff = match entry.bound_type() {
                     BoundType::Exact => true,
-                    BoundType::Lower => beta <= entry.value,
-                    BoundType::Upper => entry.value <= alpha,
+                    BoundType::Lower => beta <= value,
+                    BoundType::Upper => value <= alpha,
                 };
 
-            if cutoff {
-                if PV {
-                    state.line.clear();
-                    state.line.push(entry.best_move);
+                if cutoff {
+                    return Ok(value);
                 }
-                return Ok(entry.value);
             }
         }
         // capturing is unforced, so we can stop here if the player to move doesn't want to capture.
         let mut score =
             leaf_evaluate(&self.game, state.cumulative_score, state.phase).in_perspective(player);
         // println!("{}: {score}", self.game);
-
-        // Whether alpha was overwritten by any move at this depth.
-        // Used to determine whether this is an exact evaluation on a position when writing to the
-        // transposition table.
-        let mut overwrote_alpha = false;
         if alpha < score {
             if PV {
                 state.line.clear();
@@ -537,25 +533,22 @@ impl<'a> PVSearch<'a> {
             if beta <= score {
                 // store in the transposition table since we won't be able to use the call at the
                 // end
-                ttable_store(
-                    &mut tt_guard,
-                    state.depth_since_root,
+                tt_guard.save(
                     TTEntry::DEPTH_CAPTURES,
-                    Eval::MIN,
-                    beta,
-                    score,
                     Move::BAD_MOVE,
+                    score.step_forward_by(state.depth_since_root),
+                    BoundType::Lower,
                 );
                 // beta cutoff, this line would not be selected because there is a better option
                 // somewhere else
                 return Ok(score);
             }
 
-            overwrote_alpha = true;
             alpha = score;
         }
 
         let mut best_score = score;
+        let mut best_move = Move::BAD_MOVE;
 
         // get captures and sort in descending order of quality
         let mut moves = Vec::with_capacity(10);
@@ -582,8 +575,6 @@ impl<'a> PVSearch<'a> {
             score = -self.quiesce::<false>(-alpha - Eval::centipawns(1), -alpha, &mut new_state)?;
             if PV && alpha < score && score < beta {
                 // zero-window search failed high, so there is a better option in this tree.
-                // we already have a score from before that we can use as a lower bound in this
-                // search.
                 score = -self.quiesce::<PV>(-beta, -alpha, &mut new_state)?;
             }
 
@@ -594,29 +585,31 @@ impl<'a> PVSearch<'a> {
             if score > best_score {
                 best_score = score;
                 if alpha < score {
+                    best_move = tm.m;
                     if PV {
                         write_line(state.line, tm.m, &child_line);
                     }
+
                     if beta <= score {
                         // Beta cutoff, we have ound a better line somewhere else
                         self.killer_moves[state.depth_since_root as usize] = tm.m;
                         break;
                     }
 
-                    overwrote_alpha = true;
                     alpha = score;
                 }
             }
         }
 
-        ttable_store(
-            &mut tt_guard,
-            state.depth_since_root,
+        tt_guard.save(
             TTEntry::DEPTH_CAPTURES,
-            if overwrote_alpha { Eval::MIN } else { alpha },
-            beta,
-            best_score,
-            Move::BAD_MOVE,
+            best_move,
+            best_score.step_forward_by(state.depth_since_root),
+            if best_score >= beta {
+                BoundType::Upper
+            } else {
+                BoundType::Lower
+            },
         );
         Ok(best_score)
     }
@@ -641,30 +634,6 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
     parent_line.extend(line);
 }
 
-/// Store data in the transposition table.
-/// `score` is the best score of the position as evaluated, while `alpha` and `beta` are the upper
-/// and lower bounds on the overall position due to alpha-beta pruning in the game.
-fn ttable_store(
-    guard: &mut TTEntryGuard,
-    depth_so_far: u8,
-    depth: i8,
-    alpha: Eval,
-    beta: Eval,
-    score: Eval,
-    best_move: Move,
-) {
-    let true_score = score.step_forward_by(depth_so_far);
-    let bound_type = if alpha < score {
-        if score < beta {
-            BoundType::Exact
-        } else {
-            BoundType::Lower
-        }
-    } else {
-        BoundType::Upper
-    };
-    guard.save(depth, best_move, true_score, bound_type);
-}
 #[cfg(test)]
 pub mod tests {
 

@@ -312,7 +312,7 @@ impl TTable {
     ///
     /// This function will panic in debug mode if `max_age` is greater than or equal to 0x3f.
     pub fn age_up(&mut self, max_age: u8) {
-        debug_assert!(max_age <= 0x3F);
+        debug_assert!(max_age <= 0x1F);
         if !self.buckets.is_null() {
             for idx in 0..=self.mask {
                 #[allow(clippy::cast_possible_truncation)]
