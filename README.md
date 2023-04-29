@@ -51,12 +51,6 @@ installation of Rust to compile Fiddler. To do so, you can simply invoke
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
 
-- Fix up UCI behavior to be more spec compliant
-  - Negative time remaining
-  - Better setup for `GoOption`
-
-- Shrink the mailbox representation by using colored pieces
-
 - Add methods to differentiate search threads
 
 - Support ponderhit and other UCI commands
