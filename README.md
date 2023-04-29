@@ -51,8 +51,6 @@ installation of Rust to compile Fiddler. To do so, you can simply invoke
 Below are my plans for the future of this engine, in roughly descending order of
 interest:
 
-- Use bound type instead of storing both lower and upper bounds in transposition table
-
 - Fix up UCI behavior to be more spec compliant
   - Negative time remaining
   - Better setup for `GoOption`
