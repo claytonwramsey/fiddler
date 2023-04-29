@@ -34,7 +34,7 @@ use crate::{
         movegen::{get_moves, has_moves, is_legal, GenMode},
         Move,
     },
-    engine::evaluate::{calculate_phase, cumulative_score_delta},
+    engine::evaluate::{calculate_phase, eval_nl_delta},
 };
 
 use super::{
@@ -350,7 +350,7 @@ impl<'a> PVSearch<'a> {
 
             let mut new_state = NodeState {
                 depth_since_root: state.depth_since_root + 1,
-                cumulative_score: state.cumulative_score + cumulative_score_delta(tm.m, &self.game),
+                cumulative_score: -state.cumulative_score - eval_nl_delta(tm.m, &self.game),
                 mg_npm: tm.new_mg_npm,
                 phase: tm.phase,
                 line: &mut child_line,
@@ -529,7 +529,7 @@ impl<'a> PVSearch<'a> {
         // capturing is unforced, so we can stop here if the player to move doesn't want to capture.
         let mut score =
             leaf_evaluate(&self.game, state.cumulative_score, state.phase).in_perspective(player);
-        // println!("{g}: {score}");
+        // println!("{}: {score}", self.game);
 
         // Whether alpha was overwritten by any move at this depth.
         // Used to determine whether this is an exact evaluation on a position when writing to the
@@ -574,7 +574,7 @@ impl<'a> PVSearch<'a> {
         for tm in moves {
             let mut new_state = NodeState {
                 depth_since_root: state.depth_since_root + 1,
-                cumulative_score: state.cumulative_score + cumulative_score_delta(tm.m, &self.game),
+                cumulative_score: -state.cumulative_score - eval_nl_delta(tm.m, &self.game),
                 mg_npm: tm.new_mg_npm,
                 phase: tm.phase,
                 line: &mut child_line,

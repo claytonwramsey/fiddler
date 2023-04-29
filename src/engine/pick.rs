@@ -43,9 +43,7 @@ use crate::base::{
     Move,
 };
 
-use super::evaluate::{
-    calculate_phase, cumulative_score_delta, material, mg_npm_delta, Eval, Score,
-};
+use super::evaluate::{calculate_phase, eval_nl_delta, material, mg_npm_delta, Eval, Score};
 
 /// Create an estimate for how good a move is.
 /// `delta` is the PST difference created by this move.
@@ -274,7 +272,7 @@ impl TaggedMove {
             m,
             new_mg_npm,
             phase,
-            quality: candidacy(g, m, cumulative_score_delta(m, g), phase),
+            quality: candidacy(g, m, eval_nl_delta(m, g), phase),
         }
     }
 }

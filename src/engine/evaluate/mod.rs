@@ -114,17 +114,16 @@ pub fn mg_npm(g: &Game) -> Eval {
 }
 
 #[must_use]
-/// Get the change in the cumulative evaluation which will occur from playing move `m` on game `g`.
-pub fn cumulative_score_delta(m: Move, g: &Game) -> Score {
-    let delta = material::delta(g, m) + pst::delta(g, m);
-    match g.meta().player {
-        Color::White => delta,
-        Color::Black => -delta,
-    }
+/// Get the expected change in the evaluation of the position `g` by playing `m`, in perspective of
+/// the player to move.
+/// Does not include leaf-related evaluation information.
+pub fn eval_nl_delta(m: Move, g: &Game) -> Score {
+    material::delta(g, m) + pst::delta(g, m)
 }
 
 #[must_use]
 /// Initialize the cumulatively-evaluated score for a position.
+/// Returns a score in perspective of `g`'s player to move.
 pub fn cumulative_init(g: &Game) -> Score {
     material::evaluate(g) + pst::evaluate(g)
 }
@@ -155,7 +154,11 @@ pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(1, 1);
 #[allow(clippy::module_name_repetitions)]
 /// Evaluate a leaf position on a game whose cumulative values have been computed correctly.
 pub fn leaf_evaluate(g: &Game, cumulative_score: Score, phase: f32) -> Eval {
-    (leaf_rules(g) + cumulative_score).blend(phase)
+    let cum = match g.meta().player {
+        Color::White => cumulative_score,
+        Color::Black => -cumulative_score,
+    };
+    (leaf_rules(g) + cum).blend(phase)
 }
 
 /// Get the score gained from evaluations that are only performed at the leaf.
@@ -682,7 +685,7 @@ mod tests {
         let mut game = Game::from_fen(fen).unwrap();
         let orig_cumulative = cumulative_init(&game);
         for m in make_move_vec::<{ GenMode::All }>(&game) {
-            let leaf_cumulative = cumulative_score_delta(m, &game) + orig_cumulative;
+            let leaf_cumulative = -eval_nl_delta(m, &game) - orig_cumulative;
             game.make_move(m);
             assert_eq!(cumulative_init(&game), leaf_cumulative);
             game.undo().unwrap();

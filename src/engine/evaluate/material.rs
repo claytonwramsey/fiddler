@@ -29,7 +29,7 @@
 //! Empirically, the engine agrees.
 
 use crate::{
-    base::{game::Game, Color, Move, Piece},
+    base::{game::Game, Move, Piece},
     engine::evaluate::Score,
 };
 
@@ -48,7 +48,7 @@ pub const fn value(pt: Piece) -> Score {
 
 #[must_use]
 /// Compute the effect that a move will have on the total material evaluation of the board it will
-/// be played on.
+/// be played on, in the perspective of the player to move.
 pub fn delta(g: &Game, m: Move) -> Score {
     // material only ever changes value based on captures and promotions, so this is easy
     let mut gain = if m.is_en_passant() {
@@ -70,19 +70,21 @@ pub fn delta(g: &Game, m: Move) -> Score {
 #[must_use]
 #[allow(clippy::cast_possible_wrap)]
 /// Evaluate a position solely by the amount of material available.
+/// Returns a larger value for positions favoring the player to move and a lesser one for those
+/// which are worse for the player to move.
 pub fn evaluate(g: &Game) -> Score {
     let mut score = Score::centipawns(0, 0);
 
-    let white_occupancy = g[Color::White];
-    let black_occupancy = g[Color::Black];
+    let player = g.meta().player;
+    let allies = g[player];
+    let enemies = g[!player];
 
     for pt in Piece::ALL {
         // Total the quantity of white and black pieces of this type, and multiply their individual
         // value to get the net effect on the eval.
         let pt_squares = g[pt];
-        let white_diff =
-            (white_occupancy & pt_squares).len() as i8 - (black_occupancy & pt_squares).len() as i8;
-        score += value(pt) * white_diff;
+        let diff = (allies & pt_squares).len() as i8 - (enemies & pt_squares).len() as i8;
+        score += value(pt) * diff;
     }
 
     score
@@ -103,10 +105,8 @@ mod tests {
         let orig_eval = evaluate(&game);
         for m in make_move_vec::<{ GenMode::All }>(&game) {
             let d = delta(&game, m);
-            let new_eval = match game.meta().player {
-                Color::White => orig_eval + d,
-                Color::Black => orig_eval - d,
-            };
+            println!("m {m}, original {orig_eval}, delta {d}");
+            let new_eval = -d - orig_eval;
             game.make_move(m);
             assert_eq!(evaluate(&game), new_eval);
             game.undo().unwrap();

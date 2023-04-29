@@ -720,7 +720,7 @@ impl Game {
     #[allow(clippy::missing_panics_doc)]
     /// Determine whether this game is drawn by repetition - either by two repetitions overall or
     /// if there is one repetition since `moves_since_root`.
-    pub fn drawn_by_repetition(&self, moves_since_root: u16) -> bool { 
+    pub fn drawn_by_repetition(&self, moves_since_root: u16) -> bool {
         let meta = self.meta();
         meta.repeated != 0
             && (usize::from(meta.repeated) <= usize::from(moves_since_root)
@@ -944,23 +944,23 @@ impl Default for Game {
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for m in &self.moves {
+        for (m, _) in &self.moves {
             write!(f, "{m:?} ")?;
         }
-        writeln!(f)?;
+        // writeln!(f)?;
 
-        for r in 0..8 {
-            for c in 0..8 {
-                let i = 64 - (r + 1) * 8 + c;
-                let current_square = Square::try_from(i).unwrap();
-                match self[current_square] {
-                    Some((p, Color::White)) => write!(f, "{p} ")?,
-                    Some((p, Color::Black)) => write!(f, "{} ", p.code().to_lowercase())?,
-                    None => write!(f, ". ")?,
-                };
-            }
-            writeln!(f)?;
-        }
+        // for r in 0..8 {
+        //     for c in 0..8 {
+        //         let i = 64 - (r + 1) * 8 + c;
+        //         let current_square = Square::try_from(i).unwrap();
+        //         match self[current_square] {
+        //             Some((p, Color::White)) => write!(f, "{p} ")?,
+        //             Some((p, Color::Black)) => write!(f, "{} ", p.code().to_lowercase())?,
+        //             None => write!(f, ". ")?,
+        //         };
+        //     }
+        //     writeln!(f)?;
+        // }
 
         Ok(())
     }
