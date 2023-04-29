@@ -22,7 +22,7 @@ pub(crate) mod magic;
 #[cfg(test)]
 mod tests;
 
-use std::{convert::TryFrom, mem::transmute, time::Instant};
+use std::{convert::TryFrom, mem::transmute};
 
 use once_cell::sync::Lazy;
 
@@ -1020,89 +1020,4 @@ fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
             callback(Move::castling(king_sq, passthrough_squares[1]));
         }
     }
-}
-
-#[must_use]
-#[allow(clippy::cast_precision_loss, clippy::similar_names)]
-/// Perform a performance test on the move generator.
-/// Returns the number of independent paths to a leaf reachable in `depth` plies from a board with
-/// starting position `fen`.
-///
-/// # Examples
-///
-/// ```
-/// use fiddler::base::movegen::perft;
-///
-/// // Use the starting position FEN and calculate the number of legal moves.
-///
-/// // There is only ever one position reachable in zero moves.
-/// assert_eq!(
-///     perft(
-///         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-///         0
-///     ),
-///     1
-/// );
-///
-/// // There are 20 legal moves in the starting board position.
-/// assert_eq!(
-///     perft(
-///         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-///         1
-///     ),
-///     20
-/// );
-///
-/// // There are 400 legal openings at depth 2.
-/// assert_eq!(
-///     perft(
-///         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-///         2
-///     ),
-///     400
-/// );
-/// ```
-///
-/// # Panics
-///
-/// This function will panic if `fen` is not a legal board.
-pub fn perft(fen: &str, depth: u8) -> u64 {
-    /// The core search algorithm for perft.
-    fn helper<const DIVIDE: bool>(g: &mut Game, depth: u8) -> u64 {
-        let mut total = 0;
-        if depth == 1 {
-            get_moves::<{ GenMode::All }>(g, |_| total += 1);
-        } else {
-            // to prevent a violation of Rust's aliasing rules, we can't use a callback here.
-            // instead, we can just collect the moves into a vector.
-            for m in make_move_vec::<{ GenMode::All }>(g) {
-                g.make_move(m);
-                let count = helper::<false>(g, depth - 1);
-                if DIVIDE {
-                    println!("{m:?}: {count}");
-                }
-                g.undo().unwrap();
-                total += count;
-            }
-        };
-
-        total
-    }
-
-    let mut g = Game::from_fen(fen).unwrap();
-    let tic = Instant::now();
-    let num_nodes = if depth == 0 {
-        1
-    } else {
-        helper::<true>(&mut g, depth)
-    };
-    let toc = Instant::now();
-    let time = toc - tic;
-    let speed = (num_nodes as f64) / time.as_secs_f64();
-    println!(
-        "time {:.2} secs, num nodes {num_nodes}: {speed:.0} nodes/sec",
-        time.as_secs_f64()
-    );
-
-    num_nodes
 }
