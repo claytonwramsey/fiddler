@@ -27,11 +27,7 @@ use std::{thread::scope, time::Instant};
 
 use crate::base::game::Game;
 
-use super::{
-    evaluate::Eval,
-    search::SearchInfo,
-    uci::{EngineInfo, Message},
-};
+use super::{evaluate::Eval, search::SearchInfo};
 
 use super::{limit::SearchLimit, search::search, transposition::TTable};
 
@@ -140,29 +136,32 @@ impl MainSearch {
                     let elapsed = tic.elapsed();
                     if let Ok(ref best_info) = best_result {
                         prev_eval = Some(best_info.eval);
-                        #[allow(clippy::cast_possible_truncation)]
-                        {
-                            println!(
-                                "{}",
-                                Message::Info(&[
-                                    EngineInfo::Depth(best_info.depth),
-                                    EngineInfo::SelDepth(best_info.selective_depth),
-                                    EngineInfo::Score {
-                                        eval: best_info.eval,
-                                        is_lower_bound: false,
-                                        is_upper_bound: false
-                                    },
-                                    EngineInfo::Nodes(best_info.num_nodes_evaluated),
-                                    EngineInfo::NodeSpeed(
-                                        1000 * best_info.num_nodes_evaluated
-                                            / (elapsed.as_millis() + 1) as u64
-                                    ),
-                                    EngineInfo::Time(elapsed),
-                                    EngineInfo::HashFull(self.ttable.fill_rate_permill()),
-                                    EngineInfo::Pv(&best_info.pv),
-                                ])
-                            );
+                        print!(
+                            "info depth {} seldepth {} score ",
+                            best_info.depth, best_info.selective_depth
+                        );
+                        match best_info.eval.moves_to_mate() {
+                            Some(n) => {
+                                if best_info.eval > Eval::DRAW {
+                                    print!("mate {n} ");
+                                } else {
+                                    print!("mate -{n} ");
+                                }
+                            }
+                            None => print!("cp {} ", best_info.eval.centipawn_val()),
+                        };
+                        print!(
+                            "nodes {} nps {} time {} hashfull {} pv",
+                            best_info.num_nodes_evaluated,
+                            1000 * u128::from(best_info.num_nodes_evaluated)
+                                / (elapsed.as_millis() + 1),
+                            elapsed.as_millis(),
+                            self.ttable.fill_rate_permill(),
+                        );
+                        for m in &best_info.pv {
+                            print!(" {}", m.to_uci());
                         }
+                        println!();
                     }
                 }
             }

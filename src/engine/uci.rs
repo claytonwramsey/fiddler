@@ -29,10 +29,7 @@
 //!
 //! For a full specification of the UCI standard, see [here](https://backscattering.de/).
 
-mod send;
 use crate::base::{game::Game, Move};
-
-pub use send::{EngineInfo, Message, OptionType};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 /// An enum representing the set of all commands that the GUI can send to the engine via UCI.

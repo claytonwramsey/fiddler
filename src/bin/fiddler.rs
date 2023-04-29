@@ -37,7 +37,7 @@ use fiddler::{
     engine::{
         thread::MainSearch,
         time::get_search_time,
-        uci::{Command, EngineInfo, GoOption, Message, OptionType},
+        uci::{Command, GoOption},
     },
 };
 
@@ -76,37 +76,15 @@ fn main() {
             match command {
                 Command::Uci => {
                     // identify the engine
-                    println!(
-                        "{}",
-                        Message::Id {
-                            // we trust that the build script actually did its job
-                            // and created the git hash environment variable
-                            name: Some(concat!("Fiddler 0.1.0 (", env!("GIT_HASH"), ")")),
-                            author: Some("Clayton Ramsey"),
-                        }
-                    );
+                    println!("id name Fiddler 0.1.0 ({})", env!("GIT_HASH"));
+                    println!("id author Clayton Ramsey");
 
                     // add options
-
-                    add_option(
-                        "Thread Count",
-                        OptionType::Spin {
-                            default: 1,
-                            min: 1,
-                            max: 255,
-                        },
+                    println!("option name Thread Count type spin default 1 min 1 max 255");
+                    println!(
+                        "option name Hash type spin default {DEFAULT_HASH_SIZE_MB} min 0 max 128000"
                     );
-
-                    add_option(
-                        "Hash",
-                        OptionType::Spin {
-                            default: DEFAULT_HASH_SIZE_MB as i64,
-                            min: 0,
-                            max: 128_000, // not my problem if you OOM your computer
-                        },
-                    );
-
-                    println!("{}", Message::UciOk)
+                    println!("uciok");
                 }
                 Command::Debug(new_debug) => {
                     // activate or deactivate debug mode
@@ -114,7 +92,7 @@ fn main() {
                 }
                 Command::IsReady => {
                     // we were born ready
-                    println!("{}", Message::ReadyOk);
+                    println!("readyok");
                 }
                 Command::SetOption { name, value } => match name.as_str() {
                     "Thread Count" => match value {
@@ -286,13 +264,11 @@ fn go<'a>(
 
         match search_result {
             Ok(info) => {
-                println!(
-                    "{}",
-                    Message::BestMove {
-                        m: info.pv[0],
-                        ponder: info.pv.get(1).copied(),
-                    }
-                );
+                print!("bestmove {}", info.pv[0].to_uci());
+                if let Some(pondermove) = info.pv.get(1).copied() {
+                    print!(" ponder {}", pondermove.to_uci());
+                }
+                println!();
             }
             Err(e) => {
                 // search failed :(
@@ -322,11 +298,6 @@ fn stop(searcher: &RwLock<MainSearch>, search_handle: Option<ScopedJoinHandle<()
 /// Will have no effect if `debug` is `false`.
 fn debug_info(s: &str, debug: bool) {
     if debug {
-        println!("{}", Message::Info(&[EngineInfo::String(s)]));
+        println!("info string {s}");
     }
-}
-
-/// Send out a message to add an option for the frontend.
-fn add_option(name: &str, opt: OptionType) {
-    println!("{}", Message::Option { name, opt })
 }
