@@ -720,11 +720,11 @@ impl Game {
     #[allow(clippy::missing_panics_doc)]
     /// Determine whether this game is drawn by repetition - either by two repetitions overall or
     /// if there is one repetition since `moves_since_root`.
-    pub fn drawn_by_repetition(&self, moves_since_root: u16) -> bool {
+    pub fn drawn_by_repetition(&self, moves_since_root: u16) -> bool { 
         let meta = self.meta();
         meta.repeated != 0
             && (usize::from(meta.repeated) <= usize::from(moves_since_root)
-                || self.history[self.history.len() - usize::from(meta.repeated)].repeated != 0)
+                || self.history[self.history.len() - 1 - usize::from(meta.repeated)].repeated != 0)
     }
 
     #[allow(clippy::len_without_is_empty)]
@@ -947,6 +947,7 @@ impl Display for Game {
         for m in &self.moves {
             write!(f, "{m:?} ")?;
         }
+        writeln!(f)?;
 
         for r in 0..8 {
             for c in 0..8 {
@@ -990,6 +991,10 @@ mod tests {
         g.make_move(Move::normal(Square::G1, Square::F3));
         g.make_move(Move::normal(Square::G8, Square::F6));
         g.make_move(Move::normal(Square::F3, Square::G1));
+
+        assert!(!g.drawn_by_repetition(0));
+        assert!(g.drawn_by_repetition(4));
+
         g.make_move(Move::normal(Square::F6, Square::G8));
 
         // double repetition - should be caught by both

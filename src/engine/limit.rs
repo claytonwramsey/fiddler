@@ -58,7 +58,7 @@ pub struct SearchLimit {
 impl SearchLimit {
     #[must_use]
     /// Create a new `SearchLimit` which will never stop.
-    pub fn new() -> SearchLimit {
+    pub fn infinite() -> SearchLimit {
         SearchLimit {
             over: AtomicBool::new(false),
             num_nodes: AtomicU64::new(0),
@@ -125,12 +125,5 @@ impl SearchLimit {
     /// Get the cumulative number of nodes searched.
     pub fn num_nodes(&self) -> u64 {
         self.num_nodes.load(Ordering::Relaxed)
-    }
-}
-
-impl Default for SearchLimit {
-    /// Construct a `SearchLimit` which will never stop.
-    fn default() -> Self {
-        SearchLimit::new()
     }
 }

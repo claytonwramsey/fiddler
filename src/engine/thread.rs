@@ -43,9 +43,6 @@ pub struct SearchConfig {
     /// The number of helper threads.
     /// If this value is 0, then the search is single-threaded.
     pub n_helpers: u8,
-    /// The number of moves at each layer which will be searched to a full depth, as opposed to a
-    /// lower-than-target depth.
-    pub num_early_moves: usize,
     /// The number of nodes which have to be searched before it is worthwhile to update the search
     /// limit with this information.
     pub limit_update_increment: u64,
@@ -58,7 +55,6 @@ impl SearchConfig {
         SearchConfig {
             depth: 10,
             n_helpers: 0,
-            num_early_moves: 4,
             limit_update_increment: 100,
         }
     }
@@ -88,7 +84,7 @@ impl MainSearch {
         MainSearch {
             config: SearchConfig::new(),
             ttable: TTable::with_size(0),
-            limit: SearchLimit::new(),
+            limit: SearchLimit::infinite(),
         }
     }
 

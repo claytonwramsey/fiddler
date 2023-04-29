@@ -689,7 +689,7 @@ pub mod tests {
             depth,
             &TTable::with_size(1000),
             &config,
-            &SearchLimit::default(),
+            &SearchLimit::infinite(),
             true,
             Eval::MIN,
             Eval::MAX,
@@ -772,6 +772,52 @@ pub mod tests {
     }
 
     #[test]
+    /// Test that the engine can use a draw by repetition to escape being mated.
+    fn escape_by_draw() {
+        let mut g = Game::from_fen("2k5/6R1/7Q/8/8/8/8/1K6 w - - 0 1").unwrap();
+
+        g.make_move(Move::normal(Square::H6, Square::F6));
+        g.make_move(Move::normal(Square::C8, Square::B8));
+        g.make_move(Move::normal(Square::F6, Square::H6));
+        g.make_move(Move::normal(Square::B8, Square::C8));
+
+        g.make_move(Move::normal(Square::H6, Square::F6));
+        g.make_move(Move::normal(Square::C8, Square::B8));
+        g.make_move(Move::normal(Square::F6, Square::H6));
+
+        assert!(has_moves(&g));
+        assert!(!g.drawn_by_repetition(0));
+        // black can now play Kc8 to escape
+
+        let config = SearchConfig {
+            depth: 4,
+            ..Default::default()
+        };
+
+        let info = search(
+            g.clone(),
+            4,
+            &TTable::with_size(1),
+            &config,
+            &SearchLimit::infinite(),
+            true,
+            Eval::MIN,
+            Eval::MAX,
+        )
+        .unwrap();
+
+        // validate principal variation
+        for &m in &info.pv {
+            println!("{m}");
+            assert!(is_legal(m, &g));
+            g.make_move(m);
+        }
+
+        assert_eq!(info.eval, Eval::DRAW);
+        assert_eq!(info.pv[0], Move::normal(Square::B8, Square::C8));
+    }
+
+    #[test]
     /// Test that the transposition table contains an entry for the root node of the search.
     fn ttable_populated() {
         let ttable = TTable::with_size(1);
@@ -786,7 +832,7 @@ pub mod tests {
                 depth: 5,
                 ..Default::default()
             },
-            &SearchLimit::new(),
+            &SearchLimit::infinite(),
             true,
             Eval::MIN,
             Eval::MAX,
