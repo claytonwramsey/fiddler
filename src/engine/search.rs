@@ -203,6 +203,7 @@ impl<'a> PVSearch<'a> {
         }
     }
 
+    #[inline(never)]
     /// Use Principal Variation Search to evaluate the given game to a depth.
     ///
     /// At each node, the search will examine all legal moves and try to find the best line,
@@ -221,8 +222,6 @@ impl<'a> PVSearch<'a> {
     ///   should always set `ROOT` to `true`.
     /// * `REDUCE`: Whether heuristic depth reduction should be performed.
     /// * `depth`: The depth to search the position.
-    /// * `depth_so_far`: The depth of the recursive stack when this function was called. At the
-    ///   start of the search, `depth_so_far` is 0.
     /// * `alpha`: A lower bound on the evaluation of a parent node, in perspective of the player to
     ///   move. One way of thinking of `alpha` is that it is the best score that the player to move
     ///   could get if they made a move which did *not* cause `pvs()` to be called in this position.
@@ -231,10 +230,7 @@ impl<'a> PVSearch<'a> {
     ///   move. `beta` can be thought of as the worst score that the opponent of the current player
     ///   to move could get if they decided not to allow the current player to make a move. When
     ///   called externally, `beta` should be equal to `Eval::MAX`.
-    /// * `parent_line`: The principal variation line of the parent position. `parent_line` will be
-    ///   overwritten with the best line found by this search, so long as it achieves an alpha
-    ///   cutoff at some point.
-    /// * `prev_cumulative_eval`: The cumulative evaluation of the current state of the game.
+    /// - `state`: The shared state of this node, containing the principal variation and other data.
     ///
     /// # Errors
     ///
@@ -461,6 +457,7 @@ impl<'a> PVSearch<'a> {
         Ok(best_score)
     }
 
+    #[inline(never)]
     /// Use quiescent search (captures only) to evaluate a position as deep as it needs to go until
     /// all loud moves are exhausted.
     /// The given `depth` does not alter the power of the search, but  serves as a handy tool
