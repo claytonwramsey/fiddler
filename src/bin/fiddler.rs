@@ -80,6 +80,13 @@ fn main() {
                     println!("id author Clayton Ramsey");
 
                     // add options
+                    println!(
+                        "option name UCI_EngineAbout type string default \
+                        Fiddler: Copyright (C) 2021-2023 Clayton Ramsey. \
+                        This program comes with ABSOLUTELY NO WARRANTY. \
+                        Licensed under the GNU GPLv3. \
+                        Source code at https://github.com/claytonwramsey/fiddler."
+                    );
                     println!("option name Thread Count type spin default 1 min 1 max 255");
                     println!(
                         "option name Hash type spin default {DEFAULT_HASH_SIZE_MB} min 0 max 128000"
