@@ -435,6 +435,10 @@ pub fn make_move_vec<const M: GenMode>(g: &Game) -> Vec<Move> {
 /// This does not take into account whether the position is drawn by insufficient material,
 /// repetion, or the 50-move rule.
 ///
+/// # Panics
+///
+/// This function may panic if the game is in an invalid state.
+///
 /// # Examples
 ///
 /// ```

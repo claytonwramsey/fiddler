@@ -227,6 +227,10 @@ pub const fn for_piece(pt: Piece, attacks: Bitboard) -> Score {
 
 #[must_use]
 /// Get the mobility evaluation of a board.
+///
+/// # Panics
+///
+/// This function may panic if `g` is in an invalid state.
 pub fn evaluate(g: &Game) -> Score {
     let white = g[Color::White];
     let black = g[Color::Black];
