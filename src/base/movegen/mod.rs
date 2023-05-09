@@ -281,8 +281,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 
     // check that the move is not a self check
     if !meta.checkers.is_empty() {
-        // we already handled the two-checker case, so there is only one
-        // checker
+        // we already handled the two-checker case, so there is only one checker
         let checker_sq = Square::try_from(meta.checkers).unwrap();
         let player_idx = meta.player as usize;
         let mut targets =

@@ -88,7 +88,7 @@ pub struct BoardMeta {
     pub pinned: Bitboard,
     /// An number representing the number of plies since this position was most recently repeated.
     /// If this position has not been repeated before, the value of this index is 0.
-    repeated: u16,
+    repeated: u8,
 }
 
 impl Game {
@@ -578,7 +578,7 @@ impl Game {
                 let mut i = self.history.len() as i16 - 4;
                 while end_idx <= i {
                     if self.history[i as usize].hash == new_meta.hash {
-                        break 'a (self.history.len() as i16 - i) as u16;
+                        break 'a (self.history.len() as i16 - i) as u8;
                     }
                     i -= 2;
                 }
