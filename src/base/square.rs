@@ -261,11 +261,11 @@ impl Square {
     }
 
     /// A constant implementation of `try_from`.
-    pub(crate) fn const_try_from(x: u8) -> Result<Square, &'static str> {
+    pub(crate) fn const_try_from(x: u8) -> Result<Square, ()> {
         if x <= Square::H8 as u8 {
             Ok(unsafe { transmute(x) })
         } else {
-            Err("input for square conversion is out of bounds")
+            Err(())
         }
     }
 }
@@ -307,7 +307,7 @@ impl Sub<Direction> for Square {
 }
 
 impl TryFrom<Bitboard> for Square {
-    type Error = &'static str;
+    type Error = ();
 
     /// Create the square closest to A1 (prioritizing rank) on the given bitboard.
     #[allow(clippy::cast_possible_truncation)]
@@ -317,7 +317,7 @@ impl TryFrom<Bitboard> for Square {
 }
 
 impl TryFrom<u8> for Square {
-    type Error = &'static str;
+    type Error = ();
     fn try_from(x: u8) -> Result<Square, Self::Error> {
         Square::const_try_from(x)
     }

@@ -13,7 +13,7 @@ use std::mem::transmute;
 use crate::base::{
     game::Game,
     movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
-    Bitboard, Color, Piece,
+    Bitboard, Color, Piece, Square,
 };
 
 use super::Score;
@@ -298,11 +298,13 @@ pub fn evaluate(g: &Game) -> Score {
 
     score += for_piece(
         Piece::King,
-        KING_MOVES[g.meta().king_sqs[Color::White as usize] as usize] & not_white,
+        KING_MOVES[Square::try_from(g[Piece::King] & g[Color::White]).unwrap() as usize]
+            & not_white,
     );
     score -= for_piece(
         Piece::King,
-        KING_MOVES[g.meta().king_sqs[Color::Black as usize] as usize] & not_black,
+        KING_MOVES[Square::try_from(g[Piece::King] & g[Color::Black]).unwrap() as usize]
+            & not_black,
     );
 
     score

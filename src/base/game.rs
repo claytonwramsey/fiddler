@@ -79,10 +79,6 @@ pub struct BoardMeta {
     /// The set of squares which is occupied by pieces which are checking the
     /// king.
     pub checkers: Bitboard,
-    /// The squares that the kings are living on.
-    /// `king_sqs[0]` is the location of the white king, and
-    /// `king_sqs[1]` is the location of the black king.
-    pub king_sqs: [Square; 2],
     /// The set of squares containing pieces which are pinned, i.e. which are
     /// blocking some sort of attack on `player`'s king.
     pub pinned: Bitboard,
@@ -187,7 +183,6 @@ impl Game {
                     })
                     .chain((0..4).map(zobrist::castle_key))
                     .fold(0, |a, b| a ^ b),
-                king_sqs: [Square::E1, Square::E8],
                 checkers: Bitboard::EMPTY,
                 pinned: Bitboard::EMPTY,
                 repeated: 0,
@@ -229,7 +224,6 @@ impl Game {
                 rule50: 0,
                 hash: 0,
                 checkers: Bitboard::EMPTY,
-                king_sqs: [Square::A1; 2],
                 pinned: Bitboard::EMPTY,
                 repeated: 0,
             }],
@@ -368,19 +362,11 @@ impl Game {
         };
 
         // updating metadata
-        game.history.last_mut().unwrap().king_sqs = [
-            Square::try_from(game[Piece::King] & game[Color::White])?,
-            Square::try_from(game[Piece::King] & game[Color::Black])?,
-        ];
-        game.history[0].checkers = square_attackers(
-            &game,
-            game.meta().king_sqs[game.meta().player as usize],
-            !game.meta().player,
-        );
-        game.history[0].pinned = game.compute_pinned(
-            game.history[0].king_sqs[game.history[0].player as usize],
-            !game.history[0].player,
-        );
+        let player = meta.player;
+        let king_sq = Square::try_from(game[Piece::King] & game[player])
+            .map_err(|_| "cannot find square containing king")?;
+        game.history[0].checkers = square_attackers(&game, king_sq, !game.meta().player);
+        game.history[0].pinned = game.compute_pinned(king_sq, !game.history[0].player);
         if !game.is_valid() {
             return Err("board state after loading was illegal");
         }
@@ -555,16 +541,10 @@ impl Game {
         /* -------- Non-meta fields of the board are now in their final state. -------- */
 
         /* -------- Update other metadata -------- */
+        let enemy_king_sq = Square::try_from(self[Piece::King] & self[!player]).unwrap();
 
-        if is_king_move {
-            new_meta.king_sqs[player as usize] = to_sq;
-        }
-
-        // checkers
-        new_meta.checkers = square_attackers(self, new_meta.king_sqs[!player as usize], player);
-
-        // pinned pieces
-        new_meta.pinned = self.compute_pinned(new_meta.king_sqs[!player as usize], player);
+        new_meta.checkers = square_attackers(self, enemy_king_sq, player);
+        new_meta.pinned = self.compute_pinned(enemy_king_sq, player);
 
         // go figure out whether this position is a repetition
         #[allow(
@@ -838,25 +818,6 @@ impl Game {
             return false;
         }
 
-        // validate current king squares
-        if self[Piece::King] & self[Color::White]
-            != Bitboard::from(self.meta().king_sqs[Color::White as usize])
-        {
-            println!(
-                "bad white king square: {} vs {}",
-                self[Piece::King] & self[Color::White],
-                self.meta().king_sqs[Color::White as usize]
-            );
-            return false;
-        }
-
-        if self[Piece::King] & self[Color::Black]
-            != Bitboard::from(self.meta().king_sqs[Color::Black as usize])
-        {
-            println!("bad black king square");
-            return false;
-        }
-
         // validate hash
         let mut new_hash = if self.meta().player == Color::White {
             0
@@ -879,7 +840,7 @@ impl Game {
             return false;
         }
 
-        let king_sq = self.meta().king_sqs[self.meta().player as usize];
+        let Ok(king_sq) = Square::try_from(self[Piece::King] & self[self.meta().player]) else { return false };
 
         // Validate checkers
         if self.meta().checkers != square_attackers(self, king_sq, !self.meta().player) {

@@ -279,13 +279,12 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
         return false;
     };
 
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
     // check that the move is not a self check
     if !meta.checkers.is_empty() {
         // we already handled the two-checker case, so there is only one checker
         let checker_sq = Square::try_from(meta.checkers).unwrap();
-        let player_idx = meta.player as usize;
-        let mut targets =
-            Bitboard::between(meta.king_sqs[player_idx], checker_sq) | Bitboard::from(checker_sq);
+        let mut targets = Bitboard::between(king_sq, checker_sq) | Bitboard::from(checker_sq);
 
         if let Some(ep_sq) = meta.en_passant_square {
             if pt == Piece::Pawn && (checker_sq == ep_sq - player.pawn_direction()) {
@@ -301,7 +300,6 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 
     if is_ep {
         // en passants have their own weird effects
-        let king_sq = meta.king_sqs[meta.player as usize];
         let capture_bb = match player {
             Color::White => to_bb >> 8,
             Color::Black => to_bb << 8,
@@ -319,8 +317,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
                 .is_empty();
     }
 
-    !meta.pinned.contains(from_sq)
-        || Square::aligned(from_sq, to_sq, meta.king_sqs[player as usize])
+    !meta.pinned.contains(from_sq) || Square::aligned(from_sq, to_sq, king_sq)
 }
 
 /// Get the legal moves in a board.
@@ -455,7 +452,7 @@ pub fn has_moves(g: &Game) -> bool {
     let opponent = !player;
     let occupancy = allies | enemies;
     let mut legal_targets = !allies;
-    let king_sq = meta.king_sqs[player as usize];
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
     // king does not have to block its checks
     let king_to_sqs = KING_MOVES[king_sq as usize] & legal_targets;
     let unpinned = !meta.pinned;
@@ -632,7 +629,7 @@ fn non_evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
 fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
     let meta = g.meta();
     let player = meta.player;
-    let king_sq = meta.king_sqs[player as usize];
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
 
     // only look at non-king moves if we are not in double check
     if meta.checkers.has_single_bit() {
@@ -749,7 +746,7 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
     let direction = player.pawn_direction();
     let doubledir = 2 * direction;
     let unpinned = !meta.pinned;
-    let king_sq = meta.king_sqs[player as usize];
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
     let king_file_mask = Bitboard::vertical(king_sq);
     if M != GenMode::Quiets {
         // pawn captures
@@ -822,7 +819,7 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
         // en passant
         if let Some(ep_square) = meta.en_passant_square {
             if target.contains(ep_square) {
-                let king_sq = meta.king_sqs[player as usize];
+                let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
                 let enemy = g[!player];
                 let to_bb = Bitboard::from(ep_square);
                 let capture_bb = match player {
@@ -903,7 +900,7 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
     let queens = g[Piece::Queen];
     let rook_movers = (g[Piece::Rook] | queens) & allies;
     let bishop_movers = (g[Piece::Bishop] | queens) & allies;
-    let king_sq = meta.king_sqs[player as usize];
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
     let unpinned = !meta.pinned;
     let king_hv = Bitboard::hv(king_sq);
     let king_diags = Bitboard::diags(king_sq);
@@ -951,7 +948,7 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
 /// target square.
 fn king_move_non_castle(g: &Game, callback: &mut impl FnMut(Move), target: Bitboard) {
     let meta = g.meta();
-    let king_sq = meta.king_sqs[meta.player as usize];
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
     let allies = g[meta.player];
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
     let king_bb = g[Piece::King] & g[meta.player];
@@ -973,7 +970,7 @@ fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
 
     let player = meta.player;
     let occ = g.occupancy();
-    let king_sq = meta.king_sqs[player as usize];
+    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
 
     // the squares the king must pass through to reach the castled position
     let kingside_castle_passthrough_sqs = match player {
