@@ -29,6 +29,8 @@
 //!
 //! For a full specification of the UCI standard, see [here](https://backscattering.de/).
 
+use std::{fmt::Display, str::FromStr};
+
 use crate::base::{game::Game, Move};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -105,9 +107,11 @@ pub enum GoOption {
     /// When a `UciCommand::PonderHit` is given, the engine will then execute the ponder command.
     Ponder,
     /// Inform the engine that White has the given number of milliseconds remaining.
-    WhiteTime(u32),
+    /// The remaining time may be negative in the case of overtime play.
+    WhiteTime(i32),
     /// Inform the engine that Black has the given number of milliseconds remaining.
-    BlackTime(u32),
+    /// The remaining time may be negative in the case of overtime play.
+    BlackTime(i32),
     /// Inform the engine that White has the given number of milliseconds as their time increment.
     WhiteInc(u32),
     /// Inform the engine that Black has the given number of milliseconds as their time increment.
@@ -287,7 +291,10 @@ impl Command {
     fn parse_go(tokens: &mut dyn Iterator<Item = &str>, game: &Game) -> ParseResult {
         /// A helper function for `parse_go` which will attempt to parse an int out of a token if it
         /// is `Some`, and fail if it cannot parse the int or if it is given `None`.
-        fn parse_int(x: Option<&str>) -> Result<u64, String> {
+        fn parse_int<F: FromStr>(x: Option<&str>) -> Result<F, String>
+        where
+            F::Err: Display,
+        {
             x.ok_or_else(|| "reached EOF while parsing int".to_string())?
                 .parse()
                 .map_err(|e| format!("could not parse int due to error: {e}"))
@@ -313,15 +320,15 @@ impl Command {
                     GoOption::SearchMoves(moves)
                 }
                 "ponder" => GoOption::Ponder,
-                "wtime" => GoOption::WhiteTime(parse_int(peeks.next())? as u32),
-                "btime" => GoOption::BlackTime(parse_int(peeks.next())? as u32),
-                "winc" => GoOption::WhiteInc(parse_int(peeks.next())? as u32),
-                "binc" => GoOption::BlackInc(parse_int(peeks.next())? as u32),
-                "movestogo" => GoOption::MovesToGo(parse_int(peeks.next())? as u8),
-                "depth" => GoOption::Depth(parse_int(peeks.next())? as u8),
+                "wtime" => GoOption::WhiteTime(parse_int(peeks.next())?),
+                "btime" => GoOption::BlackTime(parse_int(peeks.next())?),
+                "winc" => GoOption::WhiteInc(parse_int(peeks.next())?),
+                "binc" => GoOption::BlackInc(parse_int(peeks.next())?),
+                "movestogo" => GoOption::MovesToGo(parse_int(peeks.next())?),
+                "depth" => GoOption::Depth(parse_int(peeks.next())?),
                 "nodes" => GoOption::Nodes(parse_int(peeks.next())?),
-                "mate" => GoOption::Mate(parse_int(peeks.next())? as u8),
-                "movetime" => GoOption::MoveTime(parse_int(peeks.next())? as u32),
+                "mate" => GoOption::Mate(parse_int(peeks.next())?),
+                "movetime" => GoOption::MoveTime(parse_int(peeks.next())?),
                 "infinite" => GoOption::Infinite,
                 _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
             });
@@ -511,6 +518,18 @@ mod tests {
         assert_eq!(
             Command::parse_line("debug off\n", &Game::default()),
             Ok(Command::Debug(false))
+        );
+    }
+
+    #[test]
+    /// Test that negative numbers for remaining time are accepted in a go option.
+    fn negative_time() {
+        assert_eq!(
+            Command::parse_line("go wtime 100 btime -100\n", &Game::default()),
+            Ok(Command::Go(vec![
+                GoOption::WhiteTime(100),
+                GoOption::BlackTime(-100)
+            ]))
         );
     }
 }
