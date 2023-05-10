@@ -297,21 +297,20 @@ impl Command {
         }
 
         let mut opts = Vec::new();
-        let mut peeks = tokens.peekable();
         // build the options
-        while let Some(opt_tok) = peeks.next() {
+        while let Some(opt_tok) = tokens.next() {
             opts.push(match opt_tok {
                 "searchmoves" => return Err("go option `searchmoves` is not supported".to_string()),
                 "ponder" => GoOption::Ponder,
-                "wtime" => GoOption::WhiteTime(parse_int(peeks.next())?),
-                "btime" => GoOption::BlackTime(parse_int(peeks.next())?),
-                "winc" => GoOption::WhiteInc(parse_int(peeks.next())?),
-                "binc" => GoOption::BlackInc(parse_int(peeks.next())?),
-                "movestogo" => GoOption::MovesToGo(parse_int(peeks.next())?),
-                "depth" => GoOption::Depth(parse_int(peeks.next())?),
-                "nodes" => GoOption::Nodes(parse_int(peeks.next())?),
-                "mate" => GoOption::Mate(parse_int(peeks.next())?),
-                "movetime" => GoOption::MoveTime(parse_int(peeks.next())?),
+                "wtime" => GoOption::WhiteTime(parse_int(tokens.next())?),
+                "btime" => GoOption::BlackTime(parse_int(tokens.next())?),
+                "winc" => GoOption::WhiteInc(parse_int(tokens.next())?),
+                "binc" => GoOption::BlackInc(parse_int(tokens.next())?),
+                "movestogo" => GoOption::MovesToGo(parse_int(tokens.next())?),
+                "depth" => GoOption::Depth(parse_int(tokens.next())?),
+                "nodes" => GoOption::Nodes(parse_int(tokens.next())?),
+                "mate" => GoOption::Mate(parse_int(tokens.next())?),
+                "movetime" => GoOption::MoveTime(parse_int(tokens.next())?),
                 "infinite" => GoOption::Infinite,
                 _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
             });
