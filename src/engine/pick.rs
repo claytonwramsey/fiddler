@@ -281,6 +281,11 @@ impl TaggedMove {
 /// After this function terminates, `moves[idx]` will contain the best-rated move of the input moves
 /// from idx to the end.
 /// Requires that `0 <= idx < moves.len()`.
+///
+/// The astute reader will realize that this search implementation is actually _O(n^2)_.
+/// However, we trust that a beta cutoff will be quick under most circumstances, meaning that
+/// the "true" runtime is _Ω(n)_.
+/// Empirically, this performance improvement yields ~55 Elo.
 fn select_best(moves: &mut [TaggedMove], idx: usize) -> TaggedMove {
     let mut best_entry = moves[idx].clone();
     for entry in moves.iter_mut().skip(idx + 1) {
