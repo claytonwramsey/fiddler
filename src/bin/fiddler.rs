@@ -64,7 +64,7 @@ fn main() {
             if stdin().read_line(&mut buf).is_err() {
                 debug_info("failed to read line", debug);
             };
-            let command = match Command::parse_line(&buf, &game) {
+            let command = match Command::parse_line(&buf) {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     // print out the error to the frontend and continue on to the
