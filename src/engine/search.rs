@@ -327,6 +327,37 @@ impl<'a> PVSearch<'a> {
             }
         }
 
+        // Use null-move pruning to construct a best-guess lower bound on the position.
+        // Do not prune in principal variation nodes or if the previous move was a null-move.
+        if !PV // do not prune in PV lines
+            && depth >= 4 // must have some amount of depth left to search
+            && beta < Eval::MAX // static evaluation must be good
+            && self.game.meta().checkers.is_empty() // cannot nullmove out of check
+            && !matches!( // play NMs once
+                self.game.moves.last(), 
+                Some((Move::BAD_MOVE, _))) 
+        {
+            self.game.null_move();
+
+            let null_depth = depth - 4;
+
+            let mut child_line = Vec::new();
+            let mut null_state = NodeState {
+                depth_since_root: state.depth_since_root + 1,
+                cumulative_score: -state.cumulative_score,
+                mg_npm: state.mg_npm,
+                phase: state.phase,
+                line: &mut child_line,
+            };
+            let null_score = -self.pvs::<false, false, REDUCE>(null_depth, -beta, -beta + Eval::centipawns(1), &mut null_state)?;
+
+            self.game.undo_null();
+
+            if null_score >= beta {
+                return Ok(null_score);
+            }
+        }
+
         let mut moves_iter = MovePicker::new(
             tt_move,
             self.killer_moves

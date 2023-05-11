@@ -53,7 +53,7 @@ pub struct Game {
     /// If the move played is en passant, the capturee type is still `None` because the piece that
     /// is replaced on undo is not on the move's from-square.
     /// The length of `moves` should always be one less than the length of `history`.
-    moves: Vec<(Move, Option<Piece>)>,
+    pub moves: Vec<(Move, Option<Piece>)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -571,6 +571,50 @@ impl Game {
         // debug_assert!(self.is_valid());
     }
 
+    /// Make a "null" move, which is a move which has no effect other than giving the opponent
+    /// the ability to move.
+    /// Null moves are not legal in chess, but they are useful for generating bounds for a search.
+    /// A null move may not be played while the player to move is in check.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the king is in check when this function is called.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color};
+    ///
+    /// let mut g = Game::new();
+    /// g.null_move();
+    /// assert_eq!(g.meta().player, Color::Black);
+    /// ```
+    pub fn null_move(&mut self) {
+        debug_assert!(self.meta().checkers.is_empty());
+        debug_assert!(!matches!(self.moves.last(), Some((Move::BAD_MOVE, _))));
+
+        self.history.push(*self.meta());
+        self.moves.push((Move::BAD_MOVE, None));
+
+        let meta = self.history.last_mut().unwrap();
+        let player = meta.player;
+
+        if let Some(ep_sq) = meta.en_passant_square {
+            meta.hash ^= zobrist::ep_key(ep_sq);
+            meta.en_passant_square = None;
+        }
+
+        meta.player = !meta.player;
+        meta.hash ^= zobrist::BLACK_TO_MOVE_KEY;
+
+        meta.rule50 += 1;
+        meta.repeated = 0;
+        self.history.last_mut().unwrap().pinned = self.compute_pinned(
+            Square::try_from(self[Piece::King] & self[!player]).unwrap(),
+            player,
+        );
+    }
+
     /// Remove a piece from a square, assuming that `sq` is occupied.
     ///
     /// # Panics
@@ -696,6 +740,19 @@ impl Game {
         // debug_assert!(self.is_valid());
 
         Ok(())
+    }
+
+    /// Attempt to undo a null-move.
+    /// This may only be called if the most recent move played was a null move.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic of the most recently played move was a null move.
+    pub fn undo_null(&mut self) {
+        debug_assert!(matches!(self.moves.last(), Some((Move::BAD_MOVE, _))));
+
+        self.moves.pop().unwrap();
+        self.history.pop().unwrap();
     }
 
     #[must_use]
