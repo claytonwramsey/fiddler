@@ -329,6 +329,7 @@ impl<'a> PVSearch<'a> {
 
         // Use null-move pruning to construct a best-guess lower bound on the position.
         // Do not prune in principal variation nodes or if the previous move was a null-move.
+        // (~45 Elo)
         if !PV // do not prune in PV lines
             && depth >= 4 // must have some amount of depth left to search
             && beta < Eval::MAX // static evaluation must be good
