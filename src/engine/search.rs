@@ -174,8 +174,8 @@ struct NodeState<'a> {
     /// The quantity of midgame non-pawn material in the current state of the game.
     /// This is used to determine the phase of future stages of the game.
     mg_npm: Eval,
-    /// The current phase of the game: a number in the rangs [0, 1].
-    phase: f32,
+    /// The current phase of the game.
+    phase: u8,
     /// The line of moves.
     ///  When this state is passed, the line should be empty.
     line: &'a mut Vec<Move>,
@@ -332,16 +332,17 @@ impl<'a> PVSearch<'a> {
         // (~45 Elo)
         if !PV // do not prune in PV lines
             && depth >= 4 // must have some amount of depth left to search
-            && beta < Eval::MAX // static evaluation must be good
+            && beta < Eval::MAX // must be possible to cause a cutoff
             && self.game.meta().checkers.is_empty() // cannot nullmove out of check
             && !matches!( // play NMs once
-                self.game.moves.last(), 
-                Some((Move::BAD_MOVE, _))) 
+                self.game.moves.last(),
+                Some((Move::BAD_MOVE, _)))
         {
             self.game.null_move();
 
             let null_depth = depth - 4;
 
+            // bookkeeping on state informaton
             let mut child_line = Vec::new();
             let mut null_state = NodeState {
                 depth_since_root: state.depth_since_root + 1,
@@ -350,7 +351,14 @@ impl<'a> PVSearch<'a> {
                 phase: state.phase,
                 line: &mut child_line,
             };
-            let null_score = -self.pvs::<false, false, REDUCE>(null_depth, -beta, -beta + Eval::centipawns(1), &mut null_state)?;
+
+            // perform a search
+            let null_score = -self.pvs::<false, false, REDUCE>(
+                null_depth,
+                -beta,
+                -beta + Eval::centipawns(1),
+                &mut null_state,
+            )?;
 
             self.game.undo_null();
 

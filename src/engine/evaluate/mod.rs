@@ -41,7 +41,7 @@
 
 use std::{
     fmt::{Display, Formatter},
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 use crate::base::{game::Game, Bitboard, Color, Move, Piece};
@@ -134,6 +134,12 @@ pub const MG_LIMIT: Eval = Eval::centipawns(2172);
 /// The cutoff for pure endgame material.
 pub const EG_LIMIT: Eval = Eval::centipawns(1263);
 
+/// The phase of a fully-midgame position.
+pub const PHASE_MIDGAME: u8 = 255;
+
+/// The phase of a fully-endgame position.
+pub const PHASE_ENDGAME: u8 = 0;
+
 /// Mask containing ones along the A file.
 /// Bitshifting left by a number from 0 through 7 will cause it to become a mask for each file.
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
@@ -153,7 +159,7 @@ pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(1, 1);
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
 /// Evaluate a leaf position on a game whose cumulative values have been computed correctly.
-pub fn leaf_evaluate(g: &Game, cumulative_score: Score, phase: f32) -> Eval {
+pub fn leaf_evaluate(g: &Game, cumulative_score: Score, phase: u8) -> Eval {
     let cum = match g.meta().player {
         Color::White => cumulative_score,
         Color::Black => -cumulative_score,
@@ -296,18 +302,24 @@ pub fn net_doubled_pawns(g: &Game) -> i8 {
 ///
 /// assert!(phase_of(&Game::new()).eq(&1.0));
 /// ```
-pub fn phase_of(g: &Game) -> f32 {
+pub fn phase_of(g: &Game) -> u8 {
     // amount of non-pawn material in the board, under midgame values
     calculate_phase(mg_npm(g))
 }
 #[must_use]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss
+)]
 /// Get a blending float describing the current phase of the game.
 /// Will range from 0 (full endgame) to 1 (full midgame).
 /// `mg_npm` is the amount of midgame non-pawn material on the board.
-pub fn calculate_phase(mg_npm: Eval) -> f32 {
+pub fn calculate_phase(mg_npm: Eval) -> u8 {
     let bounded_npm = mg_npm.clamp(EG_LIMIT, MG_LIMIT);
 
-    (EG_LIMIT - bounded_npm).float_val() / (EG_LIMIT - MG_LIMIT).float_val()
+    (i32::from((EG_LIMIT - bounded_npm).0) * i32::from(PHASE_MIDGAME)
+        / i32::from((EG_LIMIT - MG_LIMIT).0)) as u8
 }
 
 impl Eval {
@@ -512,12 +524,8 @@ impl Score {
 
     #[must_use]
     /// Blend the midgame and endgame
-    pub fn blend(self, phase: f32) -> Eval {
-        // in test mode, require that the phase is between 0 and 1
-        debug_assert!(0. <= phase);
-        debug_assert!(phase <= 1.);
-
-        self.mg * phase + self.eg * (1. - phase)
+    pub fn blend(self, phase: u8) -> Eval {
+        (self.mg * phase + self.eg * (PHASE_MIDGAME - phase)) / PHASE_MIDGAME
     }
 }
 
@@ -571,11 +579,10 @@ impl Mul<i8> for Eval {
     }
 }
 
-impl Mul<f32> for Eval {
+impl Div<u8> for Eval {
     type Output = Self;
-    #[allow(clippy::cast_possible_truncation)]
-    fn mul(self, rhs: f32) -> Self::Output {
-        Eval((f32::from(self.0) * rhs) as i16)
+    fn div(self, rhs: u8) -> Self::Output {
+        Eval(self.0 / i16::from(rhs))
     }
 }
 
@@ -708,14 +715,14 @@ mod tests {
     fn certainly_endgame() {
         assert_eq!(
             phase_of(&Game::from_fen("8/5k2/6p1/8/5PPP/8/pb3P2/6K1 w - - 0 37").unwrap()),
-            0.0
+            0
         );
     }
 
     #[test]
     #[allow(clippy::float_cmp)]
     fn certainly_midgame() {
-        assert_eq!(phase_of(&Game::default()), 1.0);
+        assert_eq!(phase_of(&Game::default()), 255);
     }
 
     #[test]

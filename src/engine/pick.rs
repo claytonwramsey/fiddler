@@ -52,7 +52,7 @@ use super::evaluate::{calculate_phase, eval_nl_delta, material, mg_npm_delta, Ev
 /// # Panics
 ///
 /// This function may panic if the given move is illegal.
-pub fn candidacy(g: &Game, m: Move, delta: Score, phase: f32) -> Eval {
+pub fn candidacy(g: &Game, m: Move, delta: Score, phase: u8) -> Eval {
     // Worst case, we don't keep the piece we captured. Subtract off the value of the mover from
     // the difference in cumulative evaluation.
     (delta - material::value(g[m.from_square()].unwrap().0)).blend(phase)
@@ -66,7 +66,7 @@ pub struct TaggedMove {
     /// The new quantity of mid-game non-pawn material in the game after this move is played.
     pub new_mg_npm: Eval,
     /// The phase of the position being evaluated after this move is played.
-    pub phase: f32,
+    pub phase: u8,
     /// The heuristic quality of this move.
     /// Will be higher for better moves.
     pub quality: Eval,
