@@ -143,7 +143,7 @@ impl TTable {
     /// Construct a new `TTable` with no entries.
     pub const fn new() -> TTable {
         TTable {
-            buckets: null::<Bucket>() as *mut Bucket,
+            buckets: null::<Bucket>().cast_mut(),
             mask: 0,
         }
     }
@@ -200,7 +200,7 @@ impl TTable {
             return TTEntryGuard {
                 valid: false,
                 hash: 0,
-                entry: null::<TTEntry>() as *mut TTEntry,
+                entry: null::<TTEntry>().cast_mut(),
                 _phantom: PhantomData,
             };
         }
@@ -355,7 +355,7 @@ impl TTable {
                     );
                 };
             }
-            self.buckets = null::<Bucket>() as *mut Bucket;
+            self.buckets = null::<Bucket>().cast_mut();
             self.mask = 0;
         } else if new_size < old_size {
             // move entries down if possible

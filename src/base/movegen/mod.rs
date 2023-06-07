@@ -22,7 +22,7 @@ pub(crate) mod magic;
 #[cfg(test)]
 mod tests;
 
-use std::{convert::TryFrom, mem::transmute};
+use std::{convert::TryFrom, marker::ConstParamTy, mem::transmute};
 
 use once_cell::sync::Lazy;
 
@@ -145,7 +145,7 @@ const fn create_step_attacks(dirs: &[Direction], max_dist: u8) -> [Bitboard; 64]
     attacks
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, ConstParamTy)]
 /// The possible modes for move generation.
 /// They are inteded for use as const-generic parameters for [`get_moves()`].
 pub enum GenMode {
