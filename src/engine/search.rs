@@ -32,7 +32,7 @@ use crate::{
     base::{
         game::Game,
         movegen::{get_moves, has_moves, is_legal, GenMode},
-        Move,
+        Move, Piece,
     },
     engine::{
         evaluate::{calculate_phase, eval_nl_delta},
@@ -334,9 +334,11 @@ impl<'a> PVSearch<'a> {
             && depth >= 4 // must have some amount of depth left to search
             && beta < Eval::MAX // static evaluation must be good
             && self.game.meta().checkers.is_empty() // cannot nullmove out of check
+            // prevent zugzwang
+            && (!self.game[Piece::Pawn] & self.game[self.game.meta().player]).more_than_one()
             && !matches!( // play NMs once
-                self.game.moves.last(), 
-                Some((Move::BAD_MOVE, _))) 
+                self.game.moves.last(),
+                Some((Move::BAD_MOVE, _)))
         {
             self.game.null_move();
 
@@ -350,7 +352,12 @@ impl<'a> PVSearch<'a> {
                 phase: state.phase,
                 line: &mut child_line,
             };
-            let null_score = -self.pvs::<false, false, REDUCE>(null_depth, -beta, -beta + Eval::centipawns(1), &mut null_state)?;
+            let null_score = -self.pvs::<false, false, REDUCE>(
+                null_depth,
+                -beta,
+                -beta + Eval::centipawns(1),
+                &mut null_state,
+            )?;
 
             self.game.undo_null();
 
