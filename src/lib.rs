@@ -9,7 +9,6 @@
 #![warn(clippy::cargo)]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
-#![feature(core_intrinsics)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 

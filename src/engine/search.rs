@@ -387,9 +387,6 @@ impl<'a> PVSearch<'a> {
             };
 
             self.game.make_move(tm.m);
-            // Prefetch the next transposition table entry as early as possible
-            // (~12 Elo)
-            self.ttable.prefetch(self.game.meta().hash);
 
             let mut score = Eval::MIN;
 
@@ -602,9 +599,6 @@ impl<'a> PVSearch<'a> {
             };
 
             self.game.make_move(tm.m);
-            // Prefetch the next transposition table entry as early as possible
-            // (~12 Elo)
-            self.ttable.prefetch(self.game.meta().hash);
             // zero-window search
             score = -self.quiesce::<false>(-alpha - Eval::centipawns(1), -alpha, &mut new_state)?;
             if PV && alpha < score && score < beta {

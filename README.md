@@ -21,9 +21,9 @@ player.
 
 ## Usage
 
-Fiddler uses nightly, unstable Rust, mostly to gain access to LLVM's prefetch intrinsic.
+Fiddler uses nightly, unstable Rust to gain access to ADT constant parameters.
 As a result, you must use the nightly compiler to compile this code.
-Because [`rust-toolchain.toml`](rust-toolchain.toml) specifies the Rust channel, you do not
+Because [rust-toolchain.toml](rust-toolchain.toml) specifies the Rust channel, you do not
 need to do anything special to make this work.
 
 To create the main UCI executable, navigate to the root of this repository and run
