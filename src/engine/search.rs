@@ -51,7 +51,7 @@ use super::{
     transposition::TTable,
 };
 
-use std::cmp::max;
+use std::cmp::{max, min};
 
 #[allow(clippy::too_many_arguments, clippy::cast_possible_wrap)]
 /// Evaluate the given game.
@@ -403,9 +403,9 @@ impl<'a> PVSearch<'a> {
 
                 // Late move reduction:
                 // search positions which are unlikely to be the PV at a lower depth.
-                let lmr_depth_change = max(max(move_count / 3, 4), depth - 1);
+                let lmr_depth_change = min(min(move_count / 3, 4), depth - 1);
 
-                let depth_to_search = depth - lmr_depth_change;
+                let depth_to_search = depth - lmr_depth_change - 1;
 
                 score = -self.pvs::<false, false, REDUCE>(
                     depth_to_search,
@@ -757,7 +757,7 @@ pub mod tests {
     /// A test that shows the engine can find a mate in 4 plies, given enough depth.
     fn mate_in_4_ply() {
         // because black, the player to move, is getting mated, the evaluation is negative here
-        eval_helper("3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1", -Eval::mate_in(4), 6);
+        eval_helper("3k4/R7/8/5K2/3R4/8/8/8 b - - 0 1", -Eval::mate_in(4), 8);
     }
 
     #[test]
@@ -768,7 +768,7 @@ pub mod tests {
         eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
             Eval::mate_in(9),
-            11,
+            10,
         );
     }
 
