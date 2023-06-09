@@ -51,7 +51,7 @@ use super::{
     transposition::TTable,
 };
 
-use std::cmp::{max, min};
+use std::cmp::max;
 
 #[allow(clippy::too_many_arguments, clippy::cast_possible_wrap)]
 /// Evaluate the given game.
@@ -403,9 +403,12 @@ impl<'a> PVSearch<'a> {
 
                 // Late move reduction:
                 // search positions which are unlikely to be the PV at a lower depth.
-                let lmr_depth_change = min(min(move_count / 3, 4), depth - 1);
+                const REDUCTION_TABLE: [i8; 3] = [1, 1, 3];
+                let lmr_depth_change = *REDUCTION_TABLE
+                    .get(move_count)
+                    .unwrap_or(REDUCTION_TABLE.last().unwrap());
 
-                let depth_to_search = depth - lmr_depth_change - 1;
+                let depth_to_search = depth - lmr_depth_change;
 
                 score = -self.pvs::<false, false, REDUCE>(
                     depth_to_search,
