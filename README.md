@@ -57,8 +57,6 @@ interest:
 
 - Actual match data to support Elo estimates
 
-- Futility and null-move pruning
-
 - Tablebase support
 
 - Opening book support

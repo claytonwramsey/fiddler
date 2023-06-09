@@ -403,10 +403,9 @@ impl<'a> PVSearch<'a> {
 
                 // Late move reduction:
                 // search positions which are unlikely to be the PV at a lower depth.
-                // ~400 Elo
-                let do_lmr = REDUCE && move_count > 2;
+                let lmr_depth_change = max(max(move_count / 3, 4), depth - 1);
 
-                let depth_to_search = if do_lmr { depth - 3 } else { depth - 1 };
+                let depth_to_search = depth - lmr_depth_change;
 
                 score = -self.pvs::<false, false, REDUCE>(
                     depth_to_search,
@@ -416,7 +415,7 @@ impl<'a> PVSearch<'a> {
                 )?;
 
                 // if the LMR search causes an alpha cutoff, ZW search again at full depth.
-                if score > alpha && do_lmr {
+                if score > alpha && lmr_depth_change != 0 {
                     score = -self.pvs::<false, false, REDUCE>(
                         depth - 1,
                         -alpha - Eval::centipawns(1),
