@@ -403,10 +403,14 @@ impl<'a> PVSearch<'a> {
 
                 // Late move reduction:
                 // search positions which are unlikely to be the PV at a lower depth.
-                const REDUCTION_TABLE: [i8; 3] = [1, 1, 3];
-                let lmr_depth_change = *REDUCTION_TABLE
-                    .get(move_count)
-                    .unwrap_or(REDUCTION_TABLE.last().unwrap());
+                const REDUCTION_TABLE: [i8; 5] = [1, 1, 1, 2, 3];
+                let lmr_depth_change = if REDUCE {
+                    *REDUCTION_TABLE
+                        .get(move_count)
+                        .unwrap_or(REDUCTION_TABLE.last().unwrap())
+                } else {
+                    1
+                };
 
                 let depth_to_search = depth - lmr_depth_change;
 
@@ -418,7 +422,7 @@ impl<'a> PVSearch<'a> {
                 )?;
 
                 // if the LMR search causes an alpha cutoff, ZW search again at full depth.
-                if score > alpha && lmr_depth_change != 0 {
+                if score > alpha && lmr_depth_change != 1 {
                     score = -self.pvs::<false, false, REDUCE>(
                         depth - 1,
                         -alpha - Eval::centipawns(1),
@@ -771,7 +775,7 @@ pub mod tests {
         eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
             Eval::mate_in(9),
-            10,
+            11,
         );
     }
 
