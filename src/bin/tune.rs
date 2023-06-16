@@ -37,7 +37,7 @@ use std::{
 use fiddler::{
     base::{
         game::Game,
-        movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
+        movegen::{bishop_moves, rook_moves, KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
         Color, Piece, Square,
     },
     engine::evaluate::{
@@ -467,22 +467,22 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     // count bishop moves
     let bishops = g[Piece::Bishop];
     for sq in bishops & white {
-        let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_white).len());
+        let idx = usize::from((bishop_moves(occupancy, sq) & not_white).len());
         count[Piece::Bishop as usize][idx] += 1;
     }
     for sq in bishops & black {
-        let idx = usize::from((MAGIC.bishop_attacks(occupancy, sq) & not_black).len());
+        let idx = usize::from((bishop_moves(occupancy, sq) & not_black).len());
         count[Piece::Bishop as usize][idx] -= 1;
     }
 
     // count rook moves
     let rooks = g[Piece::Rook];
     for sq in rooks & white {
-        let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_white).len());
+        let idx = usize::from((rook_moves(occupancy, sq) & not_white).len());
         count[Piece::Rook as usize][idx] += 1;
     }
     for sq in rooks & black {
-        let idx = usize::from((MAGIC.rook_attacks(occupancy, sq) & not_black).len());
+        let idx = usize::from((rook_moves(occupancy, sq) & not_black).len());
         count[Piece::Rook as usize][idx] -= 1;
     }
 
@@ -490,15 +490,13 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     let queens = g[Piece::Queen];
     for sq in queens & white {
         let idx = usize::from(
-            ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_white)
-                .len(),
+            ((rook_moves(occupancy, sq) | bishop_moves(occupancy, sq)) & not_white).len(),
         );
         count[Piece::Queen as usize][idx] += 1;
     }
     for sq in rooks & black {
         let idx = usize::from(
-            ((MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq)) & not_black)
-                .len(),
+            ((rook_moves(occupancy, sq) | bishop_moves(occupancy, sq)) & not_black).len(),
         );
         count[Piece::Queen as usize][idx] -= 1;
     }

@@ -12,7 +12,7 @@ use std::mem::transmute;
 
 use crate::base::{
     game::Game,
-    movegen::{KING_MOVES, KNIGHT_MOVES, MAGIC, PAWN_ATTACKS},
+    movegen::{bishop_moves, rook_moves, KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
     Bitboard, Color, Piece, Square,
 };
 
@@ -252,35 +252,29 @@ pub fn evaluate(g: &Game) -> Score {
     // count bishop moves
     let bishops = g[Piece::Bishop];
     for sq in bishops & white {
-        score += for_piece(
-            Piece::Bishop,
-            MAGIC.bishop_attacks(occupancy, sq) & not_white,
-        );
+        score += for_piece(Piece::Bishop, bishop_moves(occupancy, sq) & not_white);
     }
     for sq in bishops & black {
-        score -= for_piece(
-            Piece::Bishop,
-            MAGIC.bishop_attacks(occupancy, sq) & not_black,
-        );
+        score -= for_piece(Piece::Bishop, bishop_moves(occupancy, sq) & not_black);
     }
 
     // count rook moves
     let rooks = g[Piece::Rook];
     for sq in rooks & white {
-        score += for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_white);
+        score += for_piece(Piece::Rook, rook_moves(occupancy, sq) & not_white);
     }
     for sq in rooks & black {
-        score -= for_piece(Piece::Rook, MAGIC.rook_attacks(occupancy, sq) & not_black);
+        score -= for_piece(Piece::Rook, rook_moves(occupancy, sq) & not_black);
     }
 
     // count queen moves
     let queens = g[Piece::Queen];
     for sq in queens & white {
-        let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
+        let attacks = rook_moves(occupancy, sq) | bishop_moves(occupancy, sq);
         score += for_piece(Piece::Queen, attacks & not_white);
     }
     for sq in rooks & black {
-        let attacks = MAGIC.rook_attacks(occupancy, sq) | MAGIC.bishop_attacks(occupancy, sq);
+        let attacks = rook_moves(occupancy, sq) | bishop_moves(occupancy, sq);
         score -= for_piece(Piece::Queen, attacks & not_black);
     }
 

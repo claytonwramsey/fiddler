@@ -567,6 +567,21 @@ impl Bitboard {
 
         MASKS[sq as usize]
     }
+
+    /// Convert this bitboard to a u64.
+    /// This operation requires no computation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::Bitboard;
+    ///
+    /// assert_eq!(Bitboard::EMPTY.as_u64(), 0);
+    /// assert_eq!(Bitboard::ALL.as_u64(), !0);
+    /// ```
+    pub const fn as_u64(self) -> u64 {
+        self.0
+    }
 }
 
 /// Helper macro for definining binary operations on bitboards.
@@ -575,7 +590,7 @@ macro_rules! bb_binop_define {
         impl $trait for Bitboard {
             type Output = Self;
 
-                        fn $fn_name(self, rhs: Self) -> Self::Output {
+            fn $fn_name(self, rhs: Self) -> Self::Output {
                 Bitboard(self.0 $op rhs.0)
             }
         }
@@ -637,11 +652,11 @@ impl From<Square> for Bitboard {
     }
 }
 
-impl From<Bitboard> for usize {
+impl From<Bitboard> for u64 {
     fn from(bb: Bitboard) -> Self {
         #[allow(clippy::cast_possible_truncation)]
         {
-            bb.0 as usize
+            bb.0 as u64
         }
     }
 }

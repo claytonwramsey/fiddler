@@ -22,27 +22,12 @@ pub(crate) mod magic;
 #[cfg(test)]
 mod tests;
 
+use super::{bitboard::Bitboard, game::Game, Color, Direction, Move, Piece, Square};
 use std::{convert::TryFrom, marker::ConstParamTy, mem::transmute};
 
-use once_cell::sync::Lazy;
+pub use magic::bishop_moves;
 
-use self::magic::AttacksTable;
-
-use super::{bitboard::Bitboard, game::Game, Color, Direction, Move, Piece, Square};
-
-/// A master copy of a magic move-generation table.
-///
-/// This table can be used to generate moves for rooks and bishops in constant time.
-///
-/// # Examples
-///
-/// ```
-/// use fiddler::base::{movegen::MAGIC, Bitboard, Square};
-///
-/// let rook_attacks_e3 = MAGIC.rook_attacks(Bitboard::EMPTY, Square::E3);
-/// assert_eq!(rook_attacks_e3, Bitboard::hv(Square::E3));
-/// ```
-pub static MAGIC: Lazy<AttacksTable> = Lazy::new(AttacksTable::load);
+pub use magic::rook_moves;
 
 /// A lookup table for the legal squares a knight to move to from a given square.
 ///
@@ -263,16 +248,11 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
                 || (!is_ep && (pattacks & enemies).contains(m.to_square()))
         }
         Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
-        Piece::Bishop => MAGIC
-            .bishop_attacks(allies | enemies, from_sq)
-            .contains(to_sq),
-        Piece::Rook => MAGIC
-            .rook_attacks(allies | enemies, from_sq)
-            .contains(to_sq),
+        Piece::Bishop => bishop_moves(allies | enemies, from_sq).contains(to_sq),
+        Piece::Rook => rook_moves(allies | enemies, from_sq).contains(to_sq),
         Piece::Queen => {
             let occupancy = allies | enemies;
-            (MAGIC.bishop_attacks(occupancy, from_sq) | MAGIC.rook_attacks(occupancy, from_sq))
-                .contains(to_sq)
+            (bishop_moves(occupancy, from_sq) | rook_moves(occupancy, from_sq)).contains(to_sq)
         }
         Piece::King => unreachable!(),
     } {
@@ -307,11 +287,9 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 
         let new_occupancy = g.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
 
-        return (MAGIC.rook_attacks(new_occupancy, king_sq)
-            & (g[Piece::Rook] | g[Piece::Queen])
-            & enemies)
+        return (rook_moves(new_occupancy, king_sq) & (g[Piece::Rook] | g[Piece::Queen]) & enemies)
             .is_empty()
-            && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+            && (bishop_moves(new_occupancy, king_sq)
                 & (g[Piece::Bishop] | g[Piece::Queen])
                 & enemies)
                 .is_empty();
@@ -494,7 +472,7 @@ pub fn has_moves(g: &Game) -> bool {
     // unpinned bishops/diagonal queens
     let bishop_movers = (g[Piece::Bishop] | queens) & allies;
     for sq in bishop_movers & unpinned {
-        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets).is_empty() {
+        if !(bishop_moves(occupancy, sq) & legal_targets).is_empty() {
             return true;
         }
     }
@@ -502,7 +480,7 @@ pub fn has_moves(g: &Game) -> bool {
     // pinned bishops/diagonal queens
     let king_diags = Bitboard::diagonal(king_sq);
     for sq in bishop_movers & meta.pinned & king_diags {
-        if !(MAGIC.bishop_attacks(occupancy, sq) & legal_targets & king_diags).is_empty() {
+        if !(bishop_moves(occupancy, sq) & legal_targets & king_diags).is_empty() {
             return true;
         }
     }
@@ -510,7 +488,7 @@ pub fn has_moves(g: &Game) -> bool {
     let rook_movers = (g[Piece::Rook] | queens) & allies;
     // unpinned rooks/horizontal queens
     for sq in rook_movers & unpinned {
-        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets).is_empty() {
+        if !(rook_moves(occupancy, sq) & legal_targets).is_empty() {
             return true;
         }
     }
@@ -518,7 +496,7 @@ pub fn has_moves(g: &Game) -> bool {
     // pinned rooks/horizontal queens
     let king_hv = Bitboard::hv(king_sq);
     for sq in rook_movers & meta.pinned & king_hv {
-        if !(MAGIC.rook_attacks(occupancy, sq) & legal_targets & king_hv).is_empty() {
+        if !(rook_moves(occupancy, sq) & legal_targets & king_hv).is_empty() {
             return true;
         }
     }
@@ -551,11 +529,11 @@ pub fn has_moves(g: &Game) -> bool {
         for sq in our_pawns {
             if PAWN_ATTACKS[player as usize][sq as usize].contains(ep_sq) {
                 let new_occupancy = ep_less_occupancy ^ Bitboard::from(sq);
-                if (MAGIC.rook_attacks(new_occupancy, king_sq)
+                if (rook_moves(new_occupancy, king_sq)
                     & (g[Piece::Rook] | g[Piece::Queen])
                     & enemies)
                     .is_empty()
-                    && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+                    && (bishop_moves(new_occupancy, king_sq)
                         & (g[Piece::Bishop] | g[Piece::Queen])
                         & enemies)
                         .is_empty()
@@ -713,11 +691,11 @@ fn square_attackers_occupancy(
     let queens_bb = game[Piece::Queen];
 
     // Check for rook/horizontal queen attacks
-    let rook_vision = MAGIC.rook_attacks(occupancy, sq);
+    let rook_vision = rook_moves(occupancy, sq);
     attackers |= rook_vision & (queens_bb | game[Piece::Rook]);
 
     // Check for bishop/diagonal queen attacks
-    let bishop_vision = MAGIC.bishop_attacks(occupancy, sq);
+    let bishop_vision = bishop_moves(occupancy, sq);
     attackers |= bishop_vision & (queens_bb | game[Piece::Bishop]);
 
     // Check for king attacks
@@ -834,11 +812,11 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
                 for from_sq in from_sqs {
                     let new_occupancy =
                         g.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
-                    if (MAGIC.rook_attacks(new_occupancy, king_sq)
+                    if (rook_moves(new_occupancy, king_sq)
                         & (g[Piece::Rook] | g[Piece::Queen])
                         & enemy)
                         .is_empty()
-                        && (MAGIC.bishop_attacks(new_occupancy, king_sq)
+                        && (bishop_moves(new_occupancy, king_sq)
                             & (g[Piece::Bishop] | g[Piece::Queen])
                             & enemy)
                             .is_empty()
@@ -918,28 +896,28 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
 
     // pinned bishops and queens
     for from_sq in bishop_movers & meta.pinned & king_diags {
-        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target & king_diags {
+        for to_sq in bishop_moves(occupancy, from_sq) & target & king_diags {
             callback(Move::normal(from_sq, to_sq));
         }
     }
 
     // unpinned bishops and queens
     for from_sq in bishop_movers & unpinned {
-        for to_sq in MAGIC.bishop_attacks(occupancy, from_sq) & target {
+        for to_sq in bishop_moves(occupancy, from_sq) & target {
             callback(Move::normal(from_sq, to_sq));
         }
     }
 
     // pinned rooks and queens
     for from_sq in rook_movers & meta.pinned & king_hv {
-        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & target & king_hv {
+        for to_sq in rook_moves(occupancy, from_sq) & target & king_hv {
             callback(Move::normal(from_sq, to_sq));
         }
     }
 
     // unpinned rooks and queens
     for from_sq in rook_movers & unpinned {
-        for to_sq in MAGIC.rook_attacks(occupancy, from_sq) & target {
+        for to_sq in rook_moves(occupancy, from_sq) & target {
             callback(Move::normal(from_sq, to_sq));
         }
     }

@@ -29,10 +29,6 @@ categories = ["game-engines"]
 [dependencies]
 # Random number generator for creating magic bitboards.
 fastrand = "1.8.0" 
-# Used for dynamically creating movegen lookup tables at runtime.
-once_cell = "1.13.0"
-# More efficient hash map for move repetition checking
-nohash-hasher = "0.2.0"
 
 [profile.test]
 debug = true
