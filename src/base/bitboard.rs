@@ -236,15 +236,6 @@ impl Bitboard {
     }
 
     #[must_use]
-    /// Perform a wrapping multiply on this bitboard.
-    ///
-    /// A wrapping multiply will not panic on overflow, and instead quietly allow this to happen.
-    /// This is useful for generating magic bitboards.
-    pub const fn wrapping_mul(self, rhs: Bitboard) -> Bitboard {
-        Bitboard(self.0.wrapping_mul(rhs.0))
-    }
-
-    #[must_use]
     /// Get a bitboard of all the squares between the two given squares, along the moves of a
     /// bishop or rook.
     pub fn between(sq1: Square, sq2: Square) -> Bitboard {
@@ -568,6 +559,7 @@ impl Bitboard {
         MASKS[sq as usize]
     }
 
+    #[must_use]
     /// Convert this bitboard to a u64.
     /// This operation requires no computation.
     ///
@@ -654,10 +646,7 @@ impl From<Square> for Bitboard {
 
 impl From<Bitboard> for u64 {
     fn from(bb: Bitboard) -> Self {
-        #[allow(clippy::cast_possible_truncation)]
-        {
-            bb.0 as u64
-        }
+        bb.0
     }
 }
 
