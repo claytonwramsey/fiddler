@@ -424,12 +424,12 @@ const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     while i < num_points {
         let shift_size = editable_mask.trailing_zeros();
         // make a bitboard which only occupies the rightmost square
-        let occupier = Bitboard::new(1 << shift_size);
+        let occupier = 1 << shift_size;
         // remove the occupier from the mask
-        editable_mask &= !occupier.as_u64();
+        editable_mask &= !occupier;
         if (index & (1 << i)) != 0 {
             // the bit corresponding to the occupier is nonzero
-            result |= occupier.as_u64();
+            result |= occupier;
         }
         i += 1;
     }
