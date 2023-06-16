@@ -35,7 +35,7 @@ use std::{
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-/// A struct containing game information, which unlike a [`Board`], knows about its history and can
+/// A struct containing game information, which knows about both board state and its history and can
 /// do things like repetition detection.
 pub struct Game {
     /// A mailbox representation of the state of the board.

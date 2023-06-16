@@ -37,6 +37,25 @@ struct AttacksLookup {
 #[must_use]
 /// Compute the set of squares that a bishop on square `sq` can see if the board is occupied by
 /// `occupancy`.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{movegen::bishop_moves, Bitboard, Square};
+///
+/// // squares A1 and C3 are occupied
+/// let occupancy = Bitboard::EMPTY
+///     .with_square(Square::A1)
+///     .with_square(Square::C3);
+///
+/// // the bishop on A1 can see B2 and C3
+/// assert_eq!(
+///     bishop_moves(occupancy, Square::A1),
+///     Bitboard::EMPTY
+///         .with_square(Square::B2)
+///         .with_square(Square::C3)
+/// );
+/// ```
 pub fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
     get_attacks(occupancy, sq, &BISHOP_LOOKUPS)
 }
@@ -44,6 +63,26 @@ pub fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
 #[must_use]
 /// Compute the set of squares that a rook on square `sq` can see if the board is occupied by
 /// `occupancy`.
+///
+/// # Examples
+///
+/// ```
+/// use fiddler::base::{movegen::rook_moves, Bitboard, Square};
+///
+/// // squares A3 and B1 are occupied
+/// let occupancy = Bitboard::EMPTY
+///     .with_square(Square::A3)
+///     .with_square(Square::B1);
+///
+/// // the rook on A1 can see B1, A2, and A3
+/// assert_eq!(
+///     rook_moves(occupancy, Square::A1),
+///     Bitboard::EMPTY
+///         .with_square(Square::B1)
+///         .with_square(Square::A2)
+///         .with_square(Square::A3)
+/// );
+/// ```
 pub fn rook_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
     get_attacks(occupancy, sq, &ROOK_LOOKUPS)
 }
@@ -254,6 +293,7 @@ const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_mag
     &Direction::BISHOP_DIRECTIONS,
 );
 
+#[allow(long_running_const_eval)]
 const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &BISHOP_BITS,
     &SAVED_BISHOP_MAGICS,
@@ -269,6 +309,7 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
     &Direction::ROOK_DIRECTIONS,
 );
 
+#[allow(long_running_const_eval)]
 const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
@@ -549,7 +590,7 @@ mod tests {
     /// Test that bishop magic move generation is correct for every possible occupancy bitboard.
     fn all_bishop_attacks() {
         for sq in Bitboard::ALL {
-            let mask = get_rook_mask(sq);
+            let mask = get_bishop_mask(sq);
             for i in 0..(1 << mask.len()) {
                 let occupancy = index_to_occupancy(i, mask);
                 let attacks = directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancy);
@@ -562,7 +603,7 @@ mod tests {
     /// Test that rook magic move generation is correct for every possible occupancy bitboard.
     fn all_rook_attacks() {
         for sq in Bitboard::ALL {
-            let mask = get_bishop_mask(sq);
+            let mask = get_rook_mask(sq);
             for i in 0..(1 << mask.len()) {
                 let occupancy = index_to_occupancy(i, mask);
                 let attacks = directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancy);
