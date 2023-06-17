@@ -310,7 +310,7 @@ const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &BISHOP_ATTACKS_TABLE,
 );
 
-#[allow(long_running_const_eval)]
+// #[allow(long_running_const_eval)]
 /// The master table containing every attack that the rook can perform from every square under
 /// every occupancy.
 /// Borrowed by the individual [`AttacksLookup`]s in [`ROOK_LOOKUPS`].
@@ -321,7 +321,7 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
     &Direction::ROOK_DIRECTIONS,
 );
 
-#[allow(long_running_const_eval)]
+// #[allow(long_running_const_eval)]
 /// The necessary information for generatng attacks for rook, indexed b the square occupied by 
 /// said rook.
 const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
