@@ -22,76 +22,12 @@ use super::{Bitboard, Direction, Square};
 
 use std::mem::{transmute, MaybeUninit};
 
-/// A lookup table for generating attacks via magic bitboard for one piece type and square.
-struct AttacksLookup {
-    /// A reference to this lookup's section of the magic attacks.
-    table: &'static [Bitboard],
-    /// The mask for extracting out the relevant occupancy map on a board.
-    mask: Bitboard,
-    /// The magic multiply constant for converting occupancies to indices.
-    magic: u64,
-    /// The shift to extract an index from a multiplied constant.
-    shift: u8,
-}
-
-#[must_use]
-/// Compute the set of squares that a bishop on square `sq` can see if the board is occupied by
-/// `occupancy`.
-///
-/// # Examples
-///
-/// ```
-/// use fiddler::base::{movegen::bishop_moves, Bitboard, Square};
-///
-/// // squares A1 and C3 are occupied
-/// let occupancy = Bitboard::EMPTY
-///     .with_square(Square::A1)
-///     .with_square(Square::C3);
-///
-/// // the bishop on A1 can see B2 and C3
-/// assert_eq!(
-///     bishop_moves(occupancy, Square::A1),
-///     Bitboard::EMPTY
-///         .with_square(Square::B2)
-///         .with_square(Square::C3)
-/// );
-/// ```
-pub fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
-    get_attacks(occupancy, sq, &BISHOP_LOOKUPS)
-}
-
-#[must_use]
-/// Compute the set of squares that a rook on square `sq` can see if the board is occupied by
-/// `occupancy`.
-///
-/// # Examples
-///
-/// ```
-/// use fiddler::base::{movegen::rook_moves, Bitboard, Square};
-///
-/// // squares A3 and B1 are occupied
-/// let occupancy = Bitboard::EMPTY
-///     .with_square(Square::A3)
-///     .with_square(Square::B1);
-///
-/// // the rook on A1 can see B1, A2, and A3
-/// assert_eq!(
-///     rook_moves(occupancy, Square::A1),
-///     Bitboard::EMPTY
-///         .with_square(Square::B1)
-///         .with_square(Square::A2)
-///         .with_square(Square::A3)
-/// );
-/// ```
-pub fn rook_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
-    get_attacks(occupancy, sq, &ROOK_LOOKUPS)
-}
-
+#[allow(unused)]
 /// A saved list of magics for rooks created using the generator.
 ///
 /// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
 /// Wiki.
-const SAVED_ROOK_MAGICS: [u64; 64] = [
+pub const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x4080_0020_4000_1480, // a1
     0x0040_0010_0140_2000, // b1
     0x0300_2000_1810_4100, // c1
@@ -300,35 +236,16 @@ const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_mag
     &Direction::BISHOP_DIRECTIONS,
 );
 
-#[allow(long_running_const_eval)]
-/// The necessary information for generatng attacks for bishops, indexed b the square occupied by 
-/// said bishop.
-const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
-    &BISHOP_BITS,
-    &SAVED_BISHOP_MAGICS,
-    &BISHOP_MASKS,
-    &BISHOP_ATTACKS_TABLE,
-);
-
+#[allow(unused)]
 // #[allow(long_running_const_eval)]
 /// The master table containing every attack that the rook can perform from every square under
 /// every occupancy.
 /// Borrowed by the individual [`AttacksLookup`]s in [`ROOK_LOOKUPS`].
-const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
+pub const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
     &ROOK_MASKS,
     &Direction::ROOK_DIRECTIONS,
-);
-
-// #[allow(long_running_const_eval)]
-/// The necessary information for generatng attacks for rook, indexed b the square occupied by 
-/// said rook.
-const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
-    &ROOK_BITS,
-    &SAVED_ROOK_MAGICS,
-    &ROOK_MASKS,
-    &ROOK_ATTACKS_TABLE,
 );
 
 #[allow(clippy::cast_possible_truncation)]
@@ -373,47 +290,6 @@ const fn construct_magic_table<const N: usize>(
     }
 
     table
-}
-
-/// Construct the lookup tables for magic move generation by referencing an already-generated 
-/// attacks table.
-const fn construct_lookups(
-    bits: &[u8; 64],
-    magics: &[u64; 64],
-    masks: &[Bitboard; 64],
-    attacks_table: &'static [Bitboard],
-) -> [AttacksLookup; 64] {
-    unsafe {
-        let mut table: [MaybeUninit<AttacksLookup>; 64] = MaybeUninit::uninit().assume_init();
-
-        let mut remaining_attacks = attacks_table;
-        let mut i = 0;
-        while i < 64 {
-            let these_attacks;
-            (these_attacks, remaining_attacks) = remaining_attacks.split_at(1 << bits[i]);
-            table[i] = MaybeUninit::new(AttacksLookup {
-                table: these_attacks,
-                mask: masks[i],
-                magic: magics[i],
-                shift: 64 - bits[i],
-            });
-
-            i += 1;
-        }
-
-        transmute(table)
-    }
-}
-
-/// Get the attacks a square has, given a magic lookup table and the current occupancy.
-fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 64]) -> Bitboard {
-    // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
-    // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it was
-    // shifted out properly.
-    let magic_data = unsafe { lookup.get_unchecked(sq as usize) };
-    let key = compute_magic_key(occupancy & magic_data.mask, magic_data.magic, magic_data.shift);
-
-    unsafe { *magic_data.table.get_unchecked(key) }
 }
 
 #[allow(clippy::cast_possible_truncation)]
@@ -554,86 +430,4 @@ pub(crate) const fn directional_attacks(
     }
 
     result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rook_mask() {
-        // println!("{:064b}", get_rook_mask(A1).0);
-        assert_eq!(
-            get_rook_mask(Square::A1),
-            Bitboard::new(0x0001_0101_0101_017E)
-        );
-
-        // println!("{:064b}", get_rook_mask(E1).0);
-        assert_eq!(
-            get_rook_mask(Square::E1),
-            Bitboard::new(0x0010_1010_1010_106E)
-        );
-
-        // println!("{:064b}", get_rook_mask(E5).0);
-        assert_eq!(
-            get_rook_mask(Square::E5),
-            Bitboard::new(0x0010_106E_1010_1000)
-        );
-    }
-
-    #[test]
-    fn bishop_mask() {
-        // println!("{:064b}", get_bishop_mask(A1).0);
-        assert_eq!(
-            get_bishop_mask(Square::A1),
-            Bitboard::new(0x0040_2010_0804_0200)
-        );
-
-        // println!("{:064b}", get_bishop_mask(E1).0);
-        assert_eq!(
-            get_bishop_mask(Square::E1),
-            Bitboard::new(0x0000_0000_0244_2800)
-        );
-
-        // println!("{:064b}", get_bishop_mask(E5).0);
-        assert_eq!(
-            get_bishop_mask(Square::E5),
-            Bitboard::new(0x0044_2800_2844_0200)
-        );
-    }
-
-    #[test]
-    fn valid_index_to_occupancy() {
-        let mask = Bitboard::new(0b1111);
-        for i in 0..16 {
-            let occu = index_to_occupancy(i, mask);
-            assert_eq!(occu, Bitboard::new(i as u64));
-        }
-    }
-
-    #[test]
-    /// Test that bishop magic move generation is correct for every possible occupancy bitboard.
-    fn all_bishop_attacks() {
-        for sq in Bitboard::ALL {
-            let mask = get_bishop_mask(sq);
-            for i in 0..(1 << mask.len()) {
-                let occupancy = index_to_occupancy(i, mask);
-                let attacks = directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancy);
-                assert_eq!(attacks, bishop_moves(occupancy, sq));
-            }
-        }
-    }
-
-    #[test]
-    /// Test that rook magic move generation is correct for every possible occupancy bitboard.
-    fn all_rook_attacks() {
-        for sq in Bitboard::ALL {
-            let mask = get_rook_mask(sq);
-            for i in 0..(1 << mask.len()) {
-                let occupancy = index_to_occupancy(i, mask);
-                let attacks = directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancy);
-                assert_eq!(attacks, rook_moves(occupancy, sq));
-            }
-        }
-    }
 }

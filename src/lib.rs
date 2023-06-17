@@ -21,12 +21,12 @@
 // Many module elements are re-exported to make names more ergonomic to access.
 
 mod bitboard;
-pub use bitboard::Bitboard;
+use bitboard::Bitboard;
 
 mod direction;
-pub use direction::Direction;
+use direction::Direction;
 
 pub mod magic;
 
 mod square;
-pub use square::Square;
+use square::Square;
