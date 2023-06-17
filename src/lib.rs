@@ -121,7 +121,7 @@ impl Bitboard {
 /// A difference between two squares. `Direction`s form a vector field, which allows us to define
 /// subtraction between squares.
 /// Internally, they use the same representation as a `Square` but with a signed integer.
-struct Direction(pub(crate) i8);
+struct Direction(i8);
 
 impl Direction {
     /* Cardinal directions */
@@ -400,7 +400,7 @@ const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
 ///
 /// This is slow and should only be used for generatic magic bitboards (instead of for move
 /// generation.
-pub(crate) const fn directional_attacks(
+const fn directional_attacks(
     sq: Square,
     dirs: &[Direction],
     occupancy: Bitboard,
