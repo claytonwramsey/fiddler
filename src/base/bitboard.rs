@@ -172,13 +172,6 @@ impl Bitboard {
     }
 
     #[must_use]
-    /// Count the number of leading zeros (i.e. empty squares between H8 and
-    /// the highest non-empty square). Will be zero if H8 is occupied.
-    pub const fn leading_zeros(self) -> u32 {
-        self.0.leading_zeros()
-    }
-
-    #[must_use]
     /// Determine whether this bitboard is empty.
     ///
     /// # Examples
@@ -238,6 +231,15 @@ impl Bitboard {
     #[must_use]
     /// Get a bitboard of all the squares between the two given squares, along the moves of a
     /// bishop or rook.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use fiddler::base::{Bitboard, Square};
+    /// 
+    /// let between_bb = Bitboard::between(Square::A1, Square::A3);
+    /// assert_eq!(between_bb, Bitboard::from(Square::A2))
+    /// ```
     pub fn between(sq1: Square, sq2: Square) -> Bitboard {
         /// A lookup table for the squares "between" two other squares, either down a row like a
         /// rook or on a diagonal like a bishop.

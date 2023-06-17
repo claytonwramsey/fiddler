@@ -265,6 +265,8 @@ const fn table_size(bits_table: &[u8; 64]) -> usize {
     total
 }
 
+/// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed 
+/// by the square occupied by the bishop.
 const BISHOP_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
     let mut i = 0u8;
@@ -275,6 +277,8 @@ const BISHOP_MASKS: [Bitboard; 64] = {
     masks
 };
 
+/// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed 
+/// by the square occupied by the rook.
 const ROOK_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
     let mut i = 0u8;
@@ -286,6 +290,9 @@ const ROOK_MASKS: [Bitboard; 64] = {
 };
 
 #[allow(long_running_const_eval)]
+/// The master table containing every attack that the bishop can perform from every square under
+/// every occupancy.
+/// Borrowed by the individual [`AttacksLookup`]s in [`BISHOP_LOOKUPS`].
 const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_magic_table(
     &BISHOP_BITS,
     &SAVED_BISHOP_MAGICS,
@@ -294,6 +301,8 @@ const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_mag
 );
 
 #[allow(long_running_const_eval)]
+/// The necessary information for generatng attacks for bishops, indexed b the square occupied by 
+/// said bishop.
 const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &BISHOP_BITS,
     &SAVED_BISHOP_MAGICS,
@@ -302,6 +311,9 @@ const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
 );
 
 #[allow(long_running_const_eval)]
+/// The master table containing every attack that the rook can perform from every square under
+/// every occupancy.
+/// Borrowed by the individual [`AttacksLookup`]s in [`ROOK_LOOKUPS`].
 const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
@@ -310,6 +322,8 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
 );
 
 #[allow(long_running_const_eval)]
+/// The necessary information for generatng attacks for rook, indexed b the square occupied by 
+/// said rook.
 const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
@@ -318,6 +332,16 @@ const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
 );
 
 #[allow(clippy::cast_possible_truncation)]
+/// Construct the master magic table for a rook or bishop based on all the requisite information.
+/// 
+/// # Inputs
+/// 
+/// - `bits`: For each square, the number of other squares which are involved in the calculation of 
+///   attacks from that square.
+/// - `magics`: The magic numbers for each square.
+/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting 
+///   square.
+/// - `dirs`: The directions in which the piece can move
 const fn construct_magic_table<const N: usize>(
     bits: &[u8; 64],
     magics: &[u64; 64],
@@ -351,6 +375,8 @@ const fn construct_magic_table<const N: usize>(
     table
 }
 
+/// Construct the lookup tables for magic move generation by referencing an already-generated 
+/// attacks table.
 const fn construct_lookups(
     bits: &[u8; 64],
     magics: &[u64; 64],
@@ -385,8 +411,7 @@ fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 64]) ->
     // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it was
     // shifted out properly.
     let magic_data = unsafe { lookup.get_unchecked(sq as usize) };
-    let masked_occupancy = occupancy & magic_data.mask;
-    let key = compute_magic_key(masked_occupancy, magic_data.magic, magic_data.shift);
+    let key = compute_magic_key(occupancy & magic_data.mask, magic_data.magic, magic_data.shift);
 
     unsafe { *magic_data.table.get_unchecked(key) }
 }

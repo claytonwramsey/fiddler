@@ -224,7 +224,7 @@ pub fn net_open_rooks(g: &Game) -> i8 {
         let pawns_in_col = (pawns & white) & (A_FILE_MASK << wrook_sq.file());
         let important_pawns = WHITE_HALF & pawns_in_col;
         // check that the forward-most pawn of the important pawns is in front of or behind the rook
-        if important_pawns.leading_zeros() > (63 - (wrook_sq as u32)) {
+        if important_pawns.as_u64().leading_zeros() > (63 - (wrook_sq as u32)) {
             // all the important pawns are behind the rook
             net_open_rooks += 1;
         }
