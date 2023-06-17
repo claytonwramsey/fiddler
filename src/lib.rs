@@ -29,7 +29,7 @@ use std::mem::transmute;
 /// element selection, and more, all in constant time.
 ///
 /// Nearly all board-related representations use `Bitboard`s as a key part of their construction.
-pub struct Bitboard(u64);
+struct Bitboard(u64);
 
 impl Bitboard {
     /// A bitboard representing the empty set.
@@ -44,7 +44,7 @@ impl Bitboard {
     /// let sq = Square::A1; // this could be any square
     /// assert!(!Bitboard::EMPTY.contains(sq));
     /// ```
-    pub const EMPTY: Bitboard = Bitboard::new(0);
+    const EMPTY: Bitboard = Bitboard::new(0);
 
     #[must_use]
     /// Construct a new Bitboard from a numeric literal.
@@ -61,7 +61,7 @@ impl Bitboard {
     ///
     /// assert_eq!(bb, Bitboard::new(1));
     /// ```
-    pub const fn new(x: u64) -> Bitboard {
+    const fn new(x: u64) -> Bitboard {
         Bitboard(x)
     }
 
@@ -76,7 +76,7 @@ impl Bitboard {
     /// assert!(Bitboard::new(1).contains(Square::A1));
     /// assert!(!(Bitboard::new(2).contains(Square::A1)));
     /// ```
-    pub const fn contains(self, square: Square) -> bool {
+    const fn contains(self, square: Square) -> bool {
         self.0 & (1 << square as u8) != 0
     }
 
@@ -95,7 +95,7 @@ impl Bitboard {
     /// bb.insert(Square::A1);
     /// assert_eq!(bb.len(), 1);
     /// ```
-    pub const fn len(self) -> u8 {
+    const fn len(self) -> u8 {
         self.0.count_ones() as u8
     }
 
@@ -111,7 +111,7 @@ impl Bitboard {
     /// assert_eq!(Bitboard::EMPTY.as_u64(), 0);
     /// assert_eq!(Bitboard::ALL.as_u64(), !0);
     /// ```
-    pub const fn as_u64(self) -> u64 {
+    const fn as_u64(self) -> u64 {
         self.0
     }
 }
@@ -121,31 +121,31 @@ impl Bitboard {
 /// A difference between two squares. `Direction`s form a vector field, which allows us to define
 /// subtraction between squares.
 /// Internally, they use the same representation as a `Square` but with a signed integer.
-pub struct Direction(pub(crate) i8);
+struct Direction(pub(crate) i8);
 
 impl Direction {
     /* Cardinal directions */
 
     /// A `Direction` corresponding to a move "north" from White's point of view, in the direction
     /// a white pawn would travel.
-    pub const NORTH: Direction = Direction(8);
+    const NORTH: Direction = Direction(8);
 
     /// A `Direction` corresponding to a move "east" from White's point of view.
-    pub const EAST: Direction = Direction(1);
+    const EAST: Direction = Direction(1);
 
     // sadly, the nature of rust consts means the following doesn't work:
-    // pub const SOUTH: Direction = -NORTH;
+    // const SOUTH: Direction = -NORTH;
 
     /// A `Direction` corresponding to a move "south" from White's point of view.
-    pub const SOUTH: Direction = Direction(-8);
+    const SOUTH: Direction = Direction(-8);
 
     /// A `Direction` corresponding to a move "west" from White's point of view.
-    pub const WEST: Direction = Direction(-1);
+    const WEST: Direction = Direction(-1);
 
     /* Composite directions */
 
     /// The directions that a rook can move, along only one step.
-    pub const ROOK_DIRECTIONS: [Direction; 4] = [
+    const ROOK_DIRECTIONS: [Direction; 4] = [
         Direction::NORTH,
         Direction::SOUTH,
         Direction::EAST,
@@ -159,7 +159,7 @@ impl Direction {
 ///
 /// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
 /// Wiki.
-pub const SAVED_ROOK_MAGICS: [u64; 64] = [
+const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x4080_0020_4000_1480, // a1
     0x0040_0010_0140_2000, // b1
     0x0300_2000_1810_4100, // c1
@@ -458,7 +458,8 @@ pub(crate) const fn directional_attacks(
 //  * 2 unused bits
 //  * 3 bits for the rank
 //  * 3 bits for the file
-pub enum Square {
+
+enum Square {
     A1 = 0,
     B1 = 1,
     C1 = 2,
@@ -528,19 +529,19 @@ pub enum Square {
 impl Square {
     #[must_use]
     /// Get the integer representing the rank (0 -> 1, ...) of this square.
-    pub const fn rank(self) -> u8 {
+    const fn rank(self) -> u8 {
         self as u8 >> 3u8
     }
 
     #[must_use]
     /// Get the integer representing the file (0 -> A, ...) of this square.
-    pub const fn file(self) -> u8 {
+    const fn file(self) -> u8 {
         self as u8 & 7u8
     }
 
     #[must_use]
     /// Get the Chebyshev distance to another square.
-    pub const fn chebyshev_to(self, rhs: Square) -> u8 {
+    const fn chebyshev_to(self, rhs: Square) -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
             let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
@@ -568,7 +569,7 @@ impl Square {
     ///
     /// assert_eq!(sq1.file_distance(sq2), 2);
     /// ```
-    pub const fn file_distance(self, rhs: Square) -> u8 {
+    const fn file_distance(self, rhs: Square) -> u8 {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
     }
 }
