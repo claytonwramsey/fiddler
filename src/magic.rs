@@ -135,7 +135,7 @@ const ROOK_MASKS: [Bitboard; 64] = {
 /// The master table containing every attack that the rook can perform from every square under
 /// every occupancy.
 /// Borrowed by the individual [`AttacksLookup`]s in [`ROOK_LOOKUPS`].
-pub const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
+const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
     &ROOK_MASKS,

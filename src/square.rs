@@ -20,7 +20,7 @@
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[allow(missing_docs)]
+#[allow(unused)]
 /// A square: one of 64 spots on a `Board` that a `Piece` can occupy.
 //  Internally, `Square`s are represented as a single integer to maintain a small size.
 //  From MSB to LSB, each square is composed of:
@@ -139,23 +139,5 @@ impl Square {
     /// ```
     pub const fn file_distance(self, rhs: Square) -> u8 {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
-    }
-
-    #[must_use]
-    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
-    /// Get the distance between two `Square`s by traveling along ranks.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::Square;
-    ///
-    /// let sq1 = Square::A8;
-    /// let sq2 = Square::C1;
-    ///
-    /// assert_eq!(sq1.rank_distance(sq2), 7);
-    /// ```
-    pub const fn rank_distance(self, rhs: Square) -> u8 {
-        ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs()
     }
 }
