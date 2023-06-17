@@ -41,35 +41,9 @@ impl Bitboard {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct Direction(i8);
-
-impl Direction {
-    const NORTH: Direction = Direction(8);
-    const EAST: Direction = Direction(1);
-    const SOUTH: Direction = Direction(-8);
-    const WEST: Direction = Direction(-1);
-    const ROOK_DIRECTIONS: [Direction; 4] = [
-        Direction::NORTH,
-        Direction::SOUTH,
-        Direction::EAST,
-        Direction::WEST,
-    ];
-}
-
 const SAVED_ROOK_MAGICS: [u64; 64] = [0; 64];
 
 const ROOK_BITS: [u8; 64] = [1; 64];
-
-const fn table_size(bits_table: &[u8; 64]) -> usize {
-    let mut i = 0;
-    let mut total = 0;
-    while i < 64 {
-        total += 1 << bits_table[i];
-        i += 1;
-    }
-    total
-}
 
 const ROOK_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
@@ -82,18 +56,18 @@ const ROOK_MASKS: [Bitboard; 64] = {
 };
 
 #[allow(unused)]
-const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
+static ROOK_ATTACKS_TABLE: [Bitboard; 999_999] = construct_magic_table(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
     &ROOK_MASKS,
-    &Direction::ROOK_DIRECTIONS,
+    &[8, -8, 1, -1],
 );
 
 const fn construct_magic_table<const N: usize>(
     bits: &[u8; 64],
     magics: &[u64; 64],
     masks: &[Bitboard; 64],
-    dirs: &[Direction],
+    dirs: &[i8],
 ) -> [Bitboard; N] {
     let mut table = [Bitboard::EMPTY; N];
 
@@ -151,7 +125,7 @@ const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     Bitboard::new(result)
 }
 
-const fn directional_attacks(sq: Square, dirs: &[Direction], occupancy: Bitboard) -> Bitboard {
+const fn directional_attacks(sq: Square, dirs: &[i8], occupancy: Bitboard) -> Bitboard {
     let mut result = Bitboard::EMPTY;
     let mut dir_idx = 0;
     while dir_idx < dirs.len() {
@@ -159,8 +133,7 @@ const fn directional_attacks(sq: Square, dirs: &[Direction], occupancy: Bitboard
         let mut current_square = sq;
         let mut loop_idx = 0;
         while loop_idx < 7 {
-            let next_square_int: i16 =
-                current_square as i16 + unsafe { transmute::<Direction, i8>(dir) as i16 };
+            let next_square_int = current_square as i16 + dir as i16;
             if next_square_int < 0 || 64 <= next_square_int {
                 break;
             }
