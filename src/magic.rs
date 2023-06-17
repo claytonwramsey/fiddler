@@ -20,7 +20,7 @@
 
 use super::{Bitboard, Direction, Square};
 
-use std::mem::{transmute, MaybeUninit};
+use std::mem::{transmute};
 
 #[allow(unused)]
 /// A saved list of magics for rooks created using the generator.
@@ -94,77 +94,6 @@ pub const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x7645_FFFE_CBFE_A79E, // h8, found by Grant Osborne
 ];
 
-/// A saved list of magics for bishops created using the generator.
-///
-/// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
-/// Wiki.
-const SAVED_BISHOP_MAGICS: [u64; 64] = [
-    0xffed_f9fd_7cfc_ffff, // a1, found by Gerd Isenberg
-    0xfc09_6285_4a77_f576, // b1, found by Gerd Isenberg
-    0x0012_2808_c102_a004, // c1
-    0x2851_2400_8240_0440, // d1
-    0x0011_1040_1100_0202, // e1
-    0x0008_2208_2000_0010, // f1
-    0xfc0a_66c6_4a7e_f576, // g1, found by Gerd Isenberg
-    0x7ffd_fdfc_bd79_ffff, // h1, found by Gerd Isenberg
-    0xfc08_46a6_4a34_fff6, // a2, found by Gerd Isenberg
-    0xfc08_7a87_4a3c_f7f6, // b2, found by Gerd Isenberg
-    0x0009_8802_0420_a000, // c2
-    0x8000_4404_0080_8200, // d2
-    0x208c_8450_c001_3407, // e2
-    0x1980_1105_2010_8030, // f2
-    0xfc08_64ae_59b4_ff76, // g2, found by Gerd Isenberg
-    0x3c08_60af_4b35_ff76, // h2, found by Gerd Isenberg
-    0x73C0_1AF5_6CF4_CFFB, // a3, found by Richard Pijl
-    0x41A0_1CFA_D64A_AFFC, // b3, found by Richard Pijl
-    0x0604_0002_04a2_0202, // c3
-    0x0002_8208_0602_4000, // d3
-    0x008a_0024_2201_0201, // e3
-    0x2082_0040_8801_0802, // f3
-    0x7c0c_028f_5b34_ff76, // g3, found by Gerd Isenberg
-    0xfc0a_028e_5ab4_df76, // h3, found by Gerd Isenberg
-    0x0810_0420_d104_1080, // a4
-    0x0904_5100_0210_0100, // b4
-    0x0202_2808_0406_4403, // c4
-    0x004c_0040_0c03_0082, // d4
-    0x0602_0010_0200_5011, // e4
-    0x7209_0200_c108_9000, // f4
-    0x4211_4104_2400_8805, // g4
-    0x0002_8484_2126_0804, // h4
-    0xc001_0412_1121_2004, // a5
-    0x0208_0188_0004_4800, // b5
-    0x0080_2064_1058_0800, // c5
-    0x0000_2011_0008_0084, // d5
-    0x0208_0034_0009_4100, // e5
-    0x2190_4102_0000_4058, // f5
-    0x0188_8214_0180_8080, // g5
-    0x2006_0a02_0000_c4c0, // h5
-    0xDCEF_D9B5_4BFC_C09F, // a6, found by Richard Pijl
-    0xF95F_FA76_5AFD_602B, // b6, found by Richard Pijl
-    0x200a_1041_1000_2040, // c6
-    0x0800_000c_0831_0c00, // d6
-    0x0218_0401_0a01_0400, // e6
-    0x1092_2004_0022_4100, // f6
-    0x43ff_9a5c_f4ca_0c01, // g6, found by Gerd Isenberg
-    0x4BFF_CD8E_7C58_7601, // h6, found by Richard Pijl
-    0xfc0f_f286_5334_f576, // a7, found by Gerd Isenberg
-    0xfc0b_f6ce_5924_f576, // b7, found by Gerd Isenberg
-    0x8052_2060_8c30_0001, // c7
-    0x2084_1050_4202_0400, // d7
-    0xe018_8010_2206_0220, // e7
-    0x0001_1220_4901_0200, // f7
-    0xc3ff_b7dc_36ca_8c89, // g7, found by Gerd Isenberg
-    0xc3ff_8a54_f4ca_2c89, // h7, found by Gerd Isenberg
-    0xffff_fcfc_fd79_edff, // a8, found by Gerd Isenberg
-    0xfc08_63fc_cb14_7576, // b8, found by Gerd Isenberg
-    0x40a0_0400_6213_3000, // c8
-    0x0142_0280_0084_0400, // d8
-    0x0009_0900_1006_1200, // e8
-    0x0800_8445_2810_0308, // f8
-    0xfc08_7e8e_4bb2_f736, // g8, found by Gerd Isenberg
-    0x43ff_9e4e_f4ca_2c89, // h8, found by Gerd Isenberg
-];
-
 /// The number of bits used to express the magic lookups for rooks at each square.
 const ROOK_BITS: [u8; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12, // rank 1
@@ -175,18 +104,6 @@ const ROOK_BITS: [u8; 64] = [
     11, 10, 10, 10, 10, 10, 10, 11, // 6
     10, 9, 9, 9, 9, 9, 9, 10, // 7
     11, 10, 10, 10, 10, 11, 10, 11, // 8
-];
-
-/// The number of bits used to express the magic lookups for bishops at each square.
-const BISHOP_BITS: [u8; 64] = [
-    5, 4, 5, 5, 5, 5, 4, 5, // rank 1
-    4, 4, 5, 5, 5, 5, 4, 4, // 2
-    4, 4, 7, 7, 7, 7, 4, 4, // 3
-    5, 5, 7, 9, 9, 7, 5, 5, // 4
-    5, 5, 7, 9, 9, 7, 5, 5, // 5
-    4, 4, 7, 7, 7, 7, 4, 4, // 6
-    4, 4, 5, 5, 5, 5, 4, 4, // 7
-    5, 4, 5, 5, 5, 5, 4, 5, // 8
 ];
 
 /// Compute the number of entries in a magic-movegen table required to store every element, given
@@ -201,18 +118,6 @@ const fn table_size(bits_table: &[u8; 64]) -> usize {
     total
 }
 
-/// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed 
-/// by the square occupied by the bishop.
-const BISHOP_MASKS: [Bitboard; 64] = {
-    let mut masks = [Bitboard::EMPTY; 64];
-    let mut i = 0u8;
-    while i < 64 {
-        masks[i as usize] = get_bishop_mask(unsafe { transmute(i) });
-        i += 1;
-    }
-    masks
-};
-
 /// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed 
 /// by the square occupied by the rook.
 const ROOK_MASKS: [Bitboard; 64] = {
@@ -224,17 +129,6 @@ const ROOK_MASKS: [Bitboard; 64] = {
     }
     masks
 };
-
-#[allow(long_running_const_eval)]
-/// The master table containing every attack that the bishop can perform from every square under
-/// every occupancy.
-/// Borrowed by the individual [`AttacksLookup`]s in [`BISHOP_LOOKUPS`].
-const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_magic_table(
-    &BISHOP_BITS,
-    &SAVED_BISHOP_MAGICS,
-    &BISHOP_MASKS,
-    &Direction::BISHOP_DIRECTIONS,
-);
 
 #[allow(unused)]
 // #[allow(long_running_const_eval)]
@@ -311,16 +205,6 @@ const fn get_rook_mask(sq: Square) -> Bitboard {
     // in the col mask or row mask, but not the piece to move xor operation will remove the square
     // the piece is on
     Bitboard::new((row_mask ^ col_mask) & !(1 << sq as u64))
-}
-
-#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-/// Create the mask for the relevant bits in magic of a bishop.
-/// `sq` is the square that a bishop would be on to receiver this mask.
-const fn get_bishop_mask(sq: Square) -> Bitboard {
-    Bitboard::new(
-        (Bitboard::diagonal(sq).as_u64() ^ Bitboard::anti_diagonal(sq).as_u64())
-            & !0xFF81_8181_8181_81FF,
-    )
 }
 
 /// Given some mask, create the occupancy [`Bitboard`] according to this index.

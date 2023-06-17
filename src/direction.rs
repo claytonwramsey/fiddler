@@ -45,28 +45,11 @@ impl Direction {
 
     /* Composite directions */
 
-    /// A `Direction` corresponding to a move "southwest" from White's point of view.
-    pub const NORTHWEST: Direction = Direction(Direction::NORTH.0 + Direction::WEST.0);
-    /// A `Direction` corresponding to a move "northeast" from White's point of view.
-    pub const NORTHEAST: Direction = Direction(Direction::NORTH.0 + Direction::EAST.0);
-    /// A `Direction` corresponding to a move "southeast" from White's point of view.
-    pub const SOUTHEAST: Direction = Direction(Direction::SOUTH.0 + Direction::EAST.0);
-    /// A `Direction` corresponding to a move "southwest" from White's point of  view.
-    pub const SOUTHWEST: Direction = Direction(Direction::SOUTH.0 + Direction::WEST.0);
-
     /// The directions that a rook can move, along only one step.
     pub const ROOK_DIRECTIONS: [Direction; 4] = [
         Direction::NORTH,
         Direction::SOUTH,
         Direction::EAST,
         Direction::WEST,
-    ];
-
-    /// The directions that a bishop can move, along only one step.
-    pub const BISHOP_DIRECTIONS: [Direction; 4] = [
-        Direction::NORTHWEST,
-        Direction::NORTHEAST,
-        Direction::SOUTHWEST,
-        Direction::SOUTHEAST,
     ];
 }
