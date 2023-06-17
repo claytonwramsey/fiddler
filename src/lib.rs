@@ -57,72 +57,7 @@ impl Direction {
     ];
 }
 
-const SAVED_ROOK_MAGICS: [u64; 64] = [
-    0x4080_0020_4000_1480, // a1
-    0x0040_0010_0140_2000, // b1
-    0x0300_2000_1810_4100, // c1
-    0x2100_0409_0110_0120, // d1
-    0x8a00_0600_0408_2070, // e1
-    0x0080_0144_0002_0080, // f1
-    0x1100_2500_208a_0004, // g1
-    0x0900_0042_2201_8100, // h1
-    0x0208_8002_28c0_0081, // a2
-    0x2280_4010_0340_2000, // b2
-    0x0008_8010_0020_0184, // c2
-    0x0001_0020_1000_0900, // d2
-    0x0182_0006_0010_6008, // e2
-    0x2058_8004_0080_0200, // f2
-    0x0004_8002_0080_0900, // g2
-    0x052d_0012_0040_a100, // h2
-    0x0540_0880_0080_24c1, // a3
-    0x2000_8480_4002_2000, // b3
-    0x0400_4100_1100_6000, // c3
-    0x0040_a100_3001_0108, // d3
-    0x1204_8080_0800_0402, // e3
-    0x0802_8080_0400_2201, // f3
-    0x1002_8080_5200_0500, // g3
-    0x0004_0a00_2112_4184, // h3
-    0x0640_0128_8008_8040, // a4
-    0x8410_4000_8020_008a, // b4
-    0x0400_2008_8010_0080, // c4
-    0x2001_0121_0009_1004, // d4
-    0x1200_0d01_0008_0010, // e4
-    0x6004_0004_0120_1008, // f4
-    0x7500_aa04_0008_4110, // g4
-    0x0100_0052_0004_0981, // h4
-    0x0040_8040_0280_0020, // a5
-    0x0470_0020_0640_0240, // b5
-    0x0001_2000_8080_1000, // c5
-    0x0000_0812_0200_2040, // d5
-    0x00c0_8044_0080_0800, // e5
-    0x9000_800a_0080_0400, // f5
-    0x0001_0004_0100_0600, // g5
-    0x0042_1088_ca00_2401, // h5
-    0x0000_c000_228d_8000, // a6
-    0x6410_0420_1440_4001, // b6
-    0x1002_0040_8226_0014, // c6
-    0x206a_0088_11c2_0021, // d6
-    0x0002_0018_1022_0024, // e6
-    0x2001_0200_0400_8080, // f6
-    0x1000_0801_100c_001a, // g6
-    0x0048_0082_5402_0011, // h6
-    0x48FF_FE99_FECF_AA00, // a7, found by Grant Osborne
-    0x48FF_FE99_FECF_AA00, // b7, found by Grant Osborne
-    0x497F_FFAD_FF9C_2E00, // c7, found by Grant Osborne
-    0x613F_FFDD_FFCE_9200, // d7, found by Grant Osborne
-    0xffff_ffe9_ffe7_ce00, // e7, found by Volker Annuss
-    0xffff_fff5_fff3_e600, // f7, found by Volker Annuss
-    0x0003_ff95_e5e6_a4c0, // g7, found by Niklas Fiekas
-    0x510F_FFF5_F63C_96A0, // h7, found by Grant Osborne
-    0xEBFF_FFB9_FF9F_C526, // a8, found by Grant Osborne
-    0x61FF_FEDD_FEED_AEAE, // b8, found by Grant Osborne
-    0x53BF_FFED_FFDE_B1A2, // c8, found by Grant Osborne
-    0x127F_FFB9_FFDF_B5F6, // d8, found by Grant Osborne
-    0x411F_FFDD_FFDB_F4D6, // e8, found by Grant Osborne
-    0x0822_0024_0810_4502, // f8
-    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund
-    0x7645_FFFE_CBFE_A79E, // h8, found by Grant Osborne
-];
+const SAVED_ROOK_MAGICS: [u64; 64] = [0; 64];
 
 const ROOK_BITS: [u8; 64] = [1; 64];
 
