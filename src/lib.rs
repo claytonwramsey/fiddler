@@ -18,35 +18,12 @@
 
 use std::mem::transmute;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct Bitboard(u64);
-
-impl Bitboard {
-    const EMPTY: Bitboard = Bitboard::new(0);
-
-    const fn new(x: u64) -> Bitboard {
-        Bitboard(x)
-    }
-
-    const fn contains(self, square: Square) -> bool {
-        self.0 & (1 << square as u8) != 0
-    }
-
-    const fn len(self) -> u8 {
-        self.0.count_ones() as u8
-    }
-
-    const fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
 const SAVED_ROOK_MAGICS: [u64; 64] = [0; 64];
 
 const ROOK_BITS: [u8; 64] = [1; 64];
 
-const ROOK_MASKS: [Bitboard; 64] = {
-    let mut masks = [Bitboard::EMPTY; 64];
+const ROOK_MASKS: [u64; 64] = {
+    let mut masks = [0; 64];
     let mut i = 0u8;
     while i < 64 {
         masks[i as usize] = get_rook_mask(unsafe { transmute(i) });
@@ -56,7 +33,7 @@ const ROOK_MASKS: [Bitboard; 64] = {
 };
 
 #[allow(unused)]
-static ROOK_ATTACKS_TABLE: [Bitboard; 999_999] = construct_magic_table(
+static ROOK_ATTACKS_TABLE: [u64; 999_999] = construct_magic_table(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
     &ROOK_MASKS,
@@ -66,10 +43,10 @@ static ROOK_ATTACKS_TABLE: [Bitboard; 999_999] = construct_magic_table(
 const fn construct_magic_table<const N: usize>(
     bits: &[u8; 64],
     magics: &[u64; 64],
-    masks: &[Bitboard; 64],
+    masks: &[u64; 64],
     dirs: &[i8],
-) -> [Bitboard; N] {
-    let mut table = [Bitboard::EMPTY; N];
+) -> [u64; N] {
+    let mut table = [0; N];
 
     let mut i = 0;
     let mut table_offset = 0;
@@ -78,7 +55,7 @@ const fn construct_magic_table<const N: usize>(
         let sq: Square = unsafe { transmute(i as u8) };
         let mask = masks[i];
         let magic = magics[i];
-        let n_attacks_to_generate = 1 << mask.len();
+        let n_attacks_to_generate = 1 << mask.count_ones();
 
         let mut j = 0;
         while j < n_attacks_to_generate {
@@ -96,21 +73,19 @@ const fn construct_magic_table<const N: usize>(
     table
 }
 
-const fn compute_magic_key(occupancy: Bitboard, magic: u64, shift: u8) -> usize {
-    (occupancy.as_u64().wrapping_mul(magic) >> shift) as usize
+const fn compute_magic_key(occupancy: u64, magic: u64, shift: u8) -> usize {
+    (occupancy.wrapping_mul(magic) >> shift) as usize
 }
 
-const fn get_rook_mask(sq: Square) -> Bitboard {
+const fn get_rook_mask(sq: Square) -> u64 {
     let index = sq as u8;
-    Bitboard::new(
-        (0x7E << (index & !0x7) ^ 0x0001_0101_0101_0100 << (index & 0x7)) & !(1 << sq as u64),
-    )
+        (0x7E << (index & !0x7) ^ 0x0001_0101_0101_0100 << (index & 0x7)) & !(1 << sq as u64)
 }
 
-const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
+const fn index_to_occupancy(index: usize, mask: u64) -> u64 {
     let mut result = 0u64;
-    let num_points = mask.len();
-    let mut editable_mask = mask.as_u64();
+    let num_points = mask.count_ones();
+    let mut editable_mask = mask;
     let mut i = 0;
     while i < num_points {
         let shift_size = editable_mask.trailing_zeros();
@@ -122,11 +97,11 @@ const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
         i += 1;
     }
 
-    Bitboard::new(result)
+    result
 }
 
-const fn directional_attacks(sq: Square, dirs: &[i8], occupancy: Bitboard) -> Bitboard {
-    let mut result = Bitboard::EMPTY;
+const fn directional_attacks(sq: Square, dirs: &[i8], occupancy: u64) -> u64 {
+    let mut result = 0;
     let mut dir_idx = 0;
     while dir_idx < dirs.len() {
         let dir = dirs[dir_idx];
@@ -142,10 +117,8 @@ const fn directional_attacks(sq: Square, dirs: &[i8], occupancy: Bitboard) -> Bi
             if next_square.chebyshev_to(current_square) > 1 {
                 break;
             }
-            result = Bitboard::new(
-                unsafe { transmute::<Bitboard, u64>(result) } | 1 << next_square as u8,
-            );
-            if occupancy.contains(next_square) {
+            result |= 1 << next_square as u8;
+            if (occupancy & (1 << next_square as u8)) == 0 {
                 break;
             }
             current_square = next_square;
