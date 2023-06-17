@@ -1,15 +1,32 @@
-//! # Fiddler: Clayton's little chess engine.
-//!
-//! Fiddler is a hobby chess engine created by Clayton Ramsey.
-//! This code is not meant to be used as a library; however, I have tried very hard to make sure it
-//! is well documented.
-//!
-//! For more details, refer to the README.
+/*
+  Fiddler, a UCI-compatible chess engine.
+  Copyright (C) 2022 Clayton Ramsey.
 
-#![warn(clippy::cargo)]
-#![warn(missing_docs)]
-#![warn(clippy::pedantic)]
-#![allow(incomplete_features)]
-#![feature(adt_const_params)]
-pub mod base;
-pub mod engine;
+  Fiddler is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Fiddler is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+//! Shared data types and useful basic definitions found across the entire Fiddler engine.
+
+// Many module elements are re-exported to make names more ergonomic to access.
+
+mod bitboard;
+pub use bitboard::Bitboard;
+
+mod direction;
+pub use direction::Direction;
+
+pub mod magic;
+
+mod square;
+pub use square::Square;
