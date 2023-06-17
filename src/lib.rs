@@ -19,128 +19,36 @@
 use std::mem::transmute;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(transparent)]
-/// A bitboard, which uses an integer to express a set of `Square`s.
-/// This expression allows the efficient computation of set intersection, union, disjunction,
-/// element selection, and more, all in constant time.
-///
-/// Nearly all board-related representations use `Bitboard`s as a key part of their construction.
 struct Bitboard(u64);
 
 impl Bitboard {
-    /// A bitboard representing the empty set.
-    /// Accordingly, `Bitboard::EMPTY` contains no squares, and functions exactly like the empty set
-    /// in all observable behavior.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::{Bitboard, Square};
-    ///
-    /// let sq = Square::A1; // this could be any square
-    /// assert!(!Bitboard::EMPTY.contains(sq));
-    /// ```
     const EMPTY: Bitboard = Bitboard::new(0);
 
-    #[must_use]
-    /// Construct a new Bitboard from a numeric literal.
-    ///
-    /// Internally, `Bitboard`s are 64-bit integers, where the LSB represents whether the square A1
-    /// is an element, the second-least bit represents the square A2, and so on.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::{Bitboard, Square};
-    ///
-    /// let bb = Bitboard::EMPTY.with_square(Square::A1);
-    ///
-    /// assert_eq!(bb, Bitboard::new(1));
-    /// ```
     const fn new(x: u64) -> Bitboard {
         Bitboard(x)
     }
 
-    #[must_use]
-    /// Determine whether this bitboard contains a given square.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::{Bitboard, Square};
-    ///
-    /// assert!(Bitboard::new(1).contains(Square::A1));
-    /// assert!(!(Bitboard::new(2).contains(Square::A1)));
-    /// ```
     const fn contains(self, square: Square) -> bool {
         self.0 & (1 << square as u8) != 0
     }
 
-    #[allow(clippy::cast_possible_truncation)]
-    #[allow(clippy::len_without_is_empty)]
-    #[must_use]
-    /// Compute the number of squares contained in this `Bitboard`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::{Bitboard, Square};
-    ///
-    /// let mut bb = Bitboard::EMPTY;
-    /// assert_eq!(bb.len(), 0);
-    /// bb.insert(Square::A1);
-    /// assert_eq!(bb.len(), 1);
-    /// ```
     const fn len(self) -> u8 {
         self.0.count_ones() as u8
     }
 
-    #[must_use]
-    /// Convert this bitboard to a u64.
-    /// This operation requires no computation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::Bitboard;
-    ///
-    /// assert_eq!(Bitboard::EMPTY.as_u64(), 0);
-    /// assert_eq!(Bitboard::ALL.as_u64(), !0);
-    /// ```
     const fn as_u64(self) -> u64 {
         self.0
     }
 }
 
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-/// A difference between two squares. `Direction`s form a vector field, which allows us to define
-/// subtraction between squares.
-/// Internally, they use the same representation as a `Square` but with a signed integer.
 struct Direction(i8);
 
 impl Direction {
-    /* Cardinal directions */
-
-    /// A `Direction` corresponding to a move "north" from White's point of view, in the direction
-    /// a white pawn would travel.
     const NORTH: Direction = Direction(8);
-
-    /// A `Direction` corresponding to a move "east" from White's point of view.
     const EAST: Direction = Direction(1);
-
-    // sadly, the nature of rust consts means the following doesn't work:
-    // const SOUTH: Direction = -NORTH;
-
-    /// A `Direction` corresponding to a move "south" from White's point of view.
     const SOUTH: Direction = Direction(-8);
-
-    /// A `Direction` corresponding to a move "west" from White's point of view.
     const WEST: Direction = Direction(-1);
-
-    /* Composite directions */
-
-    /// The directions that a rook can move, along only one step.
     const ROOK_DIRECTIONS: [Direction; 4] = [
         Direction::NORTH,
         Direction::SOUTH,
@@ -149,12 +57,6 @@ impl Direction {
     ];
 }
 
-
-#[allow(unused)]
-/// A saved list of magics for rooks created using the generator.
-///
-/// Some magics for sizes below the required bitshift amount were taken from the Chess Programming
-/// Wiki.
 const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x4080_0020_4000_1480, // a1
     0x0040_0010_0140_2000, // b1
@@ -218,24 +120,12 @@ const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x127F_FFB9_FFDF_B5F6, // d8, found by Grant Osborne
     0x411F_FFDD_FFDB_F4D6, // e8, found by Grant Osborne
     0x0822_0024_0810_4502, // f8
-    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund 
+    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund
     0x7645_FFFE_CBFE_A79E, // h8, found by Grant Osborne
 ];
 
-/// The number of bits used to express the magic lookups for rooks at each square.
-const ROOK_BITS: [u8; 64] = [
-    12, 11, 11, 11, 11, 11, 11, 12, // rank 1
-    11, 10, 10, 10, 10, 10, 10, 11, // 2
-    11, 10, 10, 10, 10, 10, 10, 11, // 3
-    11, 10, 10, 10, 10, 10, 10, 11, // 4
-    11, 10, 10, 10, 10, 10, 10, 11, // 5
-    11, 10, 10, 10, 10, 10, 10, 11, // 6
-    10, 9, 9, 9, 9, 9, 9, 10, // 7
-    11, 10, 10, 10, 10, 11, 10, 11, // 8
-];
+const ROOK_BITS: [u8; 64] = [1; 64];
 
-/// Compute the number of entries in a magic-movegen table required to store every element, given
-/// the number of bits required for each square.
 const fn table_size(bits_table: &[u8; 64]) -> usize {
     let mut i = 0;
     let mut total = 0;
@@ -246,8 +136,6 @@ const fn table_size(bits_table: &[u8; 64]) -> usize {
     total
 }
 
-/// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed 
-/// by the square occupied by the rook.
 const ROOK_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
     let mut i = 0u8;
@@ -259,10 +147,6 @@ const ROOK_MASKS: [Bitboard; 64] = {
 };
 
 #[allow(unused)]
-// #[allow(long_running_const_eval)]
-/// The master table containing every attack that the rook can perform from every square under
-/// every occupancy.
-/// Borrowed by the individual [`AttacksLookup`]s in [`ROOK_LOOKUPS`].
 const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
     &ROOK_BITS,
     &SAVED_ROOK_MAGICS,
@@ -270,17 +154,6 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
     &Direction::ROOK_DIRECTIONS,
 );
 
-#[allow(clippy::cast_possible_truncation)]
-/// Construct the master magic table for a rook or bishop based on all the requisite information.
-/// 
-/// # Inputs
-/// 
-/// - `bits`: For each square, the number of other squares which are involved in the calculation of 
-///   attacks from that square.
-/// - `magics`: The magic numbers for each square.
-/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting 
-///   square.
-/// - `dirs`: The directions in which the piece can move
 const fn construct_magic_table<const N: usize>(
     bits: &[u8; 64],
     magics: &[u64; 64],
@@ -314,75 +187,27 @@ const fn construct_magic_table<const N: usize>(
     table
 }
 
-#[allow(clippy::cast_possible_truncation)]
-/// Use magic hashing to get the index to look up attacks in a bitboad.
 const fn compute_magic_key(occupancy: Bitboard, magic: u64, shift: u8) -> usize {
     (occupancy.as_u64().wrapping_mul(magic) >> shift) as usize
 }
 
-/// Create the mask for the relevant bits in magic of a rook.
-/// `sq` is the square that a rook would occupy to receive this mask.
 const fn get_rook_mask(sq: Square) -> Bitboard {
-    let index = sq as i8;
-    // sequence of 1s down the same row as the piece to move, except on the ends
-    let row_mask = 0x7E << (index & !0x7);
-    // sequence of 1s down the same col as the piece to move, except on the ends
-    let col_mask = 0x0001_0101_0101_0100 << (index % 8);
-    // note: pieces at the end of the travel don't matter, which is why the masks aren't uniform
-
-    // in the col mask or row mask, but not the piece to move xor operation will remove the square
-    // the piece is on
-    Bitboard::new((row_mask ^ col_mask) & !(1 << sq as u64))
+    let index = sq as u8;
+    Bitboard::new(
+        (0x7E << (index & !0x7) ^ 0x0001_0101_0101_0100 << (index & 0x7)) & !(1 << sq as u64),
+    )
 }
 
-/// Given some mask, create the occupancy [`Bitboard`] according to this index.
-///
-/// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
-/// This is equivalent to the parallel-bits-extract (PEXT) instruction on x86 architectures.
-///
-/// For instance: if `mask` repreresented a board like the following:
-/// ```text
-/// 8 | . . . . . . . .
-/// 7 | . . . . . . . .
-/// 6 | . . . . . . . .
-/// 5 | . . . . . . . .
-/// 4 | . . . . . . . .
-/// 3 | . . . . . . . .
-/// 2 | . 1 . . . . . .
-/// 1 | 1 . . . . . . .
-/// - + - - - - - - - -
-/// . | A B C D E F G H
-/// ```
-///
-/// and the given index were `0b10`, then the output mask would be
-///
-/// ```text
-/// 8 | . . . . . . . .
-/// 7 | . . . . . . . .
-/// 6 | . . . . . . . .
-/// 5 | . . . . . . . .
-/// 4 | . . . . . . . .
-/// 3 | . . . . . . . .
-/// 2 | . 1 . . . . . .
-/// 1 | . . . . . . . .
-/// - + - - - - - - - -
-/// . | A B C D E F G H
-/// ```
 const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     let mut result = 0u64;
     let num_points = mask.len();
     let mut editable_mask = mask.as_u64();
-    // go from right to left in the bits of num_points,
-    // and add an occupancy if something is there
     let mut i = 0;
     while i < num_points {
         let shift_size = editable_mask.trailing_zeros();
-        // make a bitboard which only occupies the rightmost square
         let occupier = 1 << shift_size;
-        // remove the occupier from the mask
         editable_mask &= !occupier;
         if (index & (1 << i)) != 0 {
-            // the bit corresponding to the occupier is nonzero
             result |= occupier;
         }
         i += 1;
@@ -391,17 +216,7 @@ const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     Bitboard::new(result)
 }
 
-/// Construct the squares attacked by the pieces at `sq` if it could move along the directions in
-/// `dirs` when the board is occupied by the pieces in `occupancy`.
-///
-/// This is slow and should only be used for generatic magic bitboards (instead of for move
-/// generation.
-const fn directional_attacks(
-    sq: Square,
-    dirs: &[Direction],
-    occupancy: Bitboard,
-) -> Bitboard {
-    // behold: much hackery for making this work as a const fn
+const fn directional_attacks(sq: Square, dirs: &[Direction], occupancy: Bitboard) -> Bitboard {
     let mut result = Bitboard::EMPTY;
     let mut dir_idx = 0;
     while dir_idx < dirs.len() {
@@ -409,28 +224,18 @@ const fn directional_attacks(
         let mut current_square = sq;
         let mut loop_idx = 0;
         while loop_idx < 7 {
-            let next_square_int: i16 = current_square as i16
-                + unsafe {
-                    // SAFETY: All values for an `i8` are valid.
-                    transmute::<Direction, i8>(dir) as i16
-                };
+            let next_square_int: i16 =
+                current_square as i16 + unsafe { transmute::<Direction, i8>(dir) as i16 };
             if next_square_int < 0 || 64 <= next_square_int {
                 break;
             }
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let next_square: Square = unsafe {
-                // SAFETY: We checked that this next square was in the range 0..63, which is how a
-                // square is represented.
-                transmute(next_square_int as u8)
-            };
+            let next_square: Square = unsafe { transmute(next_square_int as u8) };
             if next_square.chebyshev_to(current_square) > 1 {
                 break;
             }
             result = Bitboard::new(
-                unsafe {
-                    // SAFETY: Any value is OK for an int.
-                    transmute::<Bitboard, u64>(result)
-                } | 1 << next_square as u8,
+                unsafe { transmute::<Bitboard, u64>(result) } | 1 << next_square as u8,
             );
             if occupancy.contains(next_square) {
                 break;
@@ -444,16 +249,9 @@ const fn directional_attacks(
     result
 }
 
-
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(unused)]
-/// A square: one of 64 spots on a `Board` that a `Piece` can occupy.
-//  Internally, `Square`s are represented as a single integer to maintain a small size.
-//  From MSB to LSB, each square is composed of:
-//  * 2 unused bits
-//  * 3 bits for the rank
-//  * 3 bits for the file
 
 enum Square {
     A1 = 0,
@@ -523,48 +321,24 @@ enum Square {
 }
 
 impl Square {
-    #[must_use]
-    /// Get the integer representing the rank (0 -> 1, ...) of this square.
     const fn rank(self) -> u8 {
         self as u8 >> 3u8
     }
 
-    #[must_use]
-    /// Get the integer representing the file (0 -> A, ...) of this square.
     const fn file(self) -> u8 {
         self as u8 & 7u8
     }
 
-    #[must_use]
-    /// Get the Chebyshev distance to another square.
     const fn chebyshev_to(self, rhs: Square) -> u8 {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-        {
-            let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
-            let filediff = self.file_distance(rhs);
-            // we would use `max()` here if it were a const function
-            if rankdiff > filediff {
-                rankdiff
-            } else {
-                filediff
-            }
+        let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
+        let filediff = self.file_distance(rhs);
+        if rankdiff > filediff {
+            rankdiff
+        } else {
+            filediff
         }
     }
 
-    #[must_use]
-    #[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
-    /// Get the distance between two `Square`s by traveling along files.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fiddler::base::Square;
-    ///
-    /// let sq1 = Square::A8;
-    /// let sq2 = Square::C1;
-    ///
-    /// assert_eq!(sq1.file_distance(sq2), 2);
-    /// ```
     const fn file_distance(self, rhs: Square) -> u8 {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
     }
