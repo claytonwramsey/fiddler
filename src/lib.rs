@@ -16,10 +16,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//! Shared data types and useful basic definitions found across the entire Fiddler engine.
-
-// Many module elements are re-exported to make names more ergonomic to access.
-
 use std::mem::transmute;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
