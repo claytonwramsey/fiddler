@@ -283,13 +283,12 @@ const ROOK_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
     let mut i = 0u8;
     while i < 64 {
-        masks[i as usize] = get_rook_mask(unsafe { transmute(i) });
+        masks[i as usize] = get_rook_mask(unsafe { transmute::<u8, Square>(i) });
         i += 1;
     }
     masks
 };
 
-#[allow(long_running_const_eval)]
 /// The master table containing every attack that the bishop can perform from every square under
 /// every occupancy.
 /// Borrowed by the individual [`AttacksLookup`]s in [`BISHOP_LOOKUPS`].
@@ -300,7 +299,6 @@ const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_mag
     &Direction::BISHOP_DIRECTIONS,
 );
 
-#[allow(long_running_const_eval)]
 /// The necessary information for generatng attacks for bishops, indexed b the square occupied by 
 /// said bishop.
 const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
@@ -321,7 +319,6 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
     &Direction::ROOK_DIRECTIONS,
 );
 
-#[allow(long_running_const_eval)]
 /// The necessary information for generatng attacks for rook, indexed b the square occupied by 
 /// said rook.
 const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
@@ -423,18 +420,16 @@ const fn compute_magic_key(occupancy: Bitboard, magic: u64, shift: u8) -> usize 
 }
 
 /// Create the mask for the relevant bits in magic of a rook.
-/// `sq` is the square that a rook would occupy to receive this mask.
+/// `sq` is the identifying the square that we want to generate the mask for.
 const fn get_rook_mask(sq: Square) -> Bitboard {
-    let index = sq as i8;
     // sequence of 1s down the same row as the piece to move, except on the ends
-    let row_mask = 0x7E << (index & !0x7);
+    let row_mask = 0x7E << (sq as u8 & !0x7);
     // sequence of 1s down the same col as the piece to move, except on the ends
-    let col_mask = 0x0001_0101_0101_0100 << (index % 8);
+    let col_mask = 0x0001_0101_0101_0100 << (sq as u8 & 0x7);
     // note: pieces at the end of the travel don't matter, which is why the masks aren't uniform
 
-    // in the col mask or row mask, but not the piece to move xor operation will remove the square
-    // the piece is on
-    Bitboard::new((row_mask ^ col_mask) & !(1 << sq as u64))
+    // in the col mask or row mask, but not the piece to move
+    Bitboard::new((row_mask | col_mask) & !(1 << sq as u64))
 }
 
 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
@@ -488,9 +483,8 @@ const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
     // and add an occupancy if something is there
     let mut i = 0;
     while i < num_points {
-        let shift_size = editable_mask.trailing_zeros();
         // make a bitboard which only occupies the rightmost square
-        let occupier = 1 << shift_size;
+        let occupier = 1 << editable_mask.trailing_zeros();
         // remove the occupier from the mask
         editable_mask &= !occupier;
         if (index & (1 << i)) != 0 {
