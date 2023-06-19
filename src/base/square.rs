@@ -259,15 +259,6 @@ impl Square {
     pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
         Bitboard::line(sq1, sq2).contains(sq3)
     }
-
-    /// A constant implementation of `try_from`.
-    pub(crate) fn const_try_from(x: u8) -> Result<Square, ()> {
-        if x <= Square::H8 as u8 {
-            Ok(unsafe { transmute(x) })
-        } else {
-            Err(())
-        }
-    }
 }
 
 impl Add<Direction> for Square {
@@ -319,7 +310,7 @@ impl TryFrom<Bitboard> for Square {
 impl TryFrom<u8> for Square {
     type Error = ();
     fn try_from(x: u8) -> Result<Square, Self::Error> {
-        Square::const_try_from(x)
+        if x < 64 { Ok(unsafe {transmute(x)}) } else { Err(()) }
     }
 }
 

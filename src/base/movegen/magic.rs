@@ -450,7 +450,7 @@ const fn get_bishop_mask(sq: Square) -> Bitboard {
 /// Given some mask, create the occupancy [`Bitboard`] according to this index.
 ///
 /// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
-/// This is equivalent to the parallel-bits-extract (PEXT) instruction on x86 architectures.
+/// This is equivalent to the parallel-bits-deposit (PDEP) instruction on x86 architectures.
 ///
 /// For instance: if `mask` repreresented a board like the following:
 /// ```text
@@ -537,12 +537,7 @@ pub(crate) const fn directional_attacks(
             if next_square.chebyshev_to(current_square) > 1 {
                 break;
             }
-            result = Bitboard::new(
-                unsafe {
-                    // SAFETY: Any value is OK for an int.
-                    transmute::<Bitboard, u64>(result)
-                } | 1 << next_square as u8,
-            );
+            result = result.with_square(next_square);
             if occupancy.contains(next_square) {
                 break;
             }
