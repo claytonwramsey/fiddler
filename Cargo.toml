@@ -26,10 +26,6 @@ repository = "https://github.com/claytonwramsey/fiddler"
 keywords = ["chess", "chess engine", "uci"]
 categories = ["game-engines"]
 
-[dependencies]
-# Random number generator for creating magic bitboards.
-fastrand = "1.8.0" 
-
 [profile.test]
 debug = true
 # must be highly optimized for speed, since searching and perft is done in tests

@@ -44,49 +44,7 @@ pub fn ep_key(sq: Square) -> u64 {
     unsafe { *EP_KEYS.get_unchecked(sq.file() as usize) }
 }
 
-#[allow(unused)]
-// #[test]
-/// Helper function to create the definitions for all the keys in the binary.
-/// Prints out source code for each key.
-fn print_keys() {
-    use super::Bitboard;
-    fastrand::seed(12345);
-
-    // player to move key
-    println!(
-        "pub const BLACK_TO_MOVE_KEY: u64 = 0x{:x};\n",
-        fastrand::u64(..)
-    );
-
-    // castle keys
-    println!("const CASTLE_KEYS: [u64; 4] = [");
-    for _ in 0..4 {
-        println!("    0x{:x},", fastrand::u64(..));
-    }
-    println!("];\n");
-
-    // en passant keys
-    println!("const EP_KEYS: [u64; 8] = [");
-    for _ in 0..8 {
-        println!("    0x{:x},", fastrand::u64(..));
-    }
-    println!("];\n");
-
-    // square keys
-    println!("const SQUARE_KEYS: [[[u64; 2]; Piece::NUM]; 64] = [");
-    for _ in Bitboard::ALL {
-        println!("    [");
-        for _ in Piece::ALL {
-            println!(
-                "        [0x{:x}, 0x{:x}],",
-                fastrand::u64(..),
-                fastrand::u64(..)
-            );
-        }
-        println!("    ],");
-    }
-    println!("];");
-}
+/// The key for Black being the player to move.
 pub const BLACK_TO_MOVE_KEY: u64 = 0x3440_f9f4_6981_0c7b;
 
 const CASTLE_KEYS: [u64; 4] = [
