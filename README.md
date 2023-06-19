@@ -64,8 +64,6 @@ interest:
 
 - Develop intelligent time-management schemes
 
-- PEXT sliding movegen on x86 architectures
-
 ## Contributing
 
 If you are interested in contributing to Fiddler, please open a pull request.
