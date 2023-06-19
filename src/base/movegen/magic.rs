@@ -25,7 +25,7 @@ use std::mem::{transmute, MaybeUninit};
 /// A lookup table for generating attacks via magic bitboard for one piece type and square.
 struct AttacksLookup {
     /// A reference to this lookup's section of the magic attacks.
-    table: &'static [Bitboard],
+    table: *const Bitboard,
     /// The mask for extracting out the relevant occupancy map on a board.
     mask: Bitboard,
     /// The magic multiply constant for converting occupancies to indices.
@@ -56,7 +56,7 @@ struct AttacksLookup {
 ///         .with_square(Square::C3)
 /// );
 /// ```
-pub fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
+pub const fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
     get_attacks(occupancy, sq, &BISHOP_LOOKUPS)
 }
 
@@ -83,7 +83,7 @@ pub fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
 ///         .with_square(Square::A3)
 /// );
 /// ```
-pub fn rook_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
+pub const fn rook_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
     get_attacks(occupancy, sq, &ROOK_LOOKUPS)
 }
 
@@ -154,7 +154,7 @@ const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x127F_FFB9_FFDF_B5F6, // d8, found by Grant Osborne
     0x411F_FFDD_FFDB_F4D6, // e8, found by Grant Osborne
     0x0822_0024_0810_4502, // f8
-    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund 
+    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund
     0x7645_FFFE_CBFE_A79E, // h8, found by Grant Osborne
 ];
 
@@ -265,7 +265,7 @@ const fn table_size(bits_table: &[u8; 64]) -> usize {
     total
 }
 
-/// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed 
+/// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed
 /// by the square occupied by the bishop.
 const BISHOP_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
@@ -277,7 +277,7 @@ const BISHOP_MASKS: [Bitboard; 64] = {
     masks
 };
 
-/// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed 
+/// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed
 /// by the square occupied by the rook.
 const ROOK_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
@@ -299,7 +299,7 @@ const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_mag
     &Direction::BISHOP_DIRECTIONS,
 );
 
-/// The necessary information for generatng attacks for bishops, indexed b the square occupied by 
+/// The necessary information for generatng attacks for bishops, indexed b the square occupied by
 /// said bishop.
 const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &BISHOP_BITS,
@@ -319,7 +319,7 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
     &Direction::ROOK_DIRECTIONS,
 );
 
-/// The necessary information for generatng attacks for rook, indexed b the square occupied by 
+/// The necessary information for generatng attacks for rook, indexed b the square occupied by
 /// said rook.
 const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &ROOK_BITS,
@@ -330,13 +330,13 @@ const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
 
 #[allow(clippy::cast_possible_truncation)]
 /// Construct the master magic table for a rook or bishop based on all the requisite information.
-/// 
+///
 /// # Inputs
-/// 
-/// - `bits`: For each square, the number of other squares which are involved in the calculation of 
+///
+/// - `bits`: For each square, the number of other squares which are involved in the calculation of
 ///   attacks from that square.
 /// - `magics`: The magic numbers for each square.
-/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting 
+/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting
 ///   square.
 /// - `dirs`: The directions in which the piece can move
 const fn construct_magic_table<const N: usize>(
@@ -372,7 +372,7 @@ const fn construct_magic_table<const N: usize>(
     table
 }
 
-/// Construct the lookup tables for magic move generation by referencing an already-generated 
+/// Construct the lookup tables for magic move generation by referencing an already-generated
 /// attacks table.
 const fn construct_lookups(
     bits: &[u8; 64],
@@ -389,7 +389,7 @@ const fn construct_lookups(
             let these_attacks;
             (these_attacks, remaining_attacks) = remaining_attacks.split_at(1 << bits[i]);
             table[i] = MaybeUninit::new(AttacksLookup {
-                table: these_attacks,
+                table: (these_attacks as *const [Bitboard]).cast::<Bitboard>(),
                 mask: masks[i],
                 magic: magics[i],
                 shift: 64 - bits[i],
@@ -403,14 +403,19 @@ const fn construct_lookups(
 }
 
 /// Get the attacks a square has, given a magic lookup table and the current occupancy.
-fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 64]) -> Bitboard {
-    // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
-    // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it was
-    // shifted out properly.
-    let magic_data = unsafe { lookup.get_unchecked(sq as usize) };
-    let key = compute_magic_key(occupancy & magic_data.mask, magic_data.magic, magic_data.shift);
-
-    unsafe { *magic_data.table.get_unchecked(key) }
+const fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 64]) -> Bitboard {
+    unsafe {
+        // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
+        // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it
+        // was shifted out properly.
+        let magic_data = (lookup as *const AttacksLookup).wrapping_add(sq as usize);
+        let key = compute_magic_key(
+            Bitboard::new(occupancy.as_u64() & (*magic_data).mask.as_u64()),
+            (*magic_data).magic,
+            (*magic_data).shift,
+        );
+        *(*magic_data).table.wrapping_add(key)
+    }
 }
 
 #[allow(clippy::cast_possible_truncation)]
