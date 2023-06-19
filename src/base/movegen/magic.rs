@@ -154,7 +154,7 @@ const SAVED_ROOK_MAGICS: [u64; 64] = [
     0x127F_FFB9_FFDF_B5F6, // d8, found by Grant Osborne
     0x411F_FFDD_FFDB_F4D6, // e8, found by Grant Osborne
     0x0822_0024_0810_4502, // f8
-    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund 
+    0x0003_ffef_27ee_be74, // g8, found by Peter Österlund
     0x7645_FFFE_CBFE_A79E, // h8, found by Grant Osborne
 ];
 
@@ -265,7 +265,7 @@ const fn table_size(bits_table: &[u8; 64]) -> usize {
     total
 }
 
-/// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed 
+/// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed
 /// by the square occupied by the bishop.
 const BISHOP_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
@@ -277,7 +277,7 @@ const BISHOP_MASKS: [Bitboard; 64] = {
     masks
 };
 
-/// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed 
+/// The bitwise masks for extracting the relevant pieces for a rook's attacks in a board, indexed
 /// by the square occupied by the rook.
 const ROOK_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
@@ -299,7 +299,7 @@ const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_mag
     &Direction::BISHOP_DIRECTIONS,
 );
 
-/// The necessary information for generatng attacks for bishops, indexed b the square occupied by 
+/// The necessary information for generatng attacks for bishops, indexed b the square occupied by
 /// said bishop.
 const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &BISHOP_BITS,
@@ -319,7 +319,7 @@ const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_t
     &Direction::ROOK_DIRECTIONS,
 );
 
-/// The necessary information for generatng attacks for rook, indexed b the square occupied by 
+/// The necessary information for generatng attacks for rook, indexed b the square occupied by
 /// said rook.
 const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &ROOK_BITS,
@@ -330,13 +330,13 @@ const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
 
 #[allow(clippy::cast_possible_truncation)]
 /// Construct the master magic table for a rook or bishop based on all the requisite information.
-/// 
+///
 /// # Inputs
-/// 
-/// - `bits`: For each square, the number of other squares which are involved in the calculation of 
+///
+/// - `bits`: For each square, the number of other squares which are involved in the calculation of
 ///   attacks from that square.
 /// - `magics`: The magic numbers for each square.
-/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting 
+/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting
 ///   square.
 /// - `dirs`: The directions in which the piece can move
 const fn construct_magic_table<const N: usize>(
@@ -372,7 +372,7 @@ const fn construct_magic_table<const N: usize>(
     table
 }
 
-/// Construct the lookup tables for magic move generation by referencing an already-generated 
+/// Construct the lookup tables for magic move generation by referencing an already-generated
 /// attacks table.
 const fn construct_lookups(
     bits: &[u8; 64],
@@ -408,7 +408,11 @@ fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 64]) ->
     // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it was
     // shifted out properly.
     let magic_data = unsafe { lookup.get_unchecked(sq as usize) };
-    let key = compute_magic_key(occupancy & magic_data.mask, magic_data.magic, magic_data.shift);
+    let key = compute_magic_key(
+        occupancy & magic_data.mask,
+        magic_data.magic,
+        magic_data.shift,
+    );
 
     unsafe { *magic_data.table.get_unchecked(key) }
 }
@@ -417,217 +421,4 @@ fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 64]) ->
 /// Use magic hashing to get the index to look up attacks in a bitboad.
 const fn compute_magic_key(occupancy: Bitboard, magic: u64, shift: u8) -> usize {
     (occupancy.as_u64().wrapping_mul(magic) >> shift) as usize
-}
-
-/// Create the mask for the relevant bits in magic of a rook.
-/// `sq` is the identifying the square that we want to generate the mask for.
-const fn get_rook_mask(sq: Square) -> Bitboard {
-    // sequence of 1s down the same row as the piece to move, except on the ends
-    let row_mask = 0x7E << (sq as u8 & !0x7);
-    // sequence of 1s down the same col as the piece to move, except on the ends
-    let col_mask = 0x0001_0101_0101_0100 << (sq as u8 & 0x7);
-    // note: pieces at the end of the travel don't matter, which is why the masks aren't uniform
-
-    // in the col mask or row mask, but not the piece to move
-    Bitboard::new((row_mask | col_mask) & !(1 << sq as u64))
-}
-
-#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-/// Create the mask for the relevant bits in magic of a bishop.
-/// `sq` is the square that a bishop would be on to receiver this mask.
-const fn get_bishop_mask(sq: Square) -> Bitboard {
-    Bitboard::new(
-        (Bitboard::diagonal(sq).as_u64() ^ Bitboard::anti_diagonal(sq).as_u64())
-            & !0xFF81_8181_8181_81FF,
-    )
-}
-
-/// Given some mask, create the occupancy [`Bitboard`] according to this index.
-///
-/// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
-/// This is equivalent to the parallel-bits-extract (PEXT) instruction on x86 architectures.
-///
-/// For instance: if `mask` repreresented a board like the following:
-/// ```text
-/// 8 | . . . . . . . .
-/// 7 | . . . . . . . .
-/// 6 | . . . . . . . .
-/// 5 | . . . . . . . .
-/// 4 | . . . . . . . .
-/// 3 | . . . . . . . .
-/// 2 | . 1 . . . . . .
-/// 1 | 1 . . . . . . .
-/// - + - - - - - - - -
-/// . | A B C D E F G H
-/// ```
-///
-/// and the given index were `0b10`, then the output mask would be
-///
-/// ```text
-/// 8 | . . . . . . . .
-/// 7 | . . . . . . . .
-/// 6 | . . . . . . . .
-/// 5 | . . . . . . . .
-/// 4 | . . . . . . . .
-/// 3 | . . . . . . . .
-/// 2 | . 1 . . . . . .
-/// 1 | . . . . . . . .
-/// - + - - - - - - - -
-/// . | A B C D E F G H
-/// ```
-const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
-    let mut result = 0u64;
-    let num_points = mask.len();
-    let mut editable_mask = mask.as_u64();
-    // go from right to left in the bits of num_points,
-    // and add an occupancy if something is there
-    let mut i = 0;
-    while i < num_points {
-        // make a bitboard which only occupies the rightmost square
-        let occupier = 1 << editable_mask.trailing_zeros();
-        // remove the occupier from the mask
-        editable_mask &= !occupier;
-        if (index & (1 << i)) != 0 {
-            // the bit corresponding to the occupier is nonzero
-            result |= occupier;
-        }
-        i += 1;
-    }
-
-    Bitboard::new(result)
-}
-
-/// Construct the squares attacked by the pieces at `sq` if it could move along the directions in
-/// `dirs` when the board is occupied by the pieces in `occupancy`.
-///
-/// This is slow and should only be used for generatic magic bitboards (instead of for move
-/// generation.
-pub(crate) const fn directional_attacks(
-    sq: Square,
-    dirs: &[Direction],
-    occupancy: Bitboard,
-) -> Bitboard {
-    // behold: much hackery for making this work as a const fn
-    let mut result = Bitboard::EMPTY;
-    let mut dir_idx = 0;
-    while dir_idx < dirs.len() {
-        let dir = dirs[dir_idx];
-        let mut current_square = sq;
-        let mut loop_idx = 0;
-        while loop_idx < 7 {
-            let next_square_int: i16 = current_square as i16
-                + unsafe {
-                    // SAFETY: All values for an `i8` are valid.
-                    transmute::<Direction, i8>(dir) as i16
-                };
-            if next_square_int < 0 || 64 <= next_square_int {
-                break;
-            }
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let next_square: Square = unsafe {
-                // SAFETY: We checked that this next square was in the range 0..63, which is how a
-                // square is represented.
-                transmute(next_square_int as u8)
-            };
-            if next_square.chebyshev_to(current_square) > 1 {
-                break;
-            }
-            result = Bitboard::new(
-                unsafe {
-                    // SAFETY: Any value is OK for an int.
-                    transmute::<Bitboard, u64>(result)
-                } | 1 << next_square as u8,
-            );
-            if occupancy.contains(next_square) {
-                break;
-            }
-            current_square = next_square;
-            loop_idx += 1;
-        }
-        dir_idx += 1;
-    }
-
-    result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rook_mask() {
-        // println!("{:064b}", get_rook_mask(A1).0);
-        assert_eq!(
-            get_rook_mask(Square::A1),
-            Bitboard::new(0x0001_0101_0101_017E)
-        );
-
-        // println!("{:064b}", get_rook_mask(E1).0);
-        assert_eq!(
-            get_rook_mask(Square::E1),
-            Bitboard::new(0x0010_1010_1010_106E)
-        );
-
-        // println!("{:064b}", get_rook_mask(E5).0);
-        assert_eq!(
-            get_rook_mask(Square::E5),
-            Bitboard::new(0x0010_106E_1010_1000)
-        );
-    }
-
-    #[test]
-    fn bishop_mask() {
-        // println!("{:064b}", get_bishop_mask(A1).0);
-        assert_eq!(
-            get_bishop_mask(Square::A1),
-            Bitboard::new(0x0040_2010_0804_0200)
-        );
-
-        // println!("{:064b}", get_bishop_mask(E1).0);
-        assert_eq!(
-            get_bishop_mask(Square::E1),
-            Bitboard::new(0x0000_0000_0244_2800)
-        );
-
-        // println!("{:064b}", get_bishop_mask(E5).0);
-        assert_eq!(
-            get_bishop_mask(Square::E5),
-            Bitboard::new(0x0044_2800_2844_0200)
-        );
-    }
-
-    #[test]
-    fn valid_index_to_occupancy() {
-        let mask = Bitboard::new(0b1111);
-        for i in 0..16 {
-            let occu = index_to_occupancy(i, mask);
-            assert_eq!(occu, Bitboard::new(i as u64));
-        }
-    }
-
-    #[test]
-    /// Test that bishop magic move generation is correct for every possible occupancy bitboard.
-    fn all_bishop_attacks() {
-        for sq in Bitboard::ALL {
-            let mask = get_bishop_mask(sq);
-            for i in 0..(1 << mask.len()) {
-                let occupancy = index_to_occupancy(i, mask);
-                let attacks = directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancy);
-                assert_eq!(attacks, bishop_moves(occupancy, sq));
-            }
-        }
-    }
-
-    #[test]
-    /// Test that rook magic move generation is correct for every possible occupancy bitboard.
-    fn all_rook_attacks() {
-        for sq in Bitboard::ALL {
-            let mask = get_rook_mask(sq);
-            for i in 0..(1 << mask.len()) {
-                let occupancy = index_to_occupancy(i, mask);
-                let attacks = directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancy);
-                assert_eq!(attacks, rook_moves(occupancy, sq));
-            }
-        }
-    }
 }

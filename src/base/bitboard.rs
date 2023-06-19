@@ -27,7 +27,7 @@ use std::{
     },
 };
 
-use super::{movegen::magic::directional_attacks, Direction, Square};
+use super::{movegen::directional_attacks, Direction, Square};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
@@ -231,12 +231,12 @@ impl Bitboard {
     #[must_use]
     /// Get a bitboard of all the squares between the two given squares, along the moves of a
     /// bishop or rook.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler::base::{Bitboard, Square};
-    /// 
+    ///
     /// let between_bb = Bitboard::between(Square::A1, Square::A3);
     /// assert_eq!(between_bb, Bitboard::from(Square::A2))
     /// ```

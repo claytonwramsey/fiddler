@@ -18,15 +18,24 @@
 
 //! Generation and verification of legal moves in a position.
 
-pub(crate) mod magic;
 #[cfg(test)]
 mod tests;
 
 use super::{bitboard::Bitboard, game::Game, Color, Direction, Move, Piece, Square};
 use std::{convert::TryFrom, marker::ConstParamTy, mem::transmute};
 
-pub use magic::bishop_moves;
+#[cfg(target_arch = "x86_64")]
+mod pext;
+#[cfg(target_arch = "x86_64")]
+pub use pext::bishop_moves;
+#[cfg(target_arch = "x86_64")]
+pub use pext::rook_moves;
 
+#[cfg(not(target_arch = "x86_64"))]
+mod magic;
+#[cfg(not(target_arch = "x86_64"))]
+pub use magic::bishop_moves;
+#[cfg(not(target_arch = "x86_64"))]
 pub use magic::rook_moves;
 
 /// A lookup table for the legal squares a knight to move to from a given square.
@@ -1000,4 +1009,137 @@ fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
             callback(Move::castling(king_sq, passthrough_squares[1]));
         }
     }
+}
+
+/* Below: helper functions for generating sliding moves */
+
+/// Construct the squares attacked by the pieces at `sq` if it could move along the directions in
+/// `dirs` when the board is occupied by the pieces in `occupancy`.
+///
+/// This is slow and should only be used for generatic magic bitboards, (instead of for move
+/// generation), or for constant contexts.
+pub(crate) const fn directional_attacks(
+    sq: Square,
+    dirs: &[Direction],
+    occupancy: Bitboard,
+) -> Bitboard {
+    // behold: much hackery for making this work as a const fn
+    let mut result = Bitboard::EMPTY;
+    let mut dir_idx = 0;
+    while dir_idx < dirs.len() {
+        let dir = dirs[dir_idx];
+        let mut current_square = sq;
+        let mut loop_idx = 0;
+        while loop_idx < 7 {
+            let next_square_int: i16 = current_square as i16
+                + unsafe {
+                    // SAFETY: All values for an `i8` are valid.
+                    transmute::<Direction, i8>(dir) as i16
+                };
+            if next_square_int < 0 || 64 <= next_square_int {
+                break;
+            }
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let next_square: Square = unsafe {
+                // SAFETY: We checked that this next square was in the range 0..63, which is how a
+                // square is represented.
+                transmute(next_square_int as u8)
+            };
+            if next_square.chebyshev_to(current_square) > 1 {
+                break;
+            }
+            result = Bitboard::new(
+                unsafe {
+                    // SAFETY: Any value is OK for an int.
+                    transmute::<Bitboard, u64>(result)
+                } | 1 << next_square as u8,
+            );
+            if occupancy.contains(next_square) {
+                break;
+            }
+            current_square = next_square;
+            loop_idx += 1;
+        }
+        dir_idx += 1;
+    }
+
+    result
+}
+
+/// Create the mask for the relevant bits in magic of a rook.
+/// `sq` is the identifying the square that we want to generate the mask for.
+const fn get_rook_mask(sq: Square) -> Bitboard {
+    // sequence of 1s down the same row as the piece to move, except on the ends
+    let row_mask = 0x7E << (sq as u8 & !0x7);
+    // sequence of 1s down the same col as the piece to move, except on the ends
+    let col_mask = 0x0001_0101_0101_0100 << (sq as u8 & 0x7);
+    // note: pieces at the end of the travel don't matter, which is why the masks aren't uniform
+
+    // in the col mask or row mask, but not the piece to move
+    Bitboard::new((row_mask | col_mask) & !(1 << sq as u64))
+}
+
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+/// Create the mask for the relevant bits in magic of a bishop.
+/// `sq` is the square that a bishop would be on to receiver this mask.
+const fn get_bishop_mask(sq: Square) -> Bitboard {
+    Bitboard::new(
+        (Bitboard::diagonal(sq).as_u64() ^ Bitboard::anti_diagonal(sq).as_u64())
+            & !0xFF81_8181_8181_81FF,
+    )
+}
+
+/// Given some mask, create the occupancy [`Bitboard`] according to this index.
+///
+/// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
+/// This is equivalent to the parallel-bits-extract (PEXT) instruction on x86 architectures.
+///
+/// For instance: if `mask` repreresented a board like the following:
+/// ```text
+/// 8 | . . . . . . . .
+/// 7 | . . . . . . . .
+/// 6 | . . . . . . . .
+/// 5 | . . . . . . . .
+/// 4 | . . . . . . . .
+/// 3 | . . . . . . . .
+/// 2 | . 1 . . . . . .
+/// 1 | 1 . . . . . . .
+/// - + - - - - - - - -
+/// . | A B C D E F G H
+/// ```
+///
+/// and the given index were `0b10`, then the output mask would be
+///
+/// ```text
+/// 8 | . . . . . . . .
+/// 7 | . . . . . . . .
+/// 6 | . . . . . . . .
+/// 5 | . . . . . . . .
+/// 4 | . . . . . . . .
+/// 3 | . . . . . . . .
+/// 2 | . 1 . . . . . .
+/// 1 | . . . . . . . .
+/// - + - - - - - - - -
+/// . | A B C D E F G H
+/// ```
+const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
+    let mut result = 0u64;
+    let num_points = mask.len();
+    let mut editable_mask = mask.as_u64();
+    // go from right to left in the bits of num_points,
+    // and add an occupancy if something is there
+    let mut i = 0;
+    while i < num_points {
+        // make a bitboard which only occupies the rightmost square
+        let occupier = 1 << editable_mask.trailing_zeros();
+        // remove the occupier from the mask
+        editable_mask &= !occupier;
+        if (index & (1 << i)) != 0 {
+            // the bit corresponding to the occupier is nonzero
+            result |= occupier;
+        }
+        i += 1;
+    }
+
+    Bitboard::new(result)
 }

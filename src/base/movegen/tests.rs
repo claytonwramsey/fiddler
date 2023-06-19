@@ -361,3 +361,84 @@ mod perft {
         );
     }
 }
+
+mod sliding {
+    use super::*;
+
+    #[test]
+    fn rook_mask() {
+        // println!("{:064b}", get_rook_mask(A1).0);
+        assert_eq!(
+            get_rook_mask(Square::A1),
+            Bitboard::new(0x0001_0101_0101_017E)
+        );
+
+        // println!("{:064b}", get_rook_mask(E1).0);
+        assert_eq!(
+            get_rook_mask(Square::E1),
+            Bitboard::new(0x0010_1010_1010_106E)
+        );
+
+        // println!("{:064b}", get_rook_mask(E5).0);
+        assert_eq!(
+            get_rook_mask(Square::E5),
+            Bitboard::new(0x0010_106E_1010_1000)
+        );
+    }
+
+    #[test]
+    fn bishop_mask() {
+        // println!("{:064b}", get_bishop_mask(A1).0);
+        assert_eq!(
+            get_bishop_mask(Square::A1),
+            Bitboard::new(0x0040_2010_0804_0200)
+        );
+
+        // println!("{:064b}", get_bishop_mask(E1).0);
+        assert_eq!(
+            get_bishop_mask(Square::E1),
+            Bitboard::new(0x0000_0000_0244_2800)
+        );
+
+        // println!("{:064b}", get_bishop_mask(E5).0);
+        assert_eq!(
+            get_bishop_mask(Square::E5),
+            Bitboard::new(0x0044_2800_2844_0200)
+        );
+    }
+
+    #[test]
+    fn valid_index_to_occupancy() {
+        let mask = Bitboard::new(0b1111);
+        for i in 0..16 {
+            let occu = index_to_occupancy(i, mask);
+            assert_eq!(occu, Bitboard::new(i as u64));
+        }
+    }
+
+    #[test]
+    /// Test that bishop magic move generation is correct for every possible occupancy bitboard.
+    fn all_bishop_attacks() {
+        for sq in Bitboard::ALL {
+            let mask = get_bishop_mask(sq);
+            for i in 0..(1 << mask.len()) {
+                let occupancy = index_to_occupancy(i, mask);
+                let attacks = directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancy);
+                assert_eq!(attacks, bishop_moves(occupancy, sq));
+            }
+        }
+    }
+
+    #[test]
+    /// Test that rook magic move generation is correct for every possible occupancy bitboard.
+    fn all_rook_attacks() {
+        for sq in Bitboard::ALL {
+            let mask = get_rook_mask(sq);
+            for i in 0..(1 << mask.len()) {
+                let occupancy = index_to_occupancy(i, mask);
+                let attacks = directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancy);
+                assert_eq!(attacks, rook_moves(occupancy, sq));
+            }
+        }
+    }
+}
