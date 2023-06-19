@@ -27,7 +27,9 @@ use std::{
     },
 };
 
-use super::{movegen::magic::directional_attacks, Direction, Square};
+use crate::base::movegen::{bishop_moves, rook_moves};
+
+use super::Square;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
@@ -231,12 +233,12 @@ impl Bitboard {
     #[must_use]
     /// Get a bitboard of all the squares between the two given squares, along the moves of a
     /// bishop or rook.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use fiddler::base::{Bitboard, Square};
-    /// 
+    ///
     /// let between_bb = Bitboard::between(Square::A1, Square::A3);
     /// assert_eq!(between_bb, Bitboard::from(Square::A2))
     /// ```
@@ -253,10 +255,8 @@ impl Bitboard {
             while i < 64 {
                 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                 let sq1: Square = unsafe { transmute(i as u8) };
-                let bishop_attacks =
-                    directional_attacks(sq1, &Direction::BISHOP_DIRECTIONS, Bitboard::EMPTY);
-                let rook_attacks =
-                    directional_attacks(sq1, &Direction::ROOK_DIRECTIONS, Bitboard::EMPTY);
+                let bishop_attacks = bishop_moves(Bitboard::EMPTY, sq1);
+                let rook_attacks = rook_moves(Bitboard::EMPTY, sq1);
 
                 let mut j = 0;
 
@@ -267,36 +267,17 @@ impl Bitboard {
                     let sq2: Square = unsafe { transmute(j as u8) };
 
                     if bishop_attacks.contains(sq2) {
-                        // some optimization is required to avoid reaching the const interpreter
-                        // step limit.
-                        // therefore we find a step in the direction between sq1 and sq2 and use it
-                        // to simplify the amount of search here.
-                        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-                        let diff = j as i8 - i as i8;
-                        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-                        let dir: Direction =
-                            unsafe { transmute(diff / (sq1.file_distance(sq2) as i8)) };
-                        let attacks =
-                            directional_attacks(sq1, &[dir], Bitboard::new(1 << j)).0 ^ (1 << j);
-                        between[i][j] = Bitboard::new(attacks);
+                        between[i][j] = Bitboard::new(
+                            bishop_moves(Bitboard::new(1 << j), sq1).as_u64()
+                                & bishop_moves(Bitboard::new(1 << i), sq2).as_u64(),
+                        );
                     }
 
                     if rook_attacks.contains(sq2) {
-                        // optimizing the bishop attacks was enough to come in the interpreter
-                        // limit.
-                        // however, we can still go back later to optimize this further.
-                        let rook1 = directional_attacks(
-                            sq1,
-                            &Direction::ROOK_DIRECTIONS,
-                            Bitboard::new(1 << j),
+                        between[i][j] = Bitboard::new(
+                            rook_moves(Bitboard::new(1 << j), sq1).as_u64()
+                                & rook_moves(Bitboard::new(1 << i), sq2).as_u64(),
                         );
-                        let rook2 = directional_attacks(
-                            sq2,
-                            &Direction::ROOK_DIRECTIONS,
-                            Bitboard::new(1 << i),
-                        );
-
-                        between[i][j] = Bitboard::new(between[i][j].0 | (rook1.0 & rook2.0));
                     }
 
                     between[j][i] = between[i][j];
