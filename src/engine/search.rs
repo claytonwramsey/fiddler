@@ -359,6 +359,7 @@ impl<'a> PVSearch<'a> {
             self.game.undo_null();
 
             if null_score >= beta {
+                // we need not clear out the parent state since this is guaranteed not a PV node
                 return Ok(null_score);
             }
         }
@@ -501,8 +502,6 @@ impl<'a> PVSearch<'a> {
     #[allow(clippy::too_many_lines)]
     /// Use quiescent search (captures only) to evaluate a position as deep as it needs to go until
     /// all loud moves are exhausted.
-    /// The given `depth` does not alter the power of the search, but  serves as a handy tool
-    /// for the search to understand where it is.
     fn quiesce<const PV: bool>(
         &mut self,
         mut alpha: Eval,
