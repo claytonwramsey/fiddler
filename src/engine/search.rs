@@ -85,20 +85,19 @@ pub fn search(
     beta: Eval,
 ) -> Result<SearchInfo, ()> {
     let mut searcher = PVSearch::new(g, ttable, config, limit, is_main);
-    let mut pv = Vec::new();
     let root_mg_npm = mg_npm(&searcher.game);
     let mut initial_state = NodeState {
         depth_since_root: 0,
         cumulative_score: cumulative_init(&searcher.game),
         mg_npm: root_mg_npm,
         phase: calculate_phase(root_mg_npm),
-        line: &mut pv,
+        line: Vec::new(),
     };
 
     let eval = searcher.pvs::<true, true, true>(depth as i8, alpha, beta, &mut initial_state)?;
 
     Ok(SearchInfo {
-        pv,
+        pv: initial_state.line,
         eval,
         num_nodes_evaluated: searcher.num_nodes_evaluated,
         depth,
@@ -165,7 +164,7 @@ struct PVSearch<'a> {
 
 /// A structure which contains information about a single node in a principal variation search.
 /// This structure exists to make the process of calling functions easier.
-struct NodeState<'a> {
+struct NodeState {
     /// The depth of this node since the root node.
     depth_since_root: u8,
     /// The cumulative evaluation of the current game state.
@@ -178,7 +177,7 @@ struct NodeState<'a> {
     phase: f32,
     /// The line of moves.
     ///  When this state is passed, the line should be empty.
-    line: &'a mut Vec<Move>,
+    line: Vec<Move>,
 }
 
 impl<'a> PVSearch<'a> {
@@ -341,13 +340,12 @@ impl<'a> PVSearch<'a> {
 
             let null_depth = depth - 4;
 
-            let mut child_line = Vec::new();
             let mut null_state = NodeState {
                 depth_since_root: state.depth_since_root + 1,
                 cumulative_score: -state.cumulative_score,
                 mg_npm: state.mg_npm,
                 phase: state.phase,
-                line: &mut child_line,
+                line: Vec::new(),
             };
             let null_score = -self.pvs::<false, false, REDUCE>(
                 null_depth,
@@ -379,7 +377,6 @@ impl<'a> PVSearch<'a> {
         // Whether we were able to overwrite alpha by searching moves.
         let mut overwrote_alpha = false;
         // The principal variation line, following the best move.
-        let mut child_line = Vec::new();
         while let Some(tm) = moves_iter.next(&self.game, state.mg_npm) {
             move_count += 1;
 
@@ -388,7 +385,7 @@ impl<'a> PVSearch<'a> {
                 cumulative_score: -state.cumulative_score - eval_nl_delta(tm.m, &self.game),
                 mg_npm: tm.new_mg_npm,
                 phase: tm.phase,
-                line: &mut child_line,
+                line: Vec::new(),
             };
 
             self.game.make_move(tm.m);
@@ -448,7 +445,7 @@ impl<'a> PVSearch<'a> {
                     // if this move was better than what we've seen before, write it as the
                     // principal variation
                     if PV {
-                        write_line(state.line, tm.m, new_state.line);
+                        write_line(&mut state.line, tm.m, &new_state.line);
                     }
 
                     if beta <= score {
@@ -596,7 +593,6 @@ impl<'a> PVSearch<'a> {
             moves.push(TaggedMove::new(&self.game, m, state.mg_npm));
         });
         moves.sort_by_cached_key(|tm| -tm.quality);
-        let mut child_line = Vec::new();
 
         for tm in moves {
             let mut new_state = NodeState {
@@ -604,7 +600,7 @@ impl<'a> PVSearch<'a> {
                 cumulative_score: -state.cumulative_score - eval_nl_delta(tm.m, &self.game),
                 mg_npm: tm.new_mg_npm,
                 phase: tm.phase,
-                line: &mut child_line,
+                line: Vec::new(),
             };
 
             self.game.make_move(tm.m);
@@ -624,7 +620,7 @@ impl<'a> PVSearch<'a> {
                 if alpha < score {
                     best_move = tm.m;
                     if PV {
-                        write_line(state.line, tm.m, &child_line);
+                        write_line(&mut state.line, tm.m, &new_state.line);
                     }
 
                     if beta <= score {
