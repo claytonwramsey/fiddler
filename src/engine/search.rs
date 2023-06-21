@@ -236,7 +236,7 @@ impl<'a> PVSearch<'a> {
     /// - `state`: The shared state of this node, containing the principal variation and other data.
     ///
     /// # Errors
-    /// 
+    ///
     /// This function will return an error if the search times out before it is able to complete.
     pub fn pvs<const PV: bool, const ROOT: bool, const REDUCE: bool>(
         &mut self,

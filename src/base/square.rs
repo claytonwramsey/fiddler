@@ -310,7 +310,11 @@ impl TryFrom<Bitboard> for Square {
 impl TryFrom<u8> for Square {
     type Error = ();
     fn try_from(x: u8) -> Result<Square, Self::Error> {
-        if x < 64 { Ok(unsafe {transmute(x)}) } else { Err(()) }
+        if x < 64 {
+            Ok(unsafe { transmute(x) })
+        } else {
+            Err(())
+        }
     }
 }
 

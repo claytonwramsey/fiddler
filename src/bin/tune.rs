@@ -50,30 +50,43 @@ use fiddler::{
     },
 };
 
-#[allow(clippy::similar_names)]
+#[allow(clippy::similar_names, clippy::result_unit_err)]
 /// Run the main training function.
 ///
 /// The first command line argument must the the path of the file containing training data.
 ///
-/// # Panics
+/// # Errors
 ///
-/// This function will panic if the EPD training data is not specified or does not exist.
-pub fn main() {
+/// This function will return an error if the EPD training data does not exist or cannot be parsed.
+pub fn main() -> Result<(), i32> {
     let args: Vec<String> = env::args().collect();
     // first argument is the name of the binary
-    let path_str = &args[1..].join(" ");
+    let path_str = match args.len() {
+        0 | 1 => {
+            eprintln!("Error: path to a labeled EPD file must be given");
+            return Err(-1);
+        }
+        2 => &args[1],
+        _ => {
+            eprintln!("Warning: extraneous arguments are being ignored");
+            &args[1]
+        }
+    };
     let mut weights = load_weights();
     let value_learn_rate = 0.1;
     // The learn rate for the midgame/endgame cutoffs.
     let cutoff_learn_rate = 150.;
 
-    let nthreads = 8;
+    let nthreads = 12;
     let tic = Instant::now();
 
     // construct the datasets.
     // Outer vector: each element for one datum
     // Inner vector: each element for one feature-quantity pair
-    let input_sets = extract_epd(path_str).unwrap();
+    let Ok(input_sets) = extract_epd(path_str) else {
+        eprintln!("Error: unable to parse EPD");
+        return Err(-2);
+    };
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
@@ -90,6 +103,8 @@ pub fn main() {
     }
 
     print_weights(&weights);
+
+    Ok(())
 }
 
 /// Extracted features from a board for gradient descent.
@@ -123,12 +138,18 @@ fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std:
 
     for line_result in reader.lines() {
         let line = line_result?;
-        let mut split_line = line.split('"');
+        let mut split_line = line.split("c9 \"");
         // first part of the split is the FEN, second is the score, last is just a semicolon
-        let fen = split_line.next().ok_or("no FEN given")?;
-        let g = Game::from_fen(fen)?;
+        // convert FEN to EPD description of the position
+        let fen = split_line.next().ok_or("no FEN given")?.to_string() + "0 1 ";
+        let g = Game::from_fen(&fen)?;
         let features = extract(&g);
-        let score_str = split_line.next().ok_or("no result given")?;
+        let score_str = split_line
+            .next()
+            .unwrap() //.ok_or("no result given")?
+            .split('\"')
+            .next()
+            .unwrap(); // .ok_or("no result given")?;
         let score = match score_str {
             "1/2-1/2" => 0.5,
             "0-1" => 0.,
