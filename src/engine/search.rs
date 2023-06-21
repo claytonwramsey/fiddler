@@ -267,9 +267,6 @@ impl<'a> PVSearch<'a> {
         let lower_bound = -Eval::mate_in(state.depth_since_root);
         if alpha < lower_bound {
             if beta <= lower_bound {
-                if PV {
-                    state.line.clear();
-                }
                 return Ok(lower_bound);
             }
             alpha = lower_bound;
@@ -278,9 +275,6 @@ impl<'a> PVSearch<'a> {
         let upper_bound = Eval::mate_in(1 + state.depth_since_root);
         if upper_bound < beta {
             if upper_bound <= alpha {
-                if PV {
-                    state.line.clear();
-                }
                 return Ok(upper_bound);
             }
             beta = upper_bound;
@@ -292,9 +286,6 @@ impl<'a> PVSearch<'a> {
                 .game
                 .drawn_by_repetition(u16::from(state.depth_since_root))
         {
-            if PV {
-                state.line.clear();
-            }
             // required so that movepicker only needs to know about current position, and not about
             // history
             return Ok(Eval::DRAW);
@@ -357,7 +348,6 @@ impl<'a> PVSearch<'a> {
             self.game.undo_null();
 
             if null_score >= beta {
-                // we need not clear out the parent state since this is guaranteed not a PV node
                 return Ok(null_score);
             }
         }
@@ -467,7 +457,6 @@ impl<'a> PVSearch<'a> {
 
         if move_count == 0 {
             // No moves were played, therefore this position is either a stalemate or a mate.
-            state.line.clear();
             best_score = if self.game.meta().checkers.is_empty() {
                 // stalemated
                 Eval::DRAW
@@ -520,18 +509,10 @@ impl<'a> PVSearch<'a> {
             || self.game.insufficient_material()
         {
             // game is drawn
-            if PV {
-                state.line.clear();
-            }
-
             return Ok(Eval::DRAW);
         }
 
         if !has_moves(&self.game) {
-            if PV {
-                state.line.clear();
-            }
-
             return Ok(if self.game.meta().checkers.is_empty() {
                 Eval::DRAW
             } else {
@@ -563,10 +544,6 @@ impl<'a> PVSearch<'a> {
             leaf_evaluate(&self.game, state.cumulative_score, state.phase).in_perspective(player);
         // println!("{}: {score}", self.game);
         if alpha < score {
-            if PV {
-                state.line.clear();
-            }
-
             if beta <= score {
                 // store in the transposition table since we won't be able to use the call at the
                 // end
