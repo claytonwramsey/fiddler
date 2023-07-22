@@ -18,7 +18,7 @@
 
 //! Magic bitboards, used for generating bishop, knight, and rook moves.
 
-use super::{Bitboard, Direction, Square};
+use super::{Bitboard, Square};
 
 use std::mem::{transmute, MaybeUninit};
 
@@ -253,18 +253,6 @@ const BISHOP_BITS: [u8; 64] = [
     5, 4, 5, 5, 5, 5, 4, 5, // 8
 ];
 
-/// Compute the number of entries in a magic-movegen table required to store every element, given
-/// the number of bits required for each square.
-const fn table_size(bits_table: &[u8; 64]) -> usize {
-    let mut i = 0;
-    let mut total = 0;
-    while i < 64 {
-        total += 1 << bits_table[i];
-        i += 1;
-    }
-    total
-}
-
 /// The bitwise masks for extracting the relevant pieces for a bishop's attacks in a board, indexed
 /// by the square occupied by the bishop.
 const BISHOP_MASKS: [Bitboard; 64] = {
@@ -289,15 +277,8 @@ const ROOK_MASKS: [Bitboard; 64] = {
     masks
 };
 
-/// The master table containing every attack that the bishop can perform from every square under
-/// every occupancy.
-/// Borrowed by the individual [`AttacksLookup`]s in [`BISHOP_LOOKUPS`].
-const BISHOP_ATTACKS_TABLE: [Bitboard; table_size(&BISHOP_BITS)] = construct_magic_table(
-    &BISHOP_BITS,
-    &SAVED_BISHOP_MAGICS,
-    &BISHOP_MASKS,
-    &Direction::BISHOP_DIRECTIONS,
-);
+// Generate `BISHOP_ATTACKS_TABLE` by including a file created by build.rs
+include!(concat!(env!("OUT_DIR"), "/bishop_magic_table.rs"));
 
 /// The necessary information for generatng attacks for bishops, indexed b the square occupied by
 /// said bishop.
@@ -308,16 +289,8 @@ const BISHOP_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &BISHOP_ATTACKS_TABLE,
 );
 
-#[allow(long_running_const_eval)]
-/// The master table containing every attack that the rook can perform from every square under
-/// every occupancy.
-/// Borrowed by the individual [`AttacksLookup`]s in [`ROOK_LOOKUPS`].
-const ROOK_ATTACKS_TABLE: [Bitboard; table_size(&ROOK_BITS)] = construct_magic_table(
-    &ROOK_BITS,
-    &SAVED_ROOK_MAGICS,
-    &ROOK_MASKS,
-    &Direction::ROOK_DIRECTIONS,
-);
+// Generate `ROOK_ATTACKS_TABLE` by including a file created by build.rs
+include!(concat!(env!("OUT_DIR"), "/rook_magic_table.rs"));
 
 /// The necessary information for generatng attacks for rook, indexed b the square occupied by
 /// said rook.
@@ -327,50 +300,6 @@ const ROOK_LOOKUPS: [AttacksLookup; 64] = construct_lookups(
     &ROOK_MASKS,
     &ROOK_ATTACKS_TABLE,
 );
-
-#[allow(clippy::cast_possible_truncation)]
-/// Construct the master magic table for a rook or bishop based on all the requisite information.
-///
-/// # Inputs
-///
-/// - `bits`: For each square, the number of other squares which are involved in the calculation of
-///   attacks from that square.
-/// - `magics`: The magic numbers for each square.
-/// - `masks`: The masks used for extracting the relevant squares for an attack on each starting
-///   square.
-/// - `dirs`: The directions in which the piece can move
-const fn construct_magic_table<const N: usize>(
-    bits: &[u8; 64],
-    magics: &[u64; 64],
-    masks: &[Bitboard; 64],
-    dirs: &[Direction],
-) -> [Bitboard; N] {
-    let mut table = [Bitboard::EMPTY; N];
-
-    let mut i = 0;
-    let mut table_offset = 0;
-
-    while i < 64 {
-        let sq: Square = unsafe { transmute(i as u8) };
-        let mask = masks[i];
-        let magic = magics[i];
-        let n_attacks_to_generate = 1 << mask.len();
-
-        let mut j = 0;
-        while j < n_attacks_to_generate {
-            let occupancy = index_to_occupancy(j, mask);
-            let attack = directional_attacks(sq, dirs, occupancy);
-            let key = compute_magic_key(occupancy, magic, 64 - bits[i]);
-            table[key + table_offset] = attack;
-            j += 1;
-        }
-
-        table_offset += 1 << bits[i];
-        i += 1;
-    }
-
-    table
-}
 
 /// Construct the lookup tables for magic move generation by referencing an already-generated
 /// attacks table.
@@ -447,112 +376,114 @@ const fn get_bishop_mask(sq: Square) -> Bitboard {
     )
 }
 
-/// Given some mask, create the occupancy [`Bitboard`] according to this index.
-///
-/// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
-/// This is equivalent to the parallel-bits-deposit (PDEP) instruction on x86 architectures.
-///
-/// For instance: if `mask` repreresented a board like the following:
-/// ```text
-/// 8 | . . . . . . . .
-/// 7 | . . . . . . . .
-/// 6 | . . . . . . . .
-/// 5 | . . . . . . . .
-/// 4 | . . . . . . . .
-/// 3 | . . . . . . . .
-/// 2 | . 1 . . . . . .
-/// 1 | 1 . . . . . . .
-/// - + - - - - - - - -
-/// . | A B C D E F G H
-/// ```
-///
-/// and the given index were `0b10`, then the output mask would be
-///
-/// ```text
-/// 8 | . . . . . . . .
-/// 7 | . . . . . . . .
-/// 6 | . . . . . . . .
-/// 5 | . . . . . . . .
-/// 4 | . . . . . . . .
-/// 3 | . . . . . . . .
-/// 2 | . 1 . . . . . .
-/// 1 | . . . . . . . .
-/// - + - - - - - - - -
-/// . | A B C D E F G H
-/// ```
-const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
-    let mut result = 0u64;
-    let num_points = mask.len();
-    let mut editable_mask = mask.as_u64();
-    // go from right to left in the bits of num_points,
-    // and add an occupancy if something is there
-    let mut i = 0;
-    while i < num_points {
-        // make a bitboard which only occupies the rightmost square
-        let occupier = 1 << editable_mask.trailing_zeros();
-        // remove the occupier from the mask
-        editable_mask &= !occupier;
-        if (index & (1 << i)) != 0 {
-            // the bit corresponding to the occupier is nonzero
-            result |= occupier;
-        }
-        i += 1;
-    }
-
-    Bitboard::new(result)
-}
-
-/// Construct the squares attacked by the pieces at `sq` if it could move along the directions in
-/// `dirs` when the board is occupied by the pieces in `occupancy`.
-///
-/// This is slow and should only be used for generatic magic bitboards (instead of for move
-/// generation.
-pub(crate) const fn directional_attacks(
-    sq: Square,
-    dirs: &[Direction],
-    occupancy: Bitboard,
-) -> Bitboard {
-    // behold: much hackery for making this work as a const fn
-    let mut result = Bitboard::EMPTY;
-    let mut dir_idx = 0;
-    while dir_idx < dirs.len() {
-        let dir = dirs[dir_idx];
-        let mut current_square = sq;
-        let mut loop_idx = 0;
-        while loop_idx < 7 {
-            let next_square_int: i16 = current_square as i16
-                + unsafe {
-                    // SAFETY: All values for an `i8` are valid.
-                    transmute::<Direction, i8>(dir) as i16
-                };
-            if next_square_int < 0 || 64 <= next_square_int {
-                break;
-            }
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let next_square: Square = unsafe {
-                // SAFETY: We checked that this next square was in the range 0..63, which is how a
-                // square is represented.
-                transmute(next_square_int as u8)
-            };
-            if next_square.chebyshev_to(current_square) > 1 {
-                break;
-            }
-            result = result.with_square(next_square);
-            if occupancy.contains(next_square) {
-                break;
-            }
-            current_square = next_square;
-            loop_idx += 1;
-        }
-        dir_idx += 1;
-    }
-
-    result
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::base::Direction;
+
     use super::*;
+
+    /// Given some mask, create the occupancy [`Bitboard`] according to this index.
+    ///
+    /// `index` must be less than or equal to 2 ^ (number of ones in `mask`).
+    /// This is equivalent to the parallel-bits-deposit (PDEP) instruction on x86 architectures.
+    ///
+    /// For instance: if `mask` repreresented a board like the following:
+    /// ```text
+    /// 8 | . . . . . . . .
+    /// 7 | . . . . . . . .
+    /// 6 | . . . . . . . .
+    /// 5 | . . . . . . . .
+    /// 4 | . . . . . . . .
+    /// 3 | . . . . . . . .
+    /// 2 | . 1 . . . . . .
+    /// 1 | 1 . . . . . . .
+    /// - + - - - - - - - -
+    /// . | A B C D E F G H
+    /// ```
+    ///
+    /// and the given index were `0b10`, then the output mask would be
+    ///
+    /// ```text
+    /// 8 | . . . . . . . .
+    /// 7 | . . . . . . . .
+    /// 6 | . . . . . . . .
+    /// 5 | . . . . . . . .
+    /// 4 | . . . . . . . .
+    /// 3 | . . . . . . . .
+    /// 2 | . 1 . . . . . .
+    /// 1 | . . . . . . . .
+    /// - + - - - - - - - -
+    /// . | A B C D E F G H
+    /// ```
+    const fn index_to_occupancy(index: usize, mask: Bitboard) -> Bitboard {
+        let mut result = 0u64;
+        let num_points = mask.len();
+        let mut editable_mask = mask.as_u64();
+        // go from right to left in the bits of num_points,
+        // and add an occupancy if something is there
+        let mut i = 0;
+        while i < num_points {
+            // make a bitboard which only occupies the rightmost square
+            let occupier = 1 << editable_mask.trailing_zeros();
+            // remove the occupier from the mask
+            editable_mask &= !occupier;
+            if (index & (1 << i)) != 0 {
+                // the bit corresponding to the occupier is nonzero
+                result |= occupier;
+            }
+            i += 1;
+        }
+
+        Bitboard::new(result)
+    }
+
+    /// Construct the squares attacked by the pieces at `sq` if it could move along the directions
+    /// in `dirs` when the board is occupied by the pieces in `occupancy`.
+    ///
+    /// This is slow and should only be used for generatic magic bitboards (instead of for move
+    /// generation.
+    pub(crate) const fn directional_attacks(
+        sq: Square,
+        dirs: &[Direction],
+        occupancy: Bitboard,
+    ) -> Bitboard {
+        // behold: much hackery for making this work as a const fn
+        let mut result = Bitboard::EMPTY;
+        let mut dir_idx = 0;
+        while dir_idx < dirs.len() {
+            let dir = dirs[dir_idx];
+            let mut current_square = sq;
+            let mut loop_idx = 0;
+            while loop_idx < 7 {
+                let next_square_int: i16 = current_square as i16
+                    + unsafe {
+                        // SAFETY: All values for an `i8` are valid.
+                        transmute::<Direction, i8>(dir) as i16
+                    };
+                if next_square_int < 0 || 64 <= next_square_int {
+                    break;
+                }
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let next_square: Square = unsafe {
+                    // SAFETY: We checked that this next square was in the range 0..63, which is how
+                    // a square is represented.
+                    transmute(next_square_int as u8)
+                };
+                if next_square.chebyshev_to(current_square) > 1 {
+                    break;
+                }
+                result = result.with_square(next_square);
+                if occupancy.contains(next_square) {
+                    break;
+                }
+                current_square = next_square;
+                loop_idx += 1;
+            }
+            dir_idx += 1;
+        }
+
+        result
+    }
 
     #[test]
     fn rook_mask() {
