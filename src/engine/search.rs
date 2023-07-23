@@ -147,7 +147,7 @@ struct PVSearch<'a> {
     /// The transposition table.
     ttable: &'a TTable,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most shallow, etc).
-    killer_moves: Vec<Move>,
+    killer_moves: Vec<Option<Move>>,
     /// The cumulative number of nodes evaluated in this evaluation.
     num_nodes_evaluated: u64,
     /// The cumulative number of nodes visited since we last updated the limit.
@@ -176,7 +176,7 @@ struct NodeState {
     /// The current phase of the game: a number in the rangs [0, 1].
     phase: f32,
     /// The line of moves.
-    ///  When this state is passed, the line should be empty.
+    /// When this state is passed, the line should be empty.
     line: Vec<Move>,
 }
 
@@ -195,7 +195,7 @@ impl<'a> PVSearch<'a> {
         PVSearch {
             game,
             ttable,
-            killer_moves: vec![Move::BAD_MOVE; usize::from(u8::MAX) + 1],
+            killer_moves: vec![None; usize::from(u8::MAX) + 1],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
             config,
@@ -296,8 +296,8 @@ impl<'a> PVSearch<'a> {
         let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
             let m = entry.best_move;
-            if is_legal(m, &self.game) {
-                tt_move = Some(m);
+            if m.map_or(true, |m| is_legal(m, &self.game)) {
+                tt_move = m;
                 // check if we can cutoff due to transposition table
                 if !PV && entry.depth >= depth {
                     let value = entry.value.step_back_by(state.depth_since_root);
@@ -323,32 +323,33 @@ impl<'a> PVSearch<'a> {
             && self.game.meta().checkers.is_empty() // cannot nullmove out of check
             // prevent zugzwang
             && (!self.game[Piece::Pawn] & self.game[self.game.meta().player]).more_than_one()
-            && !matches!( // play NMs once
-                self.game.moves.last(),
-                Some((Move::BAD_MOVE, _)))
+            && self.game.moves.last().is_some()
         {
-            self.game.null_move();
+            unsafe {
+                // SAFETY: The king is not in check and the most recent move is not a null-move.
+                self.game.null_move();
 
-            let null_depth = depth - 4;
+                let null_depth = depth - 4;
 
-            let mut null_state = NodeState {
-                depth_since_root: state.depth_since_root + 1,
-                cumulative_score: -state.cumulative_score,
-                mg_npm: state.mg_npm,
-                phase: state.phase,
-                line: Vec::new(),
-            };
-            let null_score = -self.pvs::<false, false, REDUCE>(
-                null_depth,
-                -beta,
-                -beta + Eval::centipawns(1),
-                &mut null_state,
-            )?;
+                let mut null_state = NodeState {
+                    depth_since_root: state.depth_since_root + 1,
+                    cumulative_score: -state.cumulative_score,
+                    mg_npm: state.mg_npm,
+                    phase: state.phase,
+                    line: Vec::new(),
+                };
+                let null_score = -self.pvs::<false, false, REDUCE>(
+                    null_depth,
+                    -beta,
+                    -beta + Eval::centipawns(1),
+                    &mut null_state,
+                )?;
 
-            self.game.undo_null();
+                self.game.undo_null();
 
-            if null_score >= beta {
-                return Ok(null_score);
+                if null_score >= beta {
+                    return Ok(null_score);
+                }
             }
         }
 
@@ -356,9 +357,10 @@ impl<'a> PVSearch<'a> {
             tt_move,
             self.killer_moves
                 .get(state.depth_since_root as usize)
-                .copied(),
+                .copied()
+                .flatten(),
         );
-        let mut best_move = Move::BAD_MOVE;
+        let mut best_move = None;
         let mut best_score = Eval::MIN;
 
         // The number of moves checked. If this is zero after the move search loop, no moves were
@@ -429,7 +431,7 @@ impl<'a> PVSearch<'a> {
 
             if score > best_score {
                 best_score = score;
-                best_move = tm.m;
+                best_move = Some(tm.m);
 
                 if score > alpha {
                     // if this move was better than what we've seen before, write it as the
@@ -524,8 +526,9 @@ impl<'a> PVSearch<'a> {
 
         let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
-            if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES && entry.best_move == Move::BAD_MOVE
-                || is_legal(entry.best_move, &self.game)
+            if !PV
+                && entry.depth >= TTEntry::DEPTH_CAPTURES
+                && entry.best_move.map_or(true, |m| is_legal(m, &self.game))
             {
                 let value = entry.value.step_back_by(state.depth_since_root);
                 let cutoff = match entry.bound_type() {
@@ -549,7 +552,7 @@ impl<'a> PVSearch<'a> {
                 // end
                 tt_guard.save(
                     TTEntry::DEPTH_CAPTURES,
-                    Move::BAD_MOVE,
+                    None,
                     score.step_forward_by(state.depth_since_root),
                     BoundType::Lower,
                 );
@@ -562,7 +565,7 @@ impl<'a> PVSearch<'a> {
         }
 
         let mut best_score = score;
-        let mut best_move = Move::BAD_MOVE;
+        let mut best_move = None;
 
         // get captures and sort in descending order of quality
         let mut moves = Vec::with_capacity(10);
@@ -595,14 +598,14 @@ impl<'a> PVSearch<'a> {
             if score > best_score {
                 best_score = score;
                 if alpha < score {
-                    best_move = tm.m;
+                    best_move = Some(tm.m);
                     if PV {
                         write_line(&mut state.line, tm.m, &new_state.line);
                     }
 
                     if beta <= score {
                         // Beta cutoff, we have ound a better line somewhere else
-                        self.killer_moves[state.depth_since_root as usize] = tm.m;
+                        self.killer_moves[state.depth_since_root as usize] = Some(tm.m);
                         break;
                     }
 
@@ -821,7 +824,7 @@ pub mod tests {
         // println!("{entry:?}");
         // println!("{search_info:?}");
         assert_eq!(entry.depth, i8::try_from(depth).unwrap());
-        assert_eq!(entry.best_move, search_info.pv[0]);
+        assert_eq!(entry.best_move.unwrap(), search_info.pv[0]);
         assert_eq!(entry.bound_type(), BoundType::Exact);
     }
 }

@@ -50,10 +50,12 @@ pub struct Game {
     history: Vec<BoardMeta>,
     /// The list, in order, of all moves made in the game and the pieces that they captured.
     /// They should all be valid moves.
+    ///
     /// If the move played is en passant, the capturee type is still `None` because the piece that
     /// is replaced on undo is not on the move's from-square.
     /// The length of `moves` should always be one less than the length of `history`.
-    pub moves: Vec<(Move, Option<Piece>)>,
+    /// An element is `None` if it was a null-move.
+    pub moves: Vec<Option<(Move, Option<Piece>)>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -412,8 +414,8 @@ impl Game {
             println!("an illegal move {m} is being attempted. History: {self}");
             panic!("Illegal move attempted on `Game::make_move`");
         }
-        let from_sq = m.from_square();
-        let to_sq = m.to_square();
+        let from_sq = m.start();
+        let to_sq = m.destination();
 
         let mover_type = self[from_sq].unwrap().0;
         let player = self.meta().player;
@@ -566,19 +568,22 @@ impl Game {
             };
         }
         self.history.push(new_meta);
-        self.moves.push((m, capturee.map(|c| c.0)));
+        self.moves.push(Some((m, capturee.map(|c| c.0))));
 
         // debug_assert!(self.is_valid());
     }
 
+    #[allow(clippy::missing_panics_doc)]
     /// Make a "null" move, which is a move which has no effect other than giving the opponent
     /// the ability to move.
     /// Null moves are not legal in chess, but they are useful for generating bounds for a search.
     /// A null move may not be played while the player to move is in check.
     ///
-    /// # Panics
+    /// # Safety
     ///
-    /// This function may panic if the king is in check when this function is called.
+    /// This function will render the game into a technically illegal line, which may only be
+    /// restored by calling [`Game::undo_null`].
+    /// This function is not safe to call if the player to move is in check.
     ///
     /// # Examples
     ///
@@ -586,15 +591,16 @@ impl Game {
     /// use fiddler::base::{game::Game, Color};
     ///
     /// let mut g = Game::new();
-    /// g.null_move();
+    /// unsafe {
+    ///     g.null_move();
+    /// }
     /// assert_eq!(g.meta().player, Color::Black);
     /// ```
-    pub fn null_move(&mut self) {
-        debug_assert!(self.meta().checkers.is_empty());
-        debug_assert!(!matches!(self.moves.last(), Some((Move::BAD_MOVE, _))));
+    pub unsafe fn null_move(&mut self) {
+        // debug_assert!(self.meta().checkers.is_empty());
 
         self.history.push(*self.meta());
-        self.moves.push((Move::BAD_MOVE, None));
+        self.moves.push(None);
 
         let meta = self.history.last_mut().unwrap();
         let player = meta.player;
@@ -695,11 +701,11 @@ impl Game {
     /// to undo.
     pub fn undo(&mut self) -> Result<(), &'static str> {
         // println!("before undo: {self} \n{}", self.board());
-        let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?;
+        let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?.unwrap();
         self.history.pop().unwrap();
 
-        let from_sq = m.from_square();
-        let to_sq = m.to_square();
+        let from_sq = m.start();
+        let to_sq = m.destination();
 
         let (pt, color) = self[to_sq].unwrap();
 
@@ -748,8 +754,13 @@ impl Game {
     /// # Panics
     ///
     /// This function may panic of the most recently played move was a null move.
-    pub fn undo_null(&mut self) {
-        debug_assert!(matches!(self.moves.last(), Some((Move::BAD_MOVE, _))));
+    ///
+    /// # Safety
+    ///
+    /// This function will only be safe to call if the most recent move played in this game is a
+    /// null-move (via [`Game::null_move`]).
+    pub unsafe fn undo_null(&mut self) {
+        debug_assert!(self.moves.last().unwrap().is_none());
 
         self.moves.pop().unwrap();
         self.history.pop().unwrap();
@@ -810,7 +821,7 @@ impl Game {
     /// # }
     /// ```
     pub fn is_move_capture(&self, m: Move) -> bool {
-        m.is_en_passant() || self[m.to_square()].is_some()
+        m.is_en_passant() || self[m.destination()].is_some()
     }
 
     #[must_use]
@@ -897,7 +908,9 @@ impl Game {
             return false;
         }
 
-        let Ok(king_sq) = Square::try_from(self[Piece::King] & self[self.meta().player]) else { return false };
+        let Ok(king_sq) = Square::try_from(self[Piece::King] & self[self.meta().player]) else {
+            return false;
+        };
 
         // Validate checkers
         if self.meta().checkers != square_attackers(self, king_sq, !self.meta().player) {
@@ -964,8 +977,11 @@ impl Default for Game {
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (m, _) in &self.moves {
-            write!(f, "{m:?} ")?;
+        for opt_m in &self.moves {
+            match opt_m {
+                None => write!(f, "nil ")?,
+                Some((m, _)) => write!(f, "{m:?}")?,
+            }
         }
         // writeln!(f)?;
 

@@ -72,9 +72,9 @@ pub fn evaluate(game: &Game) -> Score {
 ///
 /// This function will panic if the given move is invalid.
 pub fn delta(game: &Game, m: Move) -> Score {
-    let from_sq = m.from_square();
-    let to_sq = m.to_square();
-    let (mover_type, _) = game[m.from_square()].unwrap();
+    let from_sq = m.start();
+    let to_sq = m.destination();
+    let (mover_type, _) = game[m.start()].unwrap();
     let mover_idx = mover_type as usize;
     let end_type = match m.promote_type() {
         Some(pt) => pt,
@@ -90,7 +90,7 @@ pub fn delta(game: &Game, m: Move) -> Score {
     // you always lose the value of the square you moved from
     let mut delta = PST[end_idx][to_idx] - PST[mover_idx][from_idx];
 
-    if game[!game.meta().player].contains(m.to_square()) {
+    if game[!game.meta().player].contains(m.destination()) {
         // conventional capture
         let to_opposite_idx = to_alt.opposite() as usize;
         let capturee_idx = game[to_sq].unwrap().0 as usize;

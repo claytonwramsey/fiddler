@@ -9,6 +9,7 @@ fn best_queen_fried_liver() {
     let moves = make_move_vec::<{ GenMode::All }>(&g);
     assert!(moves.contains(&m));
     for m in moves {
+        println!("{m:?}");
         assert!(is_legal(m, &g));
     }
 }

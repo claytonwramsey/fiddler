@@ -55,7 +55,7 @@ use super::evaluate::{calculate_phase, eval_nl_delta, material, mg_npm_delta, Ev
 pub fn candidacy(g: &Game, m: Move, delta: Score, phase: f32) -> Eval {
     // Worst case, we don't keep the piece we captured. Subtract off the value of the mover from
     // the difference in cumulative evaluation.
-    (delta - material::value(g[m.from_square()].unwrap().0)).blend(phase)
+    (delta - material::value(g[m.start()].unwrap().0)).blend(phase)
 }
 
 #[derive(Clone, Debug, PartialEq)]
