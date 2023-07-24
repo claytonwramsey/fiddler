@@ -95,7 +95,7 @@ pub fn mg_npm_delta(m: Move, g: &Game) -> Eval {
         Some(pt) => material::value(pt).mg,
     };
     if g.is_move_capture(m) {
-        mg_npm_delta -= match g[m.destination()] {
+        mg_npm_delta -= match g[m.to_square()] {
             None | Some((Piece::Pawn, _)) => Eval::DRAW,
             Some((pt, _)) => material::value(pt).mg,
         }

@@ -162,8 +162,8 @@ pub enum GenMode {
 /// ```
 pub fn is_legal(m: Move, g: &Game) -> bool {
     let meta = g.meta();
-    let from_sq = m.start();
-    let to_sq = m.destination();
+    let from_sq = m.from_square();
+    let to_sq = m.to_square();
     let from_bb = Bitboard::from(from_sq);
     let to_bb = Bitboard::from(to_sq);
     let player = meta.player;
@@ -245,7 +245,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
                     && player.pawn_start_rank().contains(from_sq)
                     && !occupancy.contains(to_sq))))
                 || (is_ep && meta.en_passant_square == Some(to_sq))
-                || (!is_ep && (pattacks & enemies).contains(m.destination()))
+                || (!is_ep && (pattacks & enemies).contains(m.to_square()))
         }
         Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
         Piece::Bishop => bishop_moves(allies | enemies, from_sq).contains(to_sq),

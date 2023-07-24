@@ -23,7 +23,6 @@ use super::{game::Game, Piece, Square};
 use std::{
     fmt::{Debug, Display, Formatter},
     mem::transmute,
-    num::NonZeroU16,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -36,9 +35,15 @@ use std::{
 // - 2 bits: promote type
 // - 6 bits: from-square
 // - 6 bits: to-square
-pub struct Move(NonZeroU16);
+pub struct Move(u16);
 
 impl Move {
+    /// A sentinel value for a move which is illegal, or otherwise inexpressible.
+    ///
+    /// It is *strongly* recommended that `Option<Move>` is used instead of this whenever space is
+    /// not an enormous concern.
+    pub const BAD_MOVE: Move = Move(0xFFFF);
+
     /// The mask used to extract the flag bits from a move.
     const FLAG_MASK: u16 = 0xC000;
 
@@ -54,72 +59,74 @@ impl Move {
     #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having any extra special
     /// flags.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if `start` and `dest` are equal.
-    pub fn normal(start: Square, dest: Square) -> Move {
-        assert_ne!(start, dest);
-        Move(NonZeroU16::new(((start as u16) << 6) | dest as u16).unwrap())
+    pub const fn normal(from_square: Square, to_square: Square) -> Move {
+        Move(((to_square as u16) << 6) | from_square as u16)
     }
 
     #[must_use]
     /// Create a `Move` with the given promotion type.
     /// The promote type must not be a pawn or a king.
-    pub fn promoting(start: Square, dest: Square, promote_type: Piece) -> Move {
-        Move(Move::normal(start, dest).0 | ((promote_type as u16) << 12) | Move::PROMOTE_FLAG)
+    pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
+        Move(
+            Move::normal(from_square, to_square).0
+                | ((promote_type as u16) << 12)
+                | Move::PROMOTE_FLAG,
+        )
     }
 
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
-    pub fn castling(start: Square, dest: Square) -> Move {
-        Move(Move::normal(start, dest).0 | Move::CASTLE_FLAG)
+    pub const fn castling(from_square: Square, to_square: Square) -> Move {
+        Move(Move::normal(from_square, to_square).0 | Move::CASTLE_FLAG)
     }
 
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
-    pub fn en_passant(start: Square, dest: Square) -> Move {
-        Move(Move::normal(start, dest).0 | Move::EN_PASSANT_FLAG)
-    }
-
-    #[must_use]
-    /// Get the square that a piece moves from to execute this move.
-    pub const fn start(self) -> Square {
-        // Masking out the bottom bits will make this always valid.
-        unsafe { transmute(((self.0.get() >> 6) & 63u16) as u8) }
+    pub const fn en_passant(from_square: Square, to_square: Square) -> Move {
+        Move(Move::normal(from_square, to_square).0 | Move::EN_PASSANT_FLAG)
     }
 
     #[must_use]
     /// Get the target square of this move.
-    pub const fn destination(self) -> Square {
+    pub const fn to_square(self) -> Square {
+        // Masking out the bottom bits will make this always valid.
+        unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
+    }
+
+    #[must_use]
+    /// Get the square that a piece moves from to execute this move.
+    pub const fn from_square(self) -> Square {
         // Masking out the bottom bits will make this always valid
-        unsafe { transmute((self.0.get() & 63u16) as u8) }
+        unsafe { transmute((self.0 & 63u16) as u8) }
     }
 
     #[must_use]
     /// Determine whether this move is marked as a promotion.
     pub const fn is_promotion(self) -> bool {
-        self.0.get() & Move::FLAG_MASK == Move::PROMOTE_FLAG
+        self.0 & Move::FLAG_MASK == Move::PROMOTE_FLAG
     }
 
     #[must_use]
     /// Determine whether this move is marked as a castle.
     pub const fn is_castle(self) -> bool {
-        self.0.get() & Move::FLAG_MASK == Move::CASTLE_FLAG
+        self.0 & Move::FLAG_MASK == Move::CASTLE_FLAG
     }
 
     #[must_use]
     /// Determine whether this move is marked as an en passant capture.
     pub const fn is_en_passant(self) -> bool {
-        self.0.get() & Move::FLAG_MASK == Move::EN_PASSANT_FLAG
+        self.0 & Move::FLAG_MASK == Move::EN_PASSANT_FLAG
     }
 
     #[must_use]
     /// Get the promotion type of this move.
     /// The resulting type will never be a pawn or a king.
-    pub fn promote_type(self) -> Option<Piece> {
-        self.is_promotion()
-            .then(|| unsafe { transmute(((self.0.get() >> 12) & 3u16) as u8) })
+    pub const fn promote_type(self) -> Option<Piece> {
+        if self.is_promotion() {
+            Some(unsafe { std::mem::transmute(((self.0 >> 12) & 3u16) as u8) })
+        } else {
+            None
+        }
     }
 
     /// Convert a move from its UCI representation.
@@ -155,11 +162,11 @@ impl Move {
     /// Construct a UCI string version of this move.
     pub fn to_uci(self) -> String {
         match self.promote_type() {
-            None => format!("{}{}", self.start(), self.destination()),
+            None => format!("{}{}", self.from_square(), self.to_square()),
             Some(p) => format!(
                 "{}{}{}",
-                self.start(),
-                self.destination(),
+                self.from_square(),
+                self.to_square(),
                 p.code().to_lowercase()
             ),
         }
@@ -169,25 +176,20 @@ impl Move {
     /// Get a number representing this move uniquely.
     /// The value returned may change from version to version.
     pub const fn value(self) -> u16 {
-        self.0.get()
+        self.0
     }
 
     #[must_use]
     /// Reconstruct a move based on its `value`.
     /// Should only be used with values returned from `Move::value()`.
-    /// Returns `None` if `val` is 0.
-    ///
-    /// # Safety
-    ///
-    /// This function is only safe if it is called from the output of [`Move::value`].
-    pub unsafe fn from_value(val: u16) -> Option<Move> {
-        NonZeroU16::new(val).map(Move)
+    pub const fn from_val(val: u16) -> Move {
+        Move(val)
     }
 }
 
 impl Debug for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.start(), self.destination())?;
+        write!(f, "{}{}", self.from_square(), self.to_square())?;
         if let Some(pt) = self.promote_type() {
             write!(f, "{}", pt.code())?;
         }
@@ -204,8 +206,8 @@ impl Debug for Move {
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.promote_type() {
-            None => write!(f, "{} -> {}", self.start(), self.destination())?,
-            Some(p) => write!(f, "{} -> {} ={p}", self.start(), self.destination())?,
+            None => write!(f, "{} -> {}", self.from_square(), self.to_square())?,
+            Some(p) => write!(f, "{} -> {} ={p}", self.from_square(), self.to_square())?,
         };
         if self.is_en_passant() {
             write!(f, " [e.p.]")?;
