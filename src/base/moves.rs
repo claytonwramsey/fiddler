@@ -39,12 +39,6 @@ use std::{
 pub struct Move(NonZeroU16);
 
 impl Move {
-    /// A sentinel value for a move which is illegal, or otherwise inexpressible.
-    ///
-    /// It is *strongly* recommended that `Option<Move>` is used instead of this whenever space is
-    /// not an enormous concern.
-    pub const BAD_MOVE: Move = Move(unsafe { NonZeroU16::new_unchecked(0xFFFF) });
-
     /// The mask used to extract the flag bits from a move.
     const FLAG_MASK: u16 = 0xC000;
 
@@ -60,7 +54,8 @@ impl Move {
     #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having any extra special
     /// flags.
-    pub const fn normal(origin: Square, destination: Square) -> Move {
+    pub fn normal(origin: Square, destination: Square) -> Move {
+        debug_assert_ne!(origin, destination);
         Move(unsafe { NonZeroU16::new_unchecked(((destination as u16) << 6) | origin as u16) })
     }
 

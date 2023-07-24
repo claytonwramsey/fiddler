@@ -103,7 +103,7 @@ pub struct TTEntry {
     pub depth: i8, // 1 byte
     /// The best move in the position when this entry was searched.
     /// Will be `Move::BAD_MOVE` when there are no moves or the best move is unknown.
-    pub best_move: Move, // 2 bytes
+    pub best_move: Option<Move>, // 2 bytes
     /// The value of the evaluation of this position.
     pub value: Eval, // 2 bytes
 } /* total size: 8 bytes */
@@ -472,7 +472,7 @@ impl<'a> TTEntryGuard<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     /// Save the value pointed to by this entry guard.
-    pub fn save(&mut self, depth: i8, best_move: Move, value: Eval, kind: BoundType) {
+    pub fn save(&mut self, depth: i8, best_move: Option<Move>, value: Eval, kind: BoundType) {
         if !self.entry.is_null() {
             unsafe {
                 *self.entry = TTEntry {
@@ -513,7 +513,7 @@ mod tests {
             tag: BoundType::Exact as u8,
             key_low16: 12,
             depth: 5,
-            best_move: Move::normal(Square::E2, Square::E4),
+            best_move: Some(Move::normal(Square::E2, Square::E4)),
             value: Eval::DRAW,
         };
         tt.get(12)
@@ -528,7 +528,7 @@ mod tests {
         let tt = TTable::new();
         tt.get(12).save(
             5,
-            Move::normal(Square::E2, Square::E4),
+            Some(Move::normal(Square::E2, Square::E4)),
             Eval::DRAW,
             BoundType::Exact,
         );
@@ -543,14 +543,14 @@ mod tests {
             tag: BoundType::Lower as u8,
             key_low16: 2022,
             depth: 5,
-            best_move: Move::normal(Square::E2, Square::E4),
+            best_move: Some(Move::normal(Square::E2, Square::E4)),
             value: Eval::DRAW,
         };
         let e1 = TTEntry {
             tag: BoundType::Upper as u8,
             key_low16: 2022,
             depth: 7,
-            best_move: Move::normal(Square::E4, Square::E5),
+            best_move: Some(Move::normal(Square::E4, Square::E5)),
             value: Eval::DRAW,
         };
 
@@ -574,7 +574,7 @@ mod tests {
             tag: BoundType::Exact as u8,
             key_low16: 2022,
             depth: 5,
-            best_move: Move::normal(Square::E2, Square::E4),
+            best_move: Some(Move::normal(Square::E2, Square::E4)),
             value: Eval::DRAW,
         };
         tt.get(2022)
@@ -595,7 +595,7 @@ mod tests {
         let mut tt = TTable::with_capacity(3);
         tt.get(2022).save(
             10,
-            Move::normal(Square::E2, Square::E4),
+            Some(Move::normal(Square::E2, Square::E4)),
             Eval::BLACK_MATE,
             BoundType::Exact,
         );
@@ -611,14 +611,14 @@ mod tests {
             tag: BoundType::Exact as u8,
             key_low16: 2022,
             depth: 5,
-            best_move: Move::normal(Square::E2, Square::E4),
+            best_move: Some(Move::normal(Square::E2, Square::E4)),
             value: Eval::DRAW,
         };
         let e1 = TTEntry {
             tag: BoundType::Exact as u8,
             key_low16: 2022,
             depth: 7,
-            best_move: Move::normal(Square::E4, Square::E5),
+            best_move: Some(Move::normal(Square::E4, Square::E5)),
             value: Eval::DRAW,
         };
 
