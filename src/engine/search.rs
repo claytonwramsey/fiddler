@@ -295,9 +295,8 @@ impl<'a> PVSearch<'a> {
         let mut tt_move = None;
         let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
-            let m = entry.best_move;
-            if is_legal(m, &self.game) {
-                tt_move = Some(m);
+            if entry.best_move.map_or(false, |m| is_legal(m, &self.game)) {
+                tt_move = entry.best_move;
                 // check if we can cutoff due to transposition table
                 if !PV && entry.depth >= depth {
                     let value = entry.value.step_back_by(state.depth_since_root);
@@ -470,7 +469,7 @@ impl<'a> PVSearch<'a> {
 
         tt_guard.save(
             depth,
-            best_move,
+            Some(best_move),
             best_score.step_forward_by(state.depth_since_root),
             if best_score >= beta {
                 BoundType::Lower
@@ -524,8 +523,9 @@ impl<'a> PVSearch<'a> {
 
         let mut tt_guard = self.ttable.get(self.game.meta().hash);
         if let Some(entry) = tt_guard.entry() {
-            if !PV && entry.depth >= TTEntry::DEPTH_CAPTURES && entry.best_move == Move::BAD_MOVE
-                || is_legal(entry.best_move, &self.game)
+            if !PV
+                && entry.depth >= TTEntry::DEPTH_CAPTURES
+                && entry.best_move.map_or(true, |m| is_legal(m, &self.game))
             {
                 let value = entry.value.step_back_by(state.depth_since_root);
                 let cutoff = match entry.bound_type() {
@@ -549,7 +549,7 @@ impl<'a> PVSearch<'a> {
                 // end
                 tt_guard.save(
                     TTEntry::DEPTH_CAPTURES,
-                    Move::BAD_MOVE,
+                    None,
                     score.step_forward_by(state.depth_since_root),
                     BoundType::Lower,
                 );
@@ -613,7 +613,7 @@ impl<'a> PVSearch<'a> {
 
         tt_guard.save(
             TTEntry::DEPTH_CAPTURES,
-            best_move,
+            Some(best_move),
             best_score.step_forward_by(state.depth_since_root),
             if best_score >= beta {
                 BoundType::Upper
@@ -821,7 +821,7 @@ pub mod tests {
         // println!("{entry:?}");
         // println!("{search_info:?}");
         assert_eq!(entry.depth, i8::try_from(depth).unwrap());
-        assert_eq!(entry.best_move, search_info.pv[0]);
+        assert_eq!(entry.best_move, Some(search_info.pv[0]));
         assert_eq!(entry.bound_type(), BoundType::Exact);
     }
 }
