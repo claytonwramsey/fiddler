@@ -412,16 +412,16 @@ impl Game {
             println!("an illegal move {m} is being attempted. History: {self}");
             panic!("Illegal move attempted on `Game::make_move`");
         }
-        let from_sq = m.from_square();
-        let to_sq = m.to_square();
+        let orig = m.origin();
+        let dest = m.destination();
 
-        let mover_type = self[from_sq].unwrap().0;
+        let mover_type = self[orig].unwrap().0;
         let player = self.meta().player;
         let ep_sq = self.meta().en_passant_square;
         let old_castle_rights = self.meta().castle_rights;
         let is_pawn_move = mover_type == Piece::Pawn;
         let is_king_move = mover_type == Piece::King;
-        let capturee = self[to_sq];
+        let capturee = self[dest];
         // hash key of new position
 
         let mut new_meta = BoardMeta {
@@ -433,7 +433,7 @@ impl Game {
             },
             hash: self.meta().hash
                 ^ zobrist::BLACK_TO_MOVE_KEY
-                ^ zobrist::square_key(from_sq, mover_type, player),
+                ^ zobrist::square_key(orig, mover_type, player),
             ..*self.meta()
         };
 
@@ -441,20 +441,20 @@ impl Game {
         /* Promotion and normal piece movement */
 
         if let Some((capturee_type, _)) = capturee {
-            self.remove_piece(to_sq);
-            new_meta.hash ^= zobrist::square_key(to_sq, capturee_type, !player);
+            self.remove_piece(dest);
+            new_meta.hash ^= zobrist::square_key(dest, capturee_type, !player);
         }
 
         let move_to_type = m.promote_type().unwrap_or(mover_type);
-        self.add_piece(to_sq, move_to_type, player);
-        new_meta.hash ^= zobrist::square_key(to_sq, move_to_type, player);
-        self.remove_piece(from_sq);
+        self.add_piece(dest, move_to_type, player);
+        new_meta.hash ^= zobrist::square_key(dest, move_to_type, player);
+        self.remove_piece(orig);
 
         /* -------- En passant handling -------- */
         // perform an en passant capture
 
         if m.is_en_passant() {
-            let capturee_sq = Square::new(from_sq.rank(), ep_sq.unwrap().file()).unwrap();
+            let capturee_sq = Square::new(orig.rank(), ep_sq.unwrap().file()).unwrap();
             self.remove_piece(capturee_sq);
             new_meta.hash ^= zobrist::square_key(capturee_sq, Piece::Pawn, !player);
         }
@@ -465,9 +465,8 @@ impl Game {
         }
 
         // update EP square
-        if is_pawn_move && from_sq.rank_distance(to_sq) > 1 {
-            let ep_candidate =
-                Square::new((from_sq.rank() + to_sq.rank()) / 2, from_sq.file()).unwrap();
+        if is_pawn_move && orig.rank_distance(dest) > 1 {
+            let ep_candidate = Square::new((orig.rank() + dest.rank()) / 2, orig.file()).unwrap();
             if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
                 & self[Piece::Pawn]
                 & self[!player])
@@ -492,26 +491,26 @@ impl Game {
                 Color::White => CastleRights::WHITE,
                 Color::Black => CastleRights::BLACK,
             };
-            if from_sq.file_distance(to_sq) > 1 {
+            if orig.file_distance(dest) > 1 {
                 // a long move from a king means this must be a castle
                 // G file is file 6
-                let is_kingside_castle = to_sq.file() == 6;
+                let is_kingside_castle = dest.file() == 6;
                 let (rook_from_file, rook_to_file) = if is_kingside_castle {
                     (7, 5) // rook moves from H file for kingside castling
                 } else {
                     (0, 3) // rook moves from A to D for queenside caslting
                 };
-                let rook_from_sq = Square::new(from_sq.rank(), rook_from_file).unwrap();
-                let rook_to_sq = Square::new(from_sq.rank(), rook_to_file).unwrap();
-                self.remove_piece(rook_from_sq);
-                new_meta.hash ^= zobrist::square_key(rook_from_sq, Piece::Rook, player);
-                self.add_piece(rook_to_sq, Piece::Rook, player);
-                new_meta.hash ^= zobrist::square_key(rook_to_sq, Piece::Rook, player);
+                let rook_orig = Square::new(orig.rank(), rook_from_file).unwrap();
+                let rook_dest = Square::new(orig.rank(), rook_to_file).unwrap();
+                self.remove_piece(rook_orig);
+                new_meta.hash ^= zobrist::square_key(rook_orig, Piece::Rook, player);
+                self.add_piece(rook_dest, Piece::Rook, player);
+                new_meta.hash ^= zobrist::square_key(rook_dest, Piece::Rook, player);
             }
         } else {
             // don't need to check if it's a rook because moving from this square
             // would mean you didn't have the right anyway
-            rights_to_remove = match from_sq {
+            rights_to_remove = match orig {
                 Square::A1 => CastleRights::WHITE_QUEENSIDE,
                 Square::H1 => CastleRights::WHITE_KINGSIDE,
                 Square::A8 => CastleRights::BLACK_QUEENSIDE,
@@ -520,7 +519,7 @@ impl Game {
             };
 
             // capturing a rook also removes rights
-            rights_to_remove |= match to_sq {
+            rights_to_remove |= match dest {
                 Square::A1 => CastleRights::WHITE_QUEENSIDE,
                 Square::H1 => CastleRights::WHITE_KINGSIDE,
                 Square::A8 => CastleRights::BLACK_QUEENSIDE,
@@ -698,27 +697,23 @@ impl Game {
         let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?;
         self.history.pop().unwrap();
 
-        let from_sq = m.from_square();
-        let to_sq = m.to_square();
+        let orig = m.origin();
+        let dest = m.destination();
 
-        let (pt, color) = self[to_sq].unwrap();
+        let (pt, color) = self[dest].unwrap();
 
         // note: we don't need to update hashes here because that was saved in the history
 
         // return the original piece to its from-square
-        self.add_piece(
-            from_sq,
-            if m.is_promotion() { Piece::Pawn } else { pt },
-            color,
-        );
-        self.remove_piece(to_sq);
+        self.add_piece(orig, if m.is_promotion() { Piece::Pawn } else { pt }, color);
+        self.remove_piece(dest);
 
         if let Some(c_pt) = capturee_type {
             // undo capture by putting the capturee back
-            self.add_piece(to_sq, c_pt, !color);
+            self.add_piece(dest, c_pt, !color);
         } else if m.is_castle() {
             // replace rook
-            let (replacement_rook_sq, rook_remove_sq) = match (color, to_sq.file()) {
+            let (replacement_rook_sq, rook_remove_sq) = match (color, dest.file()) {
                 (Color::White, 2) => (Square::A1, Square::D1),
                 (Color::White, 6) => (Square::H1, Square::F1),
                 (Color::Black, 2) => (Square::A8, Square::D8),
@@ -729,7 +724,7 @@ impl Game {
             self.remove_piece(rook_remove_sq);
         } else if m.is_en_passant() {
             // replace captured pawn by en passant
-            let replacement_square = to_sq
+            let replacement_square = dest
                 + match color {
                     Color::White => Direction::SOUTH,
                     Color::Black => Direction::NORTH,
@@ -810,7 +805,7 @@ impl Game {
     /// # }
     /// ```
     pub fn is_move_capture(&self, m: Move) -> bool {
-        m.is_en_passant() || self[m.to_square()].is_some()
+        m.is_en_passant() || self[m.destination()].is_some()
     }
 
     #[must_use]
@@ -897,7 +892,9 @@ impl Game {
             return false;
         }
 
-        let Ok(king_sq) = Square::try_from(self[Piece::King] & self[self.meta().player]) else { return false };
+        let Ok(king_sq) = Square::try_from(self[Piece::King] & self[self.meta().player]) else {
+            return false;
+        };
 
         // Validate checkers
         if self.meta().checkers != square_attackers(self, king_sq, !self.meta().player) {

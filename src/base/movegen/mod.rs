@@ -162,23 +162,23 @@ pub enum GenMode {
 /// ```
 pub fn is_legal(m: Move, g: &Game) -> bool {
     let meta = g.meta();
-    let from_sq = m.from_square();
-    let to_sq = m.to_square();
-    let from_bb = Bitboard::from(from_sq);
-    let to_bb = Bitboard::from(to_sq);
+    let orig = m.origin();
+    let dest = m.destination();
+    let from_bb = Bitboard::from(orig);
+    let to_bb = Bitboard::from(dest);
     let player = meta.player;
     let allies = g[player];
     let enemies = g[!player];
     let occupancy = allies | enemies;
-    if allies.contains(to_sq) {
+    if allies.contains(dest) {
         // cannot move to square occupied by our piece
         return false;
     }
-    if !allies.contains(from_sq) {
+    if !allies.contains(orig) {
         return false;
     }
 
-    let Some((pt, _)) = g[from_sq] else {
+    let Some((pt, _)) = g[orig] else {
         return false;
     };
 
@@ -200,13 +200,13 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
             return valid;
         }
 
-        if !KING_MOVES[from_sq as usize].contains(to_sq) {
+        if !KING_MOVES[orig as usize].contains(dest) {
             return false;
         }
 
         // normal king moves can't step into check
         let new_occupancy = (g.occupancy() ^ from_bb) | to_bb;
-        return square_attackers_occupancy(g, to_sq, !meta.player, new_occupancy).is_empty();
+        return square_attackers_occupancy(g, dest, !meta.player, new_occupancy).is_empty();
     }
 
     // normal piece
@@ -227,7 +227,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
     }
 
     let is_ep = m.is_en_passant();
-    if is_ep && (pt != Piece::Pawn || meta.en_passant_square != Some(to_sq)) {
+    if is_ep && (pt != Piece::Pawn || meta.en_passant_square != Some(dest)) {
         // only pawns can en passant
         // also, en passant must target the en passant square
         return false;
@@ -237,22 +237,22 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
     if !match pt {
         Piece::Pawn => {
             let pawn_dir = player.pawn_direction();
-            let singlemove_sq = from_sq + pawn_dir;
-            let pattacks = PAWN_ATTACKS[player as usize][from_sq as usize];
+            let singlemove_sq = orig + pawn_dir;
+            let pattacks = PAWN_ATTACKS[player as usize][orig as usize];
             (!occupancy.contains(singlemove_sq)
-                && (to_sq == singlemove_sq //singlemove
-                || (to_sq == singlemove_sq + pawn_dir //doublemove
-                    && player.pawn_start_rank().contains(from_sq)
-                    && !occupancy.contains(to_sq))))
-                || (is_ep && meta.en_passant_square == Some(to_sq))
-                || (!is_ep && (pattacks & enemies).contains(m.to_square()))
+                && (dest == singlemove_sq //singlemove
+                || (dest == singlemove_sq + pawn_dir //doublemove
+                    && player.pawn_start_rank().contains(orig)
+                    && !occupancy.contains(dest))))
+                || (is_ep && meta.en_passant_square == Some(dest))
+                || (!is_ep && (pattacks & enemies).contains(m.destination()))
         }
-        Piece::Knight => KNIGHT_MOVES[from_sq as usize].contains(to_sq),
-        Piece::Bishop => bishop_moves(allies | enemies, from_sq).contains(to_sq),
-        Piece::Rook => rook_moves(allies | enemies, from_sq).contains(to_sq),
+        Piece::Knight => KNIGHT_MOVES[orig as usize].contains(dest),
+        Piece::Bishop => bishop_moves(allies | enemies, orig).contains(dest),
+        Piece::Rook => rook_moves(allies | enemies, orig).contains(dest),
         Piece::Queen => {
             let occupancy = allies | enemies;
-            (bishop_moves(occupancy, from_sq) | rook_moves(occupancy, from_sq)).contains(to_sq)
+            (bishop_moves(occupancy, orig) | rook_moves(occupancy, orig)).contains(dest)
         }
         Piece::King => unreachable!(),
     } {
@@ -273,7 +273,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
             }
         }
 
-        if !targets.contains(to_sq) {
+        if !targets.contains(dest) {
             return false;
         }
     };
@@ -295,7 +295,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
                 .is_empty();
     }
 
-    !meta.pinned.contains(from_sq) || Square::aligned(from_sq, to_sq, king_sq)
+    !meta.pinned.contains(orig) || Square::aligned(orig, dest, king_sq)
 }
 
 /// Get the legal moves in a board.
@@ -436,15 +436,15 @@ pub fn has_moves(g: &Game) -> bool {
     let mut legal_targets = !allies;
     let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
     // king does not have to block its checks
-    let king_to_sqs = KING_MOVES[king_sq as usize] & legal_targets;
+    let king_dests = KING_MOVES[king_sq as usize] & legal_targets;
     let unpinned = !meta.pinned;
     let queens = g[Piece::Queen];
 
     if meta.checkers.more_than_one() {
         // in double check, only consider king moves
         let new_occupancy = occupancy ^ Bitboard::from(king_sq);
-        for to_sq in king_to_sqs {
-            if square_attackers_occupancy(g, to_sq, opponent, new_occupancy).is_empty() {
+        for dest in king_dests {
+            if square_attackers_occupancy(g, dest, opponent, new_occupancy).is_empty() {
                 return true;
             }
         }
@@ -546,8 +546,8 @@ pub fn has_moves(g: &Game) -> bool {
 
     // king moves are expensive to validate
     let new_occupancy = occupancy ^ Bitboard::from(king_sq);
-    for to_sq in king_to_sqs {
-        if square_attackers_occupancy(g, to_sq, opponent, new_occupancy).is_empty() {
+    for dest in king_dests {
+        if square_attackers_occupancy(g, dest, opponent, new_occupancy).is_empty() {
             return true;
         }
     }
@@ -770,31 +770,31 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
         };
 
         // promotion captures
-        for to_sq in east_targets & rank8 {
-            let from_sq = to_sq - east_direction;
+        for dest in east_targets & rank8 {
+            let orig = dest - east_direction;
             for pt in Piece::PROMOTING {
-                let m = Move::promoting(from_sq, to_sq, pt);
+                let m = Move::promoting(orig, dest, pt);
                 callback(m);
             }
         }
 
-        for to_sq in west_targets & rank8 {
-            let from_sq = to_sq - west_direction;
+        for dest in west_targets & rank8 {
+            let orig = dest - west_direction;
             for pt in Piece::PROMOTING {
-                let m = Move::promoting(from_sq, to_sq, pt);
+                let m = Move::promoting(orig, dest, pt);
                 callback(m);
             }
         }
 
         // normal captures
-        for to_sq in east_targets & not_rank8 {
-            let from_sq = to_sq - east_direction;
-            let m = Move::normal(from_sq, to_sq);
+        for dest in east_targets & not_rank8 {
+            let orig = dest - east_direction;
+            let m = Move::normal(orig, dest);
             callback(m);
         }
-        for to_sq in west_targets & not_rank8 {
-            let from_sq = to_sq - west_direction;
-            let m = Move::normal(from_sq, to_sq);
+        for dest in west_targets & not_rank8 {
+            let orig = dest - west_direction;
+            let m = Move::normal(orig, dest);
             callback(m);
         }
 
@@ -808,10 +808,9 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
                     Color::White => to_bb >> 8,
                     Color::Black => to_bb << 8,
                 };
-                let from_sqs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
-                for from_sq in from_sqs {
-                    let new_occupancy =
-                        g.occupancy() ^ Bitboard::from(from_sq) ^ capture_bb ^ to_bb;
+                let origs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
+                for orig in origs {
+                    let new_occupancy = g.occupancy() ^ Bitboard::from(orig) ^ capture_bb ^ to_bb;
                     if (rook_moves(new_occupancy, king_sq)
                         & (g[Piece::Rook] | g[Piece::Queen])
                         & enemy)
@@ -821,7 +820,7 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
                             & enemy)
                             .is_empty()
                     {
-                        let m = Move::en_passant(from_sq, ep_square);
+                        let m = Move::en_passant(orig, ep_square);
                         callback(m);
                     }
                 }
@@ -847,23 +846,23 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
         singles &= target;
 
         // promotion single-moves
-        for to_sq in singles & rank8 {
-            let from_sq = to_sq - direction;
+        for dest in singles & rank8 {
+            let orig = dest - direction;
             for pt in Piece::PROMOTING {
-                let m = Move::promoting(from_sq, to_sq, pt);
+                let m = Move::promoting(orig, dest, pt);
                 callback(m);
             }
         }
 
         // doublemoves
-        for to_sq in doubles {
-            let m = Move::normal(to_sq - doubledir, to_sq);
+        for dest in doubles {
+            let m = Move::normal(dest - doubledir, dest);
             callback(m);
         }
 
         // normal single-moves
-        for to_sq in singles & not_rank8 {
-            let m = Move::normal(to_sq - direction, to_sq);
+        for dest in singles & not_rank8 {
+            let m = Move::normal(dest - direction, dest);
             callback(m);
         }
     }
@@ -888,37 +887,37 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
     let king_diags = Bitboard::diags(king_sq);
 
     // only unpinned knights can move
-    for from_sq in g[Piece::Knight] & allies & unpinned {
-        for to_sq in KNIGHT_MOVES[from_sq as usize] & target {
-            callback(Move::normal(from_sq, to_sq));
+    for orig in g[Piece::Knight] & allies & unpinned {
+        for dest in KNIGHT_MOVES[orig as usize] & target {
+            callback(Move::normal(orig, dest));
         }
     }
 
     // pinned bishops and queens
-    for from_sq in bishop_movers & meta.pinned & king_diags {
-        for to_sq in bishop_moves(occupancy, from_sq) & target & king_diags {
-            callback(Move::normal(from_sq, to_sq));
+    for orig in bishop_movers & meta.pinned & king_diags {
+        for dest in bishop_moves(occupancy, orig) & target & king_diags {
+            callback(Move::normal(orig, dest));
         }
     }
 
     // unpinned bishops and queens
-    for from_sq in bishop_movers & unpinned {
-        for to_sq in bishop_moves(occupancy, from_sq) & target {
-            callback(Move::normal(from_sq, to_sq));
+    for orig in bishop_movers & unpinned {
+        for dest in bishop_moves(occupancy, orig) & target {
+            callback(Move::normal(orig, dest));
         }
     }
 
     // pinned rooks and queens
-    for from_sq in rook_movers & meta.pinned & king_hv {
-        for to_sq in rook_moves(occupancy, from_sq) & target & king_hv {
-            callback(Move::normal(from_sq, to_sq));
+    for orig in rook_movers & meta.pinned & king_hv {
+        for dest in rook_moves(occupancy, orig) & target & king_hv {
+            callback(Move::normal(orig, dest));
         }
     }
 
     // unpinned rooks and queens
-    for from_sq in rook_movers & unpinned {
-        for to_sq in rook_moves(occupancy, from_sq) & target {
-            callback(Move::normal(from_sq, to_sq));
+    for orig in rook_movers & unpinned {
+        for dest in rook_moves(occupancy, orig) & target {
+            callback(Move::normal(orig, dest));
         }
     }
 }
@@ -935,10 +934,10 @@ fn king_move_non_castle(g: &Game, callback: &mut impl FnMut(Move), target: Bitbo
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
     let king_bb = g[Piece::King] & g[meta.player];
     let old_occupancy = g.occupancy();
-    for to_sq in to_bb {
-        let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(to_sq);
-        if square_attackers_occupancy(g, to_sq, !meta.player, new_occupancy).is_empty() {
-            callback(Move::normal(king_sq, to_sq));
+    for dest in to_bb {
+        let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(dest);
+        if square_attackers_occupancy(g, dest, !meta.player, new_occupancy).is_empty() {
+            callback(Move::normal(king_sq, dest));
         }
     }
 }

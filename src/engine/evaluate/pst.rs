@@ -72,9 +72,9 @@ pub fn evaluate(game: &Game) -> Score {
 ///
 /// This function will panic if the given move is invalid.
 pub fn delta(game: &Game, m: Move) -> Score {
-    let from_sq = m.from_square();
-    let to_sq = m.to_square();
-    let (mover_type, _) = game[m.from_square()].unwrap();
+    let orig = m.origin();
+    let dest = m.destination();
+    let (mover_type, _) = game[m.origin()].unwrap();
     let mover_idx = mover_type as usize;
     let end_type = match m.promote_type() {
         Some(pt) => pt,
@@ -82,18 +82,18 @@ pub fn delta(game: &Game, m: Move) -> Score {
     };
     let end_idx = end_type as usize;
     let (from_alt, to_alt) = match game.meta().player {
-        Color::White => (from_sq, to_sq),
-        Color::Black => (from_sq.opposite(), to_sq.opposite()),
+        Color::White => (orig, dest),
+        Color::Black => (orig.opposite(), dest.opposite()),
     };
     let (from_idx, to_idx) = (from_alt as usize, to_alt as usize);
 
     // you always lose the value of the square you moved from
     let mut delta = PST[end_idx][to_idx] - PST[mover_idx][from_idx];
 
-    if game[!game.meta().player].contains(m.to_square()) {
+    if game[!game.meta().player].contains(m.destination()) {
         // conventional capture
         let to_opposite_idx = to_alt.opposite() as usize;
-        let capturee_idx = game[to_sq].unwrap().0 as usize;
+        let capturee_idx = game[dest].unwrap().0 as usize;
         delta += PST[capturee_idx][to_opposite_idx];
     }
 
@@ -103,7 +103,7 @@ pub fn delta(game: &Game, m: Move) -> Score {
     }
 
     if m.is_castle() {
-        let is_queen_castle = to_sq.file() == 2;
+        let is_queen_castle = dest.file() == 2;
         let (rook_from_idx, rook_to_idx) = if is_queen_castle {
             (Square::A1 as usize, Square::D1 as usize)
         } else {

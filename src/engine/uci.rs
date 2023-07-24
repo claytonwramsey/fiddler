@@ -207,7 +207,7 @@ impl Command {
                 return Ok(Command::SetOption {
                     name: key,
                     value: Some(value),
-                })
+                });
             };
 
             if !value.is_empty() {

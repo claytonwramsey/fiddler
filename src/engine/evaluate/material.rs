@@ -54,7 +54,7 @@ pub fn delta(g: &Game, m: Move) -> Score {
     let mut gain = if m.is_en_passant() {
         value(Piece::Pawn)
     } else {
-        g[m.to_square()].map_or(Score::DRAW, |(pt, _)| value(pt))
+        g[m.destination()].map_or(Score::DRAW, |(pt, _)| value(pt))
     };
 
     if let Some(promote_type) = m.promote_type() {

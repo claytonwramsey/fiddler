@@ -33,8 +33,8 @@ use std::{
 // From MSB to LSB, the bits inside of a `Move` are as follows:
 // - 2 bits: flags (promotion, castling, or en passant)
 // - 2 bits: promote type
-// - 6 bits: from-square
-// - 6 bits: to-square
+// - 6 bits: destination
+// - 6 bits: origin
 pub struct Move(u16);
 
 impl Move {
@@ -59,16 +59,16 @@ impl Move {
     #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having any extra special
     /// flags.
-    pub const fn normal(from_square: Square, to_square: Square) -> Move {
-        Move(((to_square as u16) << 6) | from_square as u16)
+    pub const fn normal(origin: Square, destination: Square) -> Move {
+        Move(((destination as u16) << 6) | origin as u16)
     }
 
     #[must_use]
     /// Create a `Move` with the given promotion type.
     /// The promote type must not be a pawn or a king.
-    pub const fn promoting(from_square: Square, to_square: Square, promote_type: Piece) -> Move {
+    pub const fn promoting(origin: Square, destination: Square, promote_type: Piece) -> Move {
         Move(
-            Move::normal(from_square, to_square).0
+            Move::normal(origin, destination).0
                 | ((promote_type as u16) << 12)
                 | Move::PROMOTE_FLAG,
         )
@@ -76,26 +76,26 @@ impl Move {
 
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
-    pub const fn castling(from_square: Square, to_square: Square) -> Move {
-        Move(Move::normal(from_square, to_square).0 | Move::CASTLE_FLAG)
+    pub const fn castling(origin: Square, destination: Square) -> Move {
+        Move(Move::normal(origin, destination).0 | Move::CASTLE_FLAG)
     }
 
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
-    pub const fn en_passant(from_square: Square, to_square: Square) -> Move {
-        Move(Move::normal(from_square, to_square).0 | Move::EN_PASSANT_FLAG)
+    pub const fn en_passant(origin: Square, destination: Square) -> Move {
+        Move(Move::normal(origin, destination).0 | Move::EN_PASSANT_FLAG)
     }
 
     #[must_use]
     /// Get the target square of this move.
-    pub const fn to_square(self) -> Square {
+    pub const fn destination(self) -> Square {
         // Masking out the bottom bits will make this always valid.
         unsafe { transmute(((self.0 >> 6) & 63u16) as u8) }
     }
 
     #[must_use]
     /// Get the square that a piece moves from to execute this move.
-    pub const fn from_square(self) -> Square {
+    pub const fn origin(self) -> Square {
         // Masking out the bottom bits will make this always valid
         unsafe { transmute((self.0 & 63u16) as u8) }
     }
@@ -139,34 +139,34 @@ impl Move {
         if !(s.len() == 4 || s.len() == 5) {
             return Err("string was neither a normal move or a promotion");
         }
-        let from_sq = Square::from_algebraic(&s[0..2])?;
-        let to_sq = Square::from_algebraic(&s[2..4])?;
+        let orig = Square::from_algebraic(&s[0..2])?;
+        let dest = Square::from_algebraic(&s[2..4])?;
         if let Some(charcode) = s.chars().nth(4) {
             let pt = Piece::from_code(charcode.to_ascii_uppercase())
                 .ok_or("invalid promote type given")?;
-            return Ok(Move::promoting(from_sq, to_sq, pt));
+            return Ok(Move::promoting(orig, dest, pt));
         }
 
-        if game[Piece::King].contains(from_sq) && from_sq.file_distance(to_sq) > 1 {
-            return Ok(Move::castling(from_sq, to_sq));
+        if game[Piece::King].contains(orig) && orig.file_distance(dest) > 1 {
+            return Ok(Move::castling(orig, dest));
         }
 
-        if game[Piece::Pawn].contains(from_sq) && game.meta().en_passant_square == Some(to_sq) {
-            return Ok(Move::en_passant(from_sq, to_sq));
+        if game[Piece::Pawn].contains(orig) && game.meta().en_passant_square == Some(dest) {
+            return Ok(Move::en_passant(orig, dest));
         }
 
-        Ok(Move::normal(from_sq, to_sq))
+        Ok(Move::normal(orig, dest))
     }
 
     #[must_use]
     /// Construct a UCI string version of this move.
     pub fn to_uci(self) -> String {
         match self.promote_type() {
-            None => format!("{}{}", self.from_square(), self.to_square()),
+            None => format!("{}{}", self.origin(), self.destination()),
             Some(p) => format!(
                 "{}{}{}",
-                self.from_square(),
-                self.to_square(),
+                self.origin(),
+                self.destination(),
                 p.code().to_lowercase()
             ),
         }
@@ -189,7 +189,7 @@ impl Move {
 
 impl Debug for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.from_square(), self.to_square())?;
+        write!(f, "{}{}", self.origin(), self.destination())?;
         if let Some(pt) = self.promote_type() {
             write!(f, "{}", pt.code())?;
         }
@@ -206,8 +206,8 @@ impl Debug for Move {
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.promote_type() {
-            None => write!(f, "{} -> {}", self.from_square(), self.to_square())?,
-            Some(p) => write!(f, "{} -> {} ={p}", self.from_square(), self.to_square())?,
+            None => write!(f, "{} -> {}", self.origin(), self.destination())?,
+            Some(p) => write!(f, "{} -> {} ={p}", self.origin(), self.destination())?,
         };
         if self.is_en_passant() {
             write!(f, " [e.p.]")?;
