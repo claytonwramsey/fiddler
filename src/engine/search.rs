@@ -358,7 +358,7 @@ impl<'a> PVSearch<'a> {
                 .copied()
                 .flatten(),
         );
-        let mut best_move = Move::BAD_MOVE;
+        let mut best_move = None;
         let mut best_score = Eval::MIN;
 
         // The number of moves checked. If this is zero after the move search loop, no moves were
@@ -429,7 +429,7 @@ impl<'a> PVSearch<'a> {
 
             if score > best_score {
                 best_score = score;
-                best_move = tm.m;
+                best_move = Some(tm.m);
 
                 if score > alpha {
                     // if this move was better than what we've seen before, write it as the
@@ -470,7 +470,7 @@ impl<'a> PVSearch<'a> {
 
         tt_guard.save(
             depth,
-            Some(best_move),
+            best_move,
             best_score.step_forward_by(state.depth_since_root),
             if best_score >= beta {
                 BoundType::Lower
@@ -563,7 +563,7 @@ impl<'a> PVSearch<'a> {
         }
 
         let mut best_score = score;
-        let mut best_move = Move::BAD_MOVE;
+        let mut best_move = None;
 
         // get captures and sort in descending order of quality
         let mut moves = Vec::with_capacity(10);
@@ -596,7 +596,7 @@ impl<'a> PVSearch<'a> {
             if score > best_score {
                 best_score = score;
                 if alpha < score {
-                    best_move = tm.m;
+                    best_move = Some(tm.m);
                     if PV {
                         write_line(&mut state.line, tm.m, &new_state.line);
                     }
@@ -614,7 +614,7 @@ impl<'a> PVSearch<'a> {
 
         tt_guard.save(
             TTEntry::DEPTH_CAPTURES,
-            Some(best_move),
+            best_move,
             best_score.step_forward_by(state.depth_since_root),
             if best_score >= beta {
                 BoundType::Upper
