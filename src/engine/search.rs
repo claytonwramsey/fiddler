@@ -147,7 +147,7 @@ struct PVSearch<'a> {
     /// The transposition table.
     ttable: &'a TTable,
     /// The set of "killer" moves. Each index corresponds to a depth (0 is most shallow, etc).
-    killer_moves: Vec<Move>,
+    killer_moves: Vec<Option<Move>>,
     /// The cumulative number of nodes evaluated in this evaluation.
     num_nodes_evaluated: u64,
     /// The cumulative number of nodes visited since we last updated the limit.
@@ -195,7 +195,7 @@ impl<'a> PVSearch<'a> {
         PVSearch {
             game,
             ttable,
-            killer_moves: vec![Move::BAD_MOVE; usize::from(u8::MAX) + 1],
+            killer_moves: vec![None; usize::from(u8::MAX) + 1],
             num_nodes_evaluated: 0,
             nodes_since_limit_update: 0,
             config,
@@ -355,7 +355,8 @@ impl<'a> PVSearch<'a> {
             tt_move,
             self.killer_moves
                 .get(state.depth_since_root as usize)
-                .copied(),
+                .copied()
+                .flatten(),
         );
         let mut best_move = Move::BAD_MOVE;
         let mut best_score = Eval::MIN;
@@ -602,7 +603,7 @@ impl<'a> PVSearch<'a> {
 
                     if beta <= score {
                         // Beta cutoff, we have ound a better line somewhere else
-                        self.killer_moves[state.depth_since_root as usize] = tm.m;
+                        self.killer_moves[state.depth_since_root as usize] = Some(tm.m);
                         break;
                     }
 
