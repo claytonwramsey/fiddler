@@ -109,7 +109,8 @@ pub struct TTEntry {
 } /* total size: 8 bytes */
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-/// The types of bounds that an entry
+/// The types of bounds that an entry can have.
+/// These are used to determine whether a bound is binding during a search.
 pub enum BoundType {
     /// A lower bound on the evaluation of the position.
     Lower = 1 << 5,

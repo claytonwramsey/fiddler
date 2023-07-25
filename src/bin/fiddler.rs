@@ -248,9 +248,11 @@ fn go<'a>(
     } else if let Some(mt) = movetime {
         *search_duration_guard = Some(mt)
     } else if let Some(rem) = remaining {
-        *search_duration_guard = Some(Duration::from_millis(get_search_time(
-            movestogo, increment, rem as u32,
-        ) as u64));
+        *search_duration_guard = Some(Duration::from_millis(if rem > 0 {
+            get_search_time(movestogo, increment, rem as u32) as u64
+        } else {
+            100
+        }));
     } else {
         *search_duration_guard = None;
     }
