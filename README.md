@@ -35,6 +35,9 @@ compile-time, compiling Fiddler may take a while.**
 You can also create a tuner executable.
 To do so, run `cargo build --release --bin tune`.
 
+Lastly, you can a "wizard" executable which finds magic numbers for move generation.
+To do so, run `cargo build --release --bin wizard`.
+
 Fiddler uses features from relatively new versions of Rust, so you may need to update your
 installation of Rust to compile Fiddler. To do so, you can simply invoke
 `rustup update && rustup upgrade`.
