@@ -53,7 +53,8 @@ pub struct Game {
     /// If the move played is en passant, the capturee type is still `None` because the piece that
     /// is replaced on undo is not on the move's from-square.
     /// The length of `moves` should always be one less than the length of `history`.
-    pub moves: Vec<(Move, Option<Piece>)>,
+    /// If an element is `None`, that is because a null-move was played.
+    pub moves: Vec<Option<(Move, Option<Piece>)>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -565,7 +566,7 @@ impl Game {
             };
         }
         self.history.push(new_meta);
-        self.moves.push((m, capturee.map(|c| c.0)));
+        self.moves.push(Some((m, capturee.map(|c| c.0))));
 
         // debug_assert!(self.is_valid());
     }
@@ -590,10 +591,10 @@ impl Game {
     /// ```
     pub fn null_move(&mut self) {
         debug_assert!(self.meta().checkers.is_empty());
-        debug_assert!(!matches!(self.moves.last(), Some((Move::BAD_MOVE, _))));
+        debug_assert_ne!(self.moves.last(), Some(&None));
 
         self.history.push(*self.meta());
-        self.moves.push((Move::BAD_MOVE, None));
+        self.moves.push(None);
 
         let meta = self.history.last_mut().unwrap();
         let player = meta.player;
@@ -694,7 +695,7 @@ impl Game {
     /// to undo.
     pub fn undo(&mut self) -> Result<(), &'static str> {
         // println!("before undo: {self} \n{}", self.board());
-        let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?;
+        let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?.unwrap();
         self.history.pop().unwrap();
 
         let orig = m.origin();
@@ -744,7 +745,7 @@ impl Game {
     ///
     /// This function may panic of the most recently played move was a null move.
     pub fn undo_null(&mut self) {
-        debug_assert!(matches!(self.moves.last(), Some((Move::BAD_MOVE, _))));
+        debug_assert_eq!(self.moves.last(), Some(&None));
 
         self.moves.pop().unwrap();
         self.history.pop().unwrap();
@@ -961,8 +962,11 @@ impl Default for Game {
 
 impl Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (m, _) in &self.moves {
-            write!(f, "{m:?} ")?;
+        for opt_m in &self.moves {
+            match opt_m {
+                None => write!(f, "nil ")?,
+                Some((m, _)) => write!(f, "{m:?} ")?,
+            }
         }
         // writeln!(f)?;
 

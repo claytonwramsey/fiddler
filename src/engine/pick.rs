@@ -134,7 +134,6 @@ impl MovePicker {
     }
 
     /// Add a move to the set of moves that should be ignored.
-    /// Requires that `m` is not `Move::BAD_MOVE`.
     fn ignore(&mut self, m: Move) {
         if !self.ignored.contains(&m) {
             self.ignored.push(m);

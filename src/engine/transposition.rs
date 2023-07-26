@@ -102,7 +102,6 @@ pub struct TTEntry {
     /// If the depth is negative, this means that it was a special type of search.
     pub depth: i8, // 1 byte
     /// The best move in the position when this entry was searched.
-    /// Will be `Move::BAD_MOVE` when there are no moves or the best move is unknown.
     pub best_move: Option<Move>, // 2 bytes
     /// The value of the evaluation of this position.
     pub value: Eval, // 2 bytes

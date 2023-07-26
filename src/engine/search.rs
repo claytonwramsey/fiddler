@@ -324,7 +324,7 @@ impl<'a> PVSearch<'a> {
             && (!self.game[Piece::Pawn] & self.game[self.game.meta().player]).more_than_one()
             && !matches!( // play NMs once
                 self.game.moves.last(),
-                Some((Move::BAD_MOVE, _)))
+                Some(None))
         {
             self.game.null_move();
 
