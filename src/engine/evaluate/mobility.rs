@@ -307,3 +307,23 @@ pub fn evaluate(g: &Game) -> Score {
 
     score
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn two_kings() {
+        let g = Game::from_fen("8/8/5k2/8/8/8/2K5/8 w - - 0 1").unwrap();
+        assert_eq!(evaluate(&g), Score::DRAW);
+    }
+
+    #[test]
+    fn incomplete_mobility() {
+        let g = Game::from_fen("8/8/5k2/8/8/8/8/K7 w - - 0 1").unwrap();
+        assert_eq!(
+            evaluate(&g),
+            ATTACKS_VALUE[Piece::King as usize][3] - ATTACKS_VALUE[Piece::King as usize][8]
+        );
+    }
+}
