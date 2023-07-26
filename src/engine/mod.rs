@@ -22,6 +22,7 @@
 
 pub mod evaluate;
 pub mod limit;
+pub mod perft;
 mod pick;
 mod search;
 pub mod thread;

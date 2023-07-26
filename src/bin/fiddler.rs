@@ -35,6 +35,7 @@ use std::{
 use fiddler::{
     base::{game::Game, Color},
     engine::{
+        perft::perft,
         thread::MainSearch,
         time::get_search_time,
         uci::{Command, GoOption},
@@ -188,6 +189,7 @@ fn go<'a>(
     let mut infinite = false; // whether to search infinitely
 
     let mut movetime = None;
+    let mut perft_depth = None;
 
     // do not hold onto guard as option parsing will involve a write
     *searcher.read().unwrap().limit.nodes_cap.write().unwrap() = None;
@@ -233,7 +235,17 @@ fn go<'a>(
                 searcher.write().unwrap().config.depth = 99;
                 infinite = true;
             }
+            GoOption::Perft(n) => {
+                perft_depth = Some(n);
+            }
         }
+    }
+
+    // perft
+    if let Some(d) = perft_depth {
+        let mut cloned_game = game.clone();
+        perft(&mut cloned_game, *d);
+        return None;
     }
 
     let searcher_guard = searcher.read().unwrap();

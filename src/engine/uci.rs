@@ -131,6 +131,8 @@ pub enum GoOption {
     /// Search until a `UciCommand::Stop` is given.
     /// Do not exit the search until told to.
     Infinite,
+    /// Instead of performing a real search, instead do a performance test, reporting node counts.
+    Perft(u8),
 }
 
 /// The result type for processing a line from a UCI command.
@@ -312,6 +314,7 @@ impl Command {
                 "mate" => GoOption::Mate(parse_int(tokens.next())?),
                 "movetime" => GoOption::MoveTime(parse_int(tokens.next())?),
                 "infinite" => GoOption::Infinite,
+                "perft" => GoOption::Perft(parse_int(tokens.next())?),
                 _ => return Err(format!("unrecognized option {opt_tok} for `go`")),
             });
         }
@@ -495,6 +498,14 @@ mod tests {
                 GoOption::WhiteTime(100),
                 GoOption::BlackTime(-100)
             ]))
+        );
+    }
+
+    #[test]
+    fn perft() {
+        assert_eq!(
+            Command::parse_line("go perft 10\n"),
+            Ok(Command::Go(vec![GoOption::Perft(10)]))
         );
     }
 }
