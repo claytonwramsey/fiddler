@@ -535,13 +535,11 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // king
-    let white_king_idx = usize::from(
-        (KING_MOVES[Square::try_from(g.kings() & g.white()).unwrap() as usize] & not_white).len(),
-    );
+    let white_king_idx =
+        usize::from((KING_MOVES[g.king_sq(Color::White) as usize] & not_white).len());
     count[Piece::King as usize][white_king_idx] += 1;
-    let black_king_idx = usize::from(
-        (KING_MOVES[Square::try_from(g.kings() & g.black()).unwrap() as usize] & not_black).len(),
-    );
+    let black_king_idx =
+        usize::from((KING_MOVES[g.king_sq(Color::Black) as usize] & not_black).len());
     count[Piece::King as usize][black_king_idx] -= 1;
 
     for pt in Piece::ALL {

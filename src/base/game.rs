@@ -364,8 +364,7 @@ impl Game {
 
         // updating metadata
         let player = meta.player;
-        let king_sq = Square::try_from(game.kings() & game.by_color(player))
-            .map_err(|_| "cannot find square containing king")?;
+        let king_sq = game.king_sq(player);
         game.history[0].checkers = square_attackers(&game, king_sq, !game.meta().player);
         game.history[0].pinned = game.compute_pinned(king_sq, !game.history[0].player);
         if !game.is_valid() {
@@ -563,6 +562,21 @@ impl Game {
         unsafe { *self.sides.get_unchecked(color as usize) }
     }
 
+    #[must_use]
+    /// Get the square occupied by a king of a given color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g.king_sq(Color::White), Square::E1);
+    /// ```
+    pub fn king_sq(&self, color: Color) -> Square {
+        unsafe { Square::unsafe_from(self.kings() & self.by_color(color)) }
+    }
+
     #[allow(clippy::too_many_lines)]
     /// Apply the given move to the board.
     /// Will assume the move is legal.
@@ -722,7 +736,7 @@ impl Game {
         /* -------- Non-meta fields of the board are now in their final state. -------- */
 
         /* -------- Update other metadata -------- */
-        let enemy_king_sq = Square::try_from(self.kings() & self.by_color(!player)).unwrap();
+        let enemy_king_sq = self.king_sq(!player);
 
         new_meta.checkers = square_attackers(self, enemy_king_sq, player);
         new_meta.pinned = self.compute_pinned(enemy_king_sq, player);
@@ -790,10 +804,8 @@ impl Game {
 
         meta.rule50 += 1;
         meta.repeated = 0;
-        self.history.last_mut().unwrap().pinned = self.compute_pinned(
-            Square::try_from(self.kings() & self.by_color(!player)).unwrap(),
-            player,
-        );
+        self.history.last_mut().unwrap().pinned =
+            self.compute_pinned(self.king_sq(!player), player);
     }
 
     /// Remove a piece from a square, assuming that `sq` is occupied.
