@@ -45,6 +45,7 @@ use fiddler::{
         mobility::{ATTACKS_VALUE, MAX_MOBILITY},
         net_doubled_pawns, net_open_rooks,
         pst::PST,
+        safety::{attack_units, UNIT_SCORES},
         DOUBLED_PAWN_VALUE, EG_LIMIT, KINGSIDE_CASTLE_VALUE, MG_LIMIT, OPEN_ROOK_VALUE,
         QUEENSIDE_CASTLE_VALUE,
     },
@@ -73,9 +74,9 @@ pub fn main() -> Result<(), i32> {
         }
     };
     let mut weights = load_weights();
-    let value_learn_rate = 0.1;
+    let value_learn_rate = 0.05;
     // The learn rate for the midgame/endgame cutoffs.
-    let cutoff_learn_rate = 150.;
+    let cutoff_learn_rate = 0.05;
 
     let nthreads = 12;
     let tic = Instant::now();
@@ -90,7 +91,7 @@ pub fn main() -> Result<(), i32> {
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for i in 0..5000 {
+    for i in 0..10_000 {
         println!("iteration {i}...");
         let (new_weights, _) = train_step(
             &input_sets,
@@ -107,6 +108,7 @@ pub fn main() -> Result<(), i32> {
     Ok(())
 }
 
+#[derive(Debug)]
 /// Extracted features from a board for gradient descent.
 struct BoardFeatures {
     /// The total (not net) quantities of each piece type on the board.
@@ -295,6 +297,12 @@ fn load_weights() -> Weights {
         QUEENSIDE_CASTLE_VALUE.eg.float_val(),
     ));
 
+    for val in UNIT_SCORES {
+        weights
+            .rule_values
+            .push((val.mg.float_val(), val.eg.float_val()));
+    }
+
     weights
 }
 
@@ -383,6 +391,20 @@ fn print_weights(weights: &Weights) {
     print_rule("OPEN_ROOK_VALUE", offset + 1);
     print_rule("KINGSIDE_CASTLE_VALUE", offset + 2);
     print_rule("QUEENSIDE_CASTLE_VALUE", offset + 3);
+
+    offset += 4;
+
+    println!("---");
+    println!("pub const UNIT_SCORES: [Score; 256] = unsafe {{ transmute::<[(i16, i16); 256], [Score, 256]>([");
+    for i in 0..256 {
+        let fscore = weights.rule_values[offset + i];
+        println!(
+            "    ({}, {}),",
+            (fscore.0 * 100.) as i16,
+            (fscore.1 * 100.) as i16
+        );
+    }
+    println!("])}};");
 }
 
 #[allow(
@@ -456,7 +478,17 @@ fn extract(g: &Game) -> BoardFeatures {
     if queenside_net != 0 {
         rules.push((offset, f32::from(queenside_net)));
     }
-    // offset += 1;
+    offset += 1;
+
+    // Extract king safety
+    // Get indices into the units value table
+    let w_attack_idx = usize::from(attack_units::<{ Color::White }>(g));
+    let b_attack_idx = usize::from(attack_units::<{ Color::Black }>(g));
+    if w_attack_idx != b_attack_idx {
+        rules.push((offset + w_attack_idx, 1.0));
+        rules.push((offset + b_attack_idx, -1.0));
+    }
+    // offset += 256;
 
     BoardFeatures {
         piece_counts,
@@ -641,11 +673,12 @@ impl Weights {
         };
         // Compute gradient with respect to rule weights
         for &(rule_idx, rule_count) in &x.rules {
-            add_to.rule_values[rule_idx].0 += scale * phase * rule_count;
+            let rv = &mut add_to.rule_values[rule_idx];
+            rv.0 += scale * phase * rule_count;
             if rule_idx < 5 {
-                add_to.rule_values[rule_idx].0 += scale * phase_bonus;
+                rv.0 += scale * phase_bonus;
             }
-            add_to.rule_values[rule_idx].1 += scale * inv_phase * rule_count;
+            rv.1 += scale * inv_phase * rule_count;
         }
     }
 }

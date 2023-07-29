@@ -745,7 +745,7 @@ pub mod tests {
         eval_helper(
             "2r2r2/3p1p1k/p3p1p1/3P3n/q3P1Q1/1p5P/1PP2R2/1K4R1 w - - 0 30",
             Eval::mate_in(9),
-            11,
+            12,
         );
     }
 

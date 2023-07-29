@@ -49,6 +49,7 @@ use crate::base::{game::Game, Bitboard, Color, Move, Piece};
 pub mod material;
 pub mod mobility;
 pub mod pst;
+pub mod safety;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[repr(C)]
@@ -129,26 +130,26 @@ pub fn cumulative_init(g: &Game) -> Score {
 }
 
 /// The cutoff for pure midgame material.
-pub const MG_LIMIT: Eval = Eval::centipawns(2172);
+pub const MG_LIMIT: Eval = Eval::centipawns(1975);
 
 /// The cutoff for pure endgame material.
-pub const EG_LIMIT: Eval = Eval::centipawns(1263);
+pub const EG_LIMIT: Eval = Eval::centipawns(1294);
 
 /// Mask containing ones along the A file.
 /// Bitshifting left by a number from 0 through 7 will cause it to become a mask for each file.
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-21, -21);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-19, -20);
 /// The value of having a rook with no same-colored pawns in front of it which are not advanced past
 /// the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(27, 29);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(19, 18);
 
 /// The value of having the right to castle kingside.
 pub const KINGSIDE_CASTLE_VALUE: Score = Score::centipawns(0, 0);
 
 /// The value of having the right to castle queenside.
-pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(1, 1);
+pub const QUEENSIDE_CASTLE_VALUE: Score = Score::centipawns(0, 0);
 
 #[must_use]
 #[allow(clippy::module_name_repetitions)]
@@ -180,7 +181,10 @@ fn leaf_rules(g: &Game) -> Score {
 
     // Add gains from open rooks
     score += OPEN_ROOK_VALUE * net_open_rooks(g);
+
+    // Add more complex evaluations
     score += mobility::evaluate(g);
+    score += safety::evaluate(g);
 
     score
 }

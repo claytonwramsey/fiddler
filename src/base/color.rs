@@ -19,10 +19,10 @@
 //! Representation of player colors.
 
 use super::{Bitboard, Direction};
-use std::{mem::transmute, ops::Not};
+use std::{marker::ConstParamTy, mem::transmute, ops::Not};
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ConstParamTy)]
 /// An enum representing the possible colors that a piece or player can be.
 pub enum Color {
     /// The white player, a.k.a. the first player to move in a game.
