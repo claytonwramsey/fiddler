@@ -46,10 +46,10 @@ pub fn evaluate(game: &Game) -> Score {
     let mut score = Score::DRAW;
 
     for pt in Piece::ALL {
-        for sq in game[pt] & game[Color::White] {
+        for sq in game.by_piece(pt) & game.white() {
             score += PST[pt as usize][sq as usize];
         }
-        for sq in game[pt] & game[Color::Black] {
+        for sq in game.by_piece(pt) & game.black() {
             // Invert the square that Black is on, since positional values are flipped (as pawns
             // move the other way, etc)
             let alt_sq = sq.opposite();
@@ -90,7 +90,7 @@ pub fn delta(game: &Game, m: Move) -> Score {
     // you always lose the value of the square you moved from
     let mut delta = PST[end_idx][to_idx] - PST[mover_idx][from_idx];
 
-    if game[!game.meta().player].contains(m.destination()) {
+    if game.by_color(!game.meta().player).contains(m.destination()) {
         // conventional capture
         let to_opposite_idx = to_alt.opposite() as usize;
         let capturee_idx = game[dest].unwrap().0 as usize;

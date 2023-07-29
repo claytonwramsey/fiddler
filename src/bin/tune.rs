@@ -392,15 +392,15 @@ fn print_weights(weights: &Weights) {
 )]
 /// Extract a feature vector from a board.
 fn extract(g: &Game) -> BoardFeatures {
-    let bocc = g[Color::Black];
-    let wocc = g[Color::White];
+    let bocc = g.black();
+    let wocc = g.white();
 
     let mut piece_counts = [0.0; Piece::NUM - 1];
     let mut rules = Vec::new();
     // Indices 0..8: non-king piece values
     for pt in Piece::NON_KING {
-        let n_white = (g[pt] & wocc).len() as i8;
-        let n_black = (g[pt] & bocc).len() as i8;
+        let n_white = (g.by_piece(pt) & wocc).len() as i8;
+        let n_black = (g.by_piece(pt) & bocc).len() as i8;
         piece_counts[pt as usize] = f32::from(n_white + n_black);
         let net = n_white - n_black;
         if net != 0 {
@@ -411,7 +411,7 @@ fn extract(g: &Game) -> BoardFeatures {
 
     // Get piece-square quantities
     for pt in Piece::ALL {
-        for sq in g[pt] {
+        for sq in g.by_piece(pt) {
             let alt_sq = sq.opposite();
             let increment = match (wocc.contains(sq), bocc.contains(alt_sq)) {
                 (true, false) => 1.,
@@ -467,15 +467,15 @@ fn extract(g: &Game) -> BoardFeatures {
 /// Helper function to extract mobility information into the sparse feature vector.
 /// Adds 168 new features.
 fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
-    let white = g[Color::White];
-    let black = g[Color::Black];
+    let white = g.white();
+    let black = g.black();
     let not_white = !white;
     let not_black = !black;
     let occupancy = white | black;
     let mut count = [[0i8; MAX_MOBILITY]; Piece::NUM];
 
     // count knight moves
-    let knights = g[Piece::Knight];
+    let knights = g.knights();
     for sq in knights & white {
         let idx = usize::from((KNIGHT_MOVES[sq as usize] & not_white).len());
         count[Piece::Knight as usize][idx] += 1;
@@ -486,7 +486,7 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // count bishop moves
-    let bishops = g[Piece::Bishop];
+    let bishops = g.bishops();
     for sq in bishops & white {
         let idx = usize::from((bishop_moves(occupancy, sq) & not_white).len());
         count[Piece::Bishop as usize][idx] += 1;
@@ -497,7 +497,7 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // count rook moves
-    let rooks = g[Piece::Rook];
+    let rooks = g.rooks();
     for sq in rooks & white {
         let idx = usize::from((rook_moves(occupancy, sq) & not_white).len());
         count[Piece::Rook as usize][idx] += 1;
@@ -508,7 +508,7 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     }
 
     // count queen moves
-    let queens = g[Piece::Queen];
+    let queens = g.queens();
     for sq in queens & white {
         let idx = usize::from(
             ((rook_moves(occupancy, sq) | bishop_moves(occupancy, sq)) & not_white).len(),
@@ -524,7 +524,7 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
 
     // count net pawn moves
     // pawns can't capture by pushing, so we only examine their capture squares
-    let pawns = g[Piece::Pawn];
+    let pawns = g.pawns();
     for sq in pawns & white {
         let idx = usize::from((PAWN_ATTACKS[Color::White as usize][sq as usize] & not_white).len());
         count[Piece::Pawn as usize][idx] += 1;
@@ -536,15 +536,11 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
 
     // king
     let white_king_idx = usize::from(
-        (KING_MOVES[Square::try_from(g[Piece::King] & g[Color::White]).unwrap() as usize]
-            & not_white)
-            .len(),
+        (KING_MOVES[Square::try_from(g.kings() & g.white()).unwrap() as usize] & not_white).len(),
     );
     count[Piece::King as usize][white_king_idx] += 1;
     let black_king_idx = usize::from(
-        (KING_MOVES[Square::try_from(g[Piece::King] & g[Color::Black]).unwrap() as usize]
-            & not_black)
-            .len(),
+        (KING_MOVES[Square::try_from(g.kings() & g.black()).unwrap() as usize] & not_black).len(),
     );
     count[Piece::King as usize][black_king_idx] -= 1;
 

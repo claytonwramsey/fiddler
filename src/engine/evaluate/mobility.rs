@@ -232,15 +232,15 @@ pub const fn for_piece(pt: Piece, attacks: Bitboard) -> Score {
 ///
 /// This function may panic if `g` is in an invalid state.
 pub fn evaluate(g: &Game) -> Score {
-    let white = g[Color::White];
-    let black = g[Color::Black];
+    let white = g.white();
+    let black = g.black();
     let not_white = !white;
     let not_black = !black;
     let occupancy = white | black;
     let mut score = Score::DRAW;
 
     // count knight moves
-    let knights = g[Piece::Knight];
+    let knights = g.knights();
     // pinned knights can't move and so we don't bother counting them
     for sq in knights & white {
         score += for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
@@ -250,7 +250,7 @@ pub fn evaluate(g: &Game) -> Score {
     }
 
     // count bishop moves
-    let bishops = g[Piece::Bishop];
+    let bishops = g.bishops();
     for sq in bishops & white {
         score += for_piece(Piece::Bishop, bishop_moves(occupancy, sq) & not_white);
     }
@@ -259,7 +259,7 @@ pub fn evaluate(g: &Game) -> Score {
     }
 
     // count rook moves
-    let rooks = g[Piece::Rook];
+    let rooks = g.rooks();
     for sq in rooks & white {
         score += for_piece(Piece::Rook, rook_moves(occupancy, sq) & not_white);
     }
@@ -268,7 +268,7 @@ pub fn evaluate(g: &Game) -> Score {
     }
 
     // count queen moves
-    let queens = g[Piece::Queen];
+    let queens = g.queens();
     for sq in queens & white {
         let attacks = rook_moves(occupancy, sq) | bishop_moves(occupancy, sq);
         score += for_piece(Piece::Queen, attacks & not_white);
@@ -280,7 +280,7 @@ pub fn evaluate(g: &Game) -> Score {
 
     // count net pawn moves
     // pawns can't capture by pushing, so we only examine their capture squares
-    let pawns = g[Piece::Pawn];
+    let pawns = g.pawns();
     for sq in pawns & white {
         score += for_piece(
             Piece::Pawn,
@@ -296,13 +296,11 @@ pub fn evaluate(g: &Game) -> Score {
 
     score += for_piece(
         Piece::King,
-        KING_MOVES[Square::try_from(g[Piece::King] & g[Color::White]).unwrap() as usize]
-            & not_white,
+        KING_MOVES[Square::try_from(g.kings() & g.white()).unwrap() as usize] & not_white,
     );
     score -= for_piece(
         Piece::King,
-        KING_MOVES[Square::try_from(g[Piece::King] & g[Color::Black]).unwrap() as usize]
-            & not_black,
+        KING_MOVES[Square::try_from(g.kings() & g.black()).unwrap() as usize] & not_black,
     );
 
     score

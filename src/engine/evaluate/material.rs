@@ -76,13 +76,13 @@ pub fn evaluate(g: &Game) -> Score {
     let mut score = Score::centipawns(0, 0);
 
     let player = g.meta().player;
-    let allies = g[player];
-    let enemies = g[!player];
+    let allies = g.by_color(player);
+    let enemies = g.by_color(!player);
 
     for pt in Piece::ALL {
         // Total the quantity of white and black pieces of this type, and multiply their individual
         // value to get the net effect on the eval.
-        let pt_squares = g[pt];
+        let pt_squares = g.by_piece(pt);
         let diff = (allies & pt_squares).len() as i8 - (enemies & pt_squares).len() as i8;
         score += value(pt) * diff;
     }

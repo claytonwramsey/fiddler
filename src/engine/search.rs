@@ -32,7 +32,7 @@ use crate::{
     base::{
         game::Game,
         movegen::{get_moves, has_moves, is_legal, GenMode},
-        Move, Piece,
+        Move,
     },
     engine::{
         evaluate::{calculate_phase, eval_nl_delta},
@@ -321,7 +321,7 @@ impl<'a> PVSearch<'a> {
             && beta < Eval::MAX // static evaluation must be good
             && self.game.meta().checkers.is_empty() // cannot nullmove out of check
             // prevent zugzwang
-            && (!self.game[Piece::Pawn] & self.game[self.game.meta().player]).more_than_one()
+            && (!self.game.pawns() & self.game.by_color(self.game.meta().player)).more_than_one()
             && !matches!( // play NMs once
                 self.game.moves.last(),
                 Some(None))

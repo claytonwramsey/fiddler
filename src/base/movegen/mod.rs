@@ -167,8 +167,8 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
     let from_bb = Bitboard::from(orig);
     let to_bb = Bitboard::from(dest);
     let player = meta.player;
-    let allies = g[player];
-    let enemies = g[!player];
+    let allies = g.by_color(player);
+    let enemies = g.by_color(!player);
     let occupancy = allies | enemies;
     if allies.contains(dest) {
         // cannot move to square occupied by our piece
@@ -259,7 +259,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
         return false;
     };
 
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
     // check that the move is not a self check
     if !meta.checkers.is_empty() {
         // we already handled the two-checker case, so there is only one checker
@@ -287,11 +287,9 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 
         let new_occupancy = g.occupancy() ^ from_bb ^ capture_bb ^ to_bb;
 
-        return (rook_moves(new_occupancy, king_sq) & (g[Piece::Rook] | g[Piece::Queen]) & enemies)
+        return (rook_moves(new_occupancy, king_sq) & (g.rooks() | g.queens()) & enemies)
             .is_empty()
-            && (bishop_moves(new_occupancy, king_sq)
-                & (g[Piece::Bishop] | g[Piece::Queen])
-                & enemies)
+            && (bishop_moves(new_occupancy, king_sq) & (g.bishops() | g.queens()) & enemies)
                 .is_empty();
     }
 
@@ -429,16 +427,16 @@ pub fn has_moves(g: &Game) -> bool {
     let meta = g.meta();
 
     let player = meta.player;
-    let allies = g[player];
-    let enemies = g[!player];
+    let allies = g.by_color(player);
+    let enemies = g.by_color(!player);
     let opponent = !player;
     let occupancy = allies | enemies;
     let mut legal_targets = !allies;
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
     // king does not have to block its checks
     let king_dests = KING_MOVES[king_sq as usize] & legal_targets;
     let unpinned = !meta.pinned;
-    let queens = g[Piece::Queen];
+    let queens = g.queens();
 
     if meta.checkers.more_than_one() {
         // in double check, only consider king moves
@@ -463,14 +461,14 @@ pub fn has_moves(g: &Game) -> bool {
 
     // pinned knights can never move, but an unpinned knight does whatever it
     // wants
-    for sq in g[Piece::Knight] & allies & unpinned {
+    for sq in g.knights() & allies & unpinned {
         if !(KNIGHT_MOVES[sq as usize] & legal_targets).is_empty() {
             return true;
         }
     }
 
     // unpinned bishops/diagonal queens
-    let bishop_movers = (g[Piece::Bishop] | queens) & allies;
+    let bishop_movers = (g.bishops() | queens) & allies;
     for sq in bishop_movers & unpinned {
         if !(bishop_moves(occupancy, sq) & legal_targets).is_empty() {
             return true;
@@ -485,7 +483,7 @@ pub fn has_moves(g: &Game) -> bool {
         }
     }
 
-    let rook_movers = (g[Piece::Rook] | queens) & allies;
+    let rook_movers = (g.rooks() | queens) & allies;
     // unpinned rooks/horizontal queens
     for sq in rook_movers & unpinned {
         if !(rook_moves(occupancy, sq) & legal_targets).is_empty() {
@@ -502,7 +500,7 @@ pub fn has_moves(g: &Game) -> bool {
     }
 
     // "normal" pawn moves
-    let our_pawns = g[Piece::Pawn] & allies;
+    let our_pawns = g.pawns() & allies;
     for sq in our_pawns {
         let singlemove_sq = sq + player.pawn_direction();
         let mut to_bb = Bitboard::from(singlemove_sq);
@@ -529,13 +527,9 @@ pub fn has_moves(g: &Game) -> bool {
         for sq in our_pawns {
             if PAWN_ATTACKS[player as usize][sq as usize].contains(ep_sq) {
                 let new_occupancy = ep_less_occupancy ^ Bitboard::from(sq);
-                if (rook_moves(new_occupancy, king_sq)
-                    & (g[Piece::Rook] | g[Piece::Queen])
-                    & enemies)
+                if (rook_moves(new_occupancy, king_sq) & (g.rooks() | g.queens()) & enemies)
                     .is_empty()
-                    && (bishop_moves(new_occupancy, king_sq)
-                        & (g[Piece::Bishop] | g[Piece::Queen])
-                        & enemies)
+                    && (bishop_moves(new_occupancy, king_sq) & (g.bishops() | g.queens()) & enemies)
                         .is_empty()
                 {
                     return true;
@@ -582,8 +576,8 @@ pub fn is_square_attacked_by(game: &Game, sq: Square, color: Color) -> bool {
 fn non_evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
     let meta = g.meta();
     let target_sqs = match M {
-        GenMode::All => !g[meta.player],
-        GenMode::Captures => g[!meta.player],
+        GenMode::All => !g.by_color(meta.player),
+        GenMode::Captures => g.by_color(!meta.player),
         GenMode::Quiets => !g.occupancy(),
     };
 
@@ -611,18 +605,19 @@ fn non_evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
 fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
     let meta = g.meta();
     let player = meta.player;
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
 
     // only look at non-king moves if we are not in double check
     if meta.checkers.has_single_bit() {
         // SAFETY: We checked that the set of checkers is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(meta.checkers) };
         // Look for blocks or captures
-        let mut target_sqs = !g[player] & Bitboard::between(king_sq, checker_sq) | meta.checkers;
+        let mut target_sqs =
+            !g.by_color(player) & Bitboard::between(king_sq, checker_sq) | meta.checkers;
         match M {
             GenMode::All => (),
-            GenMode::Captures => target_sqs &= g[!player],
-            GenMode::Quiets => target_sqs &= !g[!player],
+            GenMode::Captures => target_sqs &= g.by_color(!player),
+            GenMode::Quiets => target_sqs &= !g.by_color(!player),
         }
 
         let mut pawn_targets = target_sqs;
@@ -641,8 +636,8 @@ fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
     }
 
     let king_targets = match M {
-        GenMode::All => !g[player],
-        GenMode::Captures => g[!player],
+        GenMode::All => !g.by_color(player),
+        GenMode::Captures => g.by_color(!player),
         GenMode::Quiets => !g.occupancy(),
     };
     king_move_non_castle(g, &mut callback, king_targets);
@@ -679,28 +674,28 @@ fn square_attackers_occupancy(
     occupancy: Bitboard,
 ) -> Bitboard {
     let mut attackers = Bitboard::EMPTY;
-    let color_bb = game[color];
+    let color_bb = game.by_color(color);
     // Check for pawn attacks
     let pawn_vision = PAWN_ATTACKS[!color as usize][sq as usize];
-    attackers |= pawn_vision & game[Piece::Pawn];
+    attackers |= pawn_vision & game.pawns();
 
     // Check for knight attacks
     let knight_vision = KNIGHT_MOVES[sq as usize];
-    attackers |= knight_vision & game[Piece::Knight];
+    attackers |= knight_vision & game.knights();
 
-    let queens_bb = game[Piece::Queen];
+    let queens_bb = game.queens();
 
     // Check for rook/horizontal queen attacks
     let rook_vision = rook_moves(occupancy, sq);
-    attackers |= rook_vision & (queens_bb | game[Piece::Rook]);
+    attackers |= rook_vision & (queens_bb | game.rooks());
 
     // Check for bishop/diagonal queen attacks
     let bishop_vision = bishop_moves(occupancy, sq);
-    attackers |= bishop_vision & (queens_bb | game[Piece::Bishop]);
+    attackers |= bishop_vision & (queens_bb | game.bishops());
 
     // Check for king attacks
     let king_vision = KING_MOVES[sq as usize];
-    attackers |= king_vision & game[Piece::King];
+    attackers |= king_vision & game.kings();
 
     attackers & color_bb
 }
@@ -714,11 +709,11 @@ fn square_attackers_occupancy(
 fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), target: Bitboard) {
     let meta = g.meta();
     let player = meta.player;
-    let allies = g[player];
-    let opponents = g[!player];
+    let allies = g.by_color(player);
+    let opponents = g.by_color(!player);
     let occupancy = allies | opponents;
     let unoccupied = !occupancy;
-    let pawns = g[Piece::Pawn] & allies;
+    let pawns = g.pawns() & allies;
     let rank8 = player.pawn_promote_rank();
     let not_rank8 = !rank8;
     let rank3 = match player {
@@ -728,7 +723,7 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
     let direction = player.pawn_direction();
     let doubledir = 2 * direction;
     let unpinned = !meta.pinned;
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
     let king_file_mask = Bitboard::vertical(king_sq);
     if M != GenMode::Quiets {
         // pawn captures
@@ -801,8 +796,8 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
         // en passant
         if let Some(ep_square) = meta.en_passant_square {
             if target.contains(ep_square) {
-                let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
-                let enemy = g[!player];
+                let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
+                let enemy = g.by_color(!player);
                 let to_bb = Bitboard::from(ep_square);
                 let capture_bb = match player {
                     Color::White => to_bb >> 8,
@@ -811,12 +806,10 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
                 let origs = PAWN_ATTACKS[!player as usize][ep_square as usize] & pawns;
                 for orig in origs {
                     let new_occupancy = g.occupancy() ^ Bitboard::from(orig) ^ capture_bb ^ to_bb;
-                    if (rook_moves(new_occupancy, king_sq)
-                        & (g[Piece::Rook] | g[Piece::Queen])
-                        & enemy)
+                    if (rook_moves(new_occupancy, king_sq) & (g.rooks() | g.queens()) & enemy)
                         .is_empty()
                         && (bishop_moves(new_occupancy, king_sq)
-                            & (g[Piece::Bishop] | g[Piece::Queen])
+                            & (g.bishops() | g.queens())
                             & enemy)
                             .is_empty()
                     {
@@ -876,18 +869,18 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
     let meta = g.meta();
 
     let player = meta.player;
-    let allies = g[player];
-    let occupancy = allies | g[!player];
-    let queens = g[Piece::Queen];
-    let rook_movers = (g[Piece::Rook] | queens) & allies;
-    let bishop_movers = (g[Piece::Bishop] | queens) & allies;
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
+    let allies = g.by_color(player);
+    let occupancy = allies | g.by_color(!player);
+    let queens = g.queens();
+    let rook_movers = (g.rooks() | queens) & allies;
+    let bishop_movers = (g.bishops() | queens) & allies;
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
     let unpinned = !meta.pinned;
     let king_hv = Bitboard::hv(king_sq);
     let king_diags = Bitboard::diags(king_sq);
 
     // only unpinned knights can move
-    for orig in g[Piece::Knight] & allies & unpinned {
+    for orig in g.knights() & allies & unpinned {
         for dest in KNIGHT_MOVES[orig as usize] & target {
             callback(Move::normal(orig, dest));
         }
@@ -929,10 +922,10 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
 /// target square.
 fn king_move_non_castle(g: &Game, callback: &mut impl FnMut(Move), target: Bitboard) {
     let meta = g.meta();
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
-    let allies = g[meta.player];
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
+    let allies = g.by_color(meta.player);
     let to_bb = KING_MOVES[king_sq as usize] & !allies & target;
-    let king_bb = g[Piece::King] & g[meta.player];
+    let king_bb = g.kings() & g.by_color(meta.player);
     let old_occupancy = g.occupancy();
     for dest in to_bb {
         let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(dest);
@@ -951,7 +944,7 @@ fn castles(g: &Game, callback: &mut impl FnMut(Move)) {
 
     let player = meta.player;
     let occ = g.occupancy();
-    let king_sq = Square::try_from(g[Piece::King] & g[meta.player]).unwrap();
+    let king_sq = Square::try_from(g.kings() & g.by_color(meta.player)).unwrap();
 
     // the squares the king must pass through to reach the castled position
     let kingside_castle_passthrough_sqs = match player {

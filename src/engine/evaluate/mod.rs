@@ -108,7 +108,7 @@ pub fn mg_npm_delta(m: Move, g: &Game) -> Eval {
 pub fn mg_npm(g: &Game) -> Eval {
     let mut total = Eval::DRAW;
     for pt in Piece::PROMOTING {
-        total += material::value(pt).mg * g[pt].len();
+        total += material::value(pt).mg * g.by_piece(pt).len();
     }
     total
 }
@@ -210,10 +210,10 @@ pub fn net_open_rooks(g: &Game) -> i8 {
     // Mask for pawns which are on the black half of the board
     const BLACK_HALF: Bitboard = Bitboard::new(0xFFFF_FFFF_0000_0000);
     let mut net_open_rooks = 0i8;
-    let rooks = g[Piece::Rook];
-    let pawns = g[Piece::Pawn];
-    let white = g[Color::White];
-    let black = g[Color::Black];
+    let rooks = g.rooks();
+    let pawns = g.pawns();
+    let white = g.white();
+    let black = g.black();
 
     // count white rooks
     for wrook_sq in rooks & white {
@@ -262,7 +262,7 @@ pub fn net_open_rooks(g: &Game) -> i8 {
 /// # }
 /// ```
 pub fn net_doubled_pawns(g: &Game) -> i8 {
-    let pawns = g[Piece::Pawn];
+    let pawns = g.pawns();
     let mut net_doubled: i8 = 0;
     // all ones on the A column, shifted left by the col
     let mut col_mask = Bitboard::new(0x0101_0101_0101_0101);
@@ -270,11 +270,11 @@ pub fn net_doubled_pawns(g: &Game) -> i8 {
     for _ in 0..8 {
         let col_pawns = pawns & col_mask;
 
-        net_doubled -= match (g[Color::Black] & col_pawns).len() {
+        net_doubled -= match (g.black() & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };
-        net_doubled += match (g[Color::White] & col_pawns).len() {
+        net_doubled += match (g.white() & col_pawns).len() {
             0 => 0,
             x => x as i8 - 1,
         };

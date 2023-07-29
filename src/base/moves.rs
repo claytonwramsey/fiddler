@@ -142,11 +142,11 @@ impl Move {
             return Ok(Move::promoting(orig, dest, pt));
         }
 
-        if game[Piece::King].contains(orig) && orig.file_distance(dest) > 1 {
+        if game.kings().contains(orig) && orig.file_distance(dest) > 1 {
             return Ok(Move::castling(orig, dest));
         }
 
-        if game[Piece::Pawn].contains(orig) && game.meta().en_passant_square == Some(dest) {
+        if game.pawns().contains(orig) && game.meta().en_passant_square == Some(dest) {
             return Ok(Move::en_passant(orig, dest));
         }
 

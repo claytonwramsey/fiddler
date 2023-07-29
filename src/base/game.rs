@@ -364,7 +364,7 @@ impl Game {
 
         // updating metadata
         let player = meta.player;
-        let king_sq = Square::try_from(game[Piece::King] & game[player])
+        let king_sq = Square::try_from(game.kings() & game.by_color(player))
             .map_err(|_| "cannot find square containing king")?;
         game.history[0].checkers = square_attackers(&game, king_sq, !game.meta().player);
         game.history[0].pinned = game.compute_pinned(king_sq, !game.history[0].player);
@@ -380,6 +380,187 @@ impl Game {
     /// Get the metadata associated with the current board state.
     pub fn meta(&self) -> &BoardMeta {
         self.history.last().unwrap()
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the knights on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(
+    ///     g.knights(),
+    ///     Bitboard::EMPTY
+    ///         .with_square(Square::B1)
+    ///         .with_square(Square::G1)
+    ///         .with_square(Square::B8)
+    ///         .with_square(Square::G8)
+    /// );
+    /// ```
+    pub fn knights(&self) -> Bitboard {
+        self.pieces[Piece::Knight as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the bishops on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(
+    ///     g.bishops(),
+    ///     Bitboard::EMPTY
+    ///         .with_square(Square::C1)
+    ///         .with_square(Square::F1)
+    ///         .with_square(Square::C8)
+    ///         .with_square(Square::F8)
+    /// );
+    /// ```
+    pub fn bishops(&self) -> Bitboard {
+        self.pieces[Piece::Bishop as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the rooks on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(
+    ///     g.rooks(),
+    ///     Bitboard::EMPTY
+    ///         .with_square(Square::A1)
+    ///         .with_square(Square::H1)
+    ///         .with_square(Square::A8)
+    ///         .with_square(Square::H8)
+    /// );
+    /// ```
+    pub fn rooks(&self) -> Bitboard {
+        self.pieces[Piece::Rook as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the queens on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(
+    ///     g.queens(),
+    ///     Bitboard::EMPTY
+    ///         .with_square(Square::D1)
+    ///         .with_square(Square::D8)
+    /// );
+    /// ```
+    pub fn queens(&self) -> Bitboard {
+        self.pieces[Piece::Queen as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the kings on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(
+    ///     g.kings(),
+    ///     Bitboard::EMPTY
+    ///         .with_square(Square::E1)
+    ///         .with_square(Square::E8)
+    /// );
+    /// ```
+    pub fn kings(&self) -> Bitboard {
+        self.pieces[Piece::King as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the pawns on the board.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g.pawns(), Bitboard::new(0x00FF_0000_0000_FF00));
+    /// ```
+    pub fn pawns(&self) -> Bitboard {
+        self.pieces[Piece::Pawn as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the squares occupied by a certain type of piece.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Piece};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g.by_piece(Piece::Pawn), g.pawns());
+    /// ```
+    pub fn by_piece(&self, piece: Piece) -> Bitboard {
+        unsafe { *self.pieces.get_unchecked(piece as usize) }
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the squares occupied by white pieces.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g.white(), Bitboard::new(0x0000_0000_0000_FFFF));
+    /// ```
+    pub fn white(&self) -> Bitboard {
+        self.sides[Color::White as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the squares occupied by black pieces.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Bitboard};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g.black(), Bitboard::new(0xFFFF_0000_0000_0000));
+    /// ```
+    pub fn black(&self) -> Bitboard {
+        self.sides[Color::Black as usize]
+    }
+
+    #[must_use]
+    /// Get a bitboard of all the squares occupied by pieces of the provided color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g.by_color(Color::White), g.white());
+    /// ```
+    pub fn by_color(&self, color: Color) -> Bitboard {
+        unsafe { *self.sides.get_unchecked(color as usize) }
     }
 
     #[allow(clippy::too_many_lines)]
@@ -469,9 +650,9 @@ impl Game {
         if is_pawn_move && orig.rank_distance(dest) > 1 {
             let ep_candidate = Square::new((orig.rank() + dest.rank()) / 2, orig.file()).unwrap();
             if (PAWN_ATTACKS[player as usize][ep_candidate as usize]
-                & self[Piece::Pawn]
-                & self[!player])
-                .is_empty()
+                & self.pawns()
+                & self.by_color(!player))
+            .is_empty()
             {
                 new_meta.en_passant_square = None;
             } else {
@@ -541,7 +722,7 @@ impl Game {
         /* -------- Non-meta fields of the board are now in their final state. -------- */
 
         /* -------- Update other metadata -------- */
-        let enemy_king_sq = Square::try_from(self[Piece::King] & self[!player]).unwrap();
+        let enemy_king_sq = Square::try_from(self.kings() & self.by_color(!player)).unwrap();
 
         new_meta.checkers = square_attackers(self, enemy_king_sq, player);
         new_meta.pinned = self.compute_pinned(enemy_king_sq, player);
@@ -610,7 +791,7 @@ impl Game {
         meta.rule50 += 1;
         meta.repeated = 0;
         self.history.last_mut().unwrap().pinned = self.compute_pinned(
-            Square::try_from(self[Piece::King] & self[!player]).unwrap(),
+            Square::try_from(self.kings() & self.by_color(!player)).unwrap(),
             player,
         );
     }
@@ -644,11 +825,10 @@ impl Game {
         let rook_mask = rook_moves(Bitboard::EMPTY, pin_sq);
         let bishop_mask = bishop_moves(Bitboard::EMPTY, pin_sq);
         let occupancy = self.occupancy();
-        let queens = self[Piece::Queen];
+        let queens = self.queens();
 
-        let snipers = self[enemy]
-            & ((rook_mask & (queens | self[Piece::Rook]))
-                | (bishop_mask & (queens | self[Piece::Bishop])));
+        let snipers = self.by_color(enemy)
+            & ((rook_mask & (queens | self.rooks())) | (bishop_mask & (queens | self.bishops())));
 
         for sniper_sq in snipers {
             let between_bb = Bitboard::between(pin_sq, sniper_sq);
@@ -782,7 +962,7 @@ impl Game {
     /// assert_eq!(game.occupancy(), Bitboard::new(0xFFFF00000000FFFF));
     /// ```
     pub fn occupancy(&self) -> Bitboard {
-        self[Color::White] | self[Color::Black]
+        self.white() | self.black()
     }
 
     #[must_use]
@@ -832,13 +1012,12 @@ impl Game {
         /// The set of dark squares, i.e. A1 and those on its diagonal.
         const DARK_SQUARES: Bitboard = Bitboard::new(0xAA55_AA55_AA55_AA55);
         match self.occupancy().len() {
-            0 | 1 => unreachable!(), // a king is missing
-            2 => true,               // only two kings
-            3 => !(self[Piece::Knight] | self[Piece::Bishop]).is_empty(), // KNK or KBK
+            0 | 1 => unreachable!(),                            // a king is missing
+            2 => true,                                          // only two kings
+            3 => !(self.knights() | self.bishops()).is_empty(), // KNK or KBK
             // same colored bishops
             4 => {
-                self[Piece::Bishop].more_than_one()
-                    && !(self[Piece::Bishop] & DARK_SQUARES).has_single_bit()
+                self.bishops().more_than_one() && !(self.bishops() & DARK_SQUARES).has_single_bit()
             }
             _ => false,
         }
@@ -854,11 +1033,11 @@ impl Game {
             .into_iter()
             .all(|sq| match self.mailbox[sq as usize] {
                 Some((pt, color)) => {
-                    !self[color].contains(sq)
-                        || self[!color].contains(sq)
+                    !self.by_color(color).contains(sq)
+                        || self.by_color(!color).contains(sq)
                         || Piece::ALL
                             .into_iter()
-                            .any(|pt2| (pt2 == pt) != self[pt2].contains(sq))
+                            .any(|pt2| (pt2 == pt) != self.by_piece(pt2).contains(sq))
                 }
                 None => self
                     .sides
@@ -893,7 +1072,7 @@ impl Game {
             return false;
         }
 
-        let Ok(king_sq) = Square::try_from(self[Piece::King] & self[self.meta().player]) else {
+        let Ok(king_sq) = Square::try_from(self.kings() & self.by_color(self.meta().player)) else {
             return false;
         };
 
@@ -918,28 +1097,6 @@ impl BoardMeta {
     /// Determine whether this board meta-state is drawn by the 50-move rule.
     pub fn drawn_50(&self) -> bool {
         self.rule50 >= 100
-    }
-}
-
-impl Index<Piece> for Game {
-    type Output = Bitboard;
-
-    /// Get the squares occupied by pieces of the given type.
-    fn index(&self, index: Piece) -> &Self::Output {
-        // SAFETY: This will not fail because there are the same number of pieces as legal indices
-        // on `pieces`.
-        unsafe { self.pieces.get_unchecked(index as usize) }
-    }
-}
-
-impl Index<Color> for Game {
-    type Output = Bitboard;
-
-    /// Get the squares occupied by pieces of the given color.
-    fn index(&self, index: Color) -> &Self::Output {
-        // SAFETY: This will not fail because there are the same number of colors as indices on
-        // `sides`.
-        unsafe { self.sides.get_unchecked(index as usize) }
     }
 }
 
