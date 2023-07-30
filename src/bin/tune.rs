@@ -74,9 +74,9 @@ pub fn main() -> Result<(), i32> {
         }
     };
     let mut weights = load_weights();
-    let value_learn_rate = 0.05;
+    let value_learn_rate = 0.1;
     // The learn rate for the midgame/endgame cutoffs.
-    let cutoff_learn_rate = 0.05;
+    let cutoff_learn_rate = value_learn_rate;
 
     let nthreads = 12;
     let tic = Instant::now();

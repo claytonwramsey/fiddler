@@ -130,10 +130,10 @@ pub fn cumulative_init(g: &Game) -> Score {
 }
 
 /// The cutoff for pure midgame material.
-pub const MG_LIMIT: Eval = Eval::centipawns(1975);
+pub const MG_LIMIT: Eval = Eval::centipawns(2172);
 
 /// The cutoff for pure endgame material.
-pub const EG_LIMIT: Eval = Eval::centipawns(1294);
+pub const EG_LIMIT: Eval = Eval::centipawns(1273);
 
 /// Mask containing ones along the A file.
 /// Bitshifting left by a number from 0 through 7 will cause it to become a mask for each file.
@@ -143,7 +143,7 @@ const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-19, -20);
 /// The value of having a rook with no same-colored pawns in front of it which are not advanced past
 /// the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(19, 18);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(17, 16);
 
 /// The value of having the right to castle kingside.
 pub const KINGSIDE_CASTLE_VALUE: Score = Score::centipawns(0, 0);
