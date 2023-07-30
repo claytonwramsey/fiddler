@@ -852,15 +852,6 @@ impl Game {
         pinned
     }
 
-    /// Empty out the history of this game completely, but leave the original start state of the
-    /// board.
-    /// Will also end the searching period for the game.
-    pub fn clear(&mut self) {
-        for _ in 0..self.moves.len() {
-            let _ = self.undo();
-        }
-    }
-
     #[allow(clippy::result_unit_err)]
     /// Attempt to play a move, which may or may not be legal.
     /// Will return `Ok(())` if `m` was a legal move.
@@ -935,7 +926,7 @@ impl Game {
     ///
     /// # Panics
     ///
-    /// This function may panic of the most recently played move was a null move.
+    /// This function may panic if the most recently played move was not a null move.
     pub fn undo_null(&mut self) {
         debug_assert_eq!(self.moves.last(), Some(&None));
 
