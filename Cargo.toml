@@ -35,7 +35,7 @@ opt-level = 3
 [profile.release]
 opt-level = 3
 lto = true
-debug = true
+debug = false
 overflow-checks = false
 codegen-units = 1
 panic = "abort"

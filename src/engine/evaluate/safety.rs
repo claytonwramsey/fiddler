@@ -23,7 +23,7 @@ use std::mem::transmute;
 use crate::base::{
     game::Game,
     movegen::{bishop_moves, rook_moves, KNIGHT_MOVES},
-    Bitboard, Color, Piece, Square,
+    Bitboard, Color, Piece,
 };
 
 use super::Score;
@@ -31,53 +31,53 @@ use super::Score;
 /// The score associated with each unit quantity of attack on the area surrounding the king.
 pub const UNIT_SCORES: [Score; 256] = unsafe {
     transmute::<[(i16, i16); 256], [Score; 256]>([
-        (-1, 9),
+        (-3, 8),
         (0, 0),
-        (-5, 5),
-        (-9, 1),
+        (-6, 6),
+        (-11, 0),
+        (-8, 1),
+        (-8, 2),
+        (-13, -4),
+        (-6, 5),
+        (-8, 2),
+        (-1, 8),
         (-7, 1),
-        (-6, 2),
-        (-11, -3),
-        (-5, 4),
-        (-6, 2),
-        (-1, 7),
-        (-5, 1),
-        (-5, 2),
-        (-3, 5),
-        (-2, 1),
-        (-3, 1),
+        (-6, 3),
+        (-3, 6),
         (-3, 2),
-        (-3, 1),
-        (-2, 1),
+        (-4, 2),
+        (-4, 3),
+        (-4, 1),
+        (-3, 2),
         (-2, 0),
         (1, 0),
-        (-2, 3),
+        (-2, 5),
         (0, 0),
-        (0, 0),
+        (0, 1),
         (1, 0),
         (2, 0),
-        (1, 0),
+        (1, 1),
         (1, 0),
         (3, -1),
-        (4, -2),
+        (5, -3),
+        (9, -7),
+        (8, -5),
         (8, -6),
+        (6, -4),
         (7, -4),
-        (6, -5),
-        (5, -3),
-        (5, -3),
-        (8, -6),
-        (3, -1),
-        (5, -4),
-        (1, -1),
-        (1, 0),
-        (1, -1),
-        (1, 0),
-        (0, 0),
-        (0, 0),
-        (0, 0),
+        (10, -7),
+        (4, -1),
         (7, -5),
+        (2, -1),
+        (1, 0),
+        (2, -1),
+        (1, 0),
         (0, 0),
-        (1, -1),
+        (0, 0),
+        (0, 0),
+        (9, -7),
+        (0, 0),
+        (2, -1),
         (0, 0),
         (0, 0),
         (0, 0),
@@ -313,16 +313,44 @@ const ATTACKER_UNITS: [u8; 4] = [
 /// Get the "attack units" of a given attacker, which is a number that describes the amount of
 /// material dedicated to an attack.
 pub fn attack_units<const ATTACKER: Color>(g: &Game) -> u8 {
-    let b3_neighborhood: Bitboard = match ATTACKER {
-        Color::White => Bitboard::new(0x00_0707_0707),
-        Color::Black => Bitboard::new(0x07_0707_0700),
+    #[allow(clippy::cast_sign_loss)]
+    const NEIGHBORHOODS: [[Bitboard; 2]; 64] = {
+        const W_DIRS: [i8; 12] = [-9, -8, -7, -1, 0, 1, 7, 8, 9, 15, 16, 17];
+        const B_DIRS: [i8; 12] = [-17, -16, -15, -9, -8, -7, -1, 0, 1, 7, 8, 9];
+
+        const fn make_mask(dirs: &[i8], i: i8) -> Bitboard {
+            let mut mask = 0;
+            let mut j = 0;
+            while j < dirs.len() {
+                let add_sq = i + dirs[j];
+                if 0 < add_sq
+                    && add_sq < 64
+                    && (add_sq & 7).abs_diff(i & 7) <= 2
+                    && (add_sq / 8).abs_diff(i / 8) <= 2
+                {
+                    mask |= 1 << add_sq;
+                }
+                j += 1;
+            }
+
+            Bitboard::new(mask)
+        }
+
+        let mut neighborhoods = [[Bitboard::EMPTY; 2]; 64];
+        let mut i = 0i8;
+        while i < 64 {
+            neighborhoods[i as usize][0] = make_mask(&W_DIRS, i);
+            neighborhoods[i as usize][1] = make_mask(&B_DIRS, i);
+            i += 1;
+        }
+
+        neighborhoods
     };
 
     let king_sq = g.king_sq(!ATTACKER);
-    let neighbor_mask = if (king_sq as u8) < (Square::B3 as u8) {
-        b3_neighborhood >> ((Square::B3 as u8) - (king_sq as u8))
-    } else {
-        b3_neighborhood << ((king_sq as u8) - (Square::B3 as u8))
+    let neighbor_mask = match ATTACKER {
+        Color::White => NEIGHBORHOODS[king_sq as usize][1],
+        Color::Black => NEIGHBORHOODS[king_sq as usize][0],
     };
 
     let mut units = 0;
@@ -391,5 +419,13 @@ mod tests {
             attack_units::<{ Color::Black }>(&g),
             2 * ATTACKER_UNITS[Piece::Knight as usize] + 2 * ATTACKER_UNITS[Piece::Rook as usize]
         );
+    }
+
+    #[test]
+    fn border_overflow() {
+        let g = Game::from_fen("8/6k1/7r/8/8/8/8/K7 w - - 0 1").unwrap();
+
+        assert_eq!(attack_units::<{ Color::White }>(&g), 0);
+        assert_eq!(attack_units::<{ Color::Black }>(&g), 0);
     }
 }

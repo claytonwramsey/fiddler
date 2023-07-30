@@ -395,7 +395,7 @@ fn print_weights(weights: &Weights) {
     offset += 4;
 
     println!("---");
-    println!("pub const UNIT_SCORES: [Score; 256] = unsafe {{ transmute::<[(i16, i16); 256], [Score, 256]>([");
+    println!("pub const UNIT_SCORES: [Score; 256] = unsafe {{ transmute::<[(i16, i16); 256], [Score; 256]>([");
     for i in 0..256 {
         let fscore = weights.rule_values[offset + i];
         println!(

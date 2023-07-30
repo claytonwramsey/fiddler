@@ -140,10 +140,10 @@ pub const EG_LIMIT: Eval = Eval::centipawns(1273);
 const A_FILE_MASK: Bitboard = Bitboard::new(0x0101_0101_0101_0101);
 
 /// The value of having your own pawn doubled.
-pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-19, -20);
+pub const DOUBLED_PAWN_VALUE: Score = Score::centipawns(-18, -20);
 /// The value of having a rook with no same-colored pawns in front of it which are not advanced past
 /// the 3rd rank.
-pub const OPEN_ROOK_VALUE: Score = Score::centipawns(17, 16);
+pub const OPEN_ROOK_VALUE: Score = Score::centipawns(15, 14);
 
 /// The value of having the right to castle kingside.
 pub const KINGSIDE_CASTLE_VALUE: Score = Score::centipawns(0, 0);
