@@ -37,7 +37,7 @@ use std::{
 use fiddler::{
     base::{
         game::Game,
-        movegen::{bishop_moves, rook_moves, KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
+        movegen::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS},
         Color, Piece, Square,
     },
     engine::evaluate::{
@@ -477,33 +477,33 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     // count knight moves
     let knights = g.knights();
     for sq in knights & white {
-        let idx = usize::from((KNIGHT_MOVES[sq as usize] & not_white).len());
+        let idx = usize::from((KNIGHT_ATTACKS[sq as usize] & not_white).len());
         count[Piece::Knight as usize][idx] += 1;
     }
     for sq in knights & black {
-        let idx = usize::from((KNIGHT_MOVES[sq as usize] & not_black).len());
+        let idx = usize::from((KNIGHT_ATTACKS[sq as usize] & not_black).len());
         count[Piece::Knight as usize][idx] -= 1;
     }
 
     // count bishop moves
     let bishops = g.bishops();
     for sq in bishops & white {
-        let idx = usize::from((bishop_moves(occupancy, sq) & not_white).len());
+        let idx = usize::from((bishop_attacks(occupancy, sq) & not_white).len());
         count[Piece::Bishop as usize][idx] += 1;
     }
     for sq in bishops & black {
-        let idx = usize::from((bishop_moves(occupancy, sq) & not_black).len());
+        let idx = usize::from((bishop_attacks(occupancy, sq) & not_black).len());
         count[Piece::Bishop as usize][idx] -= 1;
     }
 
     // count rook moves
     let rooks = g.rooks();
     for sq in rooks & white {
-        let idx = usize::from((rook_moves(occupancy, sq) & not_white).len());
+        let idx = usize::from((rook_attacks(occupancy, sq) & not_white).len());
         count[Piece::Rook as usize][idx] += 1;
     }
     for sq in rooks & black {
-        let idx = usize::from((rook_moves(occupancy, sq) & not_black).len());
+        let idx = usize::from((rook_attacks(occupancy, sq) & not_black).len());
         count[Piece::Rook as usize][idx] -= 1;
     }
 
@@ -511,13 +511,13 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
     let queens = g.queens();
     for sq in queens & white {
         let idx = usize::from(
-            ((rook_moves(occupancy, sq) | bishop_moves(occupancy, sq)) & not_white).len(),
+            ((rook_attacks(occupancy, sq) | bishop_attacks(occupancy, sq)) & not_white).len(),
         );
         count[Piece::Queen as usize][idx] += 1;
     }
     for sq in rooks & black {
         let idx = usize::from(
-            ((rook_moves(occupancy, sq) | bishop_moves(occupancy, sq)) & not_black).len(),
+            ((rook_attacks(occupancy, sq) | bishop_attacks(occupancy, sq)) & not_black).len(),
         );
         count[Piece::Queen as usize][idx] -= 1;
     }
@@ -536,10 +536,10 @@ fn extract_mobility(g: &Game, rules: &mut Vec<(usize, f32)>, offset: usize) {
 
     // king
     let white_king_idx =
-        usize::from((KING_MOVES[g.king_sq(Color::White) as usize] & not_white).len());
+        usize::from((KING_ATTACKS[g.king_sq(Color::White) as usize] & not_white).len());
     count[Piece::King as usize][white_king_idx] += 1;
     let black_king_idx =
-        usize::from((KING_MOVES[g.king_sq(Color::Black) as usize] & not_black).len());
+        usize::from((KING_ATTACKS[g.king_sq(Color::Black) as usize] & not_black).len());
     count[Piece::King as usize][black_king_idx] -= 1;
 
     for pt in Piece::ALL {

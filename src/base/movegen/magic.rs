@@ -41,7 +41,7 @@ struct AttacksLookup {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::bishop_moves, Bitboard, Square};
+/// use fiddler::base::{movegen::bishop_attacks, Bitboard, Square};
 ///
 /// // squares A1 and C3 are occupied
 /// let occupancy = Bitboard::EMPTY
@@ -50,13 +50,13 @@ struct AttacksLookup {
 ///
 /// // the bishop on A1 can see B2 and C3
 /// assert_eq!(
-///     bishop_moves(occupancy, Square::A1),
+///     bishop_attacks(occupancy, Square::A1),
 ///     Bitboard::EMPTY
 ///         .with_square(Square::B2)
 ///         .with_square(Square::C3)
 /// );
 /// ```
-pub const fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
+pub const fn bishop_attacks(occupancy: Bitboard, sq: Square) -> Bitboard {
     get_attacks(occupancy, sq, &BISHOP_LOOKUPS)
 }
 
@@ -67,7 +67,7 @@ pub const fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
 /// # Examples
 ///
 /// ```
-/// use fiddler::base::{movegen::rook_moves, Bitboard, Square};
+/// use fiddler::base::{movegen::rook_attacks, Bitboard, Square};
 ///
 /// // squares A3 and B1 are occupied
 /// let occupancy = Bitboard::EMPTY
@@ -76,14 +76,14 @@ pub const fn bishop_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
 ///
 /// // the rook on A1 can see B1, A2, and A3
 /// assert_eq!(
-///     rook_moves(occupancy, Square::A1),
+///     rook_attacks(occupancy, Square::A1),
 ///     Bitboard::EMPTY
 ///         .with_square(Square::B1)
 ///         .with_square(Square::A2)
 ///         .with_square(Square::A3)
 /// );
 /// ```
-pub const fn rook_moves(occupancy: Bitboard, sq: Square) -> Bitboard {
+pub const fn rook_attacks(occupancy: Bitboard, sq: Square) -> Bitboard {
     get_attacks(occupancy, sq, &ROOK_LOOKUPS)
 }
 
@@ -544,7 +544,7 @@ mod tests {
             for i in 0..(1 << mask.len()) {
                 let occupancy = index_to_occupancy(i, mask);
                 let attacks = directional_attacks(sq, &Direction::BISHOP_DIRECTIONS, occupancy);
-                assert_eq!(attacks, bishop_moves(occupancy, sq));
+                assert_eq!(attacks, bishop_attacks(occupancy, sq));
             }
         }
     }
@@ -557,7 +557,7 @@ mod tests {
             for i in 0..(1 << mask.len()) {
                 let occupancy = index_to_occupancy(i, mask);
                 let attacks = directional_attacks(sq, &Direction::ROOK_DIRECTIONS, occupancy);
-                assert_eq!(attacks, rook_moves(occupancy, sq));
+                assert_eq!(attacks, rook_attacks(occupancy, sq));
             }
         }
     }

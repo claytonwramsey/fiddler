@@ -22,7 +22,7 @@ use crate::base::Direction;
 
 use super::{
     castling::CastleRights,
-    movegen::{bishop_moves, is_legal, rook_moves, square_attackers, PAWN_ATTACKS},
+    movegen::{bishop_attacks, is_legal, rook_attacks, square_attackers, PAWN_ATTACKS},
     zobrist, Bitboard, Color, Move, Piece, Square,
 };
 
@@ -834,8 +834,8 @@ impl Game {
     /// Compute a bitboard of all pieces pinned to square `pin_sq` by attacks from color `enemy`.
     fn compute_pinned(&self, pin_sq: Square, enemy: Color) -> Bitboard {
         let mut pinned = Bitboard::EMPTY;
-        let rook_mask = rook_moves(Bitboard::EMPTY, pin_sq);
-        let bishop_mask = bishop_moves(Bitboard::EMPTY, pin_sq);
+        let rook_mask = rook_attacks(Bitboard::EMPTY, pin_sq);
+        let bishop_mask = bishop_attacks(Bitboard::EMPTY, pin_sq);
         let occupancy = self.occupancy();
         let queens = self.queens();
 
