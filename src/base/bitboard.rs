@@ -27,7 +27,7 @@ use std::{
     },
 };
 
-use crate::base::movegen::{bishop_moves, rook_moves};
+use crate::base::movegen::{bishop_attacks, rook_attacks};
 
 use super::Square;
 
@@ -120,7 +120,9 @@ impl Bitboard {
     /// ```
     /// use fiddler::base::{Bitboard, Square};
     ///
-    /// let bb = Bitboard::EMPTY.with_square(Square::A1);
+    /// let mut bb = Bitboard::EMPTY;
+    /// assert!(!bb.contains(Square::A1));
+    /// bb.insert(Square::A1);
     /// assert!(bb.contains(Square::A1));
     /// ```
     pub fn insert(&mut self, sq: Square) {
@@ -191,7 +193,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    /// Determine whether this bitboard has exactly one bit.
+    /// Determine whether this bitboard has exactly one element.
     /// This function is equivalent to `Bitboard.len() == 1`, but it is slightly faster.
     ///
     /// # Examples
@@ -200,13 +202,13 @@ impl Bitboard {
     /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
-    /// assert!(!bb.has_single_bit());
+    /// assert!(!bb.just_one());
     /// bb.insert(Square::A1);
-    /// assert!(bb.has_single_bit());
+    /// assert!(bb.just_one());
     /// bb.insert(Square::A2);
-    /// assert!(!bb.has_single_bit());
+    /// assert!(!bb.just_one());
     /// ```
-    pub const fn has_single_bit(self) -> bool {
+    pub const fn just_one(self) -> bool {
         // use bitwise and to make it branchless
         (self.0 != 0) & ((self.0 & self.0.overflowing_sub(1).0) == 0)
     }
@@ -255,8 +257,8 @@ impl Bitboard {
             while i < 64 {
                 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                 let sq1: Square = unsafe { transmute(i as u8) };
-                let bishop_attacks = bishop_moves(Bitboard::EMPTY, sq1);
-                let rook_attacks = rook_moves(Bitboard::EMPTY, sq1);
+                let batt = bishop_attacks(Bitboard::EMPTY, sq1);
+                let ratt = rook_attacks(Bitboard::EMPTY, sq1);
 
                 let mut j = 0;
 
@@ -266,17 +268,17 @@ impl Bitboard {
                     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                     let sq2: Square = unsafe { transmute(j as u8) };
 
-                    if bishop_attacks.contains(sq2) {
+                    if batt.contains(sq2) {
                         between[i][j] = Bitboard::new(
-                            bishop_moves(Bitboard::new(1 << j), sq1).as_u64()
-                                & bishop_moves(Bitboard::new(1 << i), sq2).as_u64(),
+                            bishop_attacks(Bitboard::new(1 << j), sq1).as_u64()
+                                & bishop_attacks(Bitboard::new(1 << i), sq2).as_u64(),
                         );
                     }
 
-                    if rook_attacks.contains(sq2) {
+                    if ratt.contains(sq2) {
                         between[i][j] = Bitboard::new(
-                            rook_moves(Bitboard::new(1 << j), sq1).as_u64()
-                                & rook_moves(Bitboard::new(1 << i), sq2).as_u64(),
+                            rook_attacks(Bitboard::new(1 << j), sq1).as_u64()
+                                & rook_attacks(Bitboard::new(1 << i), sq2).as_u64(),
                         );
                     }
 

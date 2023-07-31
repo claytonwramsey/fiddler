@@ -54,7 +54,7 @@ impl Move {
     #[must_use]
     /// Create a `Move` with no promotion type, which is not marked as having any extra special
     /// flags.
-    pub const fn normal(origin: Square, destination: Square) -> Move {
+    pub const fn new(origin: Square, destination: Square) -> Move {
         Move(unsafe { NonZeroU16::new_unchecked(((destination as u16) << 6) | origin as u16) })
     }
 
@@ -62,23 +62,19 @@ impl Move {
     /// Create a `Move` with the given promotion type.
     /// The promote type must not be a pawn or a king.
     pub fn promoting(origin: Square, destination: Square, promote_type: Piece) -> Move {
-        Move(
-            Move::normal(origin, destination).0
-                | ((promote_type as u16) << 12)
-                | Move::PROMOTE_FLAG,
-        )
+        Move(Move::new(origin, destination).0 | ((promote_type as u16) << 12) | Move::PROMOTE_FLAG)
     }
 
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub fn castling(origin: Square, destination: Square) -> Move {
-        Move(Move::normal(origin, destination).0 | Move::CASTLE_FLAG)
+        Move(Move::new(origin, destination).0 | Move::CASTLE_FLAG)
     }
 
     #[must_use]
     /// Create a `Move` which is tagged as a castling move.
     pub fn en_passant(origin: Square, destination: Square) -> Move {
-        Move(Move::normal(origin, destination).0 | Move::EN_PASSANT_FLAG)
+        Move(Move::new(origin, destination).0 | Move::EN_PASSANT_FLAG)
     }
 
     #[must_use]
@@ -150,7 +146,7 @@ impl Move {
             return Ok(Move::en_passant(orig, dest));
         }
 
-        Ok(Move::normal(orig, dest))
+        Ok(Move::new(orig, dest))
     }
 
     #[must_use]
@@ -226,7 +222,7 @@ mod tests {
     fn uci_move_normal() {
         let m = Move::from_uci("e2e4", &Game::default()).unwrap();
         println!("{m}");
-        assert_eq!(m, Move::normal(Square::E2, Square::E4));
+        assert_eq!(m, Move::new(Square::E2, Square::E4));
     }
 
     #[test]
@@ -251,7 +247,7 @@ mod tests {
                     .unwrap()
             )
             .unwrap(),
-            Move::normal(Square::C8, Square::C1)
+            Move::new(Square::C8, Square::C1)
         );
     }
 
@@ -264,7 +260,7 @@ mod tests {
                     .unwrap()
             )
             .unwrap(),
-            Move::normal(Square::E1, Square::C1)
+            Move::new(Square::E1, Square::C1)
         );
     }
 }

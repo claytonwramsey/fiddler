@@ -31,7 +31,7 @@
 use std::thread::scope;
 
 use fiddler::base::{
-    movegen::{bishop_moves, rook_moves},
+    movegen::{bishop_attacks, rook_attacks},
     Bitboard, Square,
 };
 
@@ -66,9 +66,9 @@ fn main() -> Result<(), ()> {
                         for i in 0..(1 << u64::from(occ_mask.len())) {
                             let occupancy = pdep(occ_mask, i);
                             let attacks = if args.is_rook {
-                                rook_moves(occupancy, args.sq)
+                                rook_attacks(occupancy, args.sq)
                             } else {
-                                bishop_moves(occupancy, args.sq)
+                                bishop_attacks(occupancy, args.sq)
                             };
                             let idx = (occupancy.as_u64().wrapping_mul(magic) >> (64 - args.bits))
                                 as usize;

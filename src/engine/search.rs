@@ -709,7 +709,7 @@ pub mod tests {
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             8,
         );
-        let m = Move::normal(Square::D1, Square::F3);
+        let m = Move::new(Square::D1, Square::F3);
         assert_eq!(info.pv[0], m);
     }
 
@@ -754,14 +754,14 @@ pub mod tests {
     fn escape_by_draw() {
         let mut g = Game::from_fen("2k5/6R1/7Q/8/8/8/8/1K6 w - - 0 1").unwrap();
 
-        g.make_move(Move::normal(Square::H6, Square::F6));
-        g.make_move(Move::normal(Square::C8, Square::B8));
-        g.make_move(Move::normal(Square::F6, Square::H6));
-        g.make_move(Move::normal(Square::B8, Square::C8));
+        g.make_move(Move::new(Square::H6, Square::F6));
+        g.make_move(Move::new(Square::C8, Square::B8));
+        g.make_move(Move::new(Square::F6, Square::H6));
+        g.make_move(Move::new(Square::B8, Square::C8));
 
-        g.make_move(Move::normal(Square::H6, Square::F6));
-        g.make_move(Move::normal(Square::C8, Square::B8));
-        g.make_move(Move::normal(Square::F6, Square::H6));
+        g.make_move(Move::new(Square::H6, Square::F6));
+        g.make_move(Move::new(Square::C8, Square::B8));
+        g.make_move(Move::new(Square::F6, Square::H6));
 
         assert!(has_moves(&g));
         assert!(!g.drawn_by_repetition(0));
@@ -792,7 +792,7 @@ pub mod tests {
         }
 
         assert_eq!(info.eval, Eval::DRAW);
-        assert_eq!(info.pv[0], Move::normal(Square::B8, Square::C8));
+        assert_eq!(info.pv[0], Move::new(Square::B8, Square::C8));
     }
 
     #[test]

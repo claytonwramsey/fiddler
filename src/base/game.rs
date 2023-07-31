@@ -22,7 +22,7 @@ use crate::base::Direction;
 
 use super::{
     castling::CastleRights,
-    movegen::{bishop_moves, is_legal, rook_moves, square_attackers, PAWN_ATTACKS},
+    movegen::{bishop_attacks, is_legal, rook_attacks, square_attackers, PAWN_ATTACKS},
     zobrist, Bitboard, Color, Move, Piece, Square,
 };
 
@@ -90,8 +90,18 @@ pub struct BoardMeta {
 
 impl Game {
     #[must_use]
-    /// Construct a new [`Game`] in the conventional chess starting position.
+    /// Construct a new game in the conventional chess starting position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color, Piece, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g[Square::A1], Some((Piece::Rook, Color::White)));
+    /// ```
     pub fn new() -> Game {
+        #[rustfmt::skip]
         let mailbox = [
             Some((Piece::Rook, Color::White)), // a1
             Some((Piece::Knight, Color::White)),
@@ -109,38 +119,10 @@ impl Game {
             Some((Piece::Pawn, Color::White)),
             Some((Piece::Pawn, Color::White)),
             Some((Piece::Pawn, Color::White)),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // rank 3
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // rank 4
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // rank 5
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,                              // rank 6
+            None, None, None, None, None, None, None, None, // rank 3
+            None, None, None, None, None, None, None, None, // rank 4
+            None, None, None, None, None, None, None, None, // rank 5
+            None, None, None, None, None, None, None, None, // rank 6
             Some((Piece::Pawn, Color::Black)), // a7
             Some((Piece::Pawn, Color::Black)),
             Some((Piece::Pawn, Color::Black)),
@@ -377,6 +359,14 @@ impl Game {
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     /// Get the metadata associated with the current board state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color};
+    ///
+    /// assert_eq!(Game::new().meta().player, Color::White);
+    /// ```
     pub fn meta(&self) -> &BoardMeta {
         self.history.last().unwrap()
     }
@@ -595,7 +585,7 @@ impl Game {
     ///
     /// let mut game = Game::new();
     ///
-    /// game.make_move(Move::normal(Square::E2, Square::E4));
+    /// game.make_move(Move::new(Square::E2, Square::E4));
     /// assert_eq!(game[Square::E4], Some((Piece::Pawn, Color::White)));
     /// # Ok(())
     /// # }
@@ -834,8 +824,8 @@ impl Game {
     /// Compute a bitboard of all pieces pinned to square `pin_sq` by attacks from color `enemy`.
     fn compute_pinned(&self, pin_sq: Square, enemy: Color) -> Bitboard {
         let mut pinned = Bitboard::EMPTY;
-        let rook_mask = rook_moves(Bitboard::EMPTY, pin_sq);
-        let bishop_mask = bishop_moves(Bitboard::EMPTY, pin_sq);
+        let rook_mask = rook_attacks(Bitboard::EMPTY, pin_sq);
+        let bishop_mask = bishop_attacks(Bitboard::EMPTY, pin_sq);
         let occupancy = self.occupancy();
         let queens = self.queens();
 
@@ -844,7 +834,7 @@ impl Game {
 
         for sniper_sq in snipers {
             let between_bb = Bitboard::between(pin_sq, sniper_sq);
-            if (between_bb & occupancy).has_single_bit() {
+            if (between_bb & occupancy).just_one() {
                 pinned |= between_bb;
             }
         }
@@ -852,22 +842,25 @@ impl Game {
         pinned
     }
 
-    /// Empty out the history of this game completely, but leave the original start state of the
-    /// board.
-    /// Will also end the searching period for the game.
-    pub fn clear(&mut self) {
-        for _ in 0..self.moves.len() {
-            let _ = self.undo();
-        }
-    }
-
     #[allow(clippy::result_unit_err)]
     /// Attempt to play a move, which may or may not be legal.
+    ///
     /// Will return `Ok(())` if `m` was a legal move.
+    /// If the move was illegal, this function all will not affect the state of `self`.
     ///
     /// # Errors
     ///
     /// This function will return an `Err(())` if the move is illegal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Move, Square};
+    ///
+    /// let mut g = Game::new();
+    /// assert!(g.try_move(Move::new(Square::E2, Square::E5)).is_err());
+    /// assert!(g.try_move(Move::new(Square::E2, Square::E4)).is_ok());
+    /// ```
     pub fn try_move(&mut self, m: Move) -> Result<(), ()> {
         if is_legal(m, self) {
             self.make_move(m);
@@ -885,6 +878,19 @@ impl Game {
     ///
     /// This function will return an `Err` if the history of this game has no more positions left
     /// to undo.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler::base::{game::Game, Color, Move, Piece, Square};
+    ///
+    /// let mut g = Game::new();
+    /// g.make_move(Move::new(Square::E2, Square::E4));
+    /// g.undo()?;
+    /// assert_eq!(g[Square::E2], Some((Piece::Pawn, Color::White)));
+    /// # Ok(()) }
+    /// ```
     pub fn undo(&mut self) -> Result<(), &'static str> {
         // println!("before undo: {self} \n{}", self.board());
         let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?.unwrap();
@@ -935,7 +941,7 @@ impl Game {
     ///
     /// # Panics
     ///
-    /// This function may panic of the most recently played move was a null move.
+    /// This function may panic if the most recently played move was not a null move.
     pub fn undo_null(&mut self) {
         debug_assert_eq!(self.moves.last(), Some(&None));
 
@@ -991,9 +997,9 @@ impl Game {
     /// // play e5 (among other moves).
     /// let game = Game::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
     /// // exd5
-    /// assert!(game.is_move_capture(Move::normal(Square::E4, Square::D5)));
+    /// assert!(game.is_move_capture(Move::new(Square::E4, Square::D5)));
     /// // e5
-    /// assert!(!game.is_move_capture(Move::normal(Square::E4, Square::E5)));
+    /// assert!(!game.is_move_capture(Move::new(Square::E4, Square::E5)));
     /// # Ok(())
     /// # }
     /// ```
@@ -1028,9 +1034,7 @@ impl Game {
             2 => true,                                          // only two kings
             3 => !(self.knights() | self.bishops()).is_empty(), // KNK or KBK
             // same colored bishops
-            4 => {
-                self.bishops().more_than_one() && !(self.bishops() & DARK_SQUARES).has_single_bit()
-            }
+            4 => self.bishops().more_than_one() && !(self.bishops() & DARK_SQUARES).just_one(),
             _ => false,
         }
     }
@@ -1169,23 +1173,23 @@ mod tests {
         assert!(!g.drawn_by_repetition(0));
         assert!(!g.drawn_by_repetition(10_000));
 
-        g.make_move(Move::normal(Square::G1, Square::F3));
-        g.make_move(Move::normal(Square::G8, Square::F6));
-        g.make_move(Move::normal(Square::F3, Square::G1));
-        g.make_move(Move::normal(Square::F6, Square::G8));
+        g.make_move(Move::new(Square::G1, Square::F3));
+        g.make_move(Move::new(Square::G8, Square::F6));
+        g.make_move(Move::new(Square::F3, Square::G1));
+        g.make_move(Move::new(Square::F6, Square::G8));
 
         // single repetition - should be caught in searches but not normal play
         assert!(g.drawn_by_repetition(4));
         assert!(!g.drawn_by_repetition(3));
 
-        g.make_move(Move::normal(Square::G1, Square::F3));
-        g.make_move(Move::normal(Square::G8, Square::F6));
-        g.make_move(Move::normal(Square::F3, Square::G1));
+        g.make_move(Move::new(Square::G1, Square::F3));
+        g.make_move(Move::new(Square::G8, Square::F6));
+        g.make_move(Move::new(Square::F3, Square::G1));
 
         assert!(!g.drawn_by_repetition(0));
         assert!(g.drawn_by_repetition(4));
 
-        g.make_move(Move::normal(Square::F6, Square::G8));
+        g.make_move(Move::new(Square::F6, Square::G8));
 
         // double repetition - should be caught by both
         assert!(g.drawn_by_repetition(4));

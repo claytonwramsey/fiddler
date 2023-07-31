@@ -12,7 +12,7 @@ use std::mem::transmute;
 
 use crate::base::{
     game::Game,
-    movegen::{bishop_moves, rook_moves, KING_MOVES, KNIGHT_MOVES, PAWN_ATTACKS},
+    movegen::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS},
     Bitboard, Color, Piece,
 };
 
@@ -242,38 +242,38 @@ pub fn evaluate(g: &Game) -> Score {
     let knights = g.knights();
     // pinned knights can't move and so we don't bother counting them
     for sq in knights & white {
-        score += for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_white);
+        score += for_piece(Piece::Knight, KNIGHT_ATTACKS[sq as usize] & not_white);
     }
     for sq in knights & black {
-        score -= for_piece(Piece::Knight, KNIGHT_MOVES[sq as usize] & not_black);
+        score -= for_piece(Piece::Knight, KNIGHT_ATTACKS[sq as usize] & not_black);
     }
 
     // count bishop moves
     let bishops = g.bishops();
     for sq in bishops & white {
-        score += for_piece(Piece::Bishop, bishop_moves(occupancy, sq) & not_white);
+        score += for_piece(Piece::Bishop, bishop_attacks(occupancy, sq) & not_white);
     }
     for sq in bishops & black {
-        score -= for_piece(Piece::Bishop, bishop_moves(occupancy, sq) & not_black);
+        score -= for_piece(Piece::Bishop, bishop_attacks(occupancy, sq) & not_black);
     }
 
     // count rook moves
     let rooks = g.rooks();
     for sq in rooks & white {
-        score += for_piece(Piece::Rook, rook_moves(occupancy, sq) & not_white);
+        score += for_piece(Piece::Rook, rook_attacks(occupancy, sq) & not_white);
     }
     for sq in rooks & black {
-        score -= for_piece(Piece::Rook, rook_moves(occupancy, sq) & not_black);
+        score -= for_piece(Piece::Rook, rook_attacks(occupancy, sq) & not_black);
     }
 
     // count queen moves
     let queens = g.queens();
     for sq in queens & white {
-        let attacks = rook_moves(occupancy, sq) | bishop_moves(occupancy, sq);
+        let attacks = rook_attacks(occupancy, sq) | bishop_attacks(occupancy, sq);
         score += for_piece(Piece::Queen, attacks & not_white);
     }
     for sq in rooks & black {
-        let attacks = rook_moves(occupancy, sq) | bishop_moves(occupancy, sq);
+        let attacks = rook_attacks(occupancy, sq) | bishop_attacks(occupancy, sq);
         score -= for_piece(Piece::Queen, attacks & not_black);
     }
 
@@ -295,11 +295,11 @@ pub fn evaluate(g: &Game) -> Score {
 
     score += for_piece(
         Piece::King,
-        KING_MOVES[g.king_sq(Color::White) as usize] & not_white,
+        KING_ATTACKS[g.king_sq(Color::White) as usize] & not_white,
     );
     score -= for_piece(
         Piece::King,
-        KING_MOVES[g.king_sq(Color::Black) as usize] & not_black,
+        KING_ATTACKS[g.king_sq(Color::Black) as usize] & not_black,
     );
 
     score
