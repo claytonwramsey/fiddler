@@ -91,7 +91,7 @@ pub fn main() -> Result<(), i32> {
 
     let toc = Instant::now();
     println!("extracted data in {} secs", (toc - tic).as_secs());
-    for i in 0..10_000 {
+    for i in 0..1_000 {
         println!("iteration {i}...");
         let (new_weights, _) = train_step(
             &input_sets,
@@ -395,16 +395,21 @@ fn print_weights(weights: &Weights) {
     offset += 4;
 
     println!("---");
-    println!("pub const UNIT_SCORES: [Score; 256] = unsafe {{ transmute::<[(i16, i16); 256], [Score; 256]>([");
+    print!("pub const UNIT_SCORES: [Score; 256] = unsafe {{ transmute::<[(i16, i16); 256], [Score; 256]>([\n    ");
     for i in 0..256 {
         let fscore = weights.rule_values[offset + i];
-        println!(
-            "    ({}, {}),",
+        print!(
+            "({}, {}), {}",
             (fscore.0 * 100.) as i16,
-            (fscore.1 * 100.) as i16
+            (fscore.1 * 100.) as i16,
+            if i % 8 == 7 && i != 255 {
+                "\n    "
+            } else {
+                " "
+            }
         );
     }
-    println!("])}};");
+    println!("\n])}};");
 }
 
 #[allow(
