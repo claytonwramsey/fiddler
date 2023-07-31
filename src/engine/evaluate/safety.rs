@@ -22,7 +22,7 @@ use std::mem::transmute;
 
 use crate::base::{
     game::Game,
-    movegen::{bishop_moves, rook_moves, KNIGHT_MOVES},
+    movegen::{bishop_attacks, rook_attacks, KNIGHT_ATTACKS},
     Bitboard, Color, Piece,
 };
 
@@ -361,22 +361,22 @@ pub fn attack_units<const ATTACKER: Color>(g: &Game) -> u8 {
 
     for knight_sq in g.knights() & attackers {
         units += ATTACKER_UNITS[Piece::Knight as usize]
-            * (KNIGHT_MOVES[knight_sq as usize] & neighbor_mask).len();
+            * (KNIGHT_ATTACKS[knight_sq as usize] & neighbor_mask).len();
     }
 
     for bishop_sq in g.bishops() & attackers {
         units += ATTACKER_UNITS[Piece::Bishop as usize]
-            * (bishop_moves(occupancy, bishop_sq) & neighbor_mask).len();
+            * (bishop_attacks(occupancy, bishop_sq) & neighbor_mask).len();
     }
 
     for rook_sq in g.rooks() & attackers {
         units += ATTACKER_UNITS[Piece::Rook as usize]
-            * (rook_moves(occupancy, rook_sq) & neighbor_mask).len();
+            * (rook_attacks(occupancy, rook_sq) & neighbor_mask).len();
     }
 
     for queen_sq in g.queens() & attackers {
         units += ATTACKER_UNITS[Piece::Queen as usize]
-            * ((bishop_moves(occupancy, queen_sq) | rook_moves(occupancy, queen_sq))
+            * ((bishop_attacks(occupancy, queen_sq) | rook_attacks(occupancy, queen_sq))
                 & neighbor_mask)
                 .len();
     }
