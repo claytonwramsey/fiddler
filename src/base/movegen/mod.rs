@@ -157,8 +157,8 @@ pub enum GenMode {
 /// use fiddler::base::{game::Game, movegen::is_legal, Move, Square};
 ///
 /// let game = Game::new();
-/// assert!(is_legal(Move::normal(Square::E2, Square::E4), &game));
-/// assert!(!is_legal(Move::normal(Square::E2, Square::D4), &game));
+/// assert!(is_legal(Move::new(Square::E2, Square::E4), &game));
+/// assert!(!is_legal(Move::new(Square::E2, Square::D4), &game));
 /// ```
 pub fn is_legal(m: Move, g: &Game) -> bool {
     let meta = g.meta();
@@ -340,7 +340,7 @@ pub fn is_legal(m: Move, g: &Game) -> bool {
 /// let g = Game::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")?;
 ///
 /// get_moves::<{ GenMode::Captures }>(&g, |m| {
-///     assert_eq!(m, Move::normal(Square::E4, Square::D5));
+///     assert_eq!(m, Move::new(Square::E4, Square::D5));
 /// });
 /// # Ok(())
 /// # }
@@ -786,12 +786,12 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
         // normal captures
         for dest in east_targets & not_rank8 {
             let orig = dest - east_direction;
-            let m = Move::normal(orig, dest);
+            let m = Move::new(orig, dest);
             callback(m);
         }
         for dest in west_targets & not_rank8 {
             let orig = dest - west_direction;
-            let m = Move::normal(orig, dest);
+            let m = Move::new(orig, dest);
             callback(m);
         }
 
@@ -851,13 +851,13 @@ fn pawn_assistant<const M: GenMode>(g: &Game, callback: &mut impl FnMut(Move), t
 
         // doublemoves
         for dest in doubles {
-            let m = Move::normal(dest - doubledir, dest);
+            let m = Move::new(dest - doubledir, dest);
             callback(m);
         }
 
         // normal single-moves
         for dest in singles & not_rank8 {
-            let m = Move::normal(dest - direction, dest);
+            let m = Move::new(dest - direction, dest);
             callback(m);
         }
     }
@@ -884,35 +884,35 @@ fn normal_piece_assistant(g: &Game, callback: &mut impl FnMut(Move), target: Bit
     // only unpinned knights can move
     for orig in g.knights() & allies & unpinned {
         for dest in KNIGHT_ATTACKS[orig as usize] & target {
-            callback(Move::normal(orig, dest));
+            callback(Move::new(orig, dest));
         }
     }
 
     // pinned bishops and queens
     for orig in bishop_movers & meta.pinned & king_diags {
         for dest in bishop_attacks(occupancy, orig) & target & king_diags {
-            callback(Move::normal(orig, dest));
+            callback(Move::new(orig, dest));
         }
     }
 
     // unpinned bishops and queens
     for orig in bishop_movers & unpinned {
         for dest in bishop_attacks(occupancy, orig) & target {
-            callback(Move::normal(orig, dest));
+            callback(Move::new(orig, dest));
         }
     }
 
     // pinned rooks and queens
     for orig in rook_movers & meta.pinned & king_hv {
         for dest in rook_attacks(occupancy, orig) & target & king_hv {
-            callback(Move::normal(orig, dest));
+            callback(Move::new(orig, dest));
         }
     }
 
     // unpinned rooks and queens
     for orig in rook_movers & unpinned {
         for dest in rook_attacks(occupancy, orig) & target {
-            callback(Move::normal(orig, dest));
+            callback(Move::new(orig, dest));
         }
     }
 }
@@ -932,7 +932,7 @@ fn king_move_non_castle(g: &Game, callback: &mut impl FnMut(Move), target: Bitbo
     for dest in to_bb {
         let new_occupancy = (old_occupancy ^ king_bb) | Bitboard::from(dest);
         if square_attackers_occupancy(g, dest, !meta.player, new_occupancy).is_empty() {
-            callback(Move::normal(king_sq, dest));
+            callback(Move::new(king_sq, dest));
         }
     }
 }

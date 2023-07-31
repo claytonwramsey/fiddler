@@ -3,7 +3,7 @@ use super::*;
 #[test]
 /// Test that we can play Qf3+, the critical move in the Fried Liver opening.
 fn best_queen_fried_liver() {
-    let m = Move::normal(Square::D1, Square::F3);
+    let m = Move::new(Square::D1, Square::F3);
     // the fried liver position, before Qf3+
     let g = Game::from_fen("r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7").unwrap();
     let moves = make_move_vec::<{ GenMode::All }>(&g);
@@ -19,7 +19,7 @@ fn pawn_capture_generated() {
     // check that exf5 is generated
     let g =
         Game::from_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2").unwrap();
-    let m = Move::normal(Square::E4, Square::F5);
+    let m = Move::new(Square::E4, Square::F5);
     for m in make_move_vec::<{ GenMode::All }>(&g) {
         println!("{m}");
         assert!(is_legal(m, &g));
@@ -42,7 +42,7 @@ fn king_has_only_one_move() {
     let g = Game::from_fen("2k5/4R3/8/5K2/3R4/8/8/8 b - - 2 2").unwrap();
     assert!(has_moves(&g));
     assert!(make_move_vec::<{ GenMode::All }>(&g).len() == 1);
-    assert!(is_legal(Move::normal(Square::C8, Square::B8), &g));
+    assert!(is_legal(Move::new(Square::C8, Square::B8), &g));
 }
 
 #[test]
@@ -73,10 +73,10 @@ fn king_escape_without_capture() {
         Game::from_fen("r2q1b1r/ppp3pp/2n1kn2/4p3/8/2N4Q/PPPP1PPP/R1B1K2R b KQ - 1 10").unwrap();
     let moves = make_move_vec::<{ GenMode::All }>(&g);
     let expected_moves = vec![
-        Move::normal(Square::E6, Square::D6),
-        Move::normal(Square::E6, Square::F7),
-        Move::normal(Square::E6, Square::E7),
-        Move::normal(Square::F6, Square::G4),
+        Move::new(Square::E6, Square::D6),
+        Move::new(Square::E6, Square::F7),
+        Move::new(Square::E6, Square::E7),
+        Move::new(Square::F6, Square::G4),
     ];
     for m in &moves {
         assert!(expected_moves.contains(m));
@@ -106,7 +106,7 @@ fn no_wraparound() {
         Game::from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBPPP3/q4N2/Pp4PP/R2Q1RK1 b kq - 0 1").unwrap();
 
     let moves = make_move_vec::<{ GenMode::All }>(&g);
-    let m = Move::normal(Square::H7, Square::A7);
+    let m = Move::new(Square::H7, Square::A7);
     assert!(!(moves.contains(&m)));
     assert!(!is_legal(m, &g));
 }
@@ -139,7 +139,7 @@ fn en_passant_pinned() {
 fn en_passant_tagged() {
     let g = Game::from_fen("2B1kb2/pp2pp2/7p/1PpQP3/2nK4/8/P1r4R/R7 w - c6 0 27").unwrap();
 
-    let m = Move::normal(Square::B5, Square::C6);
+    let m = Move::new(Square::B5, Square::C6);
     assert!(!is_legal(m, &g));
     assert!(!make_move_vec::<{ GenMode::All }>(&g).contains(&m));
 }
@@ -148,7 +148,7 @@ fn en_passant_tagged() {
 fn pinned_knight_capture() {
     let g =
         Game::from_fen("r2q1b1r/ppp2kpp/2n5/3npb2/2B5/2N5/PPPP1PPP/R1BQ1RK1 b - - 3 8").unwrap();
-    let illegal_move = Move::normal(Square::D5, Square::C3);
+    let illegal_move = Move::new(Square::D5, Square::C3);
 
     assert!(!make_move_vec::<{ GenMode::All }>(&g).contains(&illegal_move));
     assert!(!make_move_vec::<{ GenMode::Captures }>(&g).contains(&illegal_move));

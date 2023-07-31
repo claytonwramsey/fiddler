@@ -374,7 +374,7 @@ mod tests {
             ),
             Ok(Command::Position {
                 fen: Some("1rr3k1/5pp1/3pp2p/p2n3P/1q1P4/1P1Q1N2/5PP1/R3R1K1 w - - 0 26".into()), 
-                moves: vec![Move::normal(Square::E1, Square::C1)],
+                moves: vec![Move::new(Square::E1, Square::C1)],
             })
         );
     }
@@ -387,8 +387,8 @@ mod tests {
             Ok(Command::Position {
                 fen: Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1".into()), 
                 moves: vec![
-                    Move::normal(Square::C7, Square::C5),
-                    Move::normal(Square::G1, Square::F3)
+                    Move::new(Square::C7, Square::C5),
+                    Move::new(Square::G1, Square::F3)
                 ]
             })
         );
