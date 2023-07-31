@@ -610,7 +610,7 @@ fn evasions<const M: GenMode>(g: &Game, mut callback: impl FnMut(Move)) {
     let king_sq = g.king_sq(meta.player);
 
     // only look at non-king moves if we are not in double check
-    if meta.checkers.has_single_bit() {
+    if meta.checkers.just_one() {
         // SAFETY: We checked that the set of checkers is nonzero.
         let checker_sq = unsafe { Square::unsafe_from(meta.checkers) };
         // Look for blocks or captures

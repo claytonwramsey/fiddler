@@ -844,7 +844,7 @@ impl Game {
 
         for sniper_sq in snipers {
             let between_bb = Bitboard::between(pin_sq, sniper_sq);
-            if (between_bb & occupancy).has_single_bit() {
+            if (between_bb & occupancy).just_one() {
                 pinned |= between_bb;
             }
         }
@@ -1019,9 +1019,7 @@ impl Game {
             2 => true,                                          // only two kings
             3 => !(self.knights() | self.bishops()).is_empty(), // KNK or KBK
             // same colored bishops
-            4 => {
-                self.bishops().more_than_one() && !(self.bishops() & DARK_SQUARES).has_single_bit()
-            }
+            4 => self.bishops().more_than_one() && !(self.bishops() & DARK_SQUARES).just_one(),
             _ => false,
         }
     }

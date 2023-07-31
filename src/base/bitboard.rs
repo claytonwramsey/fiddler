@@ -120,7 +120,9 @@ impl Bitboard {
     /// ```
     /// use fiddler::base::{Bitboard, Square};
     ///
-    /// let bb = Bitboard::EMPTY.with_square(Square::A1);
+    /// let mut bb = Bitboard::EMPTY;
+    /// assert!(!bb.contains(Square::A1));
+    /// bb.insert(Square::A1);
     /// assert!(bb.contains(Square::A1));
     /// ```
     pub fn insert(&mut self, sq: Square) {
@@ -191,7 +193,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    /// Determine whether this bitboard has exactly one bit.
+    /// Determine whether this bitboard has exactly one element.
     /// This function is equivalent to `Bitboard.len() == 1`, but it is slightly faster.
     ///
     /// # Examples
@@ -200,13 +202,13 @@ impl Bitboard {
     /// use fiddler::base::{Bitboard, Square};
     ///
     /// let mut bb = Bitboard::EMPTY;
-    /// assert!(!bb.has_single_bit());
+    /// assert!(!bb.just_one());
     /// bb.insert(Square::A1);
-    /// assert!(bb.has_single_bit());
+    /// assert!(bb.just_one());
     /// bb.insert(Square::A2);
-    /// assert!(!bb.has_single_bit());
+    /// assert!(!bb.just_one());
     /// ```
-    pub const fn has_single_bit(self) -> bool {
+    pub const fn just_one(self) -> bool {
         // use bitwise and to make it branchless
         (self.0 != 0) & ((self.0 & self.0.overflowing_sub(1).0) == 0)
     }
