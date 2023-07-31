@@ -90,8 +90,18 @@ pub struct BoardMeta {
 
 impl Game {
     #[must_use]
-    /// Construct a new [`Game`] in the conventional chess starting position.
+    /// Construct a new game in the conventional chess starting position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color, Piece, Square};
+    ///
+    /// let g = Game::new();
+    /// assert_eq!(g[Square::A1], Some((Piece::Rook, Color::White)));
+    /// ```
     pub fn new() -> Game {
+        #[rustfmt::skip]
         let mailbox = [
             Some((Piece::Rook, Color::White)), // a1
             Some((Piece::Knight, Color::White)),
@@ -109,38 +119,10 @@ impl Game {
             Some((Piece::Pawn, Color::White)),
             Some((Piece::Pawn, Color::White)),
             Some((Piece::Pawn, Color::White)),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // rank 3
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // rank 4
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // rank 5
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,                              // rank 6
+            None, None, None, None, None, None, None, None, // rank 3
+            None, None, None, None, None, None, None, None, // rank 4
+            None, None, None, None, None, None, None, None, // rank 5
+            None, None, None, None, None, None, None, None, // rank 6
             Some((Piece::Pawn, Color::Black)), // a7
             Some((Piece::Pawn, Color::Black)),
             Some((Piece::Pawn, Color::Black)),
@@ -377,6 +359,14 @@ impl Game {
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     /// Get the metadata associated with the current board state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Color};
+    ///
+    /// assert_eq!(Game::new().meta().player, Color::White);
+    /// ```
     pub fn meta(&self) -> &BoardMeta {
         self.history.last().unwrap()
     }
@@ -854,11 +844,23 @@ impl Game {
 
     #[allow(clippy::result_unit_err)]
     /// Attempt to play a move, which may or may not be legal.
+    ///
     /// Will return `Ok(())` if `m` was a legal move.
+    /// If the move was illegal, this function all will not affect the state of `self`.
     ///
     /// # Errors
     ///
     /// This function will return an `Err(())` if the move is illegal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fiddler::base::{game::Game, Move, Square};
+    ///
+    /// let mut g = Game::new();
+    /// assert!(g.try_move(Move::normal(Square::E2, Square::E5)).is_err());
+    /// assert!(g.try_move(Move::normal(Square::E2, Square::E4)).is_ok());
+    /// ```
     pub fn try_move(&mut self, m: Move) -> Result<(), ()> {
         if is_legal(m, self) {
             self.make_move(m);
@@ -876,6 +878,19 @@ impl Game {
     ///
     /// This function will return an `Err` if the history of this game has no more positions left
     /// to undo.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use fiddler::base::{game::Game, Color, Move, Piece, Square};
+    ///
+    /// let mut g = Game::new();
+    /// g.make_move(Move::normal(Square::E2, Square::E4));
+    /// g.undo()?;
+    /// assert_eq!(g[Square::E2], Some((Piece::Pawn, Color::White)));
+    /// # Ok(()) }
+    /// ```
     pub fn undo(&mut self) -> Result<(), &'static str> {
         // println!("before undo: {self} \n{}", self.board());
         let (m, capturee_type) = self.moves.pop().ok_or("no history to undo")?.unwrap();
