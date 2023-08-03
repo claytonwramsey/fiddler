@@ -616,11 +616,7 @@ impl<'a> PVSearch<'a> {
             TTEntry::DEPTH_CAPTURES,
             best_move,
             best_score.step_forward_by(state.depth_since_root),
-            if best_score >= beta {
-                BoundType::Upper
-            } else {
-                BoundType::Lower
-            },
+            BoundType::Lower,
         );
         Ok(best_score)
     }
