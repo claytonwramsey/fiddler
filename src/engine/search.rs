@@ -571,7 +571,7 @@ impl<'a> PVSearch<'a> {
             moves.push(TaggedMove::new(&self.game, m, state.mg_npm));
         });
         moves.sort_by_cached_key(|tm| -tm.quality);
-
+        let mut overwrote_alpha = false;
         for tm in moves {
             let mut new_state = NodeState {
                 depth_since_root: state.depth_since_root + 1,
@@ -608,6 +608,7 @@ impl<'a> PVSearch<'a> {
                     }
 
                     alpha = score;
+                    overwrote_alpha = true;
                 }
             }
         }
@@ -616,7 +617,13 @@ impl<'a> PVSearch<'a> {
             TTEntry::DEPTH_CAPTURES,
             best_move,
             best_score.step_forward_by(state.depth_since_root),
-            BoundType::Lower,
+            if best_score >= beta {
+                BoundType::Lower
+            } else if PV && overwrote_alpha {
+                BoundType::Exact
+            } else {
+                BoundType::Upper
+            },
         );
         Ok(best_score)
     }
