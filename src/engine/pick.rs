@@ -303,33 +303,37 @@ fn select_best(moves: &mut [TaggedMove], idx: usize) -> TaggedMove {
 #[cfg(test)]
 mod tests {
 
-    use crate::base::{game::Game, movegen::make_move_vec};
+    use crate::{
+        base::{game::Game, movegen::make_move_vec, Square},
+        engine::evaluate::mg_npm,
+    };
 
     use super::*;
 
-    #[test]
     /// Test that all moves are generated in the move picker and that there are no duplicates.
-    fn generation_correctness() {
-        let g = Game::from_fen("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12")
-            .unwrap();
+    fn correctness_help(fen: &str) {
+        let g = Game::from_fen(fen).unwrap();
+        let mgn = mg_npm(&g);
         let mut mp = MovePicker::new(None, None);
 
         let gen_moves = make_move_vec::<{ GenMode::All }>(&g);
 
         {
             let mut z = mp.clone();
-            while let Some(tm) = z.next(&g, Eval::DRAW) {
+            while let Some(tm) = z.next(&g, mgn) {
                 let m = tm.m;
                 assert!(gen_moves.contains(&m));
-                println!("{m:?}");
+                println!("{m:?}: {}", tm.quality);
             }
         }
+
+        println!("---");
 
         for &m in &gen_moves {
             let mut z = mp.clone();
 
             'found: {
-                while let Some(tm) = z.next(&g, Eval::DRAW) {
+                while let Some(tm) = z.next(&g, mgn) {
                     if tm.m == m {
                         break 'found;
                     }
@@ -341,9 +345,31 @@ mod tests {
 
         // check that the count is equal to make sure there are no repetitions
         let mut total = 0;
-        while mp.next(&g, Eval::DRAW).is_some() {
+        while mp.next(&g, mgn).is_some() {
             total += 1;
         }
         assert_eq!(total, gen_moves.len());
+    }
+
+    #[test]
+    fn unbalanced() {
+        correctness_help("r2q1rk1/ppp2ppp/3b4/4Pb2/4Q3/2PB4/P1P2PPP/R1B1K2R w KQ - 5 12");
+    }
+
+    #[test]
+    fn starting() {
+        correctness_help("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    }
+
+    #[test]
+    fn e4_is_good() {
+        let g = Game::new();
+        let e2e4 = Move::new(Square::E2, Square::E4);
+        let e2e4_quality = candidacy(&g, e2e4, eval_nl_delta(e2e4, &g), 1.0);
+        let b2b4 = Move::new(Square::B2, Square::B4);
+        let b2b4_quality = candidacy(&g, b2b4, eval_nl_delta(b2b4, &g), 1.0);
+
+        println!("{e2e4_quality:?}");
+        assert!(e2e4_quality > b2b4_quality);
     }
 }

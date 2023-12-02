@@ -676,7 +676,10 @@ impl Mul<u8> for Score {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::movegen::{make_move_vec, GenMode};
+    use crate::base::{
+        movegen::{make_move_vec, GenMode},
+        Square,
+    };
 
     use super::*;
 
@@ -728,5 +731,15 @@ mod tests {
 
         assert_eq!(s1 * -2i8, Score::centipawns(578, 0));
         assert_eq!(s2 * -2i8, Score::centipawns(578, 400));
+    }
+
+    #[test]
+    fn e2e4_delta() {
+        let delta = eval_nl_delta(Move::new(Square::E2, Square::E4), &Game::new()).blend(1.0);
+        println!("{delta}");
+        let b2b4_delta = eval_nl_delta(Move::new(Square::B2, Square::B4), &Game::new()).blend(1.0);
+        println!("{b2b4_delta}");
+
+        assert!(delta > Eval::DRAW);
     }
 }
