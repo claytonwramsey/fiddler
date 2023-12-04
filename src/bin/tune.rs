@@ -345,7 +345,7 @@ fn print_weights(weights: &Weights) {
                 let fscore = weights.rule_values[pt_idx + sq as usize];
                 let mg_val = (fscore.0 * 100.) as i16;
                 let eg_val = (fscore.1 * 100.) as i16;
-                print!("({mg_val}, {eg_val}), ");
+                print!("({mg_val:>4}, {eg_val:>4}), ");
             }
             println!();
         }
