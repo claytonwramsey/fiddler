@@ -338,19 +338,11 @@ const fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 6
         // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it
         // was shifted out properly.
         let magic_data = (lookup as *const AttacksLookup).wrapping_add(sq as usize);
-        let key = compute_magic_key(
-            Bitboard::new(occupancy.as_u64() & (*magic_data).mask.as_u64()),
-            (*magic_data).magic,
-            (*magic_data).shift,
-        );
+        let key = ((occupancy.as_u64() & (*magic_data).mask.as_u64())
+            .wrapping_mul((*magic_data).magic)
+            >> (*magic_data).shift) as usize;
         *(*magic_data).table.wrapping_add(key)
     }
-}
-
-#[allow(clippy::cast_possible_truncation)]
-/// Use magic hashing to get the index to look up attacks in a bitboad.
-const fn compute_magic_key(occupancy: Bitboard, magic: u64, shift: u8) -> usize {
-    (occupancy.as_u64().wrapping_mul(magic) >> shift) as usize
 }
 
 /// Create the mask for the relevant bits in magic of a rook.
