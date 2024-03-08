@@ -302,20 +302,17 @@ fn compute_magic_key(occupancy: Bitboard, magic: u64, shift: u8) -> usize {
 /// Manual implementation of the parallel bits deposit instruction.
 fn pdep(index: usize, mut mask: Bitboard) -> Bitboard {
     let mut result = 0u64;
-    let num_points = mask.count_ones();
     // go from right to left in the bits of num_points,
     // and add an occupancy if something is there
-    let mut i = 0;
-    while i < num_points {
+    for i in 0..mask.count_ones() {
         // make a bitboard which only occupies the rightmost square
-        let occupier = 1 << mask.trailing_zeros();
+        let occupier = mask & !(mask - 1);
         // remove the occupier from the mask
-        mask &= !occupier;
+        mask ^= occupier;
         if (index & (1 << i)) != 0 {
             // the bit corresponding to the occupier is nonzero
             result |= occupier;
         }
-        i += 1;
     }
 
     result
