@@ -21,7 +21,6 @@
 use super::{Bitboard, Direction};
 
 use std::{
-    convert::TryFrom,
     fmt::{Display, Formatter},
     mem::transmute,
     ops::{Add, AddAssign, Sub},
@@ -320,8 +319,7 @@ impl TryFrom<u8> for Square {
 
 #[cfg(test)]
 mod tests {
-
-    use super::{Direction, *};
+    use super::*;
 
     #[test]
     fn add_square_and_direction() {

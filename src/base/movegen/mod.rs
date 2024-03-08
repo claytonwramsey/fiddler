@@ -23,7 +23,7 @@ pub(crate) mod magic;
 mod tests;
 
 use super::{bitboard::Bitboard, game::Game, Color, Direction, Move, Piece, Square};
-use std::{convert::TryFrom, marker::ConstParamTy, mem::transmute};
+use std::{marker::ConstParamTy, mem::transmute};
 
 pub use magic::bishop_attacks;
 

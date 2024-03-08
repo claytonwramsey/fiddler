@@ -412,6 +412,7 @@ impl TTable {
         }
     }
 }
+
 impl TTEntry {
     /// Get the age of this entry.
     const fn age(self) -> u8 {
@@ -450,6 +451,12 @@ impl Drop for TTable {
             }
         }
         // if the size is zero, no allocation was performed
+    }
+}
+
+impl Default for TTable {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -494,7 +501,7 @@ impl TTEntry {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::{Move, Square};
+    use crate::base::Square;
 
     use super::*;
 

@@ -28,7 +28,6 @@ use super::{
 
 use std::{
     cmp::max,
-    default::Default,
     fmt::{Display, Formatter},
     ops::Index,
 };

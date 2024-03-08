@@ -120,7 +120,7 @@ impl MainSearch {
 
                     match (&mut sub_result, &eval_result) {
                         // if this is our first successful thread, use its result
-                        (Err(()), Ok(_)) => sub_result = eval_result.clone(),
+                        (Err(()), Ok(_)) => sub_result.clone_from(&eval_result),
                         // if both were successful, use the deepest result
                         (Ok(ref mut best_search), Ok(ref new_search)) => {
                             best_search.unify_with(new_search);

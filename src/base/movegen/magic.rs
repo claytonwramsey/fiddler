@@ -318,7 +318,7 @@ const fn construct_lookups(
             let these_attacks;
             (these_attacks, remaining_attacks) = remaining_attacks.split_at(1 << bits[i]);
             table[i] = MaybeUninit::new(AttacksLookup {
-                table: (these_attacks as *const [Bitboard]).cast::<Bitboard>(),
+                table: these_attacks.as_ptr().cast(),
                 mask: masks[i],
                 magic: magics[i],
                 shift: 64 - bits[i],
@@ -337,7 +337,8 @@ const fn get_attacks(occupancy: Bitboard, sq: Square, lookup: &[AttacksLookup; 6
         // SAFETY: `sq` is a valid square, so accessing it by array lookup is OK.
         // Additionally, we can trust that the key was masked correctly in `compute_magic_key` as it
         // was shifted out properly.
-        let magic_data = (lookup as *const AttacksLookup).wrapping_add(sq as usize);
+        let magic_data = lookup.as_ptr().wrapping_add(sq as usize);
+        #[allow(clippy::cast_possible_truncation)]
         let key = ((occupancy.as_u64() & (*magic_data).mask.as_u64())
             .wrapping_mul((*magic_data).magic)
             >> (*magic_data).shift) as usize;

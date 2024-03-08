@@ -304,7 +304,7 @@ fn select_best(moves: &mut [TaggedMove], idx: usize) -> TaggedMove {
 mod tests {
 
     use crate::{
-        base::{game::Game, movegen::make_move_vec, Square},
+        base::{movegen::make_move_vec, Square},
         engine::evaluate::mg_npm,
     };
 

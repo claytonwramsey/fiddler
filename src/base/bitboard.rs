@@ -20,7 +20,6 @@
 
 use std::{
     fmt::{Display, Formatter, Result},
-    iter::Iterator,
     mem::transmute,
     ops::{
         BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr,

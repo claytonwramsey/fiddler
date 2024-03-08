@@ -129,7 +129,7 @@ impl SearchInfo {
         let other_is_better = other.depth > self.depth
             || (other.depth == self.depth && other.pv.len() > self.pv.len());
         if other_is_better {
-            self.pv = other.pv.clone();
+            self.pv.clone_from(&other.pv);
             self.eval = other.eval;
             self.depth = other.depth;
         }
@@ -652,7 +652,7 @@ fn write_line(parent_line: &mut Vec<Move>, m: Move, line: &[Move]) {
 pub mod tests {
 
     use super::*;
-    use crate::base::{game::Game, Move, Square};
+    use crate::base::Square;
 
     /// Helper function to search a position at a given depth.
     ///
