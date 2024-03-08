@@ -344,7 +344,7 @@ fn print_weights(weights: &Weights) {
                 let fscore = weights.rule_values[pt_idx + sq as usize];
                 let mg_val = (fscore.0 * 100.) as i16;
                 let eg_val = (fscore.1 * 100.) as i16;
-                print!("({mg_val:>4}, {eg_val:>4}), ");
+                print!("[{mg_val:>4}, {eg_val:>4}], ");
             }
             println!();
         }
@@ -365,7 +365,7 @@ fn print_weights(weights: &Weights) {
         for count in 0..MAX_MOBILITY {
             let fscore = weights.rule_values[pt_idx + count];
             println!(
-                "        ({}, {}), ",
+                "        [{}, {}], ",
                 (fscore.0 * 100.) as i16,
                 (fscore.1 * 100.) as i16
             );
