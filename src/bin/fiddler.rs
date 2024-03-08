@@ -33,7 +33,7 @@ use std::{
 };
 
 use fiddler::{
-    base::{game::Game, Color},
+    base::{game::Game, Color, Move},
     engine::{
         perft::perft,
         thread::MainSearch,
@@ -130,17 +130,15 @@ fn main() {
                     let mut searcher_guard = searcher.write().unwrap();
                     searcher_guard.ttable.clear();
                 }
-                Command::Position { fen, moves } => {
-                    game = match fen {
-                        None => Game::new(),
-                        Some(fen) => Game::from_fen(&fen).unwrap(),
-                    };
-                    for m in moves {
-                        game.try_move(m).unwrap();
+                Command::Position { fen, moves } => match parse_game_str(fen.as_deref(), moves) {
+                    Ok(new_game) => {
+                        game = new_game;
+                        debug_info(&format!("current game: {}", game), debug);
                     }
-
-                    debug_info(&format!("current game: {}", game), debug);
-                }
+                    Err(e) => {
+                        debug_info(&format!("invalid game: {e}"), debug);
+                    }
+                },
                 Command::Go(opts) => {
                     // spawn a new thread to go search
                     debug_info("go command received", debug);
@@ -161,6 +159,15 @@ fn main() {
             }
         }
     });
+}
+
+fn parse_game_str(fen: Option<&str>, moves: Vec<Move>) -> Result<Game, &str> {
+    let mut game = fen.map_or_else(|| Ok(Game::new()), Game::from_fen)?;
+    for m in moves {
+        game.try_move(m).map_err(|_| "illegal move")?;
+    }
+
+    Ok(game)
 }
 
 /// Execute a UCI `go` command.
