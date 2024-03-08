@@ -206,7 +206,7 @@ impl<'a> PVSearch<'a> {
     }
 
     #[inline(never)]
-    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     /// Use Principal Variation Search to evaluate the given game to a depth.
     ///
     /// At each node, the search will examine all legal moves and try to find the best line,
