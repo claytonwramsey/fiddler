@@ -84,7 +84,7 @@ impl Color {
 
 impl Not for Color {
     type Output = Self;
-    fn not(self) -> Color {
+    fn not(self) -> Self {
         // SAFETY: `self` will always be equal to 0 or 1, so the xor operation will still return a
         // valid color.
         unsafe { transmute(self as u8 ^ 1) }

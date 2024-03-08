@@ -108,8 +108,8 @@ impl Square {
     /// Create a Square from the given rank and file.
     ///
     /// The ranks run from 0 to 7 (instead of 1 through 8), and the files run from A to H.
-    pub fn new(rank: u8, file: u8) -> Option<Square> {
-        Square::try_from((rank << 3) | file).ok()
+    pub fn new(rank: u8, file: u8) -> Option<Self> {
+        Self::try_from((rank << 3) | file).ok()
     }
 
     #[must_use]
@@ -126,7 +126,7 @@ impl Square {
 
     #[must_use]
     /// Get the Chebyshev distance to another square.
-    pub const fn chebyshev_to(self, rhs: Square) -> u8 {
+    pub const fn chebyshev_to(self, rhs: Self) -> u8 {
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         {
             let rankdiff = ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs();
@@ -154,7 +154,7 @@ impl Square {
     ///
     /// assert_eq!(sq1.file_distance(sq2), 2);
     /// ```
-    pub const fn file_distance(self, rhs: Square) -> u8 {
+    pub const fn file_distance(self, rhs: Self) -> u8 {
         ((rhs.file() as i8) - (self.file() as i8)).unsigned_abs()
     }
 
@@ -172,7 +172,7 @@ impl Square {
     ///
     /// assert_eq!(sq1.rank_distance(sq2), 7);
     /// ```
-    pub const fn rank_distance(self, rhs: Square) -> u8 {
+    pub const fn rank_distance(self, rhs: Self) -> u8 {
         ((rhs.rank() as i8) - (self.rank() as i8)).unsigned_abs()
     }
 
@@ -187,7 +187,7 @@ impl Square {
     /// let sq2 = sq1.opposite();
     /// assert_eq!(sq2, Square::A8);
     /// ```
-    pub fn opposite(self) -> Square {
+    pub fn opposite(self) -> Self {
         unsafe { transmute(self as u8 ^ 56) }
     }
 
@@ -200,7 +200,7 @@ impl Square {
     /// # Errors
     ///
     /// This function will return an `Err` if `s` is not a legal algebraic square.
-    pub fn from_algebraic(s: &str) -> Result<Square, &'static str> {
+    pub fn from_algebraic(s: &str) -> Result<Self, &'static str> {
         if s.len() != 2 {
             return Err("square name must be 2 characters");
         }
@@ -220,7 +220,7 @@ impl Square {
             .try_into()
             .map_err(|_| "bad rank name")?;
         // will not fail because we have already validated the rank and file
-        Ok(Square::new(rank - 1, file).unwrap())
+        Ok(Self::new(rank - 1, file).unwrap())
     }
 
     #[must_use]
@@ -234,7 +234,7 @@ impl Square {
     ///
     /// This function will behave safely if `bb` is nonzero.
     /// It will result in undefined behavior if `bb` is equal to `Bitboard::EMPTY`.
-    pub unsafe fn unsafe_from(bb: Bitboard) -> Square {
+    pub unsafe fn unsafe_from(bb: Bitboard) -> Self {
         transmute(bb.trailing_zeros() as u8)
     }
 
@@ -255,13 +255,13 @@ impl Square {
 
     #[must_use]
     /// Determine whether three squares are aligned according to rook or bishop directions.
-    pub fn aligned(sq1: Square, sq2: Square, sq3: Square) -> bool {
+    pub fn aligned(sq1: Self, sq2: Self, sq3: Self) -> bool {
         Bitboard::line(sq1, sq2).contains(sq3)
     }
 }
 
 impl Add<Direction> for Square {
-    type Output = Square;
+    type Output = Self;
     #[allow(clippy::cast_sign_loss)]
     fn add(self, rhs: Direction) -> Self::Output {
         // Apply the modulo to prevent UB.
@@ -281,18 +281,18 @@ impl Display for Square {
     }
 }
 
-impl Sub<Square> for Square {
+impl Sub<Self> for Square {
     type Output = Direction;
-    fn sub(self, rhs: Square) -> Self::Output {
+    fn sub(self, rhs: Self) -> Self::Output {
         Direction((self as i8) - (rhs as i8))
     }
 }
 
 impl Sub<Direction> for Square {
-    type Output = Square;
+    type Output = Self;
     #[allow(clippy::cast_sign_loss)]
     fn sub(self, rhs: Direction) -> Self::Output {
-        Square::try_from(((self as i8) - (rhs.0)) as u8 & 63u8).unwrap()
+        Self::try_from(((self as i8) - (rhs.0)) as u8 & 63u8).unwrap()
     }
 }
 
@@ -301,14 +301,14 @@ impl TryFrom<Bitboard> for Square {
 
     /// Create the square closest to A1 (prioritizing rank) on the given bitboard.
     #[allow(clippy::cast_possible_truncation)]
-    fn try_from(bb: Bitboard) -> Result<Square, Self::Error> {
-        Square::try_from(bb.trailing_zeros() as u8)
+    fn try_from(bb: Bitboard) -> Result<Self, Self::Error> {
+        Self::try_from(bb.trailing_zeros() as u8)
     }
 }
 
 impl TryFrom<u8> for Square {
     type Error = ();
-    fn try_from(x: u8) -> Result<Square, Self::Error> {
+    fn try_from(x: u8) -> Result<Self, Self::Error> {
         if x < 64 {
             Ok(unsafe { transmute(x) })
         } else {

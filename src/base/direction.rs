@@ -31,112 +31,112 @@ impl Direction {
     /* Cardinal directions */
 
     /// A `Direction` corresponding to a movement from nowhere to nowhere.
-    pub const NONE: Direction = Direction(0);
+    pub const NONE: Self = Self(0);
 
     /// A `Direction` corresponding to a move "north" from White's point of view, in the direction
     /// a white pawn would travel.
-    pub const NORTH: Direction = Direction(8);
+    pub const NORTH: Self = Self(8);
 
     /// A `Direction` corresponding to a move "east" from White's point of view.
-    pub const EAST: Direction = Direction(1);
+    pub const EAST: Self = Self(1);
 
     // sadly, the nature of rust consts means the following doesn't work:
     // pub const SOUTH: Direction = -NORTH;
 
     /// A `Direction` corresponding to a move "south" from White's point of view.
-    pub const SOUTH: Direction = Direction(-8);
+    pub const SOUTH: Self = Self(-8);
 
     /// A `Direction` corresponding to a move "west" from White's point of view.
-    pub const WEST: Direction = Direction(-1);
+    pub const WEST: Self = Self(-1);
 
     /* Composite directions */
 
     /// A `Direction` corresponding to a move "southwest" from White's point of view.
-    pub const NORTHWEST: Direction = Direction(Direction::NORTH.0 + Direction::WEST.0);
+    pub const NORTHWEST: Self = Self(Self::NORTH.0 + Self::WEST.0);
     /// A `Direction` corresponding to a move "northeast" from White's point of view.
-    pub const NORTHEAST: Direction = Direction(Direction::NORTH.0 + Direction::EAST.0);
+    pub const NORTHEAST: Self = Self(Self::NORTH.0 + Self::EAST.0);
     /// A `Direction` corresponding to a move "southeast" from White's point of view.
-    pub const SOUTHEAST: Direction = Direction(Direction::SOUTH.0 + Direction::EAST.0);
+    pub const SOUTHEAST: Self = Self(Self::SOUTH.0 + Self::EAST.0);
     /// A `Direction` corresponding to a move "southwest" from White's point of  view.
-    pub const SOUTHWEST: Direction = Direction(Direction::SOUTH.0 + Direction::WEST.0);
+    pub const SOUTHWEST: Self = Self(Self::SOUTH.0 + Self::WEST.0);
 
     /* Knight directions */
 
     /// A `Direction` corresponding to a move "north-by-northwest" from White's point of view.
-    pub const NNW: Direction = Direction(2 * Direction::NORTH.0 + Direction::WEST.0);
+    pub const NNW: Self = Self(2 * Self::NORTH.0 + Self::WEST.0);
 
     /// A `Direction` corresponding to a move "north-by-northeast" from White's point of view.
-    pub const NNE: Direction = Direction(2 * Direction::NORTH.0 + Direction::EAST.0);
+    pub const NNE: Self = Self(2 * Self::NORTH.0 + Self::EAST.0);
 
     /// A `Direction` corresponding to a move "east-by-northeast" from White's point of view.
-    pub const ENE: Direction = Direction(Direction::NORTH.0 + 2 * Direction::EAST.0);
+    pub const ENE: Self = Self(Self::NORTH.0 + 2 * Self::EAST.0);
 
     /// A `Direction` corresponding to a move "east-by-southeast" from White's point of view.
-    pub const ESE: Direction = Direction(Direction::SOUTH.0 + 2 * Direction::EAST.0);
+    pub const ESE: Self = Self(Self::SOUTH.0 + 2 * Self::EAST.0);
 
     /// A `Direction` corresponding to a move "south-by-southeast" from White's point of view.
-    pub const SSE: Direction = Direction(2 * Direction::SOUTH.0 + Direction::EAST.0);
+    pub const SSE: Self = Self(2 * Self::SOUTH.0 + Self::EAST.0);
 
     /// A `Direction` corresponding to a move "south-by-southwest" from White's point of view.
-    pub const SSW: Direction = Direction(2 * Direction::SOUTH.0 + Direction::WEST.0);
+    pub const SSW: Self = Self(2 * Self::SOUTH.0 + Self::WEST.0);
 
     /// A `Direction` corresponding to a move "west-by-southwest" from White's point of view.
-    pub const WSW: Direction = Direction(Direction::SOUTH.0 + 2 * Direction::WEST.0);
+    pub const WSW: Self = Self(Self::SOUTH.0 + 2 * Self::WEST.0);
 
     /// A `Direction` corresponding to a move "west-by-northwest" from White's point of view.
-    pub const WNW: Direction = Direction(Direction::NORTH.0 + 2 * Direction::WEST.0);
+    pub const WNW: Self = Self(Self::NORTH.0 + 2 * Self::WEST.0);
 
     /// The directions that a rook can move, along only one step.
-    pub const ROOK_DIRECTIONS: [Direction; 4] = [
-        Direction::NORTH,
-        Direction::SOUTH,
-        Direction::EAST,
-        Direction::WEST,
+    pub const ROOK_DIRECTIONS: [Self; 4] = [
+        Self::NORTH,
+        Self::SOUTH,
+        Self::EAST,
+        Self::WEST,
     ];
 
     /// The directions that a bishop can move, along only one step.
-    pub const BISHOP_DIRECTIONS: [Direction; 4] = [
-        Direction::NORTHWEST,
-        Direction::NORTHEAST,
-        Direction::SOUTHWEST,
-        Direction::SOUTHEAST,
+    pub const BISHOP_DIRECTIONS: [Self; 4] = [
+        Self::NORTHWEST,
+        Self::NORTHEAST,
+        Self::SOUTHWEST,
+        Self::SOUTHEAST,
     ];
 
     /// The steps that a knight can make.
-    pub const KNIGHT_STEPS: [Direction; 8] = [
-        Direction::NNW,
-        Direction::NNE,
-        Direction::ENE,
-        Direction::ESE,
-        Direction::SSE,
-        Direction::SSW,
-        Direction::WSW,
-        Direction::WNW,
+    pub const KNIGHT_STEPS: [Self; 8] = [
+        Self::NNW,
+        Self::NNE,
+        Self::ENE,
+        Self::ESE,
+        Self::SSE,
+        Self::SSW,
+        Self::WSW,
+        Self::WNW,
     ];
 
     /// The steps that a king can make.
-    pub const KING_STEPS: [Direction; 8] = [
-        Direction::NORTH,
-        Direction::NORTHEAST,
-        Direction::EAST,
-        Direction::SOUTHEAST,
-        Direction::SOUTH,
-        Direction::SOUTHWEST,
-        Direction::WEST,
-        Direction::NORTHWEST,
+    pub const KING_STEPS: [Self; 8] = [
+        Self::NORTH,
+        Self::NORTHEAST,
+        Self::EAST,
+        Self::SOUTHEAST,
+        Self::SOUTH,
+        Self::SOUTHWEST,
+        Self::WEST,
+        Self::NORTHWEST,
     ];
 
     #[must_use]
     /// Create a new Direction based on how far it moves in rank and file.
-    pub const fn new(rank_step: i8, file_step: i8) -> Direction {
-        Direction(rank_step + (file_step * 8))
+    pub const fn new(rank_step: i8, file_step: i8) -> Self {
+        Self(rank_step + (file_step * 8))
     }
 }
 
 impl Neg for Direction {
     type Output = Self;
     fn neg(self) -> Self::Output {
-        Direction(-self.0)
+        Self(-self.0)
     }
 }
 
@@ -154,17 +154,17 @@ impl Add<Square> for Direction {
     }
 }
 
-impl Add<Direction> for Direction {
+impl Add<Self> for Direction {
     type Output = Self;
-    fn add(self, rhs: Direction) -> Self::Output {
-        Direction(self.0 + rhs.0)
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
     }
 }
 
-impl Sub<Direction> for Direction {
+impl Sub<Self> for Direction {
     type Output = Self;
-    fn sub(self, rhs: Direction) -> Self::Output {
-        Direction(self.0 - rhs.0)
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
     }
 }
 

@@ -125,7 +125,7 @@ pub struct SearchInfo {
 impl SearchInfo {
     /// Unify with another `SearchInfo`, selecting the most accurate evaluation (by depth) and
     /// summing the number of transpositions and nodes evaluated.
-    pub fn unify_with(&mut self, other: &SearchInfo) {
+    pub fn unify_with(&mut self, other: &Self) {
         let other_is_better = other.depth > self.depth
             || (other.depth == self.depth && other.pv.len() > self.pv.len());
         if other_is_better {

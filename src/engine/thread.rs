@@ -47,8 +47,8 @@ pub struct SearchConfig {
 impl SearchConfig {
     #[must_use]
     /// Construct a new search configuration with some common default values.
-    pub fn new() -> SearchConfig {
-        SearchConfig {
+    pub const fn new() -> Self {
+        Self {
             depth: 10,
             n_helpers: 0,
             limit_update_increment: 100,
@@ -57,8 +57,8 @@ impl SearchConfig {
 }
 
 impl Default for SearchConfig {
-    fn default() -> SearchConfig {
-        SearchConfig::new()
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -76,8 +76,8 @@ pub struct MainSearch {
 impl MainSearch {
     #[must_use]
     /// Construct a new main search with only a single search thread.
-    pub fn new() -> MainSearch {
-        MainSearch {
+    pub fn new() -> Self {
+        Self {
             config: SearchConfig::new(),
             ttable: TTable::with_size(0),
             limit: SearchLimit::infinite(),
@@ -234,7 +234,7 @@ impl MainSearch {
 
 impl Default for MainSearch {
     fn default() -> Self {
-        MainSearch::new()
+        Self::new()
     }
 }
 

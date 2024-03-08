@@ -90,10 +90,9 @@ pub struct Score {
 /// Get the change in the quantity of mid-game non-pawn material that a move `m` would cause on a
 /// game `g`.
 pub fn mg_npm_delta(m: Move, g: &Game) -> Eval {
-    let mut mg_npm_delta = match m.promote_type() {
-        None => Eval::DRAW,
-        Some(pt) => material::value(pt).mg,
-    };
+    let mut mg_npm_delta = m
+        .promote_type()
+        .map_or(Eval::DRAW, |pt| material::value(pt).mg);
     if g.is_move_capture(m) {
         mg_npm_delta -= match g[m.destination()] {
             None | Some((Piece::Pawn, _)) => Eval::DRAW,
@@ -323,7 +322,7 @@ impl Eval {
     /// assert!(Eval::MIN < Eval::WHITE_MATE);
     /// assert!(Eval::MIN < Eval::MAX);
     /// ```
-    pub const MIN: Eval = Eval(-Eval::MATE_0_VAL - 1000);
+    pub const MIN: Self = Self(-Self::MATE_0_VAL - 1000);
 
     /// An evaluation which is larger than every other "normal" evaluation.
     ///
@@ -337,7 +336,7 @@ impl Eval {
     /// assert!(Eval::DRAW < Eval::MAX);
     /// assert!(Eval::WHITE_MATE < Eval::MAX);
     /// ```
-    pub const MAX: Eval = Eval(Eval::MATE_0_VAL + 1000);
+    pub const MAX: Self = Self(Self::MATE_0_VAL + 1000);
 
     /// An evaluation where Black has won the game by mate.
     ///
@@ -351,7 +350,7 @@ impl Eval {
     /// assert!(Eval::BLACK_MATE < Eval::WHITE_MATE);
     /// assert!(Eval::BLACK_MATE < Eval::MAX);
     /// ```
-    pub const BLACK_MATE: Eval = Eval(-Eval::MATE_0_VAL);
+    pub const BLACK_MATE: Self = Self(-Self::MATE_0_VAL);
 
     /// An evaluation where White has won the game by mate.
     ///
@@ -365,10 +364,10 @@ impl Eval {
     /// assert!(Eval::DRAW < Eval::WHITE_MATE);
     /// assert!(Eval::WHITE_MATE < Eval::MAX);
     /// ```
-    pub const WHITE_MATE: Eval = Eval(Eval::MATE_0_VAL);
+    pub const WHITE_MATE: Self = Self(Self::MATE_0_VAL);
 
     /// The evaluation of a drawn position.
-    pub const DRAW: Eval = Eval(0);
+    pub const DRAW: Self = Self(0);
 
     /// The internal evaluation of a mate in 0 for White (i.e. White made the mating move on the
     /// previous ply).
@@ -384,21 +383,21 @@ impl Eval {
     #[allow(clippy::cast_possible_truncation)]
     /// Get an evaluation equivalent to the given pawn value.
     /// Will round down by the centipawn.
-    pub fn pawns(x: f64) -> Eval {
-        Eval((x * f64::from(Eval::PAWN_VALUE)) as i16)
+    pub fn pawns(x: f64) -> Self {
+        Self((x * f64::from(Self::PAWN_VALUE)) as i16)
     }
 
     #[must_use]
     /// Construct an `Eval` with the given value in centipawns.
-    pub const fn centipawns(x: i16) -> Eval {
-        Eval(x)
+    pub const fn centipawns(x: i16) -> Self {
+        Self(x)
     }
 
     #[must_use]
     /// Create an `Eval` based on the number of half-moves required for White to mate.
     /// `-Eval::mate_in(n)` will give Black to mate in the number of plies.
-    pub const fn mate_in(nplies: u8) -> Eval {
-        Eval(Eval::MATE_0_VAL - (nplies as i16))
+    pub const fn mate_in(nplies: u8) -> Self {
+        Self(Self::MATE_0_VAL - (nplies as i16))
     }
 
     #[must_use]
@@ -414,11 +413,11 @@ impl Eval {
     /// let previous_ply_eval = current_eval.step_back_by(1);
     /// assert_eq!(previous_ply_eval, Eval::mate_in(1));
     /// ```
-    pub fn step_back_by(self, n: u8) -> Eval {
-        if self.0 < -Eval::MATE_CUTOFF {
-            Eval(self.0 + i16::from(n))
-        } else if Eval::MATE_CUTOFF < self.0 {
-            Eval(self.0 - i16::from(n))
+    pub fn step_back_by(self, n: u8) -> Self {
+        if self.0 < -Self::MATE_CUTOFF {
+            Self(self.0 + i16::from(n))
+        } else if Self::MATE_CUTOFF < self.0 {
+            Self(self.0 - i16::from(n))
         } else {
             self
         }
@@ -428,11 +427,11 @@ impl Eval {
     /// Step this evaluation forward by a given number of steps.
     /// If the evaluation is within `n` steps of the mate cutoff, this will result in weird
     /// behavior.
-    pub fn step_forward_by(self, n: u8) -> Eval {
-        if self.0 < -Eval::MATE_CUTOFF {
-            Eval(self.0 - i16::from(n))
-        } else if Eval::MATE_CUTOFF < self.0 {
-            Eval(self.0 + i16::from(n))
+    pub fn step_forward_by(self, n: u8) -> Self {
+        if self.0 < -Self::MATE_CUTOFF {
+            Self(self.0 - i16::from(n))
+        } else if Self::MATE_CUTOFF < self.0 {
+            Self(self.0 + i16::from(n))
         } else {
             self
         }
@@ -441,7 +440,7 @@ impl Eval {
     #[must_use]
     /// Is this evaluation a mate (i.e. a non-normal evaluation)?
     pub const fn is_mate(self) -> bool {
-        self.0 > Eval::MATE_CUTOFF || self.0 < -Eval::MATE_CUTOFF
+        self.0 > Self::MATE_CUTOFF || self.0 < -Self::MATE_CUTOFF
     }
 
     #[must_use]
@@ -460,10 +459,10 @@ impl Eval {
     pub fn moves_to_mate(self) -> Option<u8> {
         self.is_mate().then_some(if self.0 > 0 {
             // white to mate
-            ((Eval::MATE_0_VAL - self.0 + 1) / 2) as u8
+            ((Self::MATE_0_VAL - self.0 + 1) / 2) as u8
         } else {
             // black to mate
-            ((Eval::MATE_0_VAL + self.0 + 1) / 2) as u8
+            ((Self::MATE_0_VAL + self.0 + 1) / 2) as u8
         })
     }
 
@@ -486,28 +485,28 @@ impl Eval {
     /// White, the evaluation will remain the same.
     /// This function is an involution, meaning that calling it twice with the same player will
     /// yield the original evaluation.
-    pub const fn in_perspective(self, player: Color) -> Eval {
+    pub const fn in_perspective(self, player: Color) -> Self {
         match player {
             Color::White => self,
-            Color::Black => Eval(-self.0),
+            Color::Black => Self(-self.0),
         }
     }
 }
 
 impl Score {
     /// The score for a position which is completely drawn.
-    pub const DRAW: Score = Score::centipawns(0, 0);
+    pub const DRAW: Self = Self::centipawns(0, 0);
 
     #[must_use]
     /// Create a new `Score` by composing two evaluations together.
-    pub const fn new(mg: Eval, eg: Eval) -> Score {
-        Score { mg, eg }
+    pub const fn new(mg: Eval, eg: Eval) -> Self {
+        Self { mg, eg }
     }
 
     #[must_use]
     /// Create a `Score` directly as a pair of centipawn values.
-    pub const fn centipawns(mg: i16, eg: i16) -> Score {
-        Score::new(Eval::centipawns(mg), Eval::centipawns(eg))
+    pub const fn centipawns(mg: i16, eg: i16) -> Self {
+        Self::new(Eval::centipawns(mg), Eval::centipawns(eg))
     }
 
     #[must_use]
@@ -523,12 +522,12 @@ impl Score {
 
 impl Display for Eval {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.0 > Eval::MATE_CUTOFF {
+        if self.0 > Self::MATE_CUTOFF {
             // white to mate
-            write!(f, "+M{:.0}", (Eval::MATE_0_VAL - self.0 + 1) / 2)?;
-        } else if self.0 < -Eval::MATE_CUTOFF {
+            write!(f, "+M{:.0}", (Self::MATE_0_VAL - self.0 + 1) / 2)?;
+        } else if self.0 < -Self::MATE_CUTOFF {
             // black to mate
-            write!(f, "-M{:.0}", (Eval::MATE_0_VAL + self.0 + 1) / 2)?;
+            write!(f, "-M{:.0}", (Self::MATE_0_VAL + self.0 + 1) / 2)?;
         } else if self.0 == 0 {
             // draw
             write!(f, "00.00")?;
@@ -537,7 +536,7 @@ impl Display for Eval {
             write!(
                 f,
                 "{:+2.2}",
-                f32::from(self.0) / f32::from(Eval::PAWN_VALUE)
+                f32::from(self.0) / f32::from(Self::PAWN_VALUE)
             )?;
         }
         Ok(())
@@ -553,21 +552,21 @@ impl Display for Score {
 impl Mul<u8> for Eval {
     type Output = Self;
     fn mul(self, rhs: u8) -> Self::Output {
-        Eval(self.0 * i16::from(rhs))
+        Self(self.0 * i16::from(rhs))
     }
 }
 
 impl Mul<i16> for Eval {
     type Output = Self;
     fn mul(self, rhs: i16) -> Self::Output {
-        Eval(self.0 * rhs)
+        Self(self.0 * rhs)
     }
 }
 
 impl Mul<i8> for Eval {
     type Output = Self;
     fn mul(self, rhs: i8) -> Self::Output {
-        Eval(self.0 * i16::from(rhs))
+        Self(self.0 * i16::from(rhs))
     }
 }
 
@@ -575,7 +574,7 @@ impl Mul<f32> for Eval {
     type Output = Self;
     #[allow(clippy::cast_possible_truncation)]
     fn mul(self, rhs: f32) -> Self::Output {
-        Eval((f32::from(self.0) * rhs) as i16)
+        Self((f32::from(self.0) * rhs) as i16)
     }
 }
 
@@ -585,48 +584,48 @@ impl MulAssign<i16> for Eval {
     }
 }
 
-impl AddAssign<Eval> for Eval {
-    fn add_assign(&mut self, rhs: Eval) {
+impl AddAssign<Self> for Eval {
+    fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
     }
 }
 
-impl SubAssign<Eval> for Eval {
-    fn sub_assign(&mut self, rhs: Eval) {
+impl SubAssign<Self> for Eval {
+    fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
     }
 }
 
 impl Add for Eval {
     type Output = Self;
-    fn add(self, rhs: Eval) -> Eval {
-        Eval(self.0 + rhs.0)
+    fn add(self, rhs: Self) -> Self {
+        Self(self.0 + rhs.0)
     }
 }
 
 impl Sub for Eval {
     type Output = Self;
-    fn sub(self, rhs: Eval) -> Eval {
-        Eval(self.0 - rhs.0)
+    fn sub(self, rhs: Self) -> Self {
+        Self(self.0 - rhs.0)
     }
 }
 
 impl Neg for Eval {
     type Output = Self;
-    fn neg(self) -> Eval {
-        Eval(-self.0)
+    fn neg(self) -> Self {
+        Self(-self.0)
     }
 }
 
 impl AddAssign for Score {
-    fn add_assign(&mut self, rhs: Score) {
+    fn add_assign(&mut self, rhs: Self) {
         self.mg += rhs.mg;
         self.eg += rhs.eg;
     }
 }
 
-impl SubAssign<Score> for Score {
-    fn sub_assign(&mut self, rhs: Score) {
+impl SubAssign<Self> for Score {
+    fn sub_assign(&mut self, rhs: Self) {
         self.mg -= rhs.mg;
         self.eg -= rhs.eg;
     }
@@ -635,23 +634,23 @@ impl SubAssign<Score> for Score {
 impl Add for Score {
     type Output = Self;
 
-    fn add(self, rhs: Score) -> Self::Output {
-        Score::new(self.mg + rhs.mg, self.eg + rhs.eg)
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::new(self.mg + rhs.mg, self.eg + rhs.eg)
     }
 }
 
-impl Sub<Score> for Score {
+impl Sub<Self> for Score {
     type Output = Self;
 
-    fn sub(self, rhs: Score) -> Self::Output {
-        Score::new(self.mg - rhs.mg, self.eg - rhs.eg)
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::new(self.mg - rhs.mg, self.eg - rhs.eg)
     }
 }
 
 impl Neg for Score {
     type Output = Self;
-    fn neg(self) -> Score {
-        Score {
+    fn neg(self) -> Self {
+        Self {
             mg: -self.mg,
             eg: -self.eg,
         }
@@ -662,7 +661,7 @@ impl Mul<i8> for Score {
     type Output = Self;
 
     fn mul(self, rhs: i8) -> Self::Output {
-        Score::new(self.mg * rhs, self.eg * rhs)
+        Self::new(self.mg * rhs, self.eg * rhs)
     }
 }
 
@@ -670,7 +669,7 @@ impl Mul<u8> for Score {
     type Output = Self;
 
     fn mul(self, rhs: u8) -> Self::Output {
-        Score::new(self.mg * rhs, self.eg * rhs)
+        Self::new(self.mg * rhs, self.eg * rhs)
     }
 }
 

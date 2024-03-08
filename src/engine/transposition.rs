@@ -141,8 +141,8 @@ enum EntryType {
 impl TTable {
     #[must_use]
     /// Construct a new `TTable` with no entries.
-    pub const fn new() -> TTable {
-        TTable {
+    pub const fn new() -> Self {
+        Self {
             buckets: null::<Bucket>().cast_mut(),
             mask: 0,
         }
@@ -150,9 +150,9 @@ impl TTable {
 
     #[must_use]
     /// Construct a `TTable` with a given size, in megabytes.
-    pub fn with_size(size_mb: usize) -> TTable {
+    pub fn with_size(size_mb: usize) -> Self {
         if size_mb == 0 {
-            return TTable::new();
+            return Self::new();
         }
         let max_num_buckets = size_mb * 1_000_000 / size_of::<Bucket>();
         let new_size = if max_num_buckets.is_power_of_two() {
@@ -162,7 +162,7 @@ impl TTable {
             max_num_buckets.next_power_of_two() >> 1
         };
 
-        TTable::with_capacity(new_size.trailing_zeros() as usize)
+        Self::with_capacity(new_size.trailing_zeros() as usize)
     }
 
     #[must_use]
@@ -173,16 +173,16 @@ impl TTable {
     /// # Panics
     ///
     /// This function will panic if `capacity_log2` is large enough to cause overflow.
-    fn with_capacity(capacity_log2: usize) -> TTable {
+    fn with_capacity(capacity_log2: usize) -> Self {
         let layout = Layout::array::<Bucket>(1 << capacity_log2).unwrap();
-        TTable {
+        Self {
             buckets: unsafe { alloc_zeroed(layout).cast::<Bucket>() },
             mask: ((1usize << capacity_log2) - 1usize) as u64,
         }
     }
 
     /// Compute the index for an entry with a given key.
-    fn index_for(&self, hash_key: u64) -> usize {
+    const fn index_for(&self, hash_key: u64) -> usize {
         ((hash_key >> 16) & self.mask) as usize
     }
 
@@ -342,10 +342,11 @@ impl TTable {
         };
 
         let old_buckets = self.buckets;
-        let mut old_size = self.mask as usize + 1;
-        if old_buckets.is_null() {
-            old_size = 0;
-        }
+        let old_size = if old_buckets.is_null() {
+            0
+        } else {
+            self.mask as usize + 1
+        };
         if new_size == 0 {
             if !old_buckets.is_null() {
                 unsafe {

@@ -435,7 +435,7 @@ mod tests {
     ///
     /// This is slow and should only be used for generatic magic bitboards (instead of for move
     /// generation.
-    pub(crate) const fn directional_attacks(
+    pub const fn directional_attacks(
         sq: Square,
         dirs: &[Direction],
         occupancy: Bitboard,

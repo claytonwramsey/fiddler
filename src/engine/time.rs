@@ -45,13 +45,13 @@ pub fn get_search_time(movestogo: Option<u8>, increment: u32, remaining: u32) ->
     // time.
 
     let rem_float = remaining as f32;
-    if let Some(moves) = movestogo {
-        min(
-            800 * remaining / (1000 * u32::from(moves)) + increment,
-            (0.85 * rem_float) as u32,
-        )
-    } else {
-        // use a fraction of our remaining time.
-        min(remaining / 80 + increment, (0.9 * rem_float) as u32)
-    }
+    movestogo.map_or_else(
+        || min(remaining / 80 + increment, (0.9 * rem_float) as u32),
+        |moves| {
+            min(
+                800 * remaining / (1000 * u32::from(moves)) + increment,
+                (0.85 * rem_float) as u32,
+            )
+        },
+    )
 }

@@ -35,81 +35,81 @@ pub struct CastleRights(pub u8);
 
 impl CastleRights {
     /// A `CastleRights` where all rights are available.
-    pub const ALL: CastleRights = CastleRights(15);
+    pub const ALL: Self = Self(15);
 
     /// A `CastleRights` where no rights are available.
-    pub const NONE: CastleRights = CastleRights(0);
+    pub const NONE: Self = Self(0);
 
     /// A `CastleRights` where White has both castling rights.
-    pub const WHITE: CastleRights = CastleRights(3);
+    pub const WHITE: Self = Self(3);
 
     /// A `CastleRights` where White has both castling rights.
-    pub const BLACK: CastleRights = CastleRights(12);
+    pub const BLACK: Self = Self(12);
 
     /// A `CastleRights` where the only right is White's kingside castle.
-    pub const WHITE_KINGSIDE: CastleRights = CastleRights(1 << 0);
+    pub const WHITE_KINGSIDE: Self = Self(1 << 0);
 
     /// A `CastleRights` where the only right is White's queenside castle.
-    pub const WHITE_QUEENSIDE: CastleRights = CastleRights(1 << 1);
+    pub const WHITE_QUEENSIDE: Self = Self(1 << 1);
 
     /// A `CastleRights` where the only right is Black's kingside castle.
-    pub const BLACK_KINGSIDE: CastleRights = CastleRights(1 << 2);
+    pub const BLACK_KINGSIDE: Self = Self(1 << 2);
 
     /// A `CastleRights` where the only right is Black's queenside castle.
-    pub const BLACK_QUEENSIDE: CastleRights = CastleRights(1 << 3);
+    pub const BLACK_QUEENSIDE: Self = Self(1 << 3);
 
     /// Can the given color legally castle kingside?
     pub fn kingside(self, color: Color) -> bool {
         self & match color {
-            Color::White => CastleRights::WHITE_KINGSIDE,
-            Color::Black => CastleRights::BLACK_KINGSIDE,
-        } != CastleRights::NONE
+            Color::White => Self::WHITE_KINGSIDE,
+            Color::Black => Self::BLACK_KINGSIDE,
+        } != Self::NONE
     }
 
     /// Can the given color legally castle kingside?
     pub fn queenside(self, color: Color) -> bool {
         self & match color {
-            Color::White => CastleRights::WHITE_QUEENSIDE,
-            Color::Black => CastleRights::BLACK_QUEENSIDE,
-        } != CastleRights::NONE
+            Color::White => Self::WHITE_QUEENSIDE,
+            Color::Black => Self::BLACK_QUEENSIDE,
+        } != Self::NONE
     }
 }
 
-impl BitOr<CastleRights> for CastleRights {
-    type Output = CastleRights;
-    fn bitor(self, other: CastleRights) -> CastleRights {
-        CastleRights(self.0 | other.0)
+impl BitOr<Self> for CastleRights {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
+        Self(self.0 | other.0)
     }
 }
 
-impl BitOrAssign<CastleRights> for CastleRights {
-    fn bitor_assign(&mut self, other: CastleRights) {
+impl BitOrAssign<Self> for CastleRights {
+    fn bitor_assign(&mut self, other: Self) {
         self.0 |= other.0;
     }
 }
 
-impl BitAnd<CastleRights> for CastleRights {
-    type Output = CastleRights;
-    fn bitand(self, other: CastleRights) -> CastleRights {
-        CastleRights(self.0 & other.0)
+impl BitAnd<Self> for CastleRights {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        Self(self.0 & other.0)
     }
 }
 
-impl BitAndAssign<CastleRights> for CastleRights {
-    fn bitand_assign(&mut self, other: CastleRights) {
+impl BitAndAssign<Self> for CastleRights {
+    fn bitand_assign(&mut self, other: Self) {
         self.0 &= other.0;
     }
 }
 
 impl Not for CastleRights {
-    type Output = CastleRights;
-    fn not(self) -> CastleRights {
-        CastleRights(self.0 ^ 15)
+    type Output = Self;
+    fn not(self) -> Self {
+        Self(self.0 ^ 15)
     }
 }
 
 impl BitXorAssign for CastleRights {
-    fn bitxor_assign(&mut self, rhs: CastleRights) {
+    fn bitxor_assign(&mut self, rhs: Self) {
         self.0 ^= rhs.0;
     }
 }

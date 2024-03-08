@@ -28,6 +28,10 @@
 //! 1. The number of tries to take when searching.
 //! 1. (optional) The random seed to use.
 
+#![warn(missing_docs)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 use std::thread::scope;
 
 use fiddler::base::{
@@ -56,7 +60,8 @@ fn main() -> Result<(), ()> {
     };
     scope(|s| {
         // TODO make number of search threads an argument
-        let handles: Vec<_> = (0..16)
+
+        (0..16)
             .map(|thread_id| {
                 s.spawn(move || {
                     let mut rand_state = args.seed.unwrap_or(12345 + thread_id);
@@ -70,6 +75,7 @@ fn main() -> Result<(), ()> {
                             } else {
                                 bishop_attacks(occupancy, args.sq)
                             };
+                            #[allow(clippy::cast_possible_truncation)]
                             let idx = (occupancy.as_u64().wrapping_mul(magic) >> (64 - args.bits))
                                 as usize;
                             if !all_attacks[idx].is_empty() && all_attacks[idx] != attacks {
@@ -82,9 +88,7 @@ fn main() -> Result<(), ()> {
                     }
                 })
             })
-            .collect();
-
-        handles.into_iter().for_each(|h| h.join().unwrap());
+            .for_each(|h| h.join().unwrap());
     });
 
     Ok(())

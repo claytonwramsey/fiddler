@@ -150,20 +150,20 @@ impl Command {
         let mut tokens = line.split_ascii_whitespace();
         let first_tok = tokens.next().ok_or("line contains no tokens")?;
         match first_tok {
-            "uci" => Ok(Command::Uci),
+            "uci" => Ok(Self::Uci),
             "debug" => match tokens.next() {
-                Some("on") | None => Ok(Command::Debug(true)),
-                Some("off") => Ok(Command::Debug(false)),
+                Some("on") | None => Ok(Self::Debug(true)),
+                Some("off") => Ok(Self::Debug(false)),
                 _ => Err("unrecognized option".into()),
             },
-            "isready" => Ok(Command::IsReady),
-            "setoption" => Command::parse_set_option(&mut tokens),
-            "ucinewgame" => Ok(Command::NewGame),
-            "position" => Command::parse_position(&mut tokens),
-            "go" => Command::parse_go(&mut tokens),
-            "stop" => Ok(Command::Stop),
-            "ponderhit" => Ok(Command::PonderHit),
-            "quit" => Ok(Command::Quit),
+            "isready" => Ok(Self::IsReady),
+            "setoption" => Self::parse_set_option(&mut tokens),
+            "ucinewgame" => Ok(Self::NewGame),
+            "position" => Self::parse_position(&mut tokens),
+            "go" => Self::parse_go(&mut tokens),
+            "stop" => Ok(Self::Stop),
+            "ponderhit" => Ok(Self::PonderHit),
+            "quit" => Ok(Self::Quit),
             _ => Err("unrecognized UCI command".into()),
         }
     }
@@ -187,7 +187,7 @@ impl Command {
         let mut key = String::new();
         loop {
             let Some(key_tok) = tokens.next() else {
-                return Ok(Command::SetOption {
+                return Ok(Self::SetOption {
                     name: key,
                     value: None,
                 });
@@ -206,7 +206,7 @@ impl Command {
         let mut value = String::new();
         loop {
             let Some(val_tok) = tokens.next() else {
-                return Ok(Command::SetOption {
+                return Ok(Self::SetOption {
                     name: key,
                     value: Some(value),
                 });
@@ -276,7 +276,7 @@ impl Command {
             moves.push(m);
         }
 
-        Ok(Command::Position {
+        Ok(Self::Position {
             fen: start_fen,
             moves,
         })
@@ -319,7 +319,7 @@ impl Command {
             });
         }
 
-        Ok(Command::Go(opts))
+        Ok(Self::Go(opts))
     }
 }
 

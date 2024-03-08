@@ -58,8 +58,8 @@ pub struct SearchLimit {
 impl SearchLimit {
     #[must_use]
     /// Create a new `SearchLimit` which will never stop.
-    pub fn infinite() -> SearchLimit {
-        SearchLimit {
+    pub fn infinite() -> Self {
+        Self {
             over: AtomicBool::new(false),
             num_nodes: AtomicU64::new(0),
             nodes_cap: RwLock::new(None),
@@ -78,8 +78,7 @@ impl SearchLimit {
         self.num_nodes.store(0, Ordering::Relaxed);
         self.over.store(false, Ordering::Relaxed);
         *self.start_time.lock().unwrap() = Instant::now();
-        let opt_duration = self.search_duration.lock().unwrap();
-        if let Some(dur) = *opt_duration {
+        if let Some(dur) = *self.search_duration.lock().unwrap() {
             *self.end_time.write().unwrap() = Some(Instant::now() + dur);
         };
     }

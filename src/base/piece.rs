@@ -51,60 +51,60 @@ impl Piece {
     pub const NUM: usize = 6;
 
     /// Array containing all piece types.
-    pub const ALL: [Piece; Piece::NUM] = [
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-        Piece::Pawn,
-        Piece::King,
+    pub const ALL: [Self; Self::NUM] = [
+        Self::Knight,
+        Self::Bishop,
+        Self::Rook,
+        Self::Queen,
+        Self::Pawn,
+        Self::King,
     ];
 
     /// Array containing piece types which are not pawns.
-    pub const NON_PAWNS: [Piece; Piece::NUM - 1] = [
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-        Piece::King,
+    pub const NON_PAWNS: [Self; Self::NUM - 1] = [
+        Self::Knight,
+        Self::Bishop,
+        Self::Rook,
+        Self::Queen,
+        Self::King,
     ];
 
     /// Array containing piece types which are not kings.
-    pub const NON_KING: [Piece; Piece::NUM - 1] = [
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-        Piece::Pawn,
+    pub const NON_KING: [Self; Self::NUM - 1] = [
+        Self::Knight,
+        Self::Bishop,
+        Self::Rook,
+        Self::Queen,
+        Self::Pawn,
     ];
 
     /// The types of pieces that a pawn can be promted to.
-    pub const PROMOTING: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+    pub const PROMOTING: [Self; 4] = [Self::Knight, Self::Bishop, Self::Rook, Self::Queen];
 
     #[must_use]
     /// Get the FEN code of this piece as an uppercase string.
     pub const fn code(self) -> char {
         match self {
-            Piece::Knight => 'N',
-            Piece::Bishop => 'B',
-            Piece::Rook => 'R',
-            Piece::Queen => 'Q',
-            Piece::Pawn => 'P',
-            Piece::King => 'K',
+            Self::Knight => 'N',
+            Self::Bishop => 'B',
+            Self::Rook => 'R',
+            Self::Queen => 'Q',
+            Self::Pawn => 'P',
+            Self::King => 'K',
         }
     }
 
     #[must_use]
     /// Given a FEN character, convert it to a piece type.
     /// Must be uppercase.
-    pub const fn from_code(c: char) -> Option<Piece> {
+    pub const fn from_code(c: char) -> Option<Self> {
         match c {
-            'N' => Some(Piece::Knight),
-            'B' => Some(Piece::Bishop),
-            'R' => Some(Piece::Rook),
-            'Q' => Some(Piece::Queen),
-            'P' => Some(Piece::Pawn),
-            'K' => Some(Piece::King),
+            'N' => Some(Self::Knight),
+            'B' => Some(Self::Bishop),
+            'R' => Some(Self::Rook),
+            'Q' => Some(Self::Queen),
+            'P' => Some(Self::Pawn),
+            'K' => Some(Self::King),
             _ => None,
         }
     }

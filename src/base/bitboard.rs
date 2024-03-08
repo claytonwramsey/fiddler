@@ -52,7 +52,7 @@ impl Bitboard {
     /// let sq = Square::A1; // this could be any square
     /// assert!(!Bitboard::EMPTY.contains(sq));
     /// ```
-    pub const EMPTY: Bitboard = Bitboard::new(0);
+    pub const EMPTY: Self = Self::new(0);
 
     /// A bitboard containing all 64 squares on the board, i.e. the universal set.
     ///
@@ -76,7 +76,7 @@ impl Bitboard {
     ///     println!("Now visiting square {sq}!");
     /// }
     /// ```
-    pub const ALL: Bitboard = Bitboard::new(!0);
+    pub const ALL: Self = Self::new(!0);
 
     #[must_use]
     /// Construct a new Bitboard from a numeric literal.
@@ -93,8 +93,8 @@ impl Bitboard {
     ///
     /// assert_eq!(bb, Bitboard::new(1));
     /// ```
-    pub const fn new(x: u64) -> Bitboard {
-        Bitboard(x)
+    pub const fn new(x: u64) -> Self {
+        Self(x)
     }
 
     #[must_use]
@@ -143,8 +143,8 @@ impl Bitboard {
     /// assert!(!bb1.contains(Square::A1));
     /// assert!(bb2.contains(Square::A1));
     /// ```
-    pub const fn with_square(self, sq: Square) -> Bitboard {
-        Bitboard(self.0 | (1 << sq as u8))
+    pub const fn with_square(self, sq: Square) -> Self {
+        Self(self.0 | (1 << sq as u8))
     }
 
     #[allow(clippy::cast_possible_truncation)]
@@ -243,7 +243,7 @@ impl Bitboard {
     /// let between_bb = Bitboard::between(Square::A1, Square::A3);
     /// assert_eq!(between_bb, Bitboard::from(Square::A2))
     /// ```
-    pub fn between(sq1: Square, sq2: Square) -> Bitboard {
+    pub fn between(sq1: Square, sq2: Square) -> Self {
         /// A lookup table for the squares "between" two other squares, either down a row like a
         /// rook or on a diagonal like a bishop.
         ///
@@ -304,7 +304,7 @@ impl Bitboard {
     ///
     /// Squares which are not aligned (in the ways that a rook or bishop move) will result in a
     /// return of `Bitboard::EMPTY`.
-    pub fn line(sq1: Square, sq2: Square) -> Bitboard {
+    pub fn line(sq1: Square, sq2: Square) -> Self {
         const LINES: [[Bitboard; 64]; 64] = {
             let mut lines = [[Bitboard::EMPTY; 64]; 64];
 
@@ -364,7 +364,7 @@ impl Bitboard {
     ///
     /// assert_eq!(diag, Bitboard::diagonal(sq));
     /// ```
-    pub const fn diagonal(sq: Square) -> Bitboard {
+    pub const fn diagonal(sq: Square) -> Self {
         /// The diagonal going from A1 to H8.
         const MAIN_DIAG: Bitboard = Bitboard(0x8040_2010_0804_0201);
 
@@ -404,7 +404,7 @@ impl Bitboard {
     ///
     /// assert_eq!(diag, Bitboard::anti_diagonal(sq));
     /// ```
-    pub const fn anti_diagonal(sq: Square) -> Bitboard {
+    pub const fn anti_diagonal(sq: Square) -> Self {
         /// The diagonal going from A8 to H1.
         const ANTI_DIAG: Bitboard = Bitboard::new(0x0102_0408_1020_4080);
 
@@ -449,10 +449,10 @@ impl Bitboard {
     ///
     /// assert_eq!(Bitboard::vertical(Square::A1), bb);
     /// ```
-    pub const fn vertical(sq: Square) -> Bitboard {
+    pub const fn vertical(sq: Square) -> Self {
         const COL_A: Bitboard = Bitboard(0x0101_0101_0101_0101);
 
-        Bitboard(COL_A.0 << sq.file())
+        Self(COL_A.0 << sq.file())
     }
 
     #[must_use]
@@ -475,10 +475,10 @@ impl Bitboard {
     ///
     /// assert_eq!(Bitboard::horizontal(Square::A1), bb);
     /// ```
-    pub const fn horizontal(sq: Square) -> Bitboard {
+    pub const fn horizontal(sq: Square) -> Self {
         const RANK_1: Bitboard = Bitboard(0x0000_0000_0000_00FF);
 
-        Bitboard(RANK_1.0 << (sq.rank() << 3))
+        Self(RANK_1.0 << (sq.rank() << 3))
     }
 
     #[must_use]
@@ -495,7 +495,7 @@ impl Bitboard {
     ///     Bitboard::horizontal(Square::A1) ^ Bitboard::vertical(Square::A1)
     /// );
     /// ```
-    pub const fn hv(sq: Square) -> Bitboard {
+    pub const fn hv(sq: Square) -> Self {
         const MASKS: [Bitboard; 64] = {
             let mut masks = [Bitboard::EMPTY; 64];
             let mut i = 0u8;
@@ -526,7 +526,7 @@ impl Bitboard {
     ///     Bitboard::diagonal(Square::E4) ^ Bitboard::anti_diagonal(Square::E4)
     /// );
     /// ```
-    pub const fn diags(sq: Square) -> Bitboard {
+    pub const fn diags(sq: Square) -> Self {
         const MASKS: [Bitboard; 64] = {
             let mut masks = [Bitboard::EMPTY; 64];
             let mut i = 0u8;
@@ -596,7 +596,7 @@ impl Shl<u8> for Bitboard {
     type Output = Self;
 
     fn shl(self, rhs: u8) -> Self::Output {
-        Bitboard(self.0 << rhs)
+        Self(self.0 << rhs)
     }
 }
 
@@ -604,7 +604,7 @@ impl Shr<u8> for Bitboard {
     type Output = Self;
 
     fn shr(self, rhs: u8) -> Self::Output {
-        Bitboard(self.0 >> rhs)
+        Self(self.0 >> rhs)
     }
 }
 
@@ -618,13 +618,13 @@ impl Not for Bitboard {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        Bitboard(!self.0)
+        Self(!self.0)
     }
 }
 
 impl From<Square> for Bitboard {
-    fn from(sq: Square) -> Bitboard {
-        Bitboard(1 << sq as u8)
+    fn from(sq: Square) -> Self {
+        Self(1 << sq as u8)
     }
 }
 

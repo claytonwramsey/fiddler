@@ -23,7 +23,9 @@
 //! The tuner operates by using gradient descent on logistic regression to classify the results of a
 //! given position.
 
+#![warn(missing_docs)]
 #![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
 
 use std::{
     env,
@@ -126,9 +128,6 @@ struct Weights {
     /// The first five entries in `rule_values` must always be the material values.
     rule_values: Vec<(f32, f32)>,
 }
-
-/// The gradient of the error with respect to the weights has the same dimension as weights.
-type GradWeights = Weights;
 
 /// Expand an EPD file into a set of features that can be used for training.
 fn extract_epd(location: &str) -> Result<Vec<(BoardFeatures, f32)>, Box<dyn std::error::Error>> {
@@ -566,8 +565,8 @@ impl Weights {
     }
 
     /// Construct a new zero weights with the same dimension for rules as `w`.
-    fn zero(w: &Weights) -> Weights {
-        Weights {
+    fn zero(w: &Self) -> Self {
+        Self {
             phase_cutoffs: (0.0, 0.0),
             rule_values: vec![(0.0, 0.0); w.rule_values.len()],
         }
@@ -594,12 +593,12 @@ impl Weights {
             })
             .fold((0.0, 0.0), |(a, b), (c, d)| (a + c, b + d));
 
-        phase * rule_values.0 + (1.0 - phase) * rule_values.1
+        phase.mul_add(rule_values.0, (1.0 - phase) * rule_values.1)
     }
 
     /// Compute the gradient of the evaluation at a point `x`, multiply it by `scale`, and add it
     /// to `add_to`.
-    fn eval_gradient(&self, add_to: &mut GradWeights, scale: f32, x: &BoardFeatures) {
+    fn eval_gradient(&self, add_to: &mut Self, scale: f32, x: &BoardFeatures) {
         let midgame_material = self
             .rule_values
             .iter()

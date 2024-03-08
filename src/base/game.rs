@@ -99,7 +99,7 @@ impl Game {
     /// let g = Game::new();
     /// assert_eq!(g[Square::A1], Some((Piece::Rook, Color::White)));
     /// ```
-    pub fn new() -> Game {
+    pub fn new() -> Self {
         #[rustfmt::skip]
         let mailbox = [
             Some((Piece::Rook, Color::White)), // a1
@@ -139,7 +139,7 @@ impl Game {
             Some((Piece::Knight, Color::Black)),
             Some((Piece::Rook, Color::Black)),
         ];
-        Game {
+        Self {
             mailbox,
             sides: [
                 Bitboard::new(0x0000_0000_0000_FFFF), // white
@@ -194,8 +194,8 @@ impl Game {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_fen(fen: &str) -> Result<Game, &str> {
-        let mut game = Game {
+    pub fn from_fen(fen: &str) -> Result<Self, &str> {
+        let mut game = Self {
             sides: [Bitboard::EMPTY; 2],
             pieces: [Bitboard::EMPTY; 6],
             mailbox: [None; 64],
@@ -388,7 +388,7 @@ impl Game {
     ///         .with_square(Square::G8)
     /// );
     /// ```
-    pub fn knights(&self) -> Bitboard {
+    pub const fn knights(&self) -> Bitboard {
         self.pieces[Piece::Knight as usize]
     }
 
@@ -410,7 +410,7 @@ impl Game {
     ///         .with_square(Square::F8)
     /// );
     /// ```
-    pub fn bishops(&self) -> Bitboard {
+    pub const fn bishops(&self) -> Bitboard {
         self.pieces[Piece::Bishop as usize]
     }
 
@@ -432,7 +432,7 @@ impl Game {
     ///         .with_square(Square::H8)
     /// );
     /// ```
-    pub fn rooks(&self) -> Bitboard {
+    pub const fn rooks(&self) -> Bitboard {
         self.pieces[Piece::Rook as usize]
     }
 
@@ -452,7 +452,7 @@ impl Game {
     ///         .with_square(Square::D8)
     /// );
     /// ```
-    pub fn queens(&self) -> Bitboard {
+    pub const fn queens(&self) -> Bitboard {
         self.pieces[Piece::Queen as usize]
     }
 
@@ -472,7 +472,7 @@ impl Game {
     ///         .with_square(Square::E8)
     /// );
     /// ```
-    pub fn kings(&self) -> Bitboard {
+    pub const fn kings(&self) -> Bitboard {
         self.pieces[Piece::King as usize]
     }
 
@@ -487,7 +487,7 @@ impl Game {
     /// let g = Game::new();
     /// assert_eq!(g.pawns(), Bitboard::new(0x00FF_0000_0000_FF00));
     /// ```
-    pub fn pawns(&self) -> Bitboard {
+    pub const fn pawns(&self) -> Bitboard {
         self.pieces[Piece::Pawn as usize]
     }
 
@@ -517,7 +517,7 @@ impl Game {
     /// let g = Game::new();
     /// assert_eq!(g.white(), Bitboard::new(0x0000_0000_0000_FFFF));
     /// ```
-    pub fn white(&self) -> Bitboard {
+    pub const fn white(&self) -> Bitboard {
         self.sides[Color::White as usize]
     }
 
@@ -532,7 +532,7 @@ impl Game {
     /// let g = Game::new();
     /// assert_eq!(g.black(), Bitboard::new(0xFFFF_0000_0000_0000));
     /// ```
-    pub fn black(&self) -> Bitboard {
+    pub const fn black(&self) -> Bitboard {
         self.sides[Color::Black as usize]
     }
 
@@ -1110,7 +1110,7 @@ impl Game {
 impl BoardMeta {
     #[must_use]
     /// Determine whether this board meta-state is drawn by the 50-move rule.
-    pub fn drawn_50(&self) -> bool {
+    pub const fn drawn_50(&self) -> bool {
         self.rule50 >= 100
     }
 }
@@ -1128,7 +1128,7 @@ impl Index<Square> for Game {
 
 impl Default for Game {
     fn default() -> Self {
-        Game::new()
+        Self::new()
     }
 }
 

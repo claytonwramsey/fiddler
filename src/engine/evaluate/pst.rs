@@ -76,10 +76,7 @@ pub fn delta(game: &Game, m: Move) -> Score {
     let dest = m.destination();
     let (mover_type, _) = game[m.origin()].unwrap();
     let mover_idx = mover_type as usize;
-    let end_type = match m.promote_type() {
-        Some(pt) => pt,
-        None => mover_type,
-    };
+    let end_type = m.promote_type().map_or(mover_type, |pt| pt);
     let end_idx = end_type as usize;
     let (from_alt, to_alt) = match game.meta().player {
         Color::White => (orig, dest),

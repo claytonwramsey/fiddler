@@ -120,8 +120,8 @@ impl MovePicker {
     /// be generated.
     ///
     /// The transposition move must be legal, and should be checked as such prior to instantiation.
-    pub fn new(transposition_move: Option<Move>, killer_move: Option<Move>) -> MovePicker {
-        MovePicker {
+    pub fn new(transposition_move: Option<Move>, killer_move: Option<Move>) -> Self {
+        Self {
             capture_buffer: Vec::new(),
             quiet_buffer: Vec::new(),
             capture_index: 0,
@@ -264,10 +264,10 @@ impl MovePicker {
 impl TaggedMove {
     /// Construct a new [`TaggedMove`] by tagging `m`, which is about to be played on `g`, while
     /// the current quantity of midgame non-pawn material is `current_mg_npm`.
-    pub fn new(g: &Game, m: Move, current_mg_npm: Eval) -> TaggedMove {
+    pub fn new(g: &Game, m: Move, current_mg_npm: Eval) -> Self {
         let new_mg_npm = current_mg_npm + mg_npm_delta(m, g);
         let phase = calculate_phase(new_mg_npm);
-        TaggedMove {
+        Self {
             m,
             new_mg_npm,
             phase,

@@ -25,6 +25,10 @@
 //! Many of the details of concurrency required to achieve this are finicky; I am hopeful that we
 //! can develop more elegant solutions in the future.
 
+#![warn(missing_docs)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 use std::{
     io::stdin,
     sync::RwLock,
@@ -133,7 +137,7 @@ fn main() {
                 Command::Position { fen, moves } => match parse_game_str(fen.as_deref(), moves) {
                     Ok(new_game) => {
                         game = new_game;
-                        debug_info(&format!("current game: {}", game), debug);
+                        debug_info(&format!("current game: {game}"), debug);
                     }
                     Err(e) => {
                         debug_info(&format!("invalid game: {e}"), debug);
@@ -164,12 +168,13 @@ fn main() {
 fn parse_game_str(fen: Option<&str>, moves: Vec<Move>) -> Result<Game, &str> {
     let mut game = fen.map_or_else(|| Ok(Game::new()), Game::from_fen)?;
     for m in moves {
-        game.try_move(m).map_err(|_| "illegal move")?;
+        game.try_move(m).map_err(|()| "illegal move")?;
     }
 
     Ok(game)
 }
 
+#[allow(clippy::too_many_lines)]
 /// Execute a UCI `go` command.
 /// This function has been broken out for readability.
 /// Will spawn a new thread to search and return its handle.
@@ -180,21 +185,12 @@ fn go<'a>(
     thread_scope: &'a Scope<'a, '_>,
     debug: bool,
 ) -> Option<ScopedJoinHandle<'a, ()>> {
-    // whether the last move given in the position should be considered the ponder-move
-    // unused for now
-    let mut _ponder = false;
-
-    // time remaining for players
-    let (mut wtime, mut btime) = (None, None);
-
-    // increments. by default assumed to be zero
-    let (mut winc, mut binc) = (0, 0);
+    let (mut wtime, mut btime) = (None, None); // time remaining for players
+    let (mut winc, mut binc) = (0, 0); // increments. by default assumed to be zero
 
     // number of moves until increment achieved. if `None`, there is no increment.
     let mut movestogo = None;
-
     let mut infinite = false; // whether to search infinitely
-
     let mut movetime = None;
     let mut perft_depth = None;
 
@@ -234,7 +230,7 @@ fn go<'a>(
             }
             GoOption::Mate(_) => unimplemented!(),
             &GoOption::MoveTime(msecs) => {
-                movetime = Some(Duration::from_millis(msecs as u64));
+                movetime = Some(Duration::from_millis(u64::from(msecs)));
             }
             GoOption::Infinite => {
                 // on an infinite search, we will go as deep as we want
@@ -254,21 +250,21 @@ fn go<'a>(
         perft(&mut cloned_game, *d);
         return None;
     }
-
-    let searcher_guard = searcher.read().unwrap();
     let (increment, remaining) = match game.meta().player {
         Color::White => (winc, wtime),
         Color::Black => (binc, btime),
     };
+    let sguard = searcher.read().unwrap();
     // configure timeout condition
-    let mut search_duration_guard = searcher_guard.limit.search_duration.lock().unwrap();
+    let mut search_duration_guard = sguard.limit.search_duration.lock().unwrap();
     if infinite {
         *search_duration_guard = None;
     } else if let Some(mt) = movetime {
-        *search_duration_guard = Some(mt)
+        *search_duration_guard = Some(mt);
     } else if let Some(rem) = remaining {
         *search_duration_guard = Some(Duration::from_millis(if rem > 0 {
-            get_search_time(movestogo, increment, rem as u32) as u64
+            #[allow(clippy::cast_sign_loss)]
+            u64::from(get_search_time(movestogo, increment, rem as u32))
         } else {
             100
         }));
@@ -278,7 +274,8 @@ fn go<'a>(
     debug_info(&format!("search time: {:?}", *search_duration_guard), debug);
     drop(search_duration_guard); // prevent deadlock when starting the limit
 
-    searcher_guard.limit.start();
+    sguard.limit.start();
+    drop(sguard);
 
     let cloned_game = game.clone();
 
