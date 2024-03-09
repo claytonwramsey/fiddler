@@ -84,6 +84,7 @@ mod tests {
     use super::*;
 
     #[allow(clippy::cast_possible_truncation)]
+    #[cfg_attr(miri, ignore)]
     fn perft_assistant(fen: &str, node_counts: &[u64]) {
         for (i, num) in node_counts.iter().enumerate() {
             let mut g = Game::from_fen(fen).unwrap();
@@ -92,6 +93,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test the perft values for the board starting position.
     fn start_position() {
         perft_assistant(
@@ -101,6 +103,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test the perft values for the
     /// [Kiwipete](https://www.chessprogramming.org/Perft_Results#Position_2)
     /// position.
@@ -112,6 +115,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn endgame() {
         // https://www.chessprogramming.org/Perft_Results#Position_3
         perft_assistant(
@@ -121,6 +125,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test the perft values for an unbalanced position.
     /// Uses results from
     /// [the Chess Programming wiki](https://www.chessprogramming.org/Perft_Results#Position_4).
@@ -132,6 +137,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn edwards() {
         // https://www.chessprogramming.org/Perft_Results#Position_5
         perft_assistant(
@@ -141,6 +147,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn edwards2() {
         // https://www.chessprogramming.org/Perft_Results#Position_6
         perft_assistant(

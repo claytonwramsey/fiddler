@@ -530,6 +530,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test that bishop magic move generation is correct for every possible occupancy bitboard.
     fn all_bishop_attacks() {
         for sq in Bitboard::ALL {
@@ -543,6 +544,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test that rook magic move generation is correct for every possible occupancy bitboard.
     fn all_rook_attacks() {
         for sq in Bitboard::ALL {

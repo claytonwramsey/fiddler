@@ -638,6 +638,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test exhaustively for linear independence in subsets of all Zobrist keys.
     fn exhaustive_independence() {
         for n in 1..=3 {

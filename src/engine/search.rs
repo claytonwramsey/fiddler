@@ -695,6 +695,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test `PVSearch`'s evaluation of the start position of the game.
     fn eval_start() {
         let info = search_helper(
@@ -705,6 +706,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// A test on the evaluation of the game in the fried liver position.
     /// The only winning move for White is Qd3+.
     fn fried_liver() {
@@ -717,6 +719,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Try searching an end-ish game position.
     /// This was used as part of debugging for an illegal PV being created.
     fn endgame() {
@@ -734,6 +737,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// A test that shows the engine can find a mate in 4 plies, given enough depth.
     fn mate_in_4_ply() {
         // because black, the player to move, is getting mated, the evaluation is negative here
@@ -741,6 +745,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// A test for a puzzle made by Ian. White has mate in 5 with Rxf7+.
     fn mate_in_9_ply() {
         // because capturing a low-value piece is often a "late" move, it is likely to be reduced in
@@ -753,6 +758,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test that the engine can use a draw by repetition to escape being mated.
     fn escape_by_draw() {
         let mut g = Game::from_fen("2k5/6R1/7Q/8/8/8/8/1K6 w - - 0 1").unwrap();
@@ -799,6 +805,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     /// Test that the transposition table contains an entry for the root node of the search.
     fn ttable_populated() {
         let ttable = TTable::with_size(1);
