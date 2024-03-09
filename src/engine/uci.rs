@@ -24,8 +24,7 @@
 //! In general, the GUI dictates much of the pace of this interaction, and the engine just plays
 //! along.
 //!
-//! `UciCommand` describes all the messages that can be received for a UCI engine.
-//! Meanwhile, `UciMessage` describes all the messages that the engine can send back to the GUI.
+//! [`Command`] describes all the messages that can be received for a UCI engine.
 //!
 //! For a full specification of the UCI standard, see [here](https://backscattering.de/).
 
@@ -38,9 +37,9 @@ use crate::base::{game::Game, Move};
 pub enum Command {
     /// Command given at the start of UCI.
     ///
-    /// The engine must reply with `UciMessage::Id` message and send the `UciMessage::Option`
+    /// The engine must reply with an `id` message and send the `option`
     /// messages to tell the GUI which engine commands it supports.
-    /// After that receipt, the engine must then send a `UciMessage::Ok` to complete the setup.
+    /// After that receipt, the engine must then send a `ok` to complete the setup.
     /// If not, the GUI will kill the engine process.
     Uci,
     /// Switch whether the engine should turn on or off debug mode.
@@ -51,7 +50,7 @@ pub enum Command {
     /// Request an update from the engine as to whether it is ready to proceed.
     ///
     /// If the engine is busy thinking, it can wait until it is done thinking to reply to this.
-    /// When it is ready, the engine must reply with `UciMessage::ReadyOk`.
+    /// When it is ready, the engine must reply with `readyok`.
     IsReady,
     /// Set a parameter of the engine, or send a custom command.
     SetOption {
@@ -95,16 +94,16 @@ pub enum Command {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-/// The options that can be given for a `UciCommand::Go` command.
+/// The options that can be given for a [`Command::Go`] command.
 pub enum GoOption {
     /// Restrict the search to these moves only.
     SearchMoves(Vec<Move>),
     /// Search in "ponder" mode.
     ///
     /// The engine must not exit the search until ordered, no matter the conditions.
-    /// The last move which was sent in the previous `UciCommand::Position`should be considered the
+    /// The last move which was sent in the previous [`Command::Position`] should be considered the
     /// "ponder-move", which is the suggested move to consider.
-    /// When a `UciCommand::PonderHit` is given, the engine will then execute the ponder command.
+    /// When a [`Command::PonderHit`] is given, the engine will then execute the ponder command.
     Ponder,
     /// Inform the engine that White has the given number of milliseconds remaining.
     /// The remaining time may be negative in the case of overtime play.
@@ -128,7 +127,7 @@ pub enum GoOption {
     Mate(u8),
     /// Search for the given number of milliseconds.
     MoveTime(u32),
-    /// Search until a `UciCommand::Stop` is given.
+    /// Search until a [`Command::Stop`] is given.
     /// Do not exit the search until told to.
     Infinite,
     /// Instead of performing a real search, instead do a performance test, reporting node counts.
