@@ -40,18 +40,23 @@ use std::cmp::min;
 /// *`increment`: the time increment that each player will get after they play a move, measured in
 ///     milliseconds.
 /// * `remaining`: the remaining time that we have, measured in milliseconds.
-pub fn get_search_time(movestogo: Option<u8>, increment: u32, remaining: u32) -> u32 {
+pub fn get_search_time(movestogo: Option<u8>, increment: u32, remaining: i32) -> u32 {
     // for now, simply try to exhaust our remaining time to the increment, with a little buffer
     // time.
 
-    let rem_float = remaining as f32;
-    movestogo.map_or_else(
-        || min(remaining / 80 + increment, (0.9 * rem_float) as u32),
-        |moves| {
-            min(
-                800 * remaining / (1000 * u32::from(moves)) + increment,
-                (0.85 * rem_float) as u32,
-            )
-        },
-    )
+    if remaining < 0 {
+        10
+    } else {
+        let rem_float = remaining as f32;
+        let rem = remaining as u32;
+        movestogo.map_or_else(
+            || min(rem / 80 + increment, (0.9 * rem_float) as u32),
+            |moves| {
+                min(
+                    800 * rem / (1000 * u32::from(moves)) + increment,
+                    (0.85 * rem_float) as u32,
+                )
+            },
+        )
+    }
 }

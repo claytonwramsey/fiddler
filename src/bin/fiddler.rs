@@ -262,12 +262,9 @@ fn go<'a>(
     } else if let Some(mt) = movetime {
         *search_duration_guard = Some(mt);
     } else if let Some(rem) = remaining {
-        *search_duration_guard = Some(Duration::from_millis(if rem > 0 {
-            #[allow(clippy::cast_sign_loss)]
-            u64::from(get_search_time(movestogo, increment, rem as u32))
-        } else {
-            100
-        }));
+        *search_duration_guard = Some(Duration::from_millis(u64::from(get_search_time(
+            movestogo, increment, rem,
+        ))));
     } else {
         *search_duration_guard = None;
     }

@@ -217,18 +217,30 @@ impl MainSearch {
                     return window_result;
                 }
             }
+            search(
+                g.clone(),
+                depth,
+                &self.ttable,
+                &self.config,
+                &self.limit,
+                main,
+                Eval::MIN,
+                Eval::MAX,
+            )
+        } else {
+            // search infinitely if there was no prior so that we always produce a result
+            let inf_lim = SearchLimit::infinite();
+            search(
+                g.clone(),
+                depth,
+                &self.ttable,
+                &self.config,
+                &inf_lim,
+                main,
+                Eval::MIN,
+                Eval::MAX,
+            )
         }
-
-        search(
-            g.clone(),
-            depth,
-            &self.ttable,
-            &self.config,
-            &self.limit,
-            main,
-            Eval::MIN,
-            Eval::MAX,
-        )
     }
 }
 
@@ -240,6 +252,8 @@ impl Default for MainSearch {
 
 #[cfg(any(test, bench))]
 mod tests {
+
+    use std::time::Duration;
 
     use crate::base::movegen::is_legal;
 
@@ -274,5 +288,21 @@ mod tests {
             "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
             10,
         );
+    }
+
+    #[test]
+    fn always_a_result() {
+        let mut g = Game::new();
+        let mut main = MainSearch::new();
+        *main.limit.search_duration.get_mut().unwrap() = Some(Duration::from_micros(1));
+        main.config.n_helpers = 0;
+        main.config.depth = 10;
+        main.ttable.resize(1000);
+        main.limit.start();
+        let info = main.evaluate(&g).unwrap();
+        for m in info.pv {
+            assert!(is_legal(m, &g));
+            g.make_move(m);
+        }
     }
 }
