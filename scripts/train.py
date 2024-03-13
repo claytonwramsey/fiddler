@@ -11,8 +11,23 @@ import tqdm
 
 
 def main(train_path: str):
-    train_data = load_training_data(train_path)
-    print(train_data)
+    X, y = load_training_data(train_path)
+    # problem: cannot do this with full size dataset
+    X = X.to_dense()
+    model = Nnue()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    loss_fn = torch.nn.MSELoss()
+
+    print("Training model...")
+    for i in tqdm.trange(10):
+        pred = model(X)
+        loss = loss_fn(pred, y)
+
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        print(f"{loss=:>7f}")
 
 
 def load_training_data(train_path: str) -> tuple[torch.Tensor, torch.Tensor]:
@@ -43,7 +58,7 @@ def parse_vector(row_id: int, side_id: int, row: str) -> list[int]:
 class Nnue(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.front_seq = torch.nn.Sequential(torch.nn.Linear(64 * 64 * 9, 256), torch.nn.ReLU())
+        self.front_seq = torch.nn.Sequential(torch.nn.Linear(64 * 64 * 11, 256), torch.nn.ReLU())
         self.out_seq = torch.nn.Sequential(
             torch.nn.Linear(512, 32),
             torch.nn.ReLU(),
@@ -54,9 +69,10 @@ class Nnue(torch.nn.Module):
         )
 
     def forward(self, x):
-        a1 = self.front_seq(x[0, :])
-        a2 = self.front_seq(x[1, :])
-        a = torch.concatenate(a1, a2)
+        # problem: cannot do this with sparse matrix
+        a1 = self.front_seq(torch.select(x, -2, 0))
+        a2 = self.front_seq(torch.select(x, -2, 1))
+        a = torch.concatenate((a1, a2), dim=-1)
         return self.out_seq(a)
 
 
