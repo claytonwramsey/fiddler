@@ -153,7 +153,9 @@ fn extract_side(g: &Game, player: Color) -> Box<[u16]> {
 
 #[cfg(test)]
 mod tests {
-    use fiddler::base::game::Game;
+    use std::collections::HashSet;
+
+    use fiddler::base::{game::Game, Bitboard, Piece};
 
     use crate::{extract, input_idx, BoardFeatures, Color::*, Piece::*, Square::*};
 
@@ -234,5 +236,43 @@ mod tests {
                 input_idx(King, Black, White, E8, E1),
             ]
         );
+    }
+
+    #[test]
+    /// Check that `input_idx` grants unique IDs for each feature.
+    fn unique_ids() {
+        let mut ids = HashSet::new();
+
+        Bitboard::ALL
+            .flat_map(|ksq| {
+                Piece::NON_KING
+                    .into_iter()
+                    .flat_map(move |pt| {
+                        Bitboard::ALL.map(move |sq| input_idx(pt, White, White, ksq, sq))
+                    })
+                    .chain(Piece::ALL.into_iter().flat_map(move |pt| {
+                        Bitboard::ALL.map(move |sq| input_idx(pt, White, Black, ksq, sq))
+                    }))
+            })
+            .for_each(|idx| {
+                assert!(ids.insert(idx));
+            });
+
+        ids.clear();
+
+        Bitboard::ALL
+            .flat_map(|ksq| {
+                Piece::NON_KING
+                    .into_iter()
+                    .flat_map(move |pt| {
+                        Bitboard::ALL.map(move |sq| input_idx(pt, Black, Black, ksq, sq))
+                    })
+                    .chain(Piece::ALL.into_iter().flat_map(move |pt| {
+                        Bitboard::ALL.map(move |sq| input_idx(pt, Black, White, ksq, sq))
+                    }))
+            })
+            .for_each(|idx| {
+                assert!(ids.insert(idx));
+            });
     }
 }
