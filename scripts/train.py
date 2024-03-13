@@ -6,11 +6,38 @@ A training script for NNUEs (Efficiently Updatable Neural Networks) for this eng
 
 from fire import Fire
 import torch
+import csv
+import tqdm
 
 
-def main():
-    x = torch.rand(5, 3)
-    print(x)
+def main(train_path: str):
+    train_data = load_training_data(train_path)
+    print(train_data)
+
+
+def load_training_data(train_path: str) -> tuple[torch.Tensor, torch.Tensor]:
+
+    print("Loading training data....")
+    x_indices = []
+    y = []
+    with open(train_path) as f:
+        for i, (x1_s, x2_s, y_s) in tqdm.tqdm(
+            enumerate(csv.reader(f, delimiter=";", lineterminator="\n"))
+        ):
+            x_indices.extend(parse_vector(i, 0, x1_s))
+            x_indices.extend(parse_vector(i, 1, x2_s))
+            y.append(float(y_s))
+    nrows = len(y)
+    xi = torch.tensor(x_indices, dtype=torch.int32).T
+    nnz = xi.shape[1]
+    xv = torch.ones(nnz, dtype=torch.int8)
+    x = torch.sparse_coo_tensor(xi, xv, (nrows, 2, 64 * 64 * 11), dtype=torch.float32)
+    print(f"Loaded {nrows} rows with {nnz} observed features")
+    return (x, torch.tensor(y))
+
+
+def parse_vector(row_id: int, side_id: int, row: str) -> list[int]:
+    return [(row_id, side_id, int(x)) for x in row.split(",")]
 
 
 class Nnue(torch.nn.Module):
