@@ -29,8 +29,7 @@ need to do anything special to make this work.
 To create the main UCI executable, navigate to the root of this repository and run
 `cargo build --release --bin fiddler`.
 This will then create the executable `target/release/fiddler` (or `target/release/fiddler.exe` for
-Windows users). **Warning: Because Fiddler computes its magic move-generation lookup table at
-compile-time, compiling Fiddler may take a while.**
+Windows users).
 
 You can also create a tuner executable.
 To do so, run `cargo build --release --bin tune`.

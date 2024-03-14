@@ -4,5 +4,3 @@ Cargo.lock
 perf.*
 *.svg
 stacks.folded
-*.epd
-*.pgn
