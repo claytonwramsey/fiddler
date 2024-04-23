@@ -259,7 +259,7 @@ const BISHOP_MASKS: [Bitboard; 64] = {
     let mut masks = [Bitboard::EMPTY; 64];
     let mut i = 0u8;
     while i < 64 {
-        masks[i as usize] = get_bishop_mask(unsafe { transmute(i) });
+        masks[i as usize] = get_bishop_mask(unsafe { transmute::<u8, Square>(i) });
         i += 1;
     }
     masks

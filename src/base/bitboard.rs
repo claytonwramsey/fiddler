@@ -500,7 +500,7 @@ impl Bitboard {
             let mut masks = [Bitboard::EMPTY; 64];
             let mut i = 0u8;
             while i < 64 {
-                let sq = unsafe { transmute(i) };
+                let sq = unsafe { transmute::<u8, Square>(i) };
                 masks[i as usize] =
                     Bitboard::new(Bitboard::vertical(sq).0 ^ Bitboard::horizontal(sq).0);
                 i += 1;
@@ -531,7 +531,7 @@ impl Bitboard {
             let mut masks = [Bitboard::EMPTY; 64];
             let mut i = 0u8;
             while i < 64 {
-                let sq = unsafe { transmute(i) };
+                let sq = unsafe { transmute::<u8, Square>(i) };
                 masks[i as usize] =
                     Bitboard::new(Bitboard::diagonal(sq).0 ^ Bitboard::anti_diagonal(sq).0);
                 i += 1;
@@ -664,7 +664,7 @@ impl Iterator for Bitboard {
         let trailing = self.trailing_zeros() as u8;
         // SAFETY: The empty bitboard case has been handled already, so the number of trailing zeros
         // is between 0 and 63.
-        let result = Some(unsafe { transmute(trailing) });
+        let result = Some(unsafe { transmute::<u8, Square>(trailing) });
         self.0 ^= 1 << trailing;
         result
     }

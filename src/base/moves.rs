@@ -114,7 +114,7 @@ impl Move {
     /// The resulting type will never be a pawn or a king.
     pub const fn promote_type(self) -> Option<Piece> {
         if self.is_promotion() {
-            Some(unsafe { std::mem::transmute(((self.0.get() >> 12) & 3u16) as u8) })
+            Some(unsafe { std::mem::transmute::<u8, Piece>(((self.0.get() >> 12) & 3u16) as u8) })
         } else {
             None
         }

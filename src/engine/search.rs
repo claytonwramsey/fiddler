@@ -191,7 +191,7 @@ impl<'a> PVSearch<'a> {
         config: &'a SearchConfig,
         limit: &'a SearchLimit,
         is_main: bool,
-    ) -> PVSearch<'a> {
+    ) -> Self {
         PVSearch {
             game,
             ttable,
